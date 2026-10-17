@@ -37,6 +37,42 @@ classdef tSolver < RavenTestCase
             testCase.verifyFalse(res.hitTimeLimit);
         end
 
+        function optimizeProbSolvesMILPWithGlpk(testCase)
+            % A binary knapsack whose LP relaxation (9.33) differs from the
+            % integer optimum (8, items 1 and 3). GLPK solves it, with a
+            % warning that recommends Gurobi.
+            evalc('setRavenSolver(''glpk'')');
+            prob = struct();
+            prob.c       = [-5; -4; -3];
+            prob.A       = sparse([2 3 1]);
+            prob.a       = prob.A;
+            prob.b       = 4;
+            prob.csense  = 'L';
+            prob.lb      = zeros(3,1);
+            prob.ub      = ones(3,1);
+            prob.osense  = 1;
+            prob.vartype = 'BBB';
+            res = testCase.verifyWarning(@() optimizeProb(prob,[],false), 'RAVEN:glpkMILP');
+            testCase.verifyEqual(res.stat, 1);
+            testCase.verifyEqual(res.obj, -8, 'AbsTol', 1e-9);
+            testCase.verifyEqual(res.full, [1; 0; 1], 'AbsTol', 1e-9);
+            testCase.verifyEqual(res.mipgap, 0);
+        end
+
+        function getMinimalMediumRunsOnGlpk(testCase)
+            evalc('setRavenSolver(''glpk'')');
+            warnState = warning('off','RAVEN:glpkMILP');
+            testCase.addTeardown(@() warning(warnState));
+            [medium, idx] = getMinimalMedium(testCase.model, 'verbose', false);
+            testCase.verifyNotEmpty(medium);
+            m = testCase.model;
+            inMedium = false(numel(m.rxns),1); inMedium(idx) = true;
+            [~, exchIdx] = getExchangeRxns(m);
+            m.lb(intersect(exchIdx, find(~inMedium & m.lb < 0))) = 0;
+            sol = solveLP(m);
+            testCase.verifyGreaterThan(sol.f, 0);
+        end
+
         function checkSolutionOnFeasibleProblem(testCase)
             res = optimizeProb(testCase.modelLP());
             [isFeasible, isOptimal] = checkSolution(res);

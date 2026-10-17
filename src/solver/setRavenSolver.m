@@ -9,11 +9,16 @@ function setRavenSolver(solver)
 % solver : char
 %     string with solver name. The following options are available:
 %
-%     - glpk : uses RAVEN-provided binaries.
+%     - glpk : uses RAVEN-provided binaries. Solves LPs and MILPs; for
+%       MILPs a RAVEN:glpkMILP warning recommends Gurobi, which is much
+%       faster and more reliable on larger problems.
 %     - gurobi : requires a working Gurobi installation.
+%     - scip : requires a SCIP MEX interface. RAVEN provides a
+%       precompiled binary for Windows only.
 %     - cobra : requires a working COBRA Toolbox installation. RAVEN
 %       parses the problem to COBRA and uses the solver that is set by
-%       changeCobraSolver.
+%       changeCobraSolver. MILPs are refused when COBRA's MILP solver is
+%       GLPK.
 %
 % Examples
 % --------

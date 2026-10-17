@@ -93,6 +93,13 @@ function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(m
 %         fillGaps(model,models,allowNetProduction,useModelConstraints,...
 %         supressWarnings,rxnScores,params);
 %
+% Notes
+% -----
+% The 'reference' and 'gapfillMILP' algorithms solve a MILP with the
+% solver set by setRavenSolver. RAVEN's bundled GLPK solves it for small
+% models (with a RAVEN:glpkMILP warning); for larger models Gurobi is much
+% faster and more reliable (setRavenSolver('gurobi')).
+%
 % See Also
 % --------
 % ftINITFillGaps : the ftINIT-side counterpart, used when the reference

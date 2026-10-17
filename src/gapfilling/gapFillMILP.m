@@ -52,6 +52,12 @@ function [addedRxns, reversedRxns, newModel, exitFlag] = gapFillMILP(model, univ
 % exitFlag : double
 %     1 = optimal, -1 = infeasible, -2 = timeout or other failure.
 %
+% Notes
+% -----
+% The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled GLPK solves it for small
+% models (with a RAVEN:glpkMILP warning); for larger models Gurobi is much
+% faster and more reliable (setRavenSolver('gurobi')).
+%
 % See also
 % --------
 % gapFillFastLP, gapFillTopological, fillGaps
