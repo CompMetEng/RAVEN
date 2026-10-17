@@ -29,7 +29,7 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> downloadRavenBinaries
    Download RAVEN's external command-line binaries on demand from the
-   raven-data repository into RAVEN's software/ directory. Only the binary
+   toolbox-assets repository into RAVEN's src/external/ directory. Only the binary
    matching the current platform is fetched, and only when needed.
 
    Input:
@@ -42,7 +42,7 @@
    unzip it into the RAVEN software/ directory instead.
 
    The binaries are hosted as release assets in
-   https://github.com/SysBioChalmers/raven-data.
+   https://github.com/CompMetEng/toolbox-assets.
 
    Usage: downloadRavenBinaries({'blast+','diamond'})
 
@@ -53,7 +53,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="fetchRavenDataAsset.html" class="code" title="function localPath=fetchRavenDataAsset(destDir,releaseTag,assetName)">fetchRavenDataAsset</a>	fetchRavenDataAsset  Download (if needed) a raven-data release asset.</li><li><a href="findRAVENroot.html" class="code" title="function [ravenPath, prevDir] = findRAVENroot()">findRAVENroot</a>	findRAVENroot</li></ul>
+<li><a href="fetchToolboxAsset.html" class="code" title="function localPath=fetchToolboxAsset(destDir,releaseTag,assetName)">fetchToolboxAsset</a>	fetchToolboxAsset  Download (if needed) a toolbox-assets release asset.</li><li><a href="findRAVENroot.html" class="code" title="function [ravenPath, prevDir] = findRAVENroot()">findRAVENroot</a>	findRAVENroot</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
 </ul>
@@ -65,7 +65,7 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function downloadRavenBinaries(tools)</a>
 0002 <span class="comment">% downloadRavenBinaries</span>
 0003 <span class="comment">%   Download RAVEN's external command-line binaries on demand from the</span>
-0004 <span class="comment">%   raven-data repository into RAVEN's software/ directory. Only the binary</span>
+0004 <span class="comment">%   toolbox-assets repository into RAVEN's src/external/ directory. Only the binary</span>
 0005 <span class="comment">%   matching the current platform is fetched, and only when needed.</span>
 0006 <span class="comment">%</span>
 0007 <span class="comment">%   Input:</span>
@@ -78,7 +78,7 @@ This function is called by:
 0014 <span class="comment">%   unzip it into the RAVEN software/ directory instead.</span>
 0015 <span class="comment">%</span>
 0016 <span class="comment">%   The binaries are hosted as release assets in</span>
-0017 <span class="comment">%   https://github.com/SysBioChalmers/raven-data.</span>
+0017 <span class="comment">%   https://github.com/CompMetEng/toolbox-assets.</span>
 0018 <span class="comment">%</span>
 0019 <span class="comment">%   Usage: downloadRavenBinaries({'blast+','diamond'})</span>
 0020 <span class="comment">%</span>
@@ -93,7 +93,7 @@ This function is called by:
 0029 
 0030 ravenDir = <a href="findRAVENroot.html" class="code" title="function [ravenPath, prevDir] = findRAVENroot()">findRAVENroot</a>();
 0031 
-0032 <span class="comment">% raven-data platform key for the per-platform binary ZIPs.</span>
+0032 <span class="comment">% toolbox-assets platform key for the per-platform binary ZIPs.</span>
 0033 <span class="keyword">if</span> ispc
 0034     plat = <span class="string">'windows-x86_64'</span>;
 0035 <span class="keyword">elseif</span> ismac
@@ -142,11 +142,11 @@ This function is called by:
 0078         <span class="keyword">continue</span>;   <span class="comment">% already provisioned</span>
 0079     <span class="keyword">end</span>
 0080 
-0081     zipPath = <a href="fetchRavenDataAsset.html" class="code" title="function localPath=fetchRavenDataAsset(destDir,releaseTag,assetName)">fetchRavenDataAsset</a>(fullfile(ravenDir,<span class="string">'src'</span>,<span class="string">'external'</span>),tag,asset);
+0081     zipPath = <a href="fetchToolboxAsset.html" class="code" title="function localPath=fetchToolboxAsset(destDir,releaseTag,assetName)">fetchToolboxAsset</a>(fullfile(ravenDir,<span class="string">'src'</span>,<span class="string">'external'</span>),tag,asset);
 0082     unzip(zipPath,destDir);
 0083     delete(zipPath);
 0084 
-0085     <span class="comment">% macOS uses the .mac suffix throughout RAVEN, but the raven-data macOS ZIP</span>
+0085     <span class="comment">% macOS uses the .mac suffix throughout RAVEN, but the toolbox-assets macOS ZIP</span>
 0086     <span class="comment">% ships bare names, so rename the extracted executables to match.</span>
 0087     <span class="keyword">if</span> ismac
 0088         <span class="keyword">for</span> k = 1:numel(execs)

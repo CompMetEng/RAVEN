@@ -58,7 +58,7 @@
      and whether the HMMs were trained on pro- or eukaryotic sequences. The
      directory name matches the published HMM library it is paired with. The
      prebuilt concatenated KO HMM library (dataDir.hmm) is downloaded here
-     from the corresponding raven-data release if not already present. This
+     from the corresponding toolbox-assets release if not already present. This
      parameter should ALWAYS be provided.
  outDir : char
      directory to save the results from the quering of the hidden Markov
@@ -145,7 +145,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../../matlabicon.gif)">
-<li><a href="getModelFromKEGG.html" class="code" title="function [model,KOModel]=getModelFromKEGG(varargin)">getModelFromKEGG</a>	getModelFromKEGG  Load the global KEGG model.</li><li><a href="getPhylDist.html" class="code" title="function phylDistStruct=getPhylDist(varargin)">getPhylDist</a>	getPhylDist  Load the pre-built KEGG phylogenetic distance matrix.</li><li><a href="keggDataVersion.html" class="code" title="function version=keggDataVersion()">keggDataVersion</a>	keggDataVersion  The raven-data release tag for KEGG artefacts.</li></ul>
+<li><a href="getModelFromKEGG.html" class="code" title="function [model,KOModel]=getModelFromKEGG(varargin)">getModelFromKEGG</a>	getModelFromKEGG  Load the global KEGG model.</li><li><a href="getPhylDist.html" class="code" title="function phylDistStruct=getPhylDist(varargin)">getPhylDist</a>	getPhylDist  Load the pre-built KEGG phylogenetic distance matrix.</li><li><a href="keggDataVersion.html" class="code" title="function version=keggDataVersion()">keggDataVersion</a>	keggDataVersion  The toolbox-assets release tag for KEGG artefacts.</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../../matlabicon.gif)">
 </ul>
@@ -186,7 +186,7 @@ This function is called by:
 0030 <span class="comment">%     and whether the HMMs were trained on pro- or eukaryotic sequences. The</span>
 0031 <span class="comment">%     directory name matches the published HMM library it is paired with. The</span>
 0032 <span class="comment">%     prebuilt concatenated KO HMM library (dataDir.hmm) is downloaded here</span>
-0033 <span class="comment">%     from the corresponding raven-data release if not already present. This</span>
+0033 <span class="comment">%     from the corresponding toolbox-assets release if not already present. This</span>
 0034 <span class="comment">%     parameter should ALWAYS be provided.</span>
 0035 <span class="comment">% outDir : char</span>
 0036 <span class="comment">%     directory to save the results from the quering of the hidden Markov</span>
@@ -353,8 +353,8 @@ This function is called by:
 0197 <span class="comment">%pre-trained HMM set, compatible with the current RAVEN version. The</span>
 0198 <span class="comment">%reconstruction uses the concatenated KO HMM library (a single</span>
 0199 <span class="comment">%gzip-compressed flatfile, queried in one hmmsearch); if it is not already</span>
-0200 <span class="comment">%present it is downloaded from the corresponding raven-data release</span>
-0201 <span class="comment">%(https://github.com/SysBioChalmers/raven-data).</span>
+0200 <span class="comment">%present it is downloaded from the corresponding toolbox-assets release</span>
+0201 <span class="comment">%(https://github.com/CompMetEng/toolbox-assets).</span>
 0202 <span class="comment">%Only needed for the protein-homology path (fastaFile supplied): the</span>
 0203 <span class="comment">%annotation-only path never touches libraryFile, so skip the (100+ MB)</span>
 0204 <span class="comment">%download/extraction entirely when there is no FASTA file to search.</span>
@@ -375,7 +375,7 @@ This function is called by:
 0219         gunzip([libraryFile <span class="string">'.gz'</span>]);
 0220         fprintf(<span class="string">'COMPLETE\n'</span>);
 0221     <span class="keyword">else</span>
-0222         fetchRavenDataAsset(fileparts(libraryFile),kver,[hmmName <span class="string">'.hmm.gz'</span>]);
+0222         fetchToolboxAsset(fileparts(libraryFile),kver,[hmmName <span class="string">'.hmm.gz'</span>]);
 0223         fprintf(<span class="string">'Extracting the HMM library file... '</span>);
 0224         gunzip([libraryFile <span class="string">'.gz'</span>]);
 0225         fprintf(<span class="string">'COMPLETE\n'</span>);

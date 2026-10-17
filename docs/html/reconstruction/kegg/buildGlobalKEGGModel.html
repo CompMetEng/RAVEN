@@ -29,7 +29,7 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> buildGlobalKEGGModel  Download and assemble the global KEGG model.
 
- Fetches the raven-data &lt;kegg version&gt;_core.tar.gz bundle (the
+ Fetches the toolbox-assets &lt;kegg version&gt;_core.tar.gz bundle (the
  gene-free reference model plus the ko_reaction / organism_gene_ko /
  rxn_flags relational tables), then joins every organism's
  genes onto the reference reactions through their shared KO ids. The
@@ -57,7 +57,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../../matlabicon.gif)">
-<li><a href="buildGlobalGPR.html" class="code" title="function [genes,rxnGeneMat]=buildGlobalGPR(rxns,koReaction,organismGeneKO)">buildGlobalGPR</a>	buildGlobalGPR  Join every KEGG organism's genes onto the reference</li><li><a href="keggDataVersion.html" class="code" title="function version=keggDataVersion()">keggDataVersion</a>	keggDataVersion  The raven-data release tag for KEGG artefacts.</li><li><a href="readKEGGTable.html" class="code" title="function tbl=readKEGGTable(gzFile)">readKEGGTable</a>	readKEGGTable  Read a gzipped KEGG relational table into a table with</li></ul>
+<li><a href="buildGlobalGPR.html" class="code" title="function [genes,rxnGeneMat]=buildGlobalGPR(rxns,koReaction,organismGeneKO)">buildGlobalGPR</a>	buildGlobalGPR  Join every KEGG organism's genes onto the reference</li><li><a href="keggDataVersion.html" class="code" title="function version=keggDataVersion()">keggDataVersion</a>	keggDataVersion  The toolbox-assets release tag for KEGG artefacts.</li><li><a href="readKEGGTable.html" class="code" title="function tbl=readKEGGTable(gzFile)">readKEGGTable</a>	readKEGGTable  Read a gzipped KEGG relational table into a table with</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../../matlabicon.gif)">
 <li><a href="getModelFromKEGG.html" class="code" title="function [model,KOModel]=getModelFromKEGG(varargin)">getModelFromKEGG</a>	getModelFromKEGG  Load the global KEGG model.</li></ul>
@@ -71,7 +71,7 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [model,KOModel,isSpontaneous,isUndefinedStoich,isIncomplete,isGeneral]=buildGlobalKEGGModel(ravenPath)</a>
 0002 <span class="comment">% buildGlobalKEGGModel  Download and assemble the global KEGG model.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Fetches the raven-data &lt;kegg version&gt;_core.tar.gz bundle (the</span>
+0004 <span class="comment">% Fetches the toolbox-assets &lt;kegg version&gt;_core.tar.gz bundle (the</span>
 0005 <span class="comment">% gene-free reference model plus the ko_reaction / organism_gene_ko /</span>
 0006 <span class="comment">% rxn_flags relational tables), then joins every organism's</span>
 0007 <span class="comment">% genes onto the reference reactions through their shared KO ids. The</span>
@@ -97,7 +97,7 @@ This function is called by:
 0027 
 0028 kver=<a href="keggDataVersion.html" class="code" title="function version=keggDataVersion()">keggDataVersion</a>();
 0029 keggDir=fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>);
-0030 archive=fetchRavenDataAsset(keggDir,kver,[kver <span class="string">'_core.tar.gz'</span>]);
+0030 archive=fetchToolboxAsset(keggDir,kver,[kver <span class="string">'_core.tar.gz'</span>]);
 0031 
 0032 coreDir=fullfile(keggDir,[kver <span class="string">'_core'</span>]);
 0033 <span class="keyword">if</span> ~isfolder(coreDir)
