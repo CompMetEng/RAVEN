@@ -6,7 +6,7 @@
 %   purpose is to serve as a scaffold to reconstruct a GEM for any
 %   organism.
 %   This refers to Tutorial 5 on the RAVEN wiki:
-%   https://github.com/SysBioChalmers/RAVEN/wiki/Tutorials
+%   https://raven-docs.readthedocs.io/en/latest/tutorials/
 % 
 % Start by downloading trained Hidden Markov Models for eukaryotes. This can
 % be done automatically or manually from the RAVEN Wiki in its GitHub

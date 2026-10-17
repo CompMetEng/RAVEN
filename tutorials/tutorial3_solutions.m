@@ -1,7 +1,7 @@
 % tutorial3_solutions
 %   This script contains the solutions for Tutorial 3, see Tutorial 3 on
 %   the RAVEN wiki for more details:
-%   https://github.com/SysBioChalmers/RAVEN/wiki/Tutorials
+%   https://raven-docs.readthedocs.io/en/latest/tutorials/
 %   All the parameters are set in this script, rather than modifying the
 %   Excel model file.
 

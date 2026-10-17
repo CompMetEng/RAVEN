@@ -1,7 +1,7 @@
 % tutorial4_solutions
 %   This script contains the solutions for Tutorial 4, see Tutorial 4 on
 %   the RAVEN wiki for more details:
-%   https://github.com/SysBioChalmers/RAVEN/wiki/Tutorials
+%   https://raven-docs.readthedocs.io/en/latest/tutorials/
 %
 %   NOTE: Many of these changes are easier to do in the Excel sheet. They
 %   are done here in code just to avoid having several model files.
