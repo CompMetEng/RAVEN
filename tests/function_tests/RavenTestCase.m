@@ -71,14 +71,18 @@ classdef (Abstract) RavenTestCase < matlab.unittest.TestCase
         end
 
         function assumeMILPSolver(testCase)
-            % Switch to Gurobi or SCIP for this test, or skip if neither is
-            % available.
+            % Switch to Gurobi or SCIP for this test, or else stay on the
+            % bundled GLPK with its MILP warning silenced.
             if ~isempty(which('gurobi'))
                 evalc('setRavenSolver(''gurobi'')');
             else
                 ok = false;
                 try, evalc('setRavenSolver(''scip'')'); ok = true; catch, end %#ok<NOCOM>
-                testCase.assumeTrue(ok, 'No MILP solver (gurobi/scip) available; test skipped.');
+                if ~ok
+                    evalc('setRavenSolver(''glpk'')');
+                    warnState = warning('off','RAVEN:glpkMILP');
+                    testCase.addTeardown(@() warning(warnState));
+                end
             end
             testCase.addTeardown(@() evalc('setRavenSolver(''glpk'')'));
         end

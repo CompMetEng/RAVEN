@@ -6,8 +6,8 @@ function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnec
 % Runs a series of connectivity checks on the model - which reactions are
 % blocked, how many isolated sub-networks exist, which metabolites cannot
 % be produced (and the minimal set of metabolites that would need to be
-% connected to fix that), and, for models with exchange reactions, which
-% metabolites can be produced/consumed without any input/output. If
+% connected to fix that), and which metabolites can be produced/consumed
+% without any input/output, with every boundary reaction closed. If
 % templateModels is supplied, it also attempts to gap-fill using those
 % models. A formatted report is printed to the command window; the same
 % results are returned as outputs for further use.
@@ -43,11 +43,11 @@ function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnec
 %     matrix where n x m is true if metabolite n allows for production of
 %     metabolite m.
 % canProduceWithoutInput : cell
-%     metabolites that could be produced even when there is no input to
-%     the model.
+%     metabolites that could be produced with every boundary reaction
+%     closed.
 % canConsumeWithoutOutput : cell
-%     metabolites that could be consumed even when there is no output from
-%     the model.
+%     metabolites that could be consumed with every boundary reaction
+%     closed.
 % connectedFromTemplates : cell
 %     the reactions that could be connected using the template models.
 % addedFromTemplates : struct
@@ -56,11 +56,15 @@ function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnec
 %
 % Notes
 % -----
-% The model must be feasible under its own bounds, and, when the mass
-% balancing section runs, also with its boundary closed. Otherwise
-% gapReport stops with a RAVEN:infeasibleModel error that names the
-% reactions with a forced flux; set the bounds of ATP maintenance and any
-% other forced flux to zero first.
+% The boundary reactions are those getExchangeRxns returns: exchanges,
+% sinks and demands. For a model that keeps its boundary metabolites (an
+% unconstrained field), those metabolites are deleted for the connectivity
+% checks and kept, balanced, for the closed model.
+%
+% The model must be feasible under its own bounds and with its boundary
+% closed. Otherwise gapReport stops with a RAVEN:infeasibleModel error that
+% names the reactions with a forced flux; set the bounds of ATP maintenance
+% and any other forced flux to zero first.
 %
 % Examples
 % --------
@@ -84,19 +88,17 @@ esc=@(s) strrep(s,'%','%%');
 
 fprintf(['Gap analysis for ' esc(model.id) ' - ' esc(model.name) '\n\n']);
 if isfield(model,'unconstrained')
-    calculateINOUT=true;
     closedModel=model;
     model=simplifyModel(model);
 else
-    canConsumeWithoutOutput={};
-    canProduceWithoutInput={};
-    calculateINOUT=false;
+    closedModel=model;
+    [~,boundary]=getExchangeRxns(closedModel);
+    closedModel.lb(boundary)=0;
+    closedModel.ub(boundary)=0;
 end
 
 requireFeasible(model,'under its own bounds');
-if calculateINOUT
-    requireFeasible(closedModel,'once its boundary reactions are closed');
-end
+requireFeasible(closedModel,'once its boundary reactions are closed');
 
 model2=model;
 model2.b=[model2.b inf(numel(model2.mets),1)];
@@ -127,14 +129,12 @@ for i=1:min(10,numel(minToConnect))
     fprintf(['\t' num2str(i) '. ' esc(minToConnect{i}) '\n']);
 end
 
-if calculateINOUT==true
-    fprintf('\n***Mass balancing\n');
-    produced=canExchange(closedModel,'produce');
-    canProduceWithoutInput=closedModel.mets(produced);
-    consumed=canExchange(closedModel,'consume');
-    canConsumeWithoutOutput=closedModel.mets(consumed);
-    fprintf([num2str(numel(canConsumeWithoutOutput)) ' metabolites could be consumed without any outputs\n' num2str(numel(canProduceWithoutInput)) ' metabolites could be produced without any inputs\n']);
-end
+fprintf('\n***Mass balancing\n');
+produced=canExchange(closedModel,'produce');
+canProduceWithoutInput=closedModel.mets(produced);
+consumed=canExchange(closedModel,'consume');
+canConsumeWithoutOutput=closedModel.mets(consumed);
+fprintf([num2str(numel(canConsumeWithoutOutput)) ' metabolites could be consumed without any outputs\n' num2str(numel(canProduceWithoutInput)) ' metabolites could be produced without any inputs\n']);
 
 if ~isempty(templateModels)
     fprintf('\n***Automated gap-filling\n');

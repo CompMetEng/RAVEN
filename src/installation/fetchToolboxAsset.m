@@ -35,7 +35,7 @@ try
     websave(localPath,['https://github.com/CompMetEng/toolbox-assets/releases/download/' releaseTag '/' assetName]);
 catch ME
     if strcmp(ME.identifier,'MATLAB:webservices:HTTP404StatusCodeError')
-        error('Failed to download %s, the server returned a 404 error, try again later. If the problem persists please report it on the RAVEN GitHub Issues page: https://github.com/SysBioChalmers/RAVEN/issues',assetName)
+        error('Failed to download %s, the server returned a 404 error, try again later. If the problem persists please report it on the RAVEN GitHub Issues page: https://github.com/CompMetEng/RAVEN/issues',assetName)
     else
         rethrow(ME);
     end

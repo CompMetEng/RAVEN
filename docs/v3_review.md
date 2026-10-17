@@ -1,7 +1,6 @@
 # RAVEN 3 — development review and roadmap
 
-A review of the RAVEN toolbox aimed at the next major release (**v3**, currently on the
-`develop3` branch). The brief: make the codebase **leaner** (remove old/unused/low-value
+A review of the RAVEN toolbox for RAVEN 3. The brief: make the codebase **leaner** (remove old/unused/low-value
 functions) while gaining **a few critical new capabilities** that increase value and
 usability — with an appetite for ambitious additions.
 
@@ -11,7 +10,7 @@ This document is a proposal and a prioritized to-do list, not a record of work a
 
 ## Scope and method
 
-- Reviewed against the **current `develop3` tree**, not `develop`. The four review lenses:
+- Reviewed against the RAVEN 3 tree. The four review lenses:
   **(a)** unnecessary functions to remove, **(b)** missing functionality worth adding,
   **(c)** existing functionality worth expanding, **(d)** functions worth simplifying.
 - Method: subsystem-by-subsystem audit of every `.m` file outside `software/`, plus
@@ -21,7 +20,7 @@ This document is a proposal and a prioritized to-do list, not a record of work a
   **COBRA Toolbox (MATLAB)** is wanted; **MetaNetX mapping** is explicitly wanted (an old
   stale branch exists); new file formats are *not* a priority.
 
-### Already done in `develop3`
+### Already done in RAVEN 3
 
 So the review does not repeat completed work. v3 already:
 
@@ -141,14 +140,14 @@ Plus a standalone `mapIDsViaMNXref(type, ids, fromDB, toDB)` ID translator.
 - **No structural matching** — maps only by existing xref IDs and fuzzy names; ignores the
   **InChIKey** column, which is the modern primary metabolite key.
 - **Pre-reorg layout** — lives in `external/MetaNetX/`, carries duplicate `struct_conversion/*`
-  that has since diverged on develop3.
+  that has since diverged in RAVEN 3.
 
 **Refactor plan** (one focused PR; core is M, the polish items are S each):
-1. Relocate to the develop3 layout (e.g. `reconstruction/metanetx/` or `annotation/metanetx/`),
-   drop the duplicated `struct_conversion/*`, rebase on develop3's `convertMiriams`.
+1. Relocate to the RAVEN 3 layout (e.g. `reconstruction/metanetx/` or `annotation/metanetx/`),
+   drop the duplicated `struct_conversion/*`, rebase on RAVEN 3's `convertMiriams`.
 2. **Delete the committed data**; host MNXref 4.5 (gzipped TSVs, and ideally a prebuilt `.mat`)
    as a `toolbox-assets` release asset and add a `downloadMNXref.m` modeled exactly on the
-   develop3 KEGG-HMM / `downloadRavenBinaries` on-demand pattern (sentinel-file check, cache
+   RAVEN 3 KEGG-HMM / `downloadRavenBinaries` on-demand pattern (sentinel-file check, cache
    under a gitignored dir).
 3. Update parsing to the documented **4.5** columns (header-driven `readtable`, handle the
    `#` comment block and deprecations).

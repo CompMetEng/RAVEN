@@ -59,6 +59,33 @@ classdef tSolver < RavenTestCase
             testCase.verifyEqual(res.mipgap, 0);
         end
 
+        function optimizeProbSolvesMILPWithCobraGlpk(testCase)
+            % The same knapsack through the COBRA Toolbox's GLPK interface.
+            testCase.assumeDependency(~isempty(which('changeCobraSolver')), 'COBRA Toolbox');
+            global CBT_MILP_SOLVER %#ok<GVMIS>
+            origMILP = CBT_MILP_SOLVER;
+            evalc('changeCobraSolver(''glpk'',''MILP'',0);');
+            evalc('setRavenSolver(''cobra'')');
+            testCase.addTeardown(@() evalc('setRavenSolver(''glpk'')'));
+            if ~isempty(origMILP)
+                testCase.addTeardown(@() changeCobraSolver(origMILP,'MILP',0));
+            end
+            prob = struct();
+            prob.c       = [-5; -4; -3];
+            prob.A       = sparse([2 3 1]);
+            prob.a       = prob.A;
+            prob.b       = 4;
+            prob.csense  = 'L';
+            prob.lb      = zeros(3,1);
+            prob.ub      = ones(3,1);
+            prob.osense  = 1;
+            prob.vartype = 'BBB';
+            res = testCase.verifyWarning(@() optimizeProb(prob,[],false), 'RAVEN:glpkMILP');
+            testCase.verifyEqual(res.stat, 1);
+            testCase.verifyEqual(res.obj, -8, 'AbsTol', 1e-6);
+            testCase.verifyEqual(res.full, [1; 0; 1], 'AbsTol', 1e-6);
+        end
+
         function getMinimalMediumRunsOnGlpk(testCase)
             evalc('setRavenSolver(''glpk'')');
             warnState = warning('off','RAVEN:glpkMILP');

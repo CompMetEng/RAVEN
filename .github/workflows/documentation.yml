@@ -18,7 +18,7 @@ name: Documentation
 
 on:
   push:
-    branches: [develop3, develop, main]
+    branches: [develop, main]
     paths:
       - '**.m'
       - '.github/workflows/documentation.yml'
