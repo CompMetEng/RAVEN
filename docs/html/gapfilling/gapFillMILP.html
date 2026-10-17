@@ -24,23 +24,23 @@
 <div class="box"><strong>gapFillMILP  Objective-based gap-filling via a global growth-floor MILP.</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>function [addedRxns, reversedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, varargin) </strong></div>
+<div class="box"><strong>function [addedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> gapFillMILP  Objective-based gap-filling via a global growth-floor MILP.
 
- Finds the minimum-cost set of modifications to make the model's objective
- (biomass) &gt;= minGrowth. Supports two repair mechanisms from Kumar et al.
- 2007 (Bioinformatics 23:1626-1635):
-   1. Directionality reversal of existing draft reactions (binary y_rev)
-   2. Addition of reactions from a universal database (binary y_db)
+ Finds the smallest set of reactions from a universal database that makes
+ the model's objective (biomass) &gt;= minGrowth, following the database
+ repair of Kumar et al. 2007 (BMC Bioinformatics 8:212,
+ doi:10.1186/1471-2105-8-212). Reactions already in the draft model keep
+ their bounds: a reaction with the wrong direction is a curation issue and
+ is not changed here.
 
  The universal model should contain all candidate reactions, including
  exchange and transport reactions if those repair classes are desired.
 
- This is a SINGLE-level MILP (not bilevel). It is computationally more
- expensive than gapFillFastLP but supports the directionality-reversal
- repair mechanism and directly optimises for objective feasibility.
+ This is a single-level MILP. It is computationally more expensive than
+ gapFillFastLP but directly optimises for objective feasibility.
 
  Parameters
  ----------
@@ -54,11 +54,6 @@
  'minGrowth' (default [])
      minimum objective value to achieve. If empty, runs FBA on the merged
      model and uses 10% of the maximum as the floor.
- 'weights' (default [1 2 3 4])
-     cost weights [w_rev w_db w_exch w_trans]. w_rev is the cost per
-     reversed draft reaction; w_db is the cost per added universal
-     reaction. w_exch and w_trans are reserved for future use when
-     exchange and transport reactions are tracked separately.
  'bigM' (default 1000)
      Big-M constant for coupling constraints. Must be larger than any
      expected flux magnitude.
@@ -72,13 +67,16 @@
  -------
  addedRxns : cell
      reaction IDs from universalModel that are selected by the MILP.
- reversedRxns : cell
-     draft reaction IDs whose directionality is reversed by the MILP.
  newModel : struct
-     model with addedRxns incorporated and reversedRxns bounds updated
-     (lb set to -bigM for reversed reactions).
+     model with addedRxns incorporated.
  exitFlag : double
      1 = optimal, -1 = infeasible, -2 = timeout or other failure.
+
+ Notes
+ -----
+ The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled GLPK solves it for small
+ models (with a RAVEN:glpkMILP warning); for larger models Gurobi is much
+ faster and more reliable (setRavenSolver('gurobi')).
 
  See also
  --------
@@ -97,21 +95,21 @@ This function is called by:
 
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [addedRxns, reversedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, varargin)</a>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [addedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, varargin)</a>
 0002 <span class="comment">% gapFillMILP  Objective-based gap-filling via a global growth-floor MILP.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Finds the minimum-cost set of modifications to make the model's objective</span>
-0005 <span class="comment">% (biomass) &gt;= minGrowth. Supports two repair mechanisms from Kumar et al.</span>
-0006 <span class="comment">% 2007 (Bioinformatics 23:1626-1635):</span>
-0007 <span class="comment">%   1. Directionality reversal of existing draft reactions (binary y_rev)</span>
-0008 <span class="comment">%   2. Addition of reactions from a universal database (binary y_db)</span>
-0009 <span class="comment">%</span>
-0010 <span class="comment">% The universal model should contain all candidate reactions, including</span>
-0011 <span class="comment">% exchange and transport reactions if those repair classes are desired.</span>
-0012 <span class="comment">%</span>
-0013 <span class="comment">% This is a SINGLE-level MILP (not bilevel). It is computationally more</span>
-0014 <span class="comment">% expensive than gapFillFastLP but supports the directionality-reversal</span>
-0015 <span class="comment">% repair mechanism and directly optimises for objective feasibility.</span>
+0004 <span class="comment">% Finds the smallest set of reactions from a universal database that makes</span>
+0005 <span class="comment">% the model's objective (biomass) &gt;= minGrowth, following the database</span>
+0006 <span class="comment">% repair of Kumar et al. 2007 (BMC Bioinformatics 8:212,</span>
+0007 <span class="comment">% doi:10.1186/1471-2105-8-212). Reactions already in the draft model keep</span>
+0008 <span class="comment">% their bounds: a reaction with the wrong direction is a curation issue and</span>
+0009 <span class="comment">% is not changed here.</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">% The universal model should contain all candidate reactions, including</span>
+0012 <span class="comment">% exchange and transport reactions if those repair classes are desired.</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% This is a single-level MILP. It is computationally more expensive than</span>
+0015 <span class="comment">% gapFillFastLP but directly optimises for objective feasibility.</span>
 0016 <span class="comment">%</span>
 0017 <span class="comment">% Parameters</span>
 0018 <span class="comment">% ----------</span>
@@ -125,273 +123,230 @@ This function is called by:
 0026 <span class="comment">% 'minGrowth' (default [])</span>
 0027 <span class="comment">%     minimum objective value to achieve. If empty, runs FBA on the merged</span>
 0028 <span class="comment">%     model and uses 10% of the maximum as the floor.</span>
-0029 <span class="comment">% 'weights' (default [1 2 3 4])</span>
-0030 <span class="comment">%     cost weights [w_rev w_db w_exch w_trans]. w_rev is the cost per</span>
-0031 <span class="comment">%     reversed draft reaction; w_db is the cost per added universal</span>
-0032 <span class="comment">%     reaction. w_exch and w_trans are reserved for future use when</span>
-0033 <span class="comment">%     exchange and transport reactions are tracked separately.</span>
-0034 <span class="comment">% 'bigM' (default 1000)</span>
-0035 <span class="comment">%     Big-M constant for coupling constraints. Must be larger than any</span>
-0036 <span class="comment">%     expected flux magnitude.</span>
-0037 <span class="comment">% 'params' (default [])</span>
-0038 <span class="comment">%     solver parameter struct passed to optimizeProb. Fields such as</span>
-0039 <span class="comment">%     params.TimeLimit and params.intTol can be used to tune the MILP.</span>
-0040 <span class="comment">% 'verbose' (default true)</span>
-0041 <span class="comment">%     print progress messages.</span>
-0042 <span class="comment">%</span>
-0043 <span class="comment">% Returns</span>
-0044 <span class="comment">% -------</span>
-0045 <span class="comment">% addedRxns : cell</span>
-0046 <span class="comment">%     reaction IDs from universalModel that are selected by the MILP.</span>
-0047 <span class="comment">% reversedRxns : cell</span>
-0048 <span class="comment">%     draft reaction IDs whose directionality is reversed by the MILP.</span>
-0049 <span class="comment">% newModel : struct</span>
-0050 <span class="comment">%     model with addedRxns incorporated and reversedRxns bounds updated</span>
-0051 <span class="comment">%     (lb set to -bigM for reversed reactions).</span>
-0052 <span class="comment">% exitFlag : double</span>
-0053 <span class="comment">%     1 = optimal, -1 = infeasible, -2 = timeout or other failure.</span>
-0054 <span class="comment">%</span>
-0055 <span class="comment">% See also</span>
-0056 <span class="comment">% --------</span>
-0057 <span class="comment">% gapFillFastLP, gapFillTopological, fillGaps</span>
-0058 
-0059 <span class="comment">% ---- Parse optional arguments ----</span>
-0060 p = inputParser();
-0061 addParameter(p, <span class="string">'minGrowth'</span>, [],  @(x) isempty(x) || isnumeric(x));
-0062 addParameter(p, <span class="string">'weights'</span>,   [1 2 3 4], @isnumeric);
-0063 addParameter(p, <span class="string">'bigM'</span>,      1000,      @isnumeric);
-0064 addParameter(p, <span class="string">'params'</span>,    [],        @(x) isempty(x) || isstruct(x));
-0065 addParameter(p, <span class="string">'verbose'</span>,   true,      @islogical);
-0066 parse(p, varargin{:});
-0067 minGrowth = p.Results.minGrowth;
-0068 weights   = p.Results.weights;
-0069 M         = p.Results.bigM;
-0070 params    = p.Results.params;
-0071 verbose   = p.Results.verbose;
-0072 
-0073 w_rev = weights(1);
-0074 w_db  = weights(2);
-0075 
-0076 <span class="comment">% ---- Initialise outputs ----</span>
-0077 addedRxns    = {};
-0078 reversedRxns = {};
-0079 newModel     = model;
-0080 exitFlag     = -1;
-0081 
-0082 <span class="comment">% Check that the model has an objective</span>
-0083 <span class="keyword">if</span> all(model.c == 0)
-0084     error(<span class="string">'gapFillMILP: model has no objective function. Set model.c.'</span>);
-0085 <span class="keyword">end</span>
-0086 
-0087 <span class="comment">% ---- Merge draft + universal database ----</span>
-0088 mergedModel = mergeModels({model; universalModel});
-0089 nMergedMets = numel(mergedModel.mets);
-0090 nMergedRxns = numel(mergedModel.rxns);
-0091 
-0092 <span class="comment">% Identify draft reactions in the merged model</span>
-0093 isDraft = ismember(mergedModel.rxns, model.rxns);
-0094 isUniv  = ~isDraft;
-0095 
-0096 <span class="comment">% Universal reactions that can carry flux (non-trivially blocked)</span>
-0097 canCarry = (mergedModel.ub &gt; 0 | mergedModel.lb &lt; 0);
-0098 isUniv   = isUniv &amp; canCarry;
-0099 univIdx  = find(isUniv);     <span class="comment">% positions in merged model</span>
-0100 nUniv    = numel(univIdx);
-0101 
-0102 <span class="comment">% Reversal candidates: draft reactions that are currently irreversible</span>
-0103 <span class="comment">% (lb &gt;= 0). Reversing their directionality means allowing negative flux.</span>
-0104 revCandMask = isDraft &amp; mergedModel.lb &gt;= 0;
-0105 revCandIdx  = find(revCandMask);   <span class="comment">% positions in merged model</span>
-0106 nRev        = numel(revCandIdx);
-0107 
-0108 <span class="keyword">if</span> verbose
-0109     fprintf(<span class="string">'gapFillMILP: merged model has %d mets, %d rxns (%d draft, %d universal).\n'</span>, <span class="keyword">...</span>
-0110         nMergedMets, nMergedRxns, sum(isDraft), nUniv);
-0111     fprintf(<span class="string">'gapFillMILP: %d reversal candidates, %d database candidates.\n'</span>, nRev, nUniv);
-0112 <span class="keyword">end</span>
-0113 
-0114 <span class="comment">% ---- Determine minGrowth ----</span>
-0115 <span class="keyword">if</span> isempty(minGrowth)
-0116     <span class="comment">% Run FBA on merged model (unconstrained) to get max growth.</span>
-0117     probFBA.A      = mergedModel.S;
-0118     probFBA.a      = probFBA.A;
-0119     probFBA.b      = zeros(nMergedMets, 1);
-0120     probFBA.csense = repmat(<span class="string">'E'</span>, 1, nMergedMets);
-0121     probFBA.c      = -mergedModel.c;   <span class="comment">% negate: osense=1 minimises</span>
-0122     probFBA.osense = 1;
-0123     probFBA.lb     = mergedModel.lb;
-0124     probFBA.ub     = mergedModel.ub;
-0125     probFBA.vartype = repmat(<span class="string">'C'</span>, 1, nMergedRxns);
-0126     solFBA = optimizeProb(probFBA, params, false);
-0127     <span class="keyword">if</span> ~checkSolution(solFBA)
-0128         <span class="keyword">if</span> verbose
-0129             fprintf(<span class="string">'gapFillMILP: FBA on merged model is infeasible — cannot gap-fill.\n'</span>);
-0130         <span class="keyword">end</span>
-0131         <span class="keyword">return</span>;
-0132     <span class="keyword">end</span>
-0133     maxGrowth = mergedModel.c' * solFBA.full(1:nMergedRxns);
-0134     <span class="keyword">if</span> maxGrowth &lt;= 0
-0135         <span class="keyword">if</span> verbose
-0136             fprintf(<span class="string">'gapFillMILP: merged model objective is non-positive (%.4g). Cannot gap-fill.\n'</span>, <span class="keyword">...</span>
-0137                 maxGrowth);
-0138         <span class="keyword">end</span>
-0139         <span class="keyword">return</span>;
-0140     <span class="keyword">end</span>
-0141     minGrowth = 0.1 * maxGrowth;
-0142     <span class="keyword">if</span> verbose
-0143         fprintf(<span class="string">'gapFillMILP: setting minGrowth = %.4g (10%% of max %.4g).\n'</span>, minGrowth, maxGrowth);
-0144     <span class="keyword">end</span>
-0145 <span class="keyword">end</span>
-0146 
-0147 <span class="comment">% ---- Build MILP ----</span>
-0148 <span class="comment">% Variable ordering:</span>
-0149 <span class="comment">%   cols 1 : nMergedRxns          → v (all fluxes, continuous)</span>
-0150 <span class="comment">%   cols nMergedRxns+1 : +nRev    → y_rev (binary, directionality reversal)</span>
-0151 <span class="comment">%   cols nMergedRxns+nRev+1 : end → y_db  (binary, universal reactions)</span>
-0152 nVar = nMergedRxns + nRev + nUniv;
+0029 <span class="comment">% 'bigM' (default 1000)</span>
+0030 <span class="comment">%     Big-M constant for coupling constraints. Must be larger than any</span>
+0031 <span class="comment">%     expected flux magnitude.</span>
+0032 <span class="comment">% 'params' (default [])</span>
+0033 <span class="comment">%     solver parameter struct passed to optimizeProb. Fields such as</span>
+0034 <span class="comment">%     params.TimeLimit and params.intTol can be used to tune the MILP.</span>
+0035 <span class="comment">% 'verbose' (default true)</span>
+0036 <span class="comment">%     print progress messages.</span>
+0037 <span class="comment">%</span>
+0038 <span class="comment">% Returns</span>
+0039 <span class="comment">% -------</span>
+0040 <span class="comment">% addedRxns : cell</span>
+0041 <span class="comment">%     reaction IDs from universalModel that are selected by the MILP.</span>
+0042 <span class="comment">% newModel : struct</span>
+0043 <span class="comment">%     model with addedRxns incorporated.</span>
+0044 <span class="comment">% exitFlag : double</span>
+0045 <span class="comment">%     1 = optimal, -1 = infeasible, -2 = timeout or other failure.</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">% Notes</span>
+0048 <span class="comment">% -----</span>
+0049 <span class="comment">% The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled GLPK solves it for small</span>
+0050 <span class="comment">% models (with a RAVEN:glpkMILP warning); for larger models Gurobi is much</span>
+0051 <span class="comment">% faster and more reliable (setRavenSolver('gurobi')).</span>
+0052 <span class="comment">%</span>
+0053 <span class="comment">% See also</span>
+0054 <span class="comment">% --------</span>
+0055 <span class="comment">% gapFillFastLP, gapFillTopological, fillGaps</span>
+0056 
+0057 <span class="comment">% ---- Parse optional arguments ----</span>
+0058 p = inputParser();
+0059 addParameter(p, <span class="string">'minGrowth'</span>, [],  @(x) isempty(x) || isnumeric(x));
+0060 addParameter(p, <span class="string">'bigM'</span>,      1000,      @isnumeric);
+0061 addParameter(p, <span class="string">'params'</span>,    [],        @(x) isempty(x) || isstruct(x));
+0062 addParameter(p, <span class="string">'verbose'</span>,   true,      @islogical);
+0063 parse(p, varargin{:});
+0064 minGrowth = p.Results.minGrowth;
+0065 M         = p.Results.bigM;
+0066 params    = p.Results.params;
+0067 verbose   = p.Results.verbose;
+0068 
+0069 <span class="comment">% ---- Initialise outputs ----</span>
+0070 addedRxns = {};
+0071 newModel  = model;
+0072 exitFlag  = -1;
+0073 
+0074 <span class="comment">% Check that the model has an objective</span>
+0075 <span class="keyword">if</span> all(model.c == 0)
+0076     error(<span class="string">'gapFillMILP: model has no objective function. Set model.c.'</span>);
+0077 <span class="keyword">end</span>
+0078 
+0079 <span class="comment">% ---- Merge draft + universal database ----</span>
+0080 mergedModel = mergeModels({model; universalModel});
+0081 nMergedMets = numel(mergedModel.mets);
+0082 nMergedRxns = numel(mergedModel.rxns);
+0083 
+0084 <span class="comment">% Identify draft reactions in the merged model</span>
+0085 isDraft = ismember(mergedModel.rxns, model.rxns);
+0086 isUniv  = ~isDraft;
+0087 
+0088 <span class="comment">% Universal reactions that can carry flux (non-trivially blocked)</span>
+0089 canCarry = (mergedModel.ub &gt; 0 | mergedModel.lb &lt; 0);
+0090 isUniv   = isUniv &amp; canCarry;
+0091 univIdx  = find(isUniv);     <span class="comment">% positions in merged model</span>
+0092 nUniv    = numel(univIdx);
+0093 
+0094 <span class="keyword">if</span> verbose
+0095     fprintf(<span class="string">'gapFillMILP: merged model has %d mets, %d rxns (%d draft, %d universal).\n'</span>, <span class="keyword">...</span>
+0096         nMergedMets, nMergedRxns, sum(isDraft), nUniv);
+0097     fprintf(<span class="string">'gapFillMILP: %d database candidates.\n'</span>, nUniv);
+0098 <span class="keyword">end</span>
+0099 
+0100 <span class="comment">% ---- Determine minGrowth ----</span>
+0101 <span class="keyword">if</span> isempty(minGrowth)
+0102     <span class="comment">% Run FBA on merged model (unconstrained) to get max growth.</span>
+0103     probFBA.A      = mergedModel.S;
+0104     probFBA.a      = probFBA.A;
+0105     probFBA.b      = zeros(nMergedMets, 1);
+0106     probFBA.csense = repmat(<span class="string">'E'</span>, 1, nMergedMets);
+0107     probFBA.c      = -mergedModel.c;   <span class="comment">% negate: osense=1 minimises</span>
+0108     probFBA.osense = 1;
+0109     probFBA.lb     = mergedModel.lb;
+0110     probFBA.ub     = mergedModel.ub;
+0111     probFBA.vartype = repmat(<span class="string">'C'</span>, 1, nMergedRxns);
+0112     solFBA = optimizeProb(probFBA, params, false);
+0113     <span class="keyword">if</span> ~checkSolution(solFBA)
+0114         <span class="keyword">if</span> verbose
+0115             fprintf(<span class="string">'gapFillMILP: FBA on merged model is infeasible — cannot gap-fill.\n'</span>);
+0116         <span class="keyword">end</span>
+0117         <span class="keyword">return</span>;
+0118     <span class="keyword">end</span>
+0119     maxGrowth = mergedModel.c' * solFBA.full(1:nMergedRxns);
+0120     <span class="keyword">if</span> maxGrowth &lt;= 0
+0121         <span class="keyword">if</span> verbose
+0122             fprintf(<span class="string">'gapFillMILP: merged model objective is non-positive (%.4g). Cannot gap-fill.\n'</span>, <span class="keyword">...</span>
+0123                 maxGrowth);
+0124         <span class="keyword">end</span>
+0125         <span class="keyword">return</span>;
+0126     <span class="keyword">end</span>
+0127     minGrowth = 0.1 * maxGrowth;
+0128     <span class="keyword">if</span> verbose
+0129         fprintf(<span class="string">'gapFillMILP: setting minGrowth = %.4g (10%% of max %.4g).\n'</span>, minGrowth, maxGrowth);
+0130     <span class="keyword">end</span>
+0131 <span class="keyword">end</span>
+0132 
+0133 <span class="comment">% ---- Build MILP ----</span>
+0134 <span class="comment">% Variable ordering:</span>
+0135 <span class="comment">%   cols 1 : nMergedRxns          → v (all fluxes, continuous)</span>
+0136 <span class="comment">%   cols nMergedRxns+1 : end      → y_db (binary, universal reactions)</span>
+0137 nVar = nMergedRxns + nUniv;
+0138 
+0139 <span class="comment">% --- Variable bounds ---</span>
+0140 lb = mergedModel.lb;
+0141 ub = mergedModel.ub;
+0142 
+0143 <span class="comment">% Universal reactions: allow them to be forced to 0 (extend lb toward 0)</span>
+0144 lb(univIdx) = min(mergedModel.lb(univIdx), 0);
+0145 
+0146 <span class="comment">% Binary variable bounds</span>
+0147 lb = [lb; zeros(nUniv, 1)];
+0148 ub = [ub; ones(nUniv, 1)];
+0149 
+0150 <span class="comment">% --- Objective: number of added universal reactions ---</span>
+0151 c = zeros(nVar, 1);
+0152 c(nMergedRxns + 1 : end) = 1;
 0153 
-0154 <span class="comment">% --- Variable bounds ---</span>
-0155 lb = mergedModel.lb;
-0156 ub = mergedModel.ub;
+0154 <span class="comment">% --- Constraint blocks ---</span>
+0155 <span class="comment">% (1) Steady state: S * v = 0   [nMergedMets rows, 'E']</span>
+0156 A_SS = [mergedModel.S, sparse(nMergedMets, nUniv)];
 0157 
-0158 <span class="comment">% Relax reversal candidates to allow negative flux (Big-M on lower bound)</span>
-0159 lb(revCandIdx) = -M;
+0158 <span class="comment">% (2) Growth floor: c' * v &gt;= minGrowth   [1 row, 'G']</span>
+0159 A_growth = [sparse(mergedModel.c'), sparse(1, nUniv)];
 0160 
-0161 <span class="comment">% Universal reactions: allow them to be forced to 0 (extend lb toward 0)</span>
-0162 lb(univIdx) = min(mergedModel.lb(univIdx), 0);
-0163 
-0164 <span class="comment">% Binary variable bounds</span>
-0165 lb = [lb; zeros(nRev + nUniv, 1)];
-0166 ub = [ub; ones(nRev + nUniv, 1)];
-0167 
-0168 <span class="comment">% --- Objective ---</span>
-0169 c = zeros(nVar, 1);
-0170 c(nMergedRxns + 1 : nMergedRxns + nRev)  = w_rev;  <span class="comment">% y_rev cost</span>
-0171 c(nMergedRxns + nRev + 1 : end)           = w_db;   <span class="comment">% y_db cost</span>
-0172 
-0173 <span class="comment">% --- Constraint blocks ---</span>
-0174 <span class="comment">% (1) Steady state: S * v = 0   [nMergedMets rows, 'E']</span>
-0175 A_SS = [mergedModel.S, sparse(nMergedMets, nRev + nUniv)];
-0176 
-0177 <span class="comment">% (2) Growth floor: c' * v &gt;= minGrowth   [1 row, 'G']</span>
-0178 A_growth = [sparse(mergedModel.c'), sparse(1, nRev + nUniv)];
-0179 
-0180 <span class="comment">% (3) Universal upper coupling: v_k - ub_k * y_db_k &lt;= 0   [nUniv rows, 'L']</span>
-0181 <span class="comment">%     (forces v_k &lt;= 0 when y_db_k = 0)</span>
-0182 <span class="comment">% Coupling coefficients are capped at the Big-M constant: an unbounded</span>
-0183 <span class="comment">% universal reaction (ub = Inf, RAVEN's own default when no upper-bound</span>
-0184 <span class="comment">% annotation is set) would otherwise put an Inf coefficient into the</span>
-0185 <span class="comment">% constraint matrix, and Inf*0 (y_db_k = 0) is NaN, not 0.</span>
-0186 yDbCols = nMergedRxns + nRev + (1:nUniv);
-0187 uniUb = min(mergedModel.ub(univIdx), M);
-0188 uniLb = max(mergedModel.lb(univIdx), -M);
-0189 A_uniUp = sparse(<span class="keyword">...</span>
-0190     [1:nUniv, 1:nUniv], <span class="keyword">...</span>
-0191     [univIdx(:)', yDbCols], <span class="keyword">...</span>
-0192     [ones(1, nUniv), -uniUb'], <span class="keyword">...</span>
-0193     nUniv, nVar);
-0194 
-0195 <span class="comment">% (4) Universal lower coupling: v_k - lb_k * y_db_k &gt;= 0   [nUniv rows, 'G']</span>
-0196 <span class="comment">%     (forces v_k &gt;= 0 when y_db_k = 0; together with (3): v_k = 0 when y_db_k = 0)</span>
-0197 A_uniLo = sparse(<span class="keyword">...</span>
-0198     [1:nUniv, 1:nUniv], <span class="keyword">...</span>
-0199     [univIdx(:)', yDbCols], <span class="keyword">...</span>
-0200     [ones(1, nUniv), -uniLb'], <span class="keyword">...</span>
-0201     nUniv, nVar);
+0161 <span class="comment">% (3) Universal upper coupling: v_k - ub_k * y_db_k &lt;= 0   [nUniv rows, 'L']</span>
+0162 <span class="comment">%     (forces v_k &lt;= 0 when y_db_k = 0)</span>
+0163 <span class="comment">% Coupling coefficients are capped at the Big-M constant: an unbounded</span>
+0164 <span class="comment">% universal reaction (ub = Inf, RAVEN's own default when no upper-bound</span>
+0165 <span class="comment">% annotation is set) would otherwise put an Inf coefficient into the</span>
+0166 <span class="comment">% constraint matrix, and Inf*0 (y_db_k = 0) is NaN, not 0.</span>
+0167 yDbCols = nMergedRxns + (1:nUniv);
+0168 uniUb = min(mergedModel.ub(univIdx), M);
+0169 uniLb = max(mergedModel.lb(univIdx), -M);
+0170 A_uniUp = sparse(<span class="keyword">...</span>
+0171     [1:nUniv, 1:nUniv], <span class="keyword">...</span>
+0172     [univIdx(:)', yDbCols], <span class="keyword">...</span>
+0173     [ones(1, nUniv), -uniUb'], <span class="keyword">...</span>
+0174     nUniv, nVar);
+0175 
+0176 <span class="comment">% (4) Universal lower coupling: v_k - lb_k * y_db_k &gt;= 0   [nUniv rows, 'G']</span>
+0177 <span class="comment">%     (forces v_k &gt;= 0 when y_db_k = 0; together with (3): v_k = 0 when y_db_k = 0)</span>
+0178 A_uniLo = sparse(<span class="keyword">...</span>
+0179     [1:nUniv, 1:nUniv], <span class="keyword">...</span>
+0180     [univIdx(:)', yDbCols], <span class="keyword">...</span>
+0181     [ones(1, nUniv), -uniLb'], <span class="keyword">...</span>
+0182     nUniv, nVar);
+0183 
+0184 <span class="comment">% --- Assemble ---</span>
+0185 prob.A = [A_SS; A_growth; A_uniUp; A_uniLo];
+0186 prob.a = prob.A;
+0187 prob.b = [zeros(nMergedMets, 1); minGrowth; zeros(2 * nUniv, 1)];
+0188 prob.csense = [repmat(<span class="string">'E'</span>, 1, nMergedMets), <span class="string">'G'</span>, <span class="keyword">...</span>
+0189                repmat(<span class="string">'L'</span>, 1, nUniv), <span class="keyword">...</span>
+0190                repmat(<span class="string">'G'</span>, 1, nUniv)];
+0191 prob.c      = c;
+0192 prob.osense = 1;   <span class="comment">% minimise the number of added reactions</span>
+0193 prob.lb     = lb;
+0194 prob.ub     = ub;
+0195 prob.vartype = repmat(<span class="string">'C'</span>, 1, nVar);
+0196 prob.vartype(nMergedRxns + 1 : end) = <span class="string">'B'</span>;   <span class="comment">% y_db is binary</span>
+0197 
+0198 <span class="keyword">if</span> isempty(params)
+0199     params.intTol   = 1e-9;
+0200     params.TimeLimit = 600;
+0201 <span class="keyword">end</span>
 0202 
-0203 <span class="comment">% (5) Reversal coupling: v_j + M * y_rev_j &gt;= 0   [nRev rows, 'G']</span>
-0204 <span class="comment">%     (forces v_j &gt;= 0 when y_rev_j = 0, i.e., preserves original irreversibility)</span>
-0205 yRevCols = nMergedRxns + (1:nRev);
-0206 A_rev = sparse(<span class="keyword">...</span>
-0207     [1:nRev, 1:nRev], <span class="keyword">...</span>
-0208     [revCandIdx(:)', yRevCols], <span class="keyword">...</span>
-0209     [ones(1, nRev), M * ones(1, nRev)], <span class="keyword">...</span>
-0210     nRev, nVar);
-0211 
-0212 <span class="comment">% --- Assemble ---</span>
-0213 prob.A = [A_SS; A_growth; A_uniUp; A_uniLo; A_rev];
-0214 prob.a = prob.A;
-0215 prob.b = [zeros(nMergedMets, 1); minGrowth; <span class="keyword">...</span>
-0216           zeros(nUniv, 1); zeros(nUniv, 1); zeros(nRev, 1)];
-0217 prob.csense = [repmat(<span class="string">'E'</span>, 1, nMergedMets), <span class="string">'G'</span>, <span class="keyword">...</span>
-0218                repmat(<span class="string">'L'</span>, 1, nUniv), <span class="keyword">...</span>
-0219                repmat(<span class="string">'G'</span>, 1, nUniv + nRev)];
-0220 prob.c      = c;
-0221 prob.osense = 1;   <span class="comment">% minimise weighted sum of binary variables</span>
-0222 prob.lb     = lb;
-0223 prob.ub     = ub;
-0224 prob.vartype = repmat(<span class="string">'C'</span>, 1, nVar);
-0225 prob.vartype(nMergedRxns + 1 : end) = <span class="string">'B'</span>;   <span class="comment">% y_rev and y_db are binary</span>
-0226 
-0227 <span class="keyword">if</span> isempty(params)
-0228     params.intTol   = 1e-9;
-0229     params.TimeLimit = 600;
-0230 <span class="keyword">end</span>
-0231 
-0232 <span class="comment">% ---- Solve ----</span>
-0233 <span class="keyword">if</span> verbose
-0234     fprintf(<span class="string">'gapFillMILP: solving MILP (%d vars, %d binary, %d constraints)...\n'</span>, <span class="keyword">...</span>
-0235         nVar, nRev + nUniv, size(prob.A, 1));
-0236 <span class="keyword">end</span>
-0237 sol = optimizeProb(prob, params, verbose);
-0238 
-0239 <span class="keyword">if</span> ~checkSolution(sol)
-0240     <span class="keyword">if</span> verbose
-0241         fprintf(<span class="string">'gapFillMILP: MILP infeasible or timed out.\n'</span>);
-0242     <span class="keyword">end</span>
-0243     exitFlag = -1;
-0244     <span class="keyword">return</span>;
-0245 <span class="keyword">end</span>
-0246 
-0247 <span class="comment">% ---- Extract solution ----</span>
-0248 binThreshold = 1e-3;
-0249 yRev = sol.full(nMergedRxns + 1 : nMergedRxns + nRev);
-0250 yDb  = sol.full(nMergedRxns + nRev + 1 : end);
-0251 
-0252 revSelected = revCandIdx(yRev &gt; binThreshold);
-0253 dbSelected  = univIdx(yDb &gt; binThreshold);
-0254 
-0255 <span class="comment">% Map back to original IDs. dbSelected is already restricted to universal</span>
-0256 <span class="comment">% reactions via univIdx/isDraft above (an id-membership test against</span>
-0257 <span class="comment">% model.rxns, not a name it could have been renamed away from), so no</span>
-0258 <span class="comment">% further filtering against universalModel.rxns is needed here -- doing so</span>
-0259 <span class="comment">% would silently drop a universal reaction that mergeModels renamed</span>
-0260 <span class="comment">% because its id collided with one already in the draft model.</span>
-0261 reversedRxns = mergedModel.rxns(revSelected);
-0262 addedRxns    = mergedModel.rxns(dbSelected);
-0263 
-0264 <span class="keyword">if</span> verbose
-0265     fprintf(<span class="string">'gapFillMILP: reversed %d draft reaction(s), added %d universal reaction(s).\n'</span>, <span class="keyword">...</span>
-0266         numel(reversedRxns), numel(addedRxns));
-0267 <span class="keyword">end</span>
-0268 
-0269 <span class="comment">% ---- Build new model ----</span>
-0270 newModel = model;
-0271 
-0272 <span class="comment">% Apply directionality reversals: allow negative flux</span>
-0273 <span class="keyword">for</span> k = 1:numel(reversedRxns)
-0274     rxnPos = find(getIndexes(newModel, reversedRxns(k), <span class="string">'rxns'</span>, true));
-0275     <span class="keyword">if</span> ~isempty(rxnPos)
-0276         newModel.lb(rxnPos) = -M;
-0277         newModel.rev(rxnPos) = 1;
-0278     <span class="keyword">end</span>
-0279 <span class="keyword">end</span>
-0280 
-0281 <span class="comment">% Add universal reactions. Extracted from mergedModel by the dbSelected</span>
-0282 <span class="comment">% indices directly, not by looking addedRxns' names back up in</span>
-0283 <span class="comment">% universalModel: that lookup fails whenever mergeModels renamed one of</span>
-0284 <span class="comment">% them because its id collided with one already in the draft model, in</span>
-0285 <span class="comment">% which case setdiff would keep the (unrenamed) original in universalModel</span>
-0286 <span class="comment">% marked for removal, silently dropping the very reaction just selected.</span>
-0287 <span class="keyword">if</span> ~isempty(dbSelected)
-0288     toRemove = true(nMergedRxns, 1);
-0289     toRemove(dbSelected) = false;
-0290     trimmedUniv = removeReactions(mergedModel, toRemove);
-0291     newModel = mergeModels({newModel; trimmedUniv});
-0292 <span class="keyword">end</span>
-0293 
-0294 exitFlag = 1;
-0295 <span class="keyword">end</span></pre></div>
+0203 <span class="comment">% ---- Solve ----</span>
+0204 <span class="keyword">if</span> verbose
+0205     fprintf(<span class="string">'gapFillMILP: solving MILP (%d vars, %d binary, %d constraints)...\n'</span>, <span class="keyword">...</span>
+0206         nVar, nUniv, size(prob.A, 1));
+0207 <span class="keyword">end</span>
+0208 sol = optimizeProb(prob, params, verbose);
+0209 
+0210 <span class="keyword">if</span> ~checkSolution(sol)
+0211     <span class="keyword">if</span> verbose
+0212         fprintf(<span class="string">'gapFillMILP: MILP infeasible or timed out.\n'</span>);
+0213     <span class="keyword">end</span>
+0214     exitFlag = -1;
+0215     <span class="keyword">return</span>;
+0216 <span class="keyword">end</span>
+0217 
+0218 <span class="comment">% ---- Extract solution ----</span>
+0219 binThreshold = 1e-3;
+0220 yDb = sol.full(nMergedRxns + 1 : end);
+0221 dbSelected = univIdx(yDb &gt; binThreshold);
+0222 
+0223 <span class="comment">% Map back to original IDs. dbSelected is already restricted to universal</span>
+0224 <span class="comment">% reactions via univIdx/isDraft above (an id-membership test against</span>
+0225 <span class="comment">% model.rxns, not a name it could have been renamed away from), so no</span>
+0226 <span class="comment">% further filtering against universalModel.rxns is needed here -- doing so</span>
+0227 <span class="comment">% would silently drop a universal reaction that mergeModels renamed</span>
+0228 <span class="comment">% because its id collided with one already in the draft model.</span>
+0229 addedRxns = mergedModel.rxns(dbSelected);
+0230 
+0231 <span class="keyword">if</span> verbose
+0232     fprintf(<span class="string">'gapFillMILP: added %d universal reaction(s).\n'</span>, numel(addedRxns));
+0233 <span class="keyword">end</span>
+0234 
+0235 <span class="comment">% ---- Build new model ----</span>
+0236 newModel = model;
+0237 
+0238 <span class="comment">% Add universal reactions. Extracted from mergedModel by the dbSelected</span>
+0239 <span class="comment">% indices directly, not by looking addedRxns' names back up in</span>
+0240 <span class="comment">% universalModel: that lookup fails whenever mergeModels renamed one of</span>
+0241 <span class="comment">% them because its id collided with one already in the draft model, in</span>
+0242 <span class="comment">% which case setdiff would keep the (unrenamed) original in universalModel</span>
+0243 <span class="comment">% marked for removal, silently dropping the very reaction just selected.</span>
+0244 <span class="keyword">if</span> ~isempty(dbSelected)
+0245     toRemove = true(nMergedRxns, 1);
+0246     toRemove(dbSelected) = false;
+0247     trimmedUniv = removeReactions(mergedModel, toRemove);
+0248     newModel = mergeModels({newModel; trimmedUniv});
+0249 <span class="keyword">end</span>
+0250 
+0251 exitFlag = 1;
+0252 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

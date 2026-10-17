@@ -64,8 +64,10 @@
      with details about each gene in originalGenes and why or why not it
      was deleted:
 
-     - 1 : was deleted
-     - 2 : proved lethal in sgd (single gene deletion)
+     - 1 : was deleted, and the problem was solved (a lethal deletion
+       with zero growth also gets 1)
+     - 2 : the single-deletion problem had no optimal solution
+       (infeasible or failed); fluxes and grRatioMuts are 0
      - 3 : redundant, no longer used
      - 4 : involved in dead-end reaction
  grRatioMuts : double
@@ -133,101 +135,103 @@ This function is called by:
 0036 <span class="comment">%     with details about each gene in originalGenes and why or why not it</span>
 0037 <span class="comment">%     was deleted:</span>
 0038 <span class="comment">%</span>
-0039 <span class="comment">%     - 1 : was deleted</span>
-0040 <span class="comment">%     - 2 : proved lethal in sgd (single gene deletion)</span>
-0041 <span class="comment">%     - 3 : redundant, no longer used</span>
-0042 <span class="comment">%     - 4 : involved in dead-end reaction</span>
-0043 <span class="comment">% grRatioMuts : double</span>
-0044 <span class="comment">%     growth rate ratio between mutated strain and wild type, matching the</span>
-0045 <span class="comment">%     originalGenes(genes) mutants. Note that this does not directly map</span>
-0046 <span class="comment">%     to model.genes, as is the case for COBRA getEssentialGenes. However,</span>
-0047 <span class="comment">%     this can be obtained by afterwards running:</span>
-0048 <span class="comment">%</span>
-0049 <span class="comment">%         grRatio=zeros(1,numel(model.genes));</span>
-0050 <span class="comment">%         grRatio(genes)=grRatioMuts;</span>
-0051 <span class="comment">%</span>
-0052 <span class="comment">% Examples</span>
-0053 <span class="comment">% --------</span>
-0054 <span class="comment">%     [genes, fluxes, originalGenes, details, grRatioMuts]=...</span>
-0055 <span class="comment">%         findGeneDeletions(model,testType);</span>
-0056 
-0057 originalModel=model;
-0058 p=parseRAVENargs(varargin, {<span class="string">'testType'</span>,[]});
-0059 testType=p.testType;
-0060 <span class="keyword">if</span> isempty(testType)
-0061     testType=<span class="string">'sgd'</span>;
-0062 <span class="keyword">else</span>
-0063     testType=char(testType);
-0064 <span class="keyword">end</span>
-0065 
-0066 <span class="comment">%Check that the test type is correct</span>
-0067 <span class="keyword">if</span> ~strcmpi(testType,<span class="string">'sgd'</span>) &amp;&amp; ~strcmpi(testType,<span class="string">'dgd'</span>)
-0068     EM=<span class="string">'Incorrect test type'</span>;
-0069     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0070 <span class="keyword">end</span>
-0071 
-0072 originalGenes=model.genes;
-0073 details=zeros(numel(model.genes),1);
-0074 
-0075 <span class="comment">%First simplify the model to reduce the size</span>
-0076 model=simplifyModel(model,true,false,true,true);
-0077 model=removeReactions(model,{},true,true); <span class="comment">%Removes unused genes</span>
-0078 details(~ismember(originalGenes,model.genes))=4;
-0079 
-0080 [~, geneMapping]=ismember(model.genes,originalGenes);
-0081 growthWT=solveLP(model);
-0082 growthWT=growthWT.f;
-0083 
-0084 <span class="comment">%Do single deletion. This is done here since the double deletion depends</span>
-0085 <span class="comment">%on which single deletions prove lethal (to reduce the size of the system)</span>
-0086 <span class="keyword">if</span> strcmpi(testType,<span class="string">'sgd'</span>) || strcmpi(testType,<span class="string">'dgd'</span>)
-0087     fluxes=zeros(numel(model.rxns),numel(model.genes));
-0088     grRatioMuts=zeros(1,numel(model.genes));
-0089     <span class="keyword">for</span> i=1:numel(model.genes)
-0090         <span class="comment">%Constrain all reactions involving the gene to 0</span>
-0091         tempModel=removeGenes(model,i,false,false,false);
-0092         sol=solveLP(tempModel);
-0093 
-0094         <span class="comment">%If the optimization terminated successfully</span>
-0095         <span class="keyword">if</span> sol.stat==1
-0096             fluxes(:,i)=sol.x;
-0097             grRatioMuts(i)=sol.f/growthWT;
-0098             details(geneMapping(i))=1;
-0099         <span class="keyword">else</span>
-0100             fluxes(:,i)=0;
-0101             grRatioMuts(i)=0;
-0102             details(geneMapping(i))=2;
-0103         <span class="keyword">end</span>
-0104     <span class="keyword">end</span>
-0105     genes=geneMapping;
-0106 <span class="keyword">end</span>
-0107 
-0108 <span class="comment">%For double deletions</span>
-0109 <span class="keyword">if</span> strcmpi(testType,<span class="string">'dgd'</span>)
-0110     <span class="comment">%This is a little lazy but it is fine. Check which genes have already</span>
-0111     <span class="comment">%been deleted in &quot;sgd&quot; analysis.</span>
-0112     [~, I]=ismember(originalGenes(details==1),model.genes);
-0113     genesToModify=nchoosek(I,2);
-0114     genes=geneMapping(genesToModify);
-0115     grRatioMuts=zeros(1,numel(genes));
-0116     fluxes=sparse(numel(model.rxns),size(genesToModify,1));
-0117     <span class="keyword">for</span> i=1:size(genesToModify,1)
-0118         tempModel=removeGenes(model,genesToModify(i,:),false,false,false);
-0119         sol=solveLP(tempModel);
-0120 
-0121         <span class="keyword">if</span> sol.stat==1
-0122             fluxes(:,i)=sol.x;
-0123             grRatioMuts(i)=sol.f/growthWT;
-0124         <span class="keyword">end</span>
-0125     <span class="keyword">end</span>
-0126 <span class="keyword">end</span>
-0127 
-0128 <span class="comment">%Map back to the old model</span>
-0129 [~, I]=ismember(model.rxns,originalModel.rxns);
-0130 temp=fluxes;
-0131 fluxes=sparse(numel(originalModel.rxns),size(temp,2));
-0132 fluxes(I,:)=temp;
-0133 <span class="keyword">end</span></pre></div>
+0039 <span class="comment">%     - 1 : was deleted, and the problem was solved (a lethal deletion</span>
+0040 <span class="comment">%       with zero growth also gets 1)</span>
+0041 <span class="comment">%     - 2 : the single-deletion problem had no optimal solution</span>
+0042 <span class="comment">%       (infeasible or failed); fluxes and grRatioMuts are 0</span>
+0043 <span class="comment">%     - 3 : redundant, no longer used</span>
+0044 <span class="comment">%     - 4 : involved in dead-end reaction</span>
+0045 <span class="comment">% grRatioMuts : double</span>
+0046 <span class="comment">%     growth rate ratio between mutated strain and wild type, matching the</span>
+0047 <span class="comment">%     originalGenes(genes) mutants. Note that this does not directly map</span>
+0048 <span class="comment">%     to model.genes, as is the case for COBRA getEssentialGenes. However,</span>
+0049 <span class="comment">%     this can be obtained by afterwards running:</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">%         grRatio=zeros(1,numel(model.genes));</span>
+0052 <span class="comment">%         grRatio(genes)=grRatioMuts;</span>
+0053 <span class="comment">%</span>
+0054 <span class="comment">% Examples</span>
+0055 <span class="comment">% --------</span>
+0056 <span class="comment">%     [genes, fluxes, originalGenes, details, grRatioMuts]=...</span>
+0057 <span class="comment">%         findGeneDeletions(model,testType);</span>
+0058 
+0059 originalModel=model;
+0060 p=parseRAVENargs(varargin, {<span class="string">'testType'</span>,[]});
+0061 testType=p.testType;
+0062 <span class="keyword">if</span> isempty(testType)
+0063     testType=<span class="string">'sgd'</span>;
+0064 <span class="keyword">else</span>
+0065     testType=char(testType);
+0066 <span class="keyword">end</span>
+0067 
+0068 <span class="comment">%Check that the test type is correct</span>
+0069 <span class="keyword">if</span> ~strcmpi(testType,<span class="string">'sgd'</span>) &amp;&amp; ~strcmpi(testType,<span class="string">'dgd'</span>)
+0070     EM=<span class="string">'Incorrect test type'</span>;
+0071     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0072 <span class="keyword">end</span>
+0073 
+0074 originalGenes=model.genes;
+0075 details=zeros(numel(model.genes),1);
+0076 
+0077 <span class="comment">%First simplify the model to reduce the size</span>
+0078 model=simplifyModel(model,true,false,true,true);
+0079 model=removeReactions(model,{},true,true); <span class="comment">%Removes unused genes</span>
+0080 details(~ismember(originalGenes,model.genes))=4;
+0081 
+0082 [~, geneMapping]=ismember(model.genes,originalGenes);
+0083 growthWT=solveLP(model);
+0084 growthWT=growthWT.f;
+0085 
+0086 <span class="comment">%Do single deletion. This is done here since the double deletion depends</span>
+0087 <span class="comment">%on which single deletions prove lethal (to reduce the size of the system)</span>
+0088 <span class="keyword">if</span> strcmpi(testType,<span class="string">'sgd'</span>) || strcmpi(testType,<span class="string">'dgd'</span>)
+0089     fluxes=zeros(numel(model.rxns),numel(model.genes));
+0090     grRatioMuts=zeros(1,numel(model.genes));
+0091     <span class="keyword">for</span> i=1:numel(model.genes)
+0092         <span class="comment">%Constrain all reactions involving the gene to 0</span>
+0093         tempModel=removeGenes(model,i,false,false,false);
+0094         sol=solveLP(tempModel);
+0095 
+0096         <span class="comment">%If the optimization terminated successfully</span>
+0097         <span class="keyword">if</span> sol.stat==1
+0098             fluxes(:,i)=sol.x;
+0099             grRatioMuts(i)=sol.f/growthWT;
+0100             details(geneMapping(i))=1;
+0101         <span class="keyword">else</span>
+0102             fluxes(:,i)=0;
+0103             grRatioMuts(i)=0;
+0104             details(geneMapping(i))=2;
+0105         <span class="keyword">end</span>
+0106     <span class="keyword">end</span>
+0107     genes=geneMapping;
+0108 <span class="keyword">end</span>
+0109 
+0110 <span class="comment">%For double deletions</span>
+0111 <span class="keyword">if</span> strcmpi(testType,<span class="string">'dgd'</span>)
+0112     <span class="comment">%This is a little lazy but it is fine. Check which genes have already</span>
+0113     <span class="comment">%been deleted in &quot;sgd&quot; analysis.</span>
+0114     [~, I]=ismember(originalGenes(details==1),model.genes);
+0115     genesToModify=nchoosek(I,2);
+0116     genes=geneMapping(genesToModify);
+0117     grRatioMuts=zeros(1,numel(genes));
+0118     fluxes=sparse(numel(model.rxns),size(genesToModify,1));
+0119     <span class="keyword">for</span> i=1:size(genesToModify,1)
+0120         tempModel=removeGenes(model,genesToModify(i,:),false,false,false);
+0121         sol=solveLP(tempModel);
+0122 
+0123         <span class="keyword">if</span> sol.stat==1
+0124             fluxes(:,i)=sol.x;
+0125             grRatioMuts(i)=sol.f/growthWT;
+0126         <span class="keyword">end</span>
+0127     <span class="keyword">end</span>
+0128 <span class="keyword">end</span>
+0129 
+0130 <span class="comment">%Map back to the old model</span>
+0131 [~, I]=ismember(model.rxns,originalModel.rxns);
+0132 temp=fluxes;
+0133 fluxes=sparse(numel(originalModel.rxns),size(temp,2));
+0134 fluxes(I,:)=temp;
+0135 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

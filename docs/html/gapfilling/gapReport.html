@@ -80,6 +80,14 @@
      the reactions that were added from the template models and which
      model they were added from.
 
+ Notes
+ -----
+ The model must be feasible under its own bounds, and, when the mass
+ balancing section runs, also with its boundary closed. Otherwise
+ gapReport stops with a RAVEN:infeasibleModel error that names the
+ reactions with a forced flux; set the bounds of ATP maintenance and any
+ other forced flux to zero first.
+
  Examples
  --------
      [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, ...
@@ -96,7 +104,9 @@ This function is called by:
 </ul>
 <!-- crossreference -->
 
-
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function requireFeasible(model,condition)</a></li></ul>
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnect,</a><span class="keyword">...</span>
@@ -155,85 +165,115 @@ This function is called by:
 0054 <span class="comment">%     the reactions that were added from the template models and which</span>
 0055 <span class="comment">%     model they were added from.</span>
 0056 <span class="comment">%</span>
-0057 <span class="comment">% Examples</span>
-0058 <span class="comment">% --------</span>
-0059 <span class="comment">%     [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, ...</span>
-0060 <span class="comment">%         minToConnect, neededForProductionMat, connectedFromTemplates, ...</span>
-0061 <span class="comment">%         addedFromTemplates] = gapReport(model, templateModels);</span>
-0062 
-0063 p=parseRAVENargs(varargin, {<span class="string">'templateModels'</span>,[]});
-0064 templateModels=p.templateModels;
-0065 
-0066 <span class="keyword">if</span> isempty(templateModels)
-0067     templateModels=[];
-0068     connectedFromTemplates=[];
-0069     addedFromTemplates=[];
-0070 <span class="keyword">end</span>
-0071 
-0072 <span class="comment">%Escapes model text before it is spliced into an fprintf template, since</span>
-0073 <span class="comment">%a literal &quot;%&quot; in e.g. a model id or metabolite name would otherwise be</span>
-0074 <span class="comment">%misread as a format directive and swallow the remainder of the line.</span>
-0075 esc=@(s) strrep(s,<span class="string">'%'</span>,<span class="string">'%%'</span>);
-0076 
-0077 fprintf([<span class="string">'Gap analysis for '</span> esc(model.id) <span class="string">' - '</span> esc(model.name) <span class="string">'\n\n'</span>]);
-0078 <span class="keyword">if</span> isfield(model,<span class="string">'unconstrained'</span>)
-0079     calculateINOUT=true;
-0080     closedModel=model;
-0081     model=simplifyModel(model);
-0082 <span class="keyword">else</span>
-0083     canConsumeWithoutOutput={};
-0084     canProduceWithoutInput={};
-0085     calculateINOUT=false;
-0086 <span class="keyword">end</span>
-0087 
-0088 model2=model;
-0089 model2.b=[model2.b inf(numel(model2.mets),1)];
-0090 I=haveFlux(model);
-0091 noFluxRxns=model.rxns(~I);
-0092 J=haveFlux(model2);
-0093 noFluxRxnsRelaxed=model2.rxns(~J);
-0094 bModel=removeReactions(model,~I,true,true);
-0095 cModel=removeReactions(model2,~J,true,true);
-0096 fprintf(<span class="string">'***Overview\n'</span>);
-0097 fprintf([num2str(numel(model.rxns)-sum(I)) <span class="string">' out of '</span> num2str(numel(model.rxns))<span class="keyword">...</span>
-0098     <span class="string">' reactions cannot carry flux ('</span> num2str(numel(model.rxns)-sum(J)) <span class="string">' if net production of all metabolites is allowed)\n'</span>]);
-0099 fprintf([num2str(numel(model.mets)-numel(bModel.mets)) <span class="string">' out of '</span> num2str(numel(model.mets))<span class="keyword">...</span>
-0100     <span class="string">' metabolites are unreachable ('</span> num2str(numel(model.mets)-numel(cModel.mets)) <span class="string">' if net production of all metabolites is allowed)\n'</span>]);
-0101 
-0102 fprintf(<span class="string">'\n***Isolated subnetworks\n'</span>);
-0103 subGraphs=getAllSubGraphs(model);
-0104 fprintf([<span class="string">'A total of '</span> num2str(size(subGraphs,2)) <span class="string">' isolated sub-networks are present in the model\n'</span>]);
-0105 <span class="keyword">for</span> i=1:size(subGraphs,2)
-0106     fprintf([<span class="string">'\t'</span> num2str(i) <span class="string">'. '</span> num2str(sum(subGraphs(:,i))) <span class="string">' metabolites\n'</span>]);
-0107 <span class="keyword">end</span>
-0108 
-0109 fprintf(<span class="string">'\n***Metabolite connectivity\n'</span>);
-0110 [notProducedMets, ~, neededForProductionMat,minToConnect]=<a href="checkProduction.html" class="code" title="function [notProduced, notProducedNames, neededForProductionMat,minToConnect,model]=checkProduction(model,varargin)">checkProduction</a>(model,true,model.comps,false);
-0111 fprintf([<span class="string">'To enable net production of all metabolites, a total of '</span> num2str(numel(minToConnect)) <span class="string">' metabolites must be connected\n'</span>]);
-0112 fprintf(<span class="string">'Top 10 metabolites to connect:\n'</span>);
-0113 <span class="keyword">for</span> i=1:min(10,numel(minToConnect))
-0114     fprintf([<span class="string">'\t'</span> num2str(i) <span class="string">'. '</span> esc(minToConnect{i}) <span class="string">'\n'</span>]);
-0115 <span class="keyword">end</span>
-0116 
-0117 <span class="keyword">if</span> calculateINOUT==true
-0118     fprintf(<span class="string">'\n***Mass balancing\n'</span>);
-0119     produced=<a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>(closedModel,<span class="string">'produce'</span>);
-0120     canProduceWithoutInput=closedModel.mets(produced);
-0121     consumed=<a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>(closedModel,<span class="string">'consume'</span>);
-0122     canConsumeWithoutOutput=closedModel.mets(consumed);
-0123     fprintf([num2str(numel(canConsumeWithoutOutput)) <span class="string">' metabolites could be consumed without any outputs\n'</span> num2str(numel(canProduceWithoutInput)) <span class="string">' metabolites could be produced without any inputs\n'</span>]);
-0124 <span class="keyword">end</span>
-0125 
-0126 <span class="keyword">if</span> ~isempty(templateModels)
-0127     fprintf(<span class="string">'\n***Automated gap-filling\n'</span>);
-0128     [connectedFromTemplates, ~, addedFromTemplates]=<a href="fillGaps.html" class="code" title="function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(model,models,varargin)">fillGaps</a>(model,templateModels);
-0129     t=esc(templateModels{1}.id);
-0130     <span class="keyword">for</span> i=2:numel(templateModels)
-0131         t=[t <span class="string">', '</span> esc(templateModels{i}.id)];
-0132     <span class="keyword">end</span>
-0133     fprintf([num2str(numel(connectedFromTemplates)) <span class="string">' unconnected reactions can be connected by including '</span> num2str(numel(addedFromTemplates)) <span class="string">' reactions from\n'</span> t <span class="string">'\n'</span>]);
-0134 <span class="keyword">end</span>
-0135 <span class="keyword">end</span></pre></div>
+0057 <span class="comment">% Notes</span>
+0058 <span class="comment">% -----</span>
+0059 <span class="comment">% The model must be feasible under its own bounds, and, when the mass</span>
+0060 <span class="comment">% balancing section runs, also with its boundary closed. Otherwise</span>
+0061 <span class="comment">% gapReport stops with a RAVEN:infeasibleModel error that names the</span>
+0062 <span class="comment">% reactions with a forced flux; set the bounds of ATP maintenance and any</span>
+0063 <span class="comment">% other forced flux to zero first.</span>
+0064 <span class="comment">%</span>
+0065 <span class="comment">% Examples</span>
+0066 <span class="comment">% --------</span>
+0067 <span class="comment">%     [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, ...</span>
+0068 <span class="comment">%         minToConnect, neededForProductionMat, connectedFromTemplates, ...</span>
+0069 <span class="comment">%         addedFromTemplates] = gapReport(model, templateModels);</span>
+0070 
+0071 p=parseRAVENargs(varargin, {<span class="string">'templateModels'</span>,[]});
+0072 templateModels=p.templateModels;
+0073 
+0074 <span class="keyword">if</span> isempty(templateModels)
+0075     templateModels=[];
+0076     connectedFromTemplates=[];
+0077     addedFromTemplates=[];
+0078 <span class="keyword">end</span>
+0079 
+0080 <span class="comment">%Escapes model text before it is spliced into an fprintf template, since</span>
+0081 <span class="comment">%a literal &quot;%&quot; in e.g. a model id or metabolite name would otherwise be</span>
+0082 <span class="comment">%misread as a format directive and swallow the remainder of the line.</span>
+0083 esc=@(s) strrep(s,<span class="string">'%'</span>,<span class="string">'%%'</span>);
+0084 
+0085 fprintf([<span class="string">'Gap analysis for '</span> esc(model.id) <span class="string">' - '</span> esc(model.name) <span class="string">'\n\n'</span>]);
+0086 <span class="keyword">if</span> isfield(model,<span class="string">'unconstrained'</span>)
+0087     calculateINOUT=true;
+0088     closedModel=model;
+0089     model=simplifyModel(model);
+0090 <span class="keyword">else</span>
+0091     canConsumeWithoutOutput={};
+0092     canProduceWithoutInput={};
+0093     calculateINOUT=false;
+0094 <span class="keyword">end</span>
+0095 
+0096 <a href="#_sub1" class="code" title="subfunction requireFeasible(model,condition)">requireFeasible</a>(model,<span class="string">'under its own bounds'</span>);
+0097 <span class="keyword">if</span> calculateINOUT
+0098     <a href="#_sub1" class="code" title="subfunction requireFeasible(model,condition)">requireFeasible</a>(closedModel,<span class="string">'once its boundary reactions are closed'</span>);
+0099 <span class="keyword">end</span>
+0100 
+0101 model2=model;
+0102 model2.b=[model2.b inf(numel(model2.mets),1)];
+0103 I=haveFlux(model);
+0104 noFluxRxns=model.rxns(~I);
+0105 J=haveFlux(model2);
+0106 noFluxRxnsRelaxed=model2.rxns(~J);
+0107 bModel=removeReactions(model,~I,true,true);
+0108 cModel=removeReactions(model2,~J,true,true);
+0109 fprintf(<span class="string">'***Overview\n'</span>);
+0110 fprintf([num2str(numel(model.rxns)-sum(I)) <span class="string">' out of '</span> num2str(numel(model.rxns))<span class="keyword">...</span>
+0111     <span class="string">' reactions cannot carry flux ('</span> num2str(numel(model.rxns)-sum(J)) <span class="string">' if net production of all metabolites is allowed)\n'</span>]);
+0112 fprintf([num2str(numel(model.mets)-numel(bModel.mets)) <span class="string">' out of '</span> num2str(numel(model.mets))<span class="keyword">...</span>
+0113     <span class="string">' metabolites are unreachable ('</span> num2str(numel(model.mets)-numel(cModel.mets)) <span class="string">' if net production of all metabolites is allowed)\n'</span>]);
+0114 
+0115 fprintf(<span class="string">'\n***Isolated subnetworks\n'</span>);
+0116 subGraphs=getAllSubGraphs(model);
+0117 fprintf([<span class="string">'A total of '</span> num2str(size(subGraphs,2)) <span class="string">' isolated sub-networks are present in the model\n'</span>]);
+0118 <span class="keyword">for</span> i=1:size(subGraphs,2)
+0119     fprintf([<span class="string">'\t'</span> num2str(i) <span class="string">'. '</span> num2str(sum(subGraphs(:,i))) <span class="string">' metabolites\n'</span>]);
+0120 <span class="keyword">end</span>
+0121 
+0122 fprintf(<span class="string">'\n***Metabolite connectivity\n'</span>);
+0123 [notProducedMets, ~, neededForProductionMat,minToConnect]=<a href="checkProduction.html" class="code" title="function [notProduced, notProducedNames, neededForProductionMat,minToConnect,model]=checkProduction(model,varargin)">checkProduction</a>(model,true,model.comps,false);
+0124 fprintf([<span class="string">'To enable net production of all metabolites, a total of '</span> num2str(numel(minToConnect)) <span class="string">' metabolites must be connected\n'</span>]);
+0125 fprintf(<span class="string">'Top 10 metabolites to connect:\n'</span>);
+0126 <span class="keyword">for</span> i=1:min(10,numel(minToConnect))
+0127     fprintf([<span class="string">'\t'</span> num2str(i) <span class="string">'. '</span> esc(minToConnect{i}) <span class="string">'\n'</span>]);
+0128 <span class="keyword">end</span>
+0129 
+0130 <span class="keyword">if</span> calculateINOUT==true
+0131     fprintf(<span class="string">'\n***Mass balancing\n'</span>);
+0132     produced=<a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>(closedModel,<span class="string">'produce'</span>);
+0133     canProduceWithoutInput=closedModel.mets(produced);
+0134     consumed=<a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>(closedModel,<span class="string">'consume'</span>);
+0135     canConsumeWithoutOutput=closedModel.mets(consumed);
+0136     fprintf([num2str(numel(canConsumeWithoutOutput)) <span class="string">' metabolites could be consumed without any outputs\n'</span> num2str(numel(canProduceWithoutInput)) <span class="string">' metabolites could be produced without any inputs\n'</span>]);
+0137 <span class="keyword">end</span>
+0138 
+0139 <span class="keyword">if</span> ~isempty(templateModels)
+0140     fprintf(<span class="string">'\n***Automated gap-filling\n'</span>);
+0141     [connectedFromTemplates, ~, addedFromTemplates]=<a href="fillGaps.html" class="code" title="function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(model,models,varargin)">fillGaps</a>(model,templateModels);
+0142     t=esc(templateModels{1}.id);
+0143     <span class="keyword">for</span> i=2:numel(templateModels)
+0144         t=[t <span class="string">', '</span> esc(templateModels{i}.id)];
+0145     <span class="keyword">end</span>
+0146     fprintf([num2str(numel(connectedFromTemplates)) <span class="string">' unconnected reactions can be connected by including '</span> num2str(numel(addedFromTemplates)) <span class="string">' reactions from\n'</span> t <span class="string">'\n'</span>]);
+0147 <span class="keyword">end</span>
+0148 <span class="keyword">end</span>
+0149 
+0150 <a name="_sub1" href="#_subfunctions" class="code">function requireFeasible(model,condition)</a>
+0151 <span class="comment">%Errors, naming the forced-flux reactions, if the model is infeasible</span>
+0152 model.c(:)=0;
+0153 sol=solveLP(model);
+0154 <span class="keyword">if</span> sol.stat~=-1
+0155     <span class="keyword">return</span>
+0156 <span class="keyword">end</span>
+0157 forced=model.rxns(model.lb&gt;0 | model.ub&lt;0);
+0158 hint=<span class="string">''</span>;
+0159 <span class="keyword">if</span> ~isempty(forced)
+0160     hint=[<span class="string">' Reactions with a forced flux: '</span> strjoin(forced,<span class="string">', '</span>) <span class="string">'.'</span>];
+0161 <span class="keyword">end</span>
+0162 error(<span class="string">'RAVEN:infeasibleModel'</span>,[<span class="string">'The model is infeasible '</span> condition <span class="keyword">...</span>
+0163     <span class="string">', so gapReport cannot analyse it.'</span> strrep(hint,<span class="string">'%'</span>,<span class="string">'%%'</span>) <span class="keyword">...</span>
+0164     <span class="string">' Set the bounds of ATP maintenance and any other forced flux to zero first.'</span>]);
+0165 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

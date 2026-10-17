@@ -90,7 +90,7 @@ This function is called by:
 0026 norms = sqrt(sum(A.^2, 2));
 0027 
 0028 <span class="comment">% Variables [x (n, free); r (1, &gt;=0)]; minimise -r (maximises the ball radius).</span>
-0029 prob.A      = [A, norms];
+0029 prob.A      = sparse([A, norms]);      <span class="comment">% Gurobi and SCIP require a sparse A</span>
 0030 prob.a      = prob.A;
 0031 prob.b      = b;
 0032 prob.csense = repmat(<span class="string">'L'</span>, 1, m);
