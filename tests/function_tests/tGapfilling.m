@@ -390,6 +390,41 @@ classdef tGapfilling < RavenTestCase
             testCase.verifyGreaterThan(sol.f, 0);
         end
 
+        function gapFillMILPKeepsForcedFlux(testCase)
+            % A draft reaction with a forced flux (lb > 0, like a
+            % maintenance drain) is a reversal candidate, but unless it is
+            % reversed its lower bound must hold. Maint takes 5 of the 10
+            % units of a, so growth 8 needs the extra uptake U1; dropping
+            % the forced flux would reach 8 with no repair at all.
+            evalc('setRavenSolver(''glpk'')');
+            warnState = warning('off','RAVEN:glpkMILP');
+            testCase.addTeardown(@() warning(warnState));
+            gapModel = struct();
+            gapModel.id='gapModel'; gapModel.rxns={'ExA';'R1';'Grow';'Maint'}; gapModel.rxnNames=gapModel.rxns;
+            gapModel.mets={'a';'b'}; gapModel.metNames=gapModel.mets; gapModel.metComps=[1;1];
+            gapModel.comps={'c'}; gapModel.compNames={'c'};
+            gapModel.S=sparse([1 -1 0 -1; 0 1 -1 0]); % ExA: =>a  R1: a=>b  Grow: b=>  Maint: a=>
+            gapModel.lb=[0;0;0;5]; gapModel.ub=[10;1000;1000;1000]; gapModel.rev=[0;0;0;0];
+            gapModel.c=[0;0;1;0]; gapModel.b=zeros(2,1);
+            gapModel.genes={}; gapModel.grRules={'';'';'';''}; gapModel.rxnGeneMat=sparse(4,0);
+
+            modelDB = struct();
+            modelDB.id='DB'; modelDB.rxns={'U1'}; modelDB.rxnNames=modelDB.rxns;
+            modelDB.mets={'a'}; modelDB.metNames=modelDB.mets; modelDB.metComps=1;
+            modelDB.comps={'c'}; modelDB.compNames={'c'};
+            modelDB.S=sparse(1,1); modelDB.S(1,1)=1; % =>a
+            modelDB.lb=0; modelDB.ub=10; modelDB.rev=0; modelDB.c=0; modelDB.b=0;
+            modelDB.genes={}; modelDB.grRules={''}; modelDB.rxnGeneMat=sparse(1,0);
+
+            evalc(['[addedRxns,reversedRxns,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
+                '''minGrowth'', 8, ''weights'', [10 2 3 4], ''verbose'', false);']);
+            testCase.verifyEqual(exitFlag, 1);
+            testCase.verifyEqual(addedRxns, {'U1'});
+            testCase.verifyEmpty(reversedRxns);
+            sol = solveLP(newModel);
+            testCase.verifyGreaterThanOrEqual(sol.f, 8 - 1e-6);
+        end
+
         function gapFillMILPReversesDirectionality(testCase)
             % gapFillMILP should reverse a reaction whose directionality is wrong.
             testCase.assumeMILPSolver();
