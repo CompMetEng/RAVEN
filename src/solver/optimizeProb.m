@@ -29,12 +29,11 @@ function res = optimizeProb(prob,varargin)
 %
 % Notes
 % -----
-% With 'glpk' selected, MILPs are solved by RAVEN's bundled GLPK, and a
-% RAVEN:glpkMILP warning recommends Gurobi, which is much faster and more
-% reliable on larger MILPs (such as ftINIT or getMinNrFluxes on
+% MILPs can be solved with GLPK, either RAVEN's bundled GLPK ('glpk') or
+% the COBRA Toolbox's GLPK interface ('cobra' with GLPK as its MILP solver).
+% A RAVEN:glpkMILP warning then recommends Gurobi, which is much faster and
+% more reliable on larger MILPs (such as ftINIT or getMinNrFluxes on
 % genome-scale models).
-% The GLPK interface of the COBRA Toolbox is not used for MILPs: with
-% 'cobra' selected, set a different MILP solver with changeCobraSolver.
 %
 % See also
 % --------
@@ -62,17 +61,11 @@ end
 solver=RAVENSOLVER;
 if ~all(lower(prob.vartype) == 'c')
     milp=true;
-    switch solver
-        case 'glpk'
-            warning('RAVEN:glpkMILP', ['Solving a MILP with GLPK. This works for small ' ...
-                'problems, but for larger problems Gurobi is much faster and more reliable; ' ...
-                'select it with setRavenSolver(''gurobi''). Silence this warning with ' ...
-                'warning(''off'',''RAVEN:glpkMILP'').'])
-        case 'cobra'
-            if strcmp(CBT_MILP_SOLVER,'glpk')
-                error(['The GLPK interface of the COBRA Toolbox is not suitable for solving MILPs, ' ...
-                    'select a different solver with changeCobraSolver() or setRavenSolver().'])
-            end
+    if strcmp(solver,'glpk') || (strcmp(solver,'cobra') && strcmp(CBT_MILP_SOLVER,'glpk'))
+        warning('RAVEN:glpkMILP', ['Solving a MILP with GLPK. This works for small ' ...
+            'problems, but for larger problems Gurobi is much faster and more reliable; ' ...
+            'select it with setRavenSolver(''gurobi''). Silence this warning with ' ...
+            'warning(''off'',''RAVEN:glpkMILP'').'])
     end
 else
     milp=false;

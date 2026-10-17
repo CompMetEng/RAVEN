@@ -179,8 +179,7 @@ classdef tManipulation < RavenTestCase
         end
 
         function addTransportAcceptsRowOrientedMetNames(testCase)
-            % Regression test for SysBioChalmers/RAVEN#722: a metNames cell
-            % array keeps whatever orientation the caller passed it in, and
+            % A metNames cell array keeps whatever orientation the caller passed it in, and
             % a plain {'a','b'} literal is row-oriented. A single-metabolite
             % cell (as in addTransportAddsRxn above) cannot catch this ---
             % a 1x1 cell is the same shape whichever way you call it "row"

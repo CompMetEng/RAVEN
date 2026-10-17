@@ -76,7 +76,9 @@ classdef tGapfilling < RavenTestCase
         end
 
         function gapReportRuns(testCase)
-            evalc('noFluxRxns = gapReport(testCase.model);');
+            m = testCase.model;
+            m.lb(m.lb > 0) = 0;   % ATP maintenance, which closing the boundary makes infeasible
+            evalc('noFluxRxns = gapReport(m);');
             testCase.verifyClass(noFluxRxns, 'cell');
         end
 
@@ -100,11 +102,30 @@ classdef tGapfilling < RavenTestCase
             testCase.verifySubstring(err.message, 'Maint');
         end
 
+        function gapReportInfeasibleOnceClosedWithoutUnconstrainedErrors(testCase)
+            % ExA: =>a  Maint: a=>b (forced)  ExB: b=>. Feasible with the
+            % exchanges open; Maint cannot run once they are closed.
+            m = testCase.tinyModel({'ExA';'Maint';'ExB'}, sparse([1 -1 0; 0 1 -1]), [0;1;0], [10;1000;1000]);
+            m.mets = {'a';'b'}; m.metNames = m.mets; m.metComps = [1;1]; m.b = zeros(2,1);
+            err = testCase.gapReportError(m);
+            testCase.verifySubstring(err.message, 'once its boundary reactions are closed');
+            testCase.verifySubstring(err.message, 'Maint');
+        end
+
+        function gapReportListsLeaksWithoutUnconstrained(testCase)
+            % R1: a=>b and R2: b=>a+c make c from nothing once ExA is closed.
+            m = testCase.tinyModel({'ExA';'R1';'R2'}, sparse([1 -1 1; 0 1 -1; 0 0 1]), [0;0;0], [10;1000;1000]);
+            m.mets = {'a';'b';'c'}; m.metNames = m.mets; m.metComps = [1;1;1]; m.b = zeros(3,1);
+            evalc('[~,~,~,~,~,~,produced] = gapReport(m);');
+            testCase.verifyTrue(ismember('c', produced));
+        end
+
         function gapReportKeepsPercentInModelName(testCase)
             % A model.name containing "%" must survive intact in the
             % report header, not be truncated by fprintf misreading it as
             % a format directive.
             m = testCase.model;
+            m.lb(m.lb > 0) = 0;
             m.name = 'ecoli 50% subset';
             out = evalc('gapReport(m);');
             testCase.verifySubstring(out, 'ecoli 50% subset');

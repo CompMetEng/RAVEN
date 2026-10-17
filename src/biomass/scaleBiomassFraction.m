@@ -2,8 +2,8 @@ function model = scaleBiomassFraction(model, biomassConfig, componentName, newVa
 % scaleBiomassFraction  Rescale a biomass component to a target value.
 %
 % Rescale a biomass component to a target g/gDW value, optionally
-% rescaling a second component so that the biomass total becomes 1 g/gDW,
-% whatever the total was before.
+% rescaling a second component so that the biomass total becomes
+% targetTotal (1 g/gDW by default), whatever the total was before.
 % The MATLAB counterpart of yeast-GEM's legacy scaleBioMass.
 %
 % Parameters
@@ -20,10 +20,13 @@ function model = scaleBiomassFraction(model, biomassConfig, componentName, newVa
 % Name-Value Arguments
 % --------------------
 % balanceOut : char
-%     Second component name to adjust so the biomass total becomes 1
-%     g/gDW. It must be large enough to absorb the change: an error is
-%     raised if its fraction would become zero or negative, or if it is
+%     Second component name to adjust so the biomass total becomes
+%     targetTotal. It must be large enough to absorb the change: an error
+%     is raised if its fraction would become zero or negative, or if it is
 %     0 to begin with. Empty / omit to skip balancing.
+% targetTotal : double
+%     Biomass total in g/gDW that balanceOut brings the components to
+%     (default 1).
 %
 % Returns
 % -------
@@ -33,13 +36,16 @@ function model = scaleBiomassFraction(model, biomassConfig, componentName, newVa
 % Examples
 % --------
 %     model = scaleBiomassFraction(model, biomassConfig, 'protein', 0.5, 'carbohydrate');
+%     model = scaleBiomassFraction(model, biomassConfig, 'protein', 0.5, ...
+%         'balanceOut', 'carbohydrate', 'targetTotal', 0.95);
 %
 % See also
 % --------
 % getBiomassFractions
 
-p=parseRAVENargs(varargin, {'balanceOut',''});
+p=parseRAVENargs(varargin, {'balanceOut',''; 'targetTotal',1});
 balanceOut=p.balanceOut;
+targetTotal=p.targetTotal;
 
 fractions = getBiomassFractions(model, biomassConfig);
 if ~isfield(fractions, componentName)
@@ -68,7 +74,7 @@ if ~isempty(balanceOut)
             ['Cannot balance with %s: current fraction is 0 ' ...
              '(pseudoreaction missing or empty).'], balanceOut);
     end
-    balanceNew = balanceCurrent + (1 - total);
+    balanceNew = balanceCurrent + (targetTotal - total);
     if balanceNew <= 0
         error('scaleBiomassFraction:negativeBalance', ...
             ['Cannot balance with %s: its fraction would become %g g/gDW. ' ...

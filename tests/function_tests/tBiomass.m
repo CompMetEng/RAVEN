@@ -34,6 +34,24 @@ classdef tBiomass < RavenTestCase
             testCase.verifyEqual(f.DNA, 0.3, 'AbsTol', 1e-9);
         end
 
+        function scaleBiomassFractionBalancesToTargetTotal(testCase)
+            [m, cfg] = tBiomass.twoComponentToyModel();
+            out = scaleBiomassFraction(m, cfg, 'protein', 0.7, 'balanceOut', 'DNA', ...
+                'targetTotal', 0.9);
+            f = getBiomassFractions(out, cfg);
+            testCase.verifyEqual(f.protein, 0.7, 'AbsTol', 1e-9);
+            testCase.verifyEqual(f.DNA, 0.2, 'AbsTol', 1e-9);
+            testCase.verifyEqual(f.total, 0.9, 'AbsTol', 1e-9);
+        end
+
+        function scaleBiomassFractionRefusesNegativeBalanceAtTargetTotal(testCase)
+            % Protein 0.85 balances against DNA for a total of 1, but not
+            % for a total of 0.8.
+            [m, cfg] = tBiomass.twoComponentToyModel();
+            testCase.verifyError(@() scaleBiomassFraction(m, cfg, 'protein', 0.85, ...
+                'balanceOut', 'DNA', 'targetTotal', 0.8), 'scaleBiomassFraction:negativeBalance');
+        end
+
         function scaleBiomassFractionRefusesNegativeBalance(testCase)
             % Balancing protein 1.2 against DNA would need DNA at -0.2,
             % which would turn the DNA pseudoreaction around.
