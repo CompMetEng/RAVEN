@@ -80,6 +80,26 @@ classdef tGapfilling < RavenTestCase
             testCase.verifyClass(noFluxRxns, 'cell');
         end
 
+        function gapReportInfeasibleModelErrors(testCase)
+            % Maint needs 20 units of a but uptake allows 10.
+            m = testCase.tinyModel({'ExA';'Maint'}, sparse([1 -1]), [0;20], [10;1000]);
+            err = testCase.gapReportError(m);
+            testCase.verifySubstring(err.message, 'under its own bounds');
+            testCase.verifySubstring(err.message, 'Maint');
+            testCase.verifySubstring(err.message, 'ATP maintenance');
+        end
+
+        function gapReportInfeasibleOnceClosedErrors(testCase)
+            % Uptake of a comes from the unconstrained a_b: feasible with
+            % the boundary open, but Maint cannot run once it is closed.
+            m = testCase.tinyModel({'ExA';'Maint'}, sparse([1 -1; -1 0]), [0;1], [10;1000]);
+            m.mets = {'a';'a_b'}; m.metNames = m.mets; m.metComps = [1;1];
+            m.b = zeros(2,1); m.unconstrained = [0;1];
+            err = testCase.gapReportError(m);
+            testCase.verifySubstring(err.message, 'once its boundary reactions are closed');
+            testCase.verifySubstring(err.message, 'Maint');
+        end
+
         function gapReportKeepsPercentInModelName(testCase)
             % A model.name containing "%" must survive intact in the
             % report header, not be truncated by fprintf misreading it as
@@ -314,9 +334,8 @@ classdef tGapfilling < RavenTestCase
             modelDB = testCase.model; modelDB.id = 'DB';
             gapModel = removeReactions(modelDB, modelDB.rxns(1:5));
             gapModel.id = 'gapModel';
-            evalc('[addedRxns, reversedRxns, newModel, exitFlag] = gapFillMILP(gapModel, modelDB, ''verbose'', false);');
+            evalc('[addedRxns, newModel, exitFlag] = gapFillMILP(gapModel, modelDB, ''verbose'', false);');
             testCase.verifyClass(addedRxns, 'cell');
-            testCase.verifyClass(reversedRxns, 'cell');
             testCase.verifyClass(newModel, 'struct');
             testCase.verifyEqual(exitFlag, 1);
             % The repaired model should be able to produce objective flux.
@@ -349,7 +368,7 @@ classdef tGapfilling < RavenTestCase
             modelDB.lb=0; modelDB.ub=Inf; modelDB.rev=0; modelDB.c=0; modelDB.b=0;
             modelDB.genes={}; modelDB.grRules={''}; modelDB.rxnGeneMat=sparse(1,0);
 
-            evalc(['[addedRxns,~,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
+            evalc(['[addedRxns,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
                 '''verbose'', false);']);
             testCase.verifyEqual(exitFlag, 1);
             testCase.verifyEqual(addedRxns, {'ExA'});
@@ -382,7 +401,7 @@ classdef tGapfilling < RavenTestCase
             modelDB.lb=0; modelDB.ub=1000; modelDB.rev=0; modelDB.c=0; modelDB.b=0;
             modelDB.genes={}; modelDB.grRules={''}; modelDB.rxnGeneMat=sparse(1,0);
 
-            evalc(['[addedRxns,~,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
+            evalc(['[addedRxns,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
                 '''verbose'', false);']);
             testCase.verifyEqual(exitFlag, 1);
             testCase.verifyNotEmpty(addedRxns);
@@ -392,10 +411,9 @@ classdef tGapfilling < RavenTestCase
 
         function gapFillMILPKeepsForcedFlux(testCase)
             % A draft reaction with a forced flux (lb > 0, like a
-            % maintenance drain) is a reversal candidate, but unless it is
-            % reversed its lower bound must hold. Maint takes 5 of the 10
-            % units of a, so growth 8 needs the extra uptake U1; dropping
-            % the forced flux would reach 8 with no repair at all.
+            % maintenance drain) keeps its lower bound. Maint takes 5 of
+            % the 10 units of a, so growth 8 needs the extra uptake U1;
+            % dropping the forced flux would reach 8 with no repair at all.
             evalc('setRavenSolver(''glpk'')');
             warnState = warning('off','RAVEN:glpkMILP');
             testCase.addTeardown(@() warning(warnState));
@@ -416,24 +434,44 @@ classdef tGapfilling < RavenTestCase
             modelDB.lb=0; modelDB.ub=10; modelDB.rev=0; modelDB.c=0; modelDB.b=0;
             modelDB.genes={}; modelDB.grRules={''}; modelDB.rxnGeneMat=sparse(1,0);
 
-            evalc(['[addedRxns,reversedRxns,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
-                '''minGrowth'', 8, ''weights'', [10 2 3 4], ''verbose'', false);']);
+            evalc(['[addedRxns,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
+                '''minGrowth'', 8, ''verbose'', false);']);
             testCase.verifyEqual(exitFlag, 1);
             testCase.verifyEqual(addedRxns, {'U1'});
-            testCase.verifyEmpty(reversedRxns);
+            testCase.verifyEqual(newModel.lb(ismember(newModel.rxns, 'Maint')), 5);
             sol = solveLP(newModel);
             testCase.verifyGreaterThanOrEqual(sol.f, 8 - 1e-6);
         end
 
-        function gapFillMILPReversesDirectionality(testCase)
-            % gapFillMILP should reverse a reaction whose directionality is wrong.
-            testCase.assumeMILPSolver();
-            model = testCase.model;
-            modelDB = model; modelDB.id = 'DB';
-            gapModel = removeReactions(model, model.rxns(1:3));
-            gapModel.id = 'gapModel';
-            evalc('[~, reversedRxns, ~, ~] = gapFillMILP(gapModel, modelDB, ''verbose'', false);');
-            testCase.verifyClass(reversedRxns, 'cell');
+        function gapFillMILPKeepsDraftDirections(testCase)
+            % A draft reaction running in the wrong direction is not
+            % reversed: with only that repair available the MILP has no
+            % solution, and the draft bounds are returned unchanged.
+            evalc('setRavenSolver(''glpk'')');
+            warnState = warning('off','RAVEN:glpkMILP');
+            testCase.addTeardown(@() warning(warnState));
+            gapModel = struct();
+            gapModel.id='gapModel'; gapModel.rxns={'ExB';'R1';'Grow'}; gapModel.rxnNames=gapModel.rxns;
+            gapModel.mets={'a';'b'}; gapModel.metNames=gapModel.mets; gapModel.metComps=[1;1];
+            gapModel.comps={'c'}; gapModel.compNames={'c'};
+            gapModel.S=sparse([0 -1 -1; 1 1 0]); % ExB: =>b  R1: a=>b  Grow: a=>
+            gapModel.lb=[0;0;0]; gapModel.ub=[10;1000;1000]; gapModel.rev=[0;0;0];
+            gapModel.c=[0;0;1]; gapModel.b=zeros(2,1);
+            gapModel.genes={}; gapModel.grRules={'';'';''}; gapModel.rxnGeneMat=sparse(3,0);
+
+            modelDB = struct();
+            modelDB.id='DB'; modelDB.rxns={'Other'}; modelDB.rxnNames=modelDB.rxns;
+            modelDB.mets={'b'}; modelDB.metNames=modelDB.mets; modelDB.metComps=1;
+            modelDB.comps={'c'}; modelDB.compNames={'c'};
+            modelDB.S=sparse(1,1); modelDB.S(1,1)=-1; % b=>
+            modelDB.lb=0; modelDB.ub=1000; modelDB.rev=0; modelDB.c=0; modelDB.b=0;
+            modelDB.genes={}; modelDB.grRules={''}; modelDB.rxnGeneMat=sparse(1,0);
+
+            evalc(['[addedRxns,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
+                '''minGrowth'', 1, ''verbose'', false);']);
+            testCase.verifyEqual(exitFlag, -1);
+            testCase.verifyEmpty(addedRxns);
+            testCase.verifyEqual(newModel.lb, gapModel.lb);
         end
 
         function fillGapsDispatchesFastLP(testCase)
@@ -469,6 +507,30 @@ classdef tGapfilling < RavenTestCase
             m.lb = [0;0]; m.ub = [1000;1000]; m.rev = [0;0]; m.c = [0;1];
             m.b = [0;0;0];
             m.genes = {}; m.grRules = {'';''}; m.rxnGeneMat = sparse(2,0);
+        end
+
+        function m = tinyModel(~, rxns, S, lb, ub)
+            % One-compartment model with metabolite a and no objective.
+            n = numel(rxns);
+            m = struct();
+            m.id = 'tiny'; m.name = 'tiny';
+            m.rxns = rxns; m.rxnNames = rxns;
+            m.mets = {'a'}; m.metNames = {'a'}; m.metComps = 1;
+            m.comps = {'c'}; m.compNames = {'c'};
+            m.S = S; m.lb = lb; m.ub = ub; m.rev = zeros(n,1); m.c = zeros(n,1);
+            m.b = 0;
+            m.genes = {}; m.grRules = repmat({''},n,1); m.rxnGeneMat = sparse(n,0);
+        end
+
+        function err = gapReportError(testCase, m)
+            % The error gapReport raises on m, checked to be RAVEN:infeasibleModel.
+            err = [];
+            try
+                evalc('gapReport(m);');
+            catch err
+            end
+            testCase.assertNotEmpty(err);
+            testCase.verifyEqual(err.identifier, 'RAVEN:infeasibleModel');
         end
     end
 end

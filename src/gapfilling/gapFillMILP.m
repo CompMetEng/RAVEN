@@ -1,18 +1,18 @@
-function [addedRxns, reversedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, varargin)
+function [addedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, varargin)
 % gapFillMILP  Objective-based gap-filling via a global growth-floor MILP.
 %
-% Finds the minimum-cost set of modifications to make the model's objective
-% (biomass) >= minGrowth. Supports two repair mechanisms from Kumar et al.
-% 2007 (Bioinformatics 23:1626-1635):
-%   1. Directionality reversal of existing draft reactions (binary y_rev)
-%   2. Addition of reactions from a universal database (binary y_db)
+% Finds the smallest set of reactions from a universal database that makes
+% the model's objective (biomass) >= minGrowth, following the database
+% repair of Kumar et al. 2007 (BMC Bioinformatics 8:212,
+% doi:10.1186/1471-2105-8-212). Reactions already in the draft model keep
+% their bounds: a reaction with the wrong direction is a curation issue and
+% is not changed here.
 %
 % The universal model should contain all candidate reactions, including
 % exchange and transport reactions if those repair classes are desired.
 %
-% This is a SINGLE-level MILP (not bilevel). It is computationally more
-% expensive than gapFillFastLP but supports the directionality-reversal
-% repair mechanism and directly optimises for objective feasibility.
+% This is a single-level MILP. It is computationally more expensive than
+% gapFillFastLP but directly optimises for objective feasibility.
 %
 % Parameters
 % ----------
@@ -26,11 +26,6 @@ function [addedRxns, reversedRxns, newModel, exitFlag] = gapFillMILP(model, univ
 % 'minGrowth' (default [])
 %     minimum objective value to achieve. If empty, runs FBA on the merged
 %     model and uses 10% of the maximum as the floor.
-% 'weights' (default [1 2 3 4])
-%     cost weights [w_rev w_db w_exch w_trans]. w_rev is the cost per
-%     reversed draft reaction; w_db is the cost per added universal
-%     reaction. w_exch and w_trans are reserved for future use when
-%     exchange and transport reactions are tracked separately.
 % 'bigM' (default 1000)
 %     Big-M constant for coupling constraints. Must be larger than any
 %     expected flux magnitude.
@@ -44,11 +39,8 @@ function [addedRxns, reversedRxns, newModel, exitFlag] = gapFillMILP(model, univ
 % -------
 % addedRxns : cell
 %     reaction IDs from universalModel that are selected by the MILP.
-% reversedRxns : cell
-%     draft reaction IDs whose directionality is reversed by the MILP.
 % newModel : struct
-%     model with addedRxns incorporated and reversedRxns bounds updated
-%     (lb set to -bigM for reversed reactions).
+%     model with addedRxns incorporated.
 % exitFlag : double
 %     1 = optimal, -1 = infeasible, -2 = timeout or other failure.
 %
@@ -65,25 +57,19 @@ function [addedRxns, reversedRxns, newModel, exitFlag] = gapFillMILP(model, univ
 % ---- Parse optional arguments ----
 p = inputParser();
 addParameter(p, 'minGrowth', [],  @(x) isempty(x) || isnumeric(x));
-addParameter(p, 'weights',   [1 2 3 4], @isnumeric);
 addParameter(p, 'bigM',      1000,      @isnumeric);
 addParameter(p, 'params',    [],        @(x) isempty(x) || isstruct(x));
 addParameter(p, 'verbose',   true,      @islogical);
 parse(p, varargin{:});
 minGrowth = p.Results.minGrowth;
-weights   = p.Results.weights;
 M         = p.Results.bigM;
 params    = p.Results.params;
 verbose   = p.Results.verbose;
 
-w_rev = weights(1);
-w_db  = weights(2);
-
 % ---- Initialise outputs ----
-addedRxns    = {};
-reversedRxns = {};
-newModel     = model;
-exitFlag     = -1;
+addedRxns = {};
+newModel  = model;
+exitFlag  = -1;
 
 % Check that the model has an objective
 if all(model.c == 0)
@@ -105,16 +91,10 @@ isUniv   = isUniv & canCarry;
 univIdx  = find(isUniv);     % positions in merged model
 nUniv    = numel(univIdx);
 
-% Reversal candidates: draft reactions that are currently irreversible
-% (lb >= 0). Reversing their directionality means allowing negative flux.
-revCandMask = isDraft & mergedModel.lb >= 0;
-revCandIdx  = find(revCandMask);   % positions in merged model
-nRev        = numel(revCandIdx);
-
 if verbose
     fprintf('gapFillMILP: merged model has %d mets, %d rxns (%d draft, %d universal).\n', ...
         nMergedMets, nMergedRxns, sum(isDraft), nUniv);
-    fprintf('gapFillMILP: %d reversal candidates, %d database candidates.\n', nRev, nUniv);
+    fprintf('gapFillMILP: %d database candidates.\n', nUniv);
 end
 
 % ---- Determine minGrowth ----
@@ -153,35 +133,30 @@ end
 % ---- Build MILP ----
 % Variable ordering:
 %   cols 1 : nMergedRxns          → v (all fluxes, continuous)
-%   cols nMergedRxns+1 : +nRev    → y_rev (binary, directionality reversal)
-%   cols nMergedRxns+nRev+1 : end → y_db  (binary, universal reactions)
-nVar = nMergedRxns + nRev + nUniv;
+%   cols nMergedRxns+1 : end      → y_db (binary, universal reactions)
+nVar = nMergedRxns + nUniv;
 
 % --- Variable bounds ---
 lb = mergedModel.lb;
 ub = mergedModel.ub;
 
-% Relax reversal candidates to allow negative flux (Big-M on lower bound)
-lb(revCandIdx) = -M;
-
 % Universal reactions: allow them to be forced to 0 (extend lb toward 0)
 lb(univIdx) = min(mergedModel.lb(univIdx), 0);
 
 % Binary variable bounds
-lb = [lb; zeros(nRev + nUniv, 1)];
-ub = [ub; ones(nRev + nUniv, 1)];
+lb = [lb; zeros(nUniv, 1)];
+ub = [ub; ones(nUniv, 1)];
 
-% --- Objective ---
+% --- Objective: number of added universal reactions ---
 c = zeros(nVar, 1);
-c(nMergedRxns + 1 : nMergedRxns + nRev)  = w_rev;  % y_rev cost
-c(nMergedRxns + nRev + 1 : end)           = w_db;   % y_db cost
+c(nMergedRxns + 1 : end) = 1;
 
 % --- Constraint blocks ---
 % (1) Steady state: S * v = 0   [nMergedMets rows, 'E']
-A_SS = [mergedModel.S, sparse(nMergedMets, nRev + nUniv)];
+A_SS = [mergedModel.S, sparse(nMergedMets, nUniv)];
 
 % (2) Growth floor: c' * v >= minGrowth   [1 row, 'G']
-A_growth = [sparse(mergedModel.c'), sparse(1, nRev + nUniv)];
+A_growth = [sparse(mergedModel.c'), sparse(1, nUniv)];
 
 % (3) Universal upper coupling: v_k - ub_k * y_db_k <= 0   [nUniv rows, 'L']
 %     (forces v_k <= 0 when y_db_k = 0)
@@ -189,7 +164,7 @@ A_growth = [sparse(mergedModel.c'), sparse(1, nRev + nUniv)];
 % universal reaction (ub = Inf, RAVEN's own default when no upper-bound
 % annotation is set) would otherwise put an Inf coefficient into the
 % constraint matrix, and Inf*0 (y_db_k = 0) is NaN, not 0.
-yDbCols = nMergedRxns + nRev + (1:nUniv);
+yDbCols = nMergedRxns + (1:nUniv);
 uniUb = min(mergedModel.ub(univIdx), M);
 uniLb = max(mergedModel.lb(univIdx), -M);
 A_uniUp = sparse(...
@@ -206,32 +181,19 @@ A_uniLo = sparse(...
     [ones(1, nUniv), -uniLb'], ...
     nUniv, nVar);
 
-% (5) Reversal coupling: v_j + (M + lb_j) * y_rev_j >= lb_j   [nRev rows, 'G']
-%     (forces v_j >= lb_j when y_rev_j = 0, i.e., preserves the original
-%     lower bound, including a forced flux such as maintenance with lb_j > 0;
-%     allows v_j >= -M when y_rev_j = 1)
-yRevCols = nMergedRxns + (1:nRev);
-revLb = mergedModel.lb(revCandIdx);
-A_rev = sparse(...
-    [1:nRev, 1:nRev], ...
-    [revCandIdx(:)', yRevCols], ...
-    [ones(1, nRev), M + revLb(:)'], ...
-    nRev, nVar);
-
 % --- Assemble ---
-prob.A = [A_SS; A_growth; A_uniUp; A_uniLo; A_rev];
+prob.A = [A_SS; A_growth; A_uniUp; A_uniLo];
 prob.a = prob.A;
-prob.b = [zeros(nMergedMets, 1); minGrowth; ...
-          zeros(nUniv, 1); zeros(nUniv, 1); revLb(:)];
+prob.b = [zeros(nMergedMets, 1); minGrowth; zeros(2 * nUniv, 1)];
 prob.csense = [repmat('E', 1, nMergedMets), 'G', ...
                repmat('L', 1, nUniv), ...
-               repmat('G', 1, nUniv + nRev)];
+               repmat('G', 1, nUniv)];
 prob.c      = c;
-prob.osense = 1;   % minimise weighted sum of binary variables
+prob.osense = 1;   % minimise the number of added reactions
 prob.lb     = lb;
 prob.ub     = ub;
 prob.vartype = repmat('C', 1, nVar);
-prob.vartype(nMergedRxns + 1 : end) = 'B';   % y_rev and y_db are binary
+prob.vartype(nMergedRxns + 1 : end) = 'B';   % y_db is binary
 
 if isempty(params)
     params.intTol   = 1e-9;
@@ -241,7 +203,7 @@ end
 % ---- Solve ----
 if verbose
     fprintf('gapFillMILP: solving MILP (%d vars, %d binary, %d constraints)...\n', ...
-        nVar, nRev + nUniv, size(prob.A, 1));
+        nVar, nUniv, size(prob.A, 1));
 end
 sol = optimizeProb(prob, params, verbose);
 
@@ -255,11 +217,8 @@ end
 
 % ---- Extract solution ----
 binThreshold = 1e-3;
-yRev = sol.full(nMergedRxns + 1 : nMergedRxns + nRev);
-yDb  = sol.full(nMergedRxns + nRev + 1 : end);
-
-revSelected = revCandIdx(yRev > binThreshold);
-dbSelected  = univIdx(yDb > binThreshold);
+yDb = sol.full(nMergedRxns + 1 : end);
+dbSelected = univIdx(yDb > binThreshold);
 
 % Map back to original IDs. dbSelected is already restricted to universal
 % reactions via univIdx/isDraft above (an id-membership test against
@@ -267,25 +226,14 @@ dbSelected  = univIdx(yDb > binThreshold);
 % further filtering against universalModel.rxns is needed here -- doing so
 % would silently drop a universal reaction that mergeModels renamed
 % because its id collided with one already in the draft model.
-reversedRxns = mergedModel.rxns(revSelected);
-addedRxns    = mergedModel.rxns(dbSelected);
+addedRxns = mergedModel.rxns(dbSelected);
 
 if verbose
-    fprintf('gapFillMILP: reversed %d draft reaction(s), added %d universal reaction(s).\n', ...
-        numel(reversedRxns), numel(addedRxns));
+    fprintf('gapFillMILP: added %d universal reaction(s).\n', numel(addedRxns));
 end
 
 % ---- Build new model ----
 newModel = model;
-
-% Apply directionality reversals: allow negative flux
-for k = 1:numel(reversedRxns)
-    rxnPos = find(getIndexes(newModel, reversedRxns(k), 'rxns', true));
-    if ~isempty(rxnPos)
-        newModel.lb(rxnPos) = -M;
-        newModel.rev(rxnPos) = 1;
-    end
-end
 
 % Add universal reactions. Extracted from mergedModel by the dbSelected
 % indices directly, not by looking addedRxns' names back up in

@@ -54,6 +54,14 @@ function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnec
 %     the reactions that were added from the template models and which
 %     model they were added from.
 %
+% Notes
+% -----
+% The model must be feasible under its own bounds, and, when the mass
+% balancing section runs, also with its boundary closed. Otherwise
+% gapReport stops with a RAVEN:infeasibleModel error that names the
+% reactions with a forced flux; set the bounds of ATP maintenance and any
+% other forced flux to zero first.
+%
 % Examples
 % --------
 %     [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, ...
@@ -83,6 +91,11 @@ else
     canConsumeWithoutOutput={};
     canProduceWithoutInput={};
     calculateINOUT=false;
+end
+
+requireFeasible(model,'under its own bounds');
+if calculateINOUT
+    requireFeasible(closedModel,'once its boundary reactions are closed');
 end
 
 model2=model;
@@ -132,4 +145,21 @@ if ~isempty(templateModels)
     end
     fprintf([num2str(numel(connectedFromTemplates)) ' unconnected reactions can be connected by including ' num2str(numel(addedFromTemplates)) ' reactions from\n' t '\n']);
 end
+end
+
+function requireFeasible(model,condition)
+%Errors, naming the forced-flux reactions, if the model is infeasible
+model.c(:)=0;
+sol=solveLP(model);
+if sol.stat~=-1
+    return
+end
+forced=model.rxns(model.lb>0 | model.ub<0);
+hint='';
+if ~isempty(forced)
+    hint=[' Reactions with a forced flux: ' strjoin(forced,', ') '.'];
+end
+error('RAVEN:infeasibleModel',['The model is infeasible ' condition ...
+    ', so gapReport cannot analyse it.' strrep(hint,'%','%%') ...
+    ' Set the bounds of ATP maintenance and any other forced flux to zero first.']);
 end

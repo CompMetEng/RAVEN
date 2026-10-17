@@ -55,7 +55,7 @@ function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(m
 %     - 'reference'   : MILP-based connectivity maximisation
 %     - 'fastLP'      : L1-norm LP relaxation via FASTCORE (gapFillFastLP)
 %     - 'swiftLP'     : SWIFTCORE single-LP variant (gapFillFastLP)
-%     - 'gapfillMILP' : growth-floor MILP with directionality repair
+%     - 'gapfillMILP' : growth-floor MILP adding database reactions
 %                       (gapFillMILP). Uses only models{1} as the database.
 %     - 'topological' : BFS metabolite producibility pre-screening
 %                       (gapFillTopological); no model modification.
@@ -142,7 +142,7 @@ switch lower(p.algorithm)
         if numel(models) < 1
             error('RAVEN:badInput', 'fillGaps: gapfillMILP requires at least one reference model.');
         end
-        [addedRxns, ~, newModel, exitFlag] = gapFillMILP(model, models{1}, ...
+        [addedRxns, newModel, exitFlag] = gapFillMILP(model, models{1}, ...
             'minGrowth', p.minGrowth, 'verbose', p.verbose, 'params', params);
         newConnected = {};
         cannotConnect = {};
