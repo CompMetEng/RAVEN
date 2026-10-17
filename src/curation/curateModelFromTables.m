@@ -12,28 +12,39 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % This function can therefore be used to add new entities in the model, or
 % curate those already existing in the model.
 %
+% Columns are identified by their header (case-insensitive), so their order
+% does not matter and optional columns can be left out. Every field that a
+% table supplies is written to new and existing entities alike; a field the
+% model does not have yet is created, with its default value for the other
+% entities, unless all supplied values for it are empty. An empty grRules
+% cell leaves the rule of an existing reaction unchanged.
+%
 % Parameters
 % ----------
 % model : struct
 %     RAVEN model structure to be curated.
 % metsInfo : char
 %     Path to a *.tsv file with metabolite information, or 'none' to skip
-%     metabolite curation. Columns: metNames, comps, formula, charge,
-%     inchi, metNotes, then any number of MIRIAM-namespace columns.
+%     metabolite curation. Columns: metNames, comps (both required),
+%     formula, charge, inchi, metNotes, and any number of MIRIAM-namespace
+%     columns. Singular forms and the RAVEN field names (metFormulas,
+%     metCharges, inchis) are accepted as headers too.
 %
 % Name-Value Arguments
 % --------------------
 % genesInfo : char
 %     Path to a *.tsv file with gene information, or 'none'. Columns:
-%     genes, geneShortNames, then MIRIAM.
+%     genes (required), geneShortNames (or geneShortName), and MIRIAM.
 % rxnsCoeffs : char
 %     Path to a *.tsv file with reaction stoichiometric coefficients, or
-%     'none'. Columns: rxnIdx, rxnNames, metNames, comps, coefficient. One
-%     row per (reaction, metabolite) pair.
+%     'none'. Columns (all required): rxnIdx (or index), rxnNames,
+%     metNames, comps, coefficient. One row per (reaction, metabolite)
+%     pair.
 % rxnsInfo : char
 %     Path to a *.tsv file with reaction information, or 'none'. Columns:
-%     rxnIdx, rxnNames, grRules, lb, ub, rev, subSystems, eccodes,
-%     rxnNotes, rxnReferences, rxnConfidenceScores, then MIRIAM.
+%     rxnIdx (or index), rxnNames (both required), grRules, lb, ub, rev,
+%     subSystems, eccodes, rxnNotes, rxnReferences, rxnConfidenceScores,
+%     and MIRIAM.
 % metPrefix : char
 %     Prefix used to mint fresh metabolite ids (e.g. 's_' for yeast-GEM,
 %     'M_' for the BiGG default) (default 'M_').
@@ -52,10 +63,9 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %
 % Notes
 % -----
-% The 'everything after the core columns is MIRIAM' convention applies to
-% all three info tables: any column whose header is not one of the listed
-% core fields is treated as a MIRIAM annotation namespace and stored on
-% the matching entity.
+% In all three info tables, any column whose header is not one of the
+% listed core fields is treated as a MIRIAM annotation namespace and
+% stored on the matching entity.
 
 p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]});
 genesInfo=p.genesInfo;
@@ -76,25 +86,32 @@ newModel=model;
 
 %% Metabolites
 if ~strcmp(metsInfo,'none')
-    fid = fopen(metsInfo);
-    raw = textscan(fid,['%q' repmat(' %q',1,17)],'Delimiter','\t');
-    fclose(fid);
-    metsToAdd.metNames      = raw{1}(2:end);
-    metsToAdd.compartments  = raw{2}(2:end);
-    metsToAdd.metFormulas   = raw{3}(2:end);
-    metsToAdd.metCharges    = cellfun(@str2num,raw{4}(2:end),'UniformOutput',false);
-    emptyEntry = cellfun(@isempty,metsToAdd.metCharges);
-    if all(emptyEntry)
-        metsToAdd           = rmfield(metsToAdd,'metCharges');
-    elseif any(emptyEntry) % If some charges are given, assume 0 for those without charges specified
-        metsToAdd.metCharges(emptyEntry) = {0};
-        metsToAdd.metCharges = cell2mat(metsToAdd.metCharges);
-    else
-        metsToAdd.metCharges = cell2mat(metsToAdd.metCharges);
+    [header,data] = readCurationTable(metsInfo);
+    [col,miriamCols] = matchColumns(header,metsInfo,{'metNames','comps'},{ ...
+        'metNames',    {'metNames','metName'}; ...
+        'comps',       {'comps','comp'}; ...
+        'metFormulas', {'formula','formulas','metFormula','metFormulas'}; ...
+        'metCharges',  {'charge','charges','metCharge','metCharges'}; ...
+        'inchis',      {'inchi','inchis'}; ...
+        'metNotes',    {'metNotes','metNote'}});
+    metsToAdd.metNames      = data(:,col.metNames);
+    metsToAdd.compartments  = data(:,col.comps);
+    textFields = {'metFormulas','inchis','metNotes'};
+    for f = textFields(isfield(col,textFields))
+        metsToAdd.(f{1}) = data(:,col.(f{1}));
     end
-    metsToAdd.inchis        = raw{5}(2:end);
-    metsToAdd.metNotes      = raw{6}(2:end);
-    
+    if isfield(col,'metCharges')
+        metsToAdd.metCharges = cellfun(@str2num,data(:,col.metCharges),'UniformOutput',false);
+        emptyEntry = cellfun(@isempty,metsToAdd.metCharges);
+        if all(emptyEntry)
+            metsToAdd       = rmfield(metsToAdd,'metCharges');
+        else % If some charges are given, assume 0 for those without charges specified
+            metsToAdd.metCharges(emptyEntry) = {0};
+            metsToAdd.metCharges = cell2mat(metsToAdd.metCharges);
+        end
+    end
+    optFields = intersect({'metFormulas','metCharges','inchis','metNotes'},fieldnames(metsToAdd)','stable');
+
     % Check if metabolite already exists (check by metName[comp])
     existingMets            = [];
     existingMetsIdx         = [];
@@ -109,133 +126,135 @@ if ~strcmp(metsInfo,'none')
             newMets	= [newMets, i];
         end
     end
-    
+
     % Overwrite annotation of existing entries
     if any(existingMets)
-        if isfield(newModel,'metFormulas')
-            newModel.metFormulas(existingMetsIdx)  = metsToAdd.metFormulas(existingMets);
+        for f = optFields
+            newModel = writeExistingField(newModel,f{1},existingMetsIdx,metsToAdd.(f{1})(existingMets));
         end
-        if isfield(newModel,'metCharges') && isfield(metsToAdd,'metCharges')
-            newModel.metCharges(existingMetsIdx)   = metsToAdd.metCharges(existingMets);
-        end
-        if isfield(newModel,'inchis')
-            newModel.inchis(existingMetsIdx)       = metsToAdd.inchis(existingMets);
-        end
-        newModel = extractAndAddMiriam(newModel,raw(7:end),existingMets,existingMetsIdx,'met');
+        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),existingMets,existingMetsIdx,'met');
         warning(['The following metabolites are already present in the model, '...
             'their annotation will be overwritten to match the metsInfo file. '...
             'If you do not particularly want to curate their annotations, it '...
-            'would be better to removes these metabolites from metsInfo:\n\t\t%s'],...
+            'would be better to remove these metabolites from metsInfo:\n\t\t%s'],...
             strjoin(strcat(metsToAdd.metNames(existingMets),'[',metsToAdd.compartments(existingMets),']'),'\n\t\t'));
     end
-    
+
     % Continue with new metabolites
     if numel(newMets)>0
-        metsToAdd.metNames(existingMets)        = [];
-        metsToAdd.compartments(existingMets)    = [];
-        metsToAdd.metFormulas(existingMets)     = [];
-        if all(cellfun(@isempty,metsToAdd.metFormulas))
-            metsToAdd = rmfield(metsToAdd,'metFormulas');
-        end
-        if isfield(metsToAdd,'metCharges')
-            metsToAdd.metCharges(existingMets)	= [];
-        end
-        metsToAdd.inchis(existingMets)          = [];
-        if all(cellfun(@isempty,metsToAdd.inchis))
-            metsToAdd = rmfield(metsToAdd,'inchis');
-        end
-        metsToAdd.metNotes(existingMets)        = [];
-        if all(cellfun(@isempty,metsToAdd.metNotes))
-            metsToAdd = rmfield(metsToAdd,'metNotes');
+        metsToAdd.metNames      = metsToAdd.metNames(newMets);
+        metsToAdd.compartments  = metsToAdd.compartments(newMets);
+        for f = optFields
+            metsToAdd.(f{1}) = metsToAdd.(f{1})(newMets);
+            if iscell(metsToAdd.(f{1})) && all(cellfun(@isempty,metsToAdd.(f{1})))
+                metsToAdd = rmfield(metsToAdd,f{1});
+            end
         end
         % Add metabolites
         newModel        = addMets(newModel,metsToAdd,true,metPrefix);
         addedIdx        = numel(newModel.mets)-numel(newMets)+1:numel(newModel.mets);
-        newModel        = extractAndAddMiriam(newModel,raw(7:end),newMets,addedIdx,'met');
+        newModel        = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),newMets,addedIdx,'met');
     end
 end
 %% Genes
 if ~strcmp(genesInfo,'none')
-    % Gather all data, first about reaction stoichiometries...
-    fid = fopen(genesInfo);
-    raw = textscan(fid,['%q' repmat(' %q',1,10)],'Delimiter','\t');
-    fclose(fid);
-    genesToAdd.genes            = raw{1}(2:end);
-    genesToAdd.geneShortNames   = raw{2}(2:end);
+    [header,data] = readCurationTable(genesInfo);
+    [col,miriamCols] = matchColumns(header,genesInfo,{'genes'},{ ...
+        'genes',          {'genes','gene'}; ...
+        'geneShortNames', {'geneShortNames','geneShortName'}});
+    genesToAdd.genes            = data(:,col.genes);
+    if isfield(col,'geneShortNames')
+        genesToAdd.geneShortNames   = data(:,col.geneShortNames);
+    end
 
     [~,notNewGene,existingGene] = intersect(genesToAdd.genes,newModel.genes);
     if ~isempty(notNewGene)
         warning(['The following genes are already present in the model, their annotation '...
             'will be overwritten to match the genesInfo file: \n\t\t%s'],...
             strjoin(genesToAdd.genes(notNewGene),'\n\t\t'));
-        if isfield(newModel,'geneShortNames')
-            newModel.geneShortNames(existingGene) = genesToAdd.geneShortNames(notNewGene);
+        if isfield(genesToAdd,'geneShortNames')
+            newModel = writeExistingField(newModel,'geneShortNames',existingGene,genesToAdd.geneShortNames(notNewGene));
         end
-        newModel = extractAndAddMiriam(newModel,raw(3:end),notNewGene,existingGene,'gene');
+        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewGene,existingGene,'gene');
     end
-    
+
     % Continue with new genes
     toAdd               = 1:numel(genesToAdd.genes);
     toAdd(notNewGene)   = [];
     if ~isempty(toAdd)
         genesToAdd.genes            = genesToAdd.genes(toAdd);
-        genesToAdd.geneShortNames   = genesToAdd.geneShortNames(toAdd);
-        if all(cellfun(@isempty,genesToAdd.geneShortNames))
-            genesToAdd = rmfield(genesToAdd,'geneShortNames');
+        if isfield(genesToAdd,'geneShortNames')
+            genesToAdd.geneShortNames   = genesToAdd.geneShortNames(toAdd);
+            if all(cellfun(@isempty,genesToAdd.geneShortNames))
+                genesToAdd = rmfield(genesToAdd,'geneShortNames');
+            end
         end
         % Add genes
         newModel = addGenesRaven(newModel,genesToAdd);
         addedIdx = numel(newModel.genes)-numel(toAdd)+1:numel(newModel.genes);
-        newModel = extractAndAddMiriam(newModel,raw(3:end),toAdd,addedIdx,'gene');
+        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),toAdd,addedIdx,'gene');
     end
 end
 %% Reactions
 if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
     % Gather all data, first about reaction stoichiometries...
-    fid = fopen(rxnsCoeffs);
-    raw = textscan(fid,'%q %q %q %q %f','Delimiter','\t','HeaderLines',1);
-    fclose(fid);
-    rxnCheck.coeffsIdx = str2double(raw{1});
-    rxns.rxnNames   = raw{2};
-    rxns.metNames   = raw{3};
-    rxns.comps      = raw{4};
-    rxns.coeffs     = raw{5};
-    rxnCheck.coeffs = strcat(raw{1},'***',rxns.rxnNames);
+    [header,data] = readCurationTable(rxnsCoeffs);
+    col = matchColumns(header,rxnsCoeffs,{'rxnIdx','rxnNames','metNames','comps','coefficient'},{ ...
+        'rxnIdx',      {'rxnIdx','index'}; ...
+        'rxnNames',    {'rxnNames','rxnName'}; ...
+        'metNames',    {'metNames','metName'}; ...
+        'comps',       {'comps','comp'}; ...
+        'coefficient', {'coefficient','coefficients','coeffs','stoichCoeffs'}});
+    rxnCheck.coeffsIdx = str2double(data(:,col.rxnIdx));
+    rxns.rxnNames   = data(:,col.rxnNames);
+    rxns.metNames   = data(:,col.metNames);
+    rxns.comps      = data(:,col.comps);
+    rxns.coeffs     = str2double(data(:,col.coefficient));
+    rxnCheck.coeffs = strcat(data(:,col.rxnIdx),'***',rxns.rxnNames);
 
     % ... and then additional reaction-specific data.
-    fid = fopen(rxnsInfo);
-    raw = textscan(fid,['%q' repmat(' %q',1,20)],'Delimiter','\t');
-    fclose(fid);
-    rxnCheck.rxnsIdx = str2double(raw{1}(2:end));
-    rxnCheck.rxns = strcat(raw{1}(2:end),'***',raw{2}(2:end));
-    
+    [header,data] = readCurationTable(rxnsInfo);
+    [col,miriamCols] = matchColumns(header,rxnsInfo,{'rxnIdx','rxnNames'},{ ...
+        'rxnIdx',              {'rxnIdx','index'}; ...
+        'rxnNames',            {'rxnNames','rxnName'}; ...
+        'grRules',             {'grRules'}; ...
+        'lb',                  {'lb'}; ...
+        'ub',                  {'ub'}; ...
+        'rev',                 {'rev'}; ...
+        'subSystems',          {'subSystems'}; ...
+        'eccodes',             {'eccodes'}; ...
+        'rxnNotes',            {'rxnNotes'}; ...
+        'rxnReferences',       {'rxnReferences'}; ...
+        'rxnConfidenceScores', {'rxnConfidenceScores'}});
+    rxnCheck.rxnsIdx = str2double(data(:,col.rxnIdx));
+    rxnCheck.rxns = strcat(data(:,col.rxnIdx),'***',data(:,col.rxnNames));
+
     notMatching = setxor(rxnCheck.coeffs,rxnCheck.rxns);
     if numel(notMatching)>1
         error(['The following reactions ánd/or their indices are not matched '...
             'between the rxnsInfo and rxnsCoeffs files:\n\t\t%s'],...
             strjoin(regexprep(notMatching,'^\d+***',''),'\n\t\t'))
     end
-    
-    rxnsToAdd.rxnNames              = raw{2}(2:end);
-    rxnsToAdd.grRules               = raw{3}(2:end);
-    rxnsToAdd.lb                    = cellfun(@str2num,raw{4}(2:end));
-    rxnsToAdd.ub                    = cellfun(@str2num,raw{5}(2:end));
-    rxnsToAdd.rev                   = cellfun(@str2num,raw{6}(2:end));
-    rxnsToAdd.subSystems            = raw{7}(2:end);
-    rxnsToAdd.eccodes               = raw{8}(2:end);
-    rxnsToAdd.rxnNotes              = raw{9}(2:end);
-    rxnsToAdd.rxnReferences         = raw{10}(2:end);
-    rxnsToAdd.rxnConfidenceScores   = cellfun(@str2num,raw{11}(2:end),'UniformOutput',false);
-    emptyEntry = cellfun(@isempty,rxnsToAdd.rxnConfidenceScores);
-    if all(emptyEntry)
-        rxnsToAdd           = rmfield(rxnsToAdd,'rxnConfidenceScores');
-    elseif any(emptyEntry) % If some rxnConfidenceScores are given, assume 0 for those without rxnConfidenceScores specified
-        rxnsToAdd.rxnConfidenceScores(emptyEntry) = {0};
-        rxnsToAdd.rxnConfidenceScores = cell2mat(rxnsToAdd.rxnConfidenceScores);
-    else
-        rxnsToAdd.rxnConfidenceScores = cell2mat(rxnsToAdd.rxnConfidenceScores);
+
+    rxnsToAdd.rxnNames              = data(:,col.rxnNames);
+    for f = intersect({'grRules','subSystems','eccodes','rxnNotes','rxnReferences'},fieldnames(col)','stable')
+        rxnsToAdd.(f{1}) = data(:,col.(f{1}));
     end
-    
+    for f = intersect({'lb','ub','rev'},fieldnames(col)','stable')
+        rxnsToAdd.(f{1}) = cellfun(@str2num,data(:,col.(f{1})));
+    end
+    if isfield(col,'rxnConfidenceScores')
+        rxnsToAdd.rxnConfidenceScores   = cellfun(@str2num,data(:,col.rxnConfidenceScores),'UniformOutput',false);
+        emptyEntry = cellfun(@isempty,rxnsToAdd.rxnConfidenceScores);
+        if all(emptyEntry)
+            rxnsToAdd           = rmfield(rxnsToAdd,'rxnConfidenceScores');
+        else % If some rxnConfidenceScores are given, assume 0 for those without rxnConfidenceScores specified
+            rxnsToAdd.rxnConfidenceScores(emptyEntry) = {0};
+            rxnsToAdd.rxnConfidenceScores = cell2mat(rxnsToAdd.rxnConfidenceScores);
+        end
+    end
+    optFields = intersect({'subSystems','eccodes','rxnNotes','rxnReferences','rxnConfidenceScores'},fieldnames(rxnsToAdd)','stable');
+
     existingRxn=[];
     notNewRxn=[];
     for i=1:numel(rxnCheck.rxnsIdx)
@@ -272,7 +291,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
             notNewRxn       = [notNewRxn,i];
         end
     end
-    
+
     % If some reactions already existed, then replace its information
     if ~isempty(existingRxn)
         warning(['The following reactions are the same as existing model '...
@@ -280,84 +299,126 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
             'rxnCoeffs file: \n\t\t(Existing reaction ID): New reaction name\n\t\t%s'],...
             strjoin(strcat('(',newModel.rxns(existingRxn),{'): '},rxnsToAdd.rxnNames(notNewRxn)),'\n\t\t'));
         newModel.rxnNames(existingRxn) = rxnsToAdd.rxnNames(notNewRxn);
-        newModel.lb(existingRxn)       = rxnsToAdd.lb(notNewRxn);
-        newModel.ub(existingRxn)       = rxnsToAdd.ub(notNewRxn);
-        newModel.rev(existingRxn)      = rxnsToAdd.rev(notNewRxn);
-        if isfield(newModel,'subSystems')
-            newModel.subSystems(existingRxn)    = rxnsToAdd.subSystems(notNewRxn);
+        for f = intersect({'lb','ub','rev'},fieldnames(rxnsToAdd)','stable')
+            newModel.(f{1})(existingRxn) = rxnsToAdd.(f{1})(notNewRxn);
         end
-        if isfield(newModel,'eccodes')
-            newModel.eccodes(existingRxn)       = rxnsToAdd.eccodes(notNewRxn);
+        for f = optFields
+            values = rxnsToAdd.(f{1})(notNewRxn);
+            if strcmp(f{1},'subSystems') && isfield(newModel,'subSystems') ...
+                    && any(cellfun(@iscell,newModel.subSystems))
+                values = cellfun(@(x) {x}, values, 'UniformOutput', false);
+            end
+            newModel = writeExistingField(newModel,f{1},existingRxn,values);
         end
-        if isfield(newModel,'rxnNotes')
-            newModel.rxnNotes(existingRxn)      = rxnsToAdd.rxnNotes(notNewRxn);
+        if isfield(rxnsToAdd,'grRules')
+            emptyEntries = cellfun(@isempty,rxnsToAdd.grRules(notNewRxn));
+            if ~all(emptyEntries)
+                newModel    = changeGrRules(newModel,newModel.rxns(existingRxn(~emptyEntries)),rxnsToAdd.grRules(notNewRxn(~emptyEntries)),true);
+            end
         end
-        if isfield(newModel,'rxnConfidenceScores') && isfield(rxnsToAdd,'rxnConfidenceScores')
-            newModel.rxnConfidenceScores(existingRxn) = rxnsToAdd.rxnConfidenceScores(notNewRxn);
-        end
-        emptyEntries = cellfun(@isempty,rxnsToAdd.grRules);
-        if ~all(emptyEntries)
-            newModel    = changeGrRules(newModel,newModel.rxns(existingRxn(~emptyEntries)),rxnsToAdd.grRules(notNewRxn(~emptyEntries)),true);
-        end        
-        newModel    = extractAndAddMiriam(newModel,raw(11:end),notNewRxn,existingRxn,'rxn');
+        newModel    = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewRxn,existingRxn,'rxn');
     end
-    
+
     % Continue with new reactions
     toAdd               = 1:numel(rxnsToAdd.rxnNames);
     toAdd(notNewRxn)    = [];
     if ~isempty(toAdd)
         rxnsToAdd.rxnNames      = rxnsToAdd.rxnNames(toAdd);
-        rxnsToAdd.lb            = rxnsToAdd.lb(toAdd);
-        rxnsToAdd.ub            = rxnsToAdd.ub(toAdd);
-        rxnsToAdd.rev           = rxnsToAdd.rev(toAdd);
-        rxnsToAdd.subSystems    = rxnsToAdd.subSystems(toAdd);
-        if all(cellfun(@isempty,rxnsToAdd.subSystems))
-            rxnsToAdd = rmfield(rxnsToAdd,'subSystems');
+        for f = intersect({'lb','ub','rev','grRules'},fieldnames(rxnsToAdd)','stable')
+            rxnsToAdd.(f{1}) = rxnsToAdd.(f{1})(toAdd);
         end
-        rxnsToAdd.eccodes       = rxnsToAdd.eccodes(toAdd);
-        if all(cellfun(@isempty,rxnsToAdd.eccodes))
-            rxnsToAdd = rmfield(rxnsToAdd,'eccodes');
+        for f = optFields
+            rxnsToAdd.(f{1}) = rxnsToAdd.(f{1})(toAdd);
+            if iscell(rxnsToAdd.(f{1})) && all(cellfun(@isempty,rxnsToAdd.(f{1})))
+                rxnsToAdd = rmfield(rxnsToAdd,f{1});
+            end
         end
-        rxnsToAdd.rxnNotes      = rxnsToAdd.rxnNotes(toAdd);
-        if all(cellfun(@isempty,rxnsToAdd.rxnNotes))
-            rxnsToAdd = rmfield(rxnsToAdd,'rxnNotes');
-        end
-        if isfield(rxnsToAdd,'rxnConfidenceScores')
-            rxnsToAdd.rxnConfidenceScores = rxnsToAdd.rxnConfidenceScores(toAdd);
-        end
-        rxnsToAdd.rxnReferences = rxnsToAdd.rxnReferences(toAdd);
-        if all(cellfun(@isempty,rxnsToAdd.rxnReferences))
-            rxnsToAdd = rmfield(rxnsToAdd,'rxnReferences');
-        end
-        rxnsToAdd.grRules       = rxnsToAdd.grRules(toAdd);
         rxnsToAdd.mets          = rxnsToAdd.mets(toAdd);
         rxnsToAdd.stoichCoeffs  = rxnsToAdd.stoichCoeffs(toAdd);
         rxnsToAdd.rxns          = generateNewIds(model,'rxns',rxnPrefix,numel(rxnsToAdd.rxnNames));
-        
+
         newModel        = addRxns(newModel,rxnsToAdd,1,[],false,false);
         rxnsModelIdx    = numel(newModel.rxns)-numel(toAdd)+1:numel(newModel.rxns);
-        newModel        = extractAndAddMiriam(newModel,raw(11:end),toAdd,rxnsModelIdx,'rxn');
+        newModel        = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),toAdd,rxnsModelIdx,'rxn');
     end
 end
 end
 
-function newModel = extractAndAddMiriam(model,raw,inputIndex,modelIndex,type)
-newModel=model;
-miriamName              = cell(numel(inputIndex),1);
-miriamValues            = cell(1,numel(inputIndex));
-for i=1:numel(raw)
-    miriamName{i}                       = raw{i}{1};
-    miriamValues(1:numel(inputIndex),i) = raw{i}(inputIndex+1);
+function [header,data] = readCurationTable(fileName)
+% Read a tab-delimited curation table into its header row and a cell
+% array of text with one column per header field.
+fid = fopen(fileName);
+if fid==-1
+    error('Could not open the file "%s"',fileName);
 end
-emptyMiriam     =   all(cellfun(@isempty,miriamValues),1);
+headerLine = fgetl(fid);
+if ~ischar(headerLine)
+    fclose(fid);
+    error('The file "%s" is empty',fileName);
+end
+headerLine = strrep(headerLine,char(65279),''); % byte order mark
+header = strtrim(strsplit(headerLine,'\t'));
+header = regexprep(header,'^"(.*)"$','$1');
+nCols  = numel(header);
+raw    = textscan(fid,repmat('%q',1,nCols),'Delimiter','\t');
+fclose(fid);
+nRows  = max(cellfun(@numel,raw));
+data   = repmat({''},nRows,nCols);
+for i=1:nCols
+    data(1:numel(raw{i}),i) = raw{i};
+end
+end
+
+function [col,miriamCols] = matchColumns(header,fileName,required,spec)
+% Locate the core columns of a curation table by header name (case
+% insensitive). spec has one row per core field: {field, accepted headers}.
+% Every other column is a MIRIAM namespace.
+col        = struct();
+isCore     = false(1,numel(header));
+for i=1:size(spec,1)
+    match = find(ismember(lower(header),lower(spec{i,2})));
+    if ~isempty(match)
+        col.(spec{i,1}) = match(1);
+        isCore(match)   = true;
+    end
+end
+missing = setdiff(required,fieldnames(col)','stable');
+if ~isempty(missing)
+    error('The file "%s" has no column with header: %s',fileName,strjoin(missing,', '));
+end
+miriamCols = find(~isCore & ~cellfun(@isempty,header));
+end
+
+function model = writeExistingField(model,field,modelIdx,values)
+% Write the values of an optional field onto existing entities. A field
+% the model does not have is created from its ravenModelFields default,
+% unless all supplied values are empty.
+if ~isfield(model,field)
+    if iscell(values) && all(cellfun(@isempty,values))
+        return
+    end
+    reg   = ravenModelFields();
+    entry = reg(strcmp({reg.name},field));
+    n     = numel(model.([entry.type 's']));
+    if iscell(values)
+        model.(field) = repmat({entry.default},n,1);
+    else
+        model.(field) = repmat(entry.default,n,1);
+    end
+end
+model.(field)(modelIdx) = values;
+end
+
+function newModel = extractAndAddMiriam(model,miriamName,miriamData,inputIndex,modelIndex,type)
+newModel=model;
+miriamValues    = miriamData(inputIndex,:);
+emptyMiriam     = all(cellfun(@isempty,miriamValues),1);
 miriamName(emptyMiriam)     = [];
 miriamValues(:,emptyMiriam) = [];
-if ~isfield(newModel,[type 'Miriams']);
+if ~isfield(newModel,[type 'Miriams'])
     newModel.([type 'Miriams'])=cell(numel(newModel.([type 's'])),1);
 end
-if ~isempty(miriamName)
-    for i=1:numel(miriamName)
-        newModel = editMiriam(newModel,type,modelIndex,miriamName{i},miriamValues(:,i),'replace');
-    end
+for i=1:numel(miriamName)
+    newModel = editMiriam(newModel,type,modelIndex,miriamName{i},miriamValues(:,i),'replace');
 end
 end

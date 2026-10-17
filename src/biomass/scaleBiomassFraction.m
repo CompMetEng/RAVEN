@@ -2,7 +2,8 @@ function model = scaleBiomassFraction(model, biomassConfig, componentName, newVa
 % scaleBiomassFraction  Rescale a biomass component to a target value.
 %
 % Rescale a biomass component to a target g/gDW value, optionally
-% balancing a second component so the total biomass mass stays at 1 g/gDW.
+% rescaling a second component so that the biomass total becomes 1 g/gDW,
+% whatever the total was before.
 % The MATLAB counterpart of yeast-GEM's legacy scaleBioMass.
 %
 % Parameters
@@ -19,8 +20,10 @@ function model = scaleBiomassFraction(model, biomassConfig, componentName, newVa
 % Name-Value Arguments
 % --------------------
 % balanceOut : char
-%     Second component name to adjust so the biomass total remains 1
-%     g/gDW. Empty / omit to skip balancing.
+%     Second component name to adjust so the biomass total becomes 1
+%     g/gDW. It must be large enough to absorb the change: an error is
+%     raised if its fraction would become zero or negative, or if it is
+%     0 to begin with. Empty / omit to skip balancing.
 %
 % Returns
 % -------
@@ -55,11 +58,24 @@ model = scaleBiomassPseudoreaction(model, biomassConfig, componentName, factor);
 if ~isempty(balanceOut)
     fractions = getBiomassFractions(model, biomassConfig);
     total = fractions.total;
+    if ~isfield(fractions, balanceOut)
+        error('scaleBiomassFraction:unknownComponent', ...
+            'biomassConfig has no component named %s', balanceOut);
+    end
     balanceCurrent = fractions.(balanceOut);
     if balanceCurrent == 0
-        return;
+        error('scaleBiomassFraction:zeroCurrent', ...
+            ['Cannot balance with %s: current fraction is 0 ' ...
+             '(pseudoreaction missing or empty).'], balanceOut);
     end
-    balanceFactor = (balanceCurrent + (1 - total)) / balanceCurrent;
+    balanceNew = balanceCurrent + (1 - total);
+    if balanceNew <= 0
+        error('scaleBiomassFraction:negativeBalance', ...
+            ['Cannot balance with %s: its fraction would become %g g/gDW. ' ...
+             'It is %g g/gDW, but the other components total %g g/gDW.'], ...
+            balanceOut, balanceNew, balanceCurrent, total - balanceCurrent);
+    end
+    balanceFactor = balanceNew / balanceCurrent;
     model = scaleBiomassPseudoreaction(model, biomassConfig, balanceOut, balanceFactor);
 end
 end

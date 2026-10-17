@@ -27,6 +27,15 @@ function res = optimizeProb(prob,varargin)
 %     time limit. Whatever solution is in res is then either absent or not
 %     proven optimal.
 %
+% Notes
+% -----
+% With 'glpk' selected, MILPs are solved by RAVEN's bundled GLPK, and a
+% RAVEN:glpkMILP warning recommends Gurobi, which is much faster and more
+% reliable on larger MILPs (such as ftINIT or getMinNrFluxes on
+% genome-scale models).
+% The GLPK interface of the COBRA Toolbox is not used for MILPs: with
+% 'cobra' selected, set a different MILP solver with changeCobraSolver.
+%
 % See also
 % --------
 % splitProbForConditioning
@@ -53,13 +62,16 @@ end
 solver=RAVENSOLVER;
 if ~all(lower(prob.vartype) == 'c')
     milp=true;
-    errorText = 'glpk is not suitable for solving MILPs, ';
     switch solver
         case 'glpk'
-            error([errorText 'select a different solver with setRavenSolver().'])
+            warning('RAVEN:glpkMILP', ['Solving a MILP with GLPK. This works for small ' ...
+                'problems, but for larger problems Gurobi is much faster and more reliable; ' ...
+                'select it with setRavenSolver(''gurobi''). Silence this warning with ' ...
+                'warning(''off'',''RAVEN:glpkMILP'').'])
         case 'cobra'
             if strcmp(CBT_MILP_SOLVER,'glpk')
-                error([errorText 'select a different solver with changeCobraSolver() or setRavenSolver().'])
+                error(['The GLPK interface of the COBRA Toolbox is not suitable for solving MILPs, ' ...
+                    'select a different solver with changeCobraSolver() or setRavenSolver().'])
             end
     end
 else
@@ -211,15 +223,12 @@ switch solver
         solverparams.tolint  = defaultparams.intTol;
         solverparams.tolobj  = defaultparams.objTol;
         solverparams.msglev  = 0; % Level of verbosity
+        if milp
+            solverparams.tmlim = defaultparams.timeLimit; % seconds
+        end
         solverparams = structUpdate(solverparams,params);
 
         prob.csense = renameparams(prob.csense, {'L','G','E'}, {'U','L','S'});
-
-        if milp
-            solverparams.tmlim   = solverparams.tmlim*10;
-            solverparams.msglev  = 1; % Level of verbosity
-            disp('Issues have been observed when using GLPK for MILP solving. Be advised to carefully observe the results, or us another solver.')
-        end
 
         % Ensure that RAVEN glpk binary is used, return to original
         % directory afterwards
@@ -241,6 +250,15 @@ switch solver
         res.obj      = fmin;
         res.dual     = -extra.lambda*prob.osense;
         res.rcost    = -extra.redcosts*prob.osense;
+        if milp
+            % glpk reports no gap; a proven optimum has none, anything else
+            % is not accepted by callers that test the gap
+            if res.stat == 1
+                res.mipgap = 0;
+            else
+                res.mipgap = inf;
+            end
+        end
         %% Use scip
     case {'soplex','scip'} % Old 'soplex' option also allowed
         % scip takes a row range [rl,ru] rather than a right-hand side plus

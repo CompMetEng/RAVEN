@@ -36,10 +36,10 @@ function repMets=reporterMetabolites(model,genes,genePValues,varargin)
 %       supplied.
 %     - mets : a cell array of metabolite IDs for the metabolites for which
 %       a score could be calculated.
-%     - metZScores : Z-scores for differential expression around each
-%       metabolite in "mets".
-%     - metPValues : P-values for differential expression around each
-%       metabolite in "mets".
+%     - metZScores : background-corrected Z-scores for differential
+%       expression around each metabolite in "mets". The entries of all
+%       fields are sorted by this score, highest first.
+%     - metPValues : one-sided (upper-tail) P-values of "metZScores".
 %     - metNGenes : number of neighbouring genes for each metabolite in
 %       "mets".
 %     - meanZ : average Z-scores for the genes around each metabolite in
@@ -57,6 +57,10 @@ function repMets=reporterMetabolites(model,genes,genePValues,varargin)
 % For details about the algorithm, see Patil KR, Nielsen J, Uncovering
 % transcriptional regulation of metabolism by using metabolic network
 % topology. Proc. Natl Acad. Sci. USA 2005;102:2685-2689.
+%
+% The background correction uses the closed-form mean and standard
+% deviation of the aggregate Z-score of n genes drawn at random from all
+% scored genes, so the results are deterministic.
 
 genes=convertCharArray(genes);
 p=parseRAVENargs(varargin, {'printResults',false; 'outputFile',[]; 'geneFoldChanges',[]});
@@ -136,11 +140,11 @@ stdZ(isnan(stdZ))=[];
 
 %Correct for background using the closed-form moments of the sampling
 %distribution. For n genes drawn with replacement from the scored-gene pool
-%(mean mu, std sigma), the aggregate Z = sum(z)/sqrt(n) has:
+%(mean mu, population std sigma), the aggregate Z = sum(z)/sqrt(n) has:
 %  E[Z] = sqrt(n)*mu  and  Std[Z] = sigma  (independent of n)
 %so the corrected score is (metZ - sqrt(n)*mu) / sigma.
 mu = mean(geneZScores);
-sigma = std(geneZScores);
+sigma = std(geneZScores,1);
 metZScores = (metZScores - sqrt(metNGenes) .* mu) ./ sigma;
 
 %Calculate the P-values (upper-tail of the standard normal). Uses the base

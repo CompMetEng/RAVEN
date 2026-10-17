@@ -207,6 +207,25 @@ classdef tIO < RavenTestCase
             testCase.verifyEqual(numel(m2.rxns), numel(testCase.model.rxns));
         end
 
+        function readYAMLmodelJoinsContinuationStartingWithDash(testCase)
+            % A writer that wraps long scalars can break a name right
+            % before a dash, so the continuation line starts with "-"
+            % without being a list item (as in the KEGG reference model).
+            m = testCase.model;
+            m.rxnNames{1} = 'PLACEHOLDER';
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            txt = fileread(f);
+            txt = strrep(txt, 'name: PLACEHOLDER', sprintf(['name: naphthalene,NADPH:oxygen ' ...
+                'oxidoreductase (RH-hydroxylating or \n        -epoxidizing)']));
+            fid = fopen(f, 'w'); fwrite(fid, txt); fclose(fid);
+            evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyEqual(m2.rxnNames{1}, ...
+                'naphthalene,NADPH:oxygen oxidoreductase (RH-hydroxylating or -epoxidizing)');
+            testCase.verifyEqual(numel(m2.rxns), numel(m.rxns));
+        end
+
         function writeReadYAMLNestsEcRxnEnzymes(testCase)
             % Each ec-rxns entry lists its enzymes as a mapping under the
             % "enzymes" key, so the enzyme lines are indented deeper than

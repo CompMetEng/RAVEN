@@ -6,7 +6,10 @@ function model = assignSBOterms(model, varargin)
 % organism-agnostic, parameterised entirely by opts.
 %
 % SBO is written via editMiriam(..., 'fill') so pre-existing SBO
-% annotations are preserved.
+% annotations are preserved. The terms are stored in model.metMiriams and
+% model.rxnMiriams under the namespace 'sbo' (there is no separate SBO
+% field); read them with extractMiriam(model.rxnMiriams, 'sbo').
+% exportModel writes them as the SBML sboTerm attribute.
 %
 % Parameters
 % ----------

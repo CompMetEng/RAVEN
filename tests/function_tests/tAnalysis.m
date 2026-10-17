@@ -29,6 +29,25 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(I1, I2);
         end
 
+        function haveFluxAllDeadEnds(testCase)
+            % A model in which every reaction is a dead end has nothing
+            % left to solve after simplification; all reactions are
+            % blocked and no solver error is raised.
+            m = struct();
+            m.id = 'deadEnds'; m.rxns = {}; m.S = []; m.rev = [];
+            m.mets = {'A';'B';'C'}; m.metNames = m.mets;
+            m.comps = {'c'}; m.compNames = m.comps; m.metComps = [1;1;1];
+            m.genes = {}; m.grRules = {}; m.rxnGeneMat = [];
+            r = struct();
+            r.rxns = {'R1';'R2'};
+            r.equations = {'A[c] => B[c]';'B[c] => C[c]'};
+            evalc('m = addRxns(m, r, 3);');
+            m.lb = [0;0]; m.ub = [1000;1000];
+            m.c = [0;0]; m.b = zeros(3,1);
+            I = haveFlux(m);
+            testCase.verifyEqual(I, [false; false]);
+        end
+
         function getMinNrFluxesReturnsFlux(testCase)
             testCase.assumeMILPSolver();
             evalc('[x, I, exitFlag] = getMinNrFluxes(testCase.model, testCase.model.rxns);');
@@ -272,6 +291,24 @@ classdef tAnalysis < RavenTestCase
             rm1 = reporterMetabolites(testCase.model, testCase.model.genes, pvals);
             rm2 = reporterMetabolites(testCase.model, testCase.model.genes, pvals);
             testCase.verifyEqual(rm1.metZScores, rm2.metZScores);
+        end
+
+        function reporterMetabolitesUsesPopulationStd(testCase)
+            % The closed-form background assumes genes drawn with
+            % replacement from the scored pool, so it divides by the
+            % population standard deviation of the gene Z-scores.
+            m = struct();
+            m.mets       = {'A';'B'};
+            m.metNames   = {'A';'B'};
+            m.genes      = {'g1';'g2';'g3'};
+            m.S          = sparse([1 0; 0 1]);
+            m.rxnGeneMat = sparse([1 1 0; 0 0 1]);
+            pvals = [0.01; 0.2; 0.5];
+            z = sqrt(2)*erfcinv(2*pvals);
+            expectedA = ((z(1)+z(2))/sqrt(2) - sqrt(2)*mean(z)) / std(z,1);
+            rm = reporterMetabolites(m, m.genes, pvals);
+            testCase.verifyEqual(rm.metZScores(strcmp(rm.mets,'A')), expectedA, 'AbsTol', 1e-12);
+            testCase.verifyEqual(rm.metPValues(strcmp(rm.mets,'A')), 0.5*erfc(expectedA/sqrt(2)), 'AbsTol', 1e-12);
         end
 
         function FSEOFRuns(testCase)

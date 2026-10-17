@@ -340,7 +340,11 @@ if isempty(fastaFile)
         model.geneMiriams{i,1}.name{1,1}='kegg.genes';
         model.geneMiriams{i,1}.value{1,1}=strcat(lower(organismID),model.genes{i,1});
     end
-    %Add the description to the reactions
+    %Add the description to the reactions. The reference model has no
+    %reaction notes, so readYAMLmodel leaves the field out
+    if ~isfield(model,'rxnNotes')
+        model.rxnNotes=repmat({''},numel(model.rxns),1);
+    end
     for i=1:numel(model.rxns)
         if ~isempty(model.rxnNotes{i})
             model.rxnNotes(i)=strcat('Included by getKEGGModelForOrganism (without HMMs).',model.rxnNotes(i));
@@ -532,7 +536,11 @@ end
 model.grRules = grRules;
 model.rxnGeneMat = rxnGeneMat;
 
-%Add the description to the reactions
+%Add the description to the reactions. The reference model has no reaction
+%notes, so readYAMLmodel leaves the field out
+if ~isfield(model,'rxnNotes')
+    model.rxnNotes=repmat({''},numel(model.rxns),1);
+end
 for i=1:numel(model.rxns)
     if ~isempty(model.rxnNotes{i})
         model.rxnNotes(i)=strcat('Included by getKEGGModelForOrganism (using HMMs).',model.rxnNotes(i));

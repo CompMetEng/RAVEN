@@ -36,8 +36,10 @@ function [genes, fluxes, originalGenes, details, grRatioMuts]=findGeneDeletions(
 %     with details about each gene in originalGenes and why or why not it
 %     was deleted:
 %
-%     - 1 : was deleted
-%     - 2 : proved lethal in sgd (single gene deletion)
+%     - 1 : was deleted, and the problem was solved (a lethal deletion
+%       with zero growth also gets 1)
+%     - 2 : the single-deletion problem had no optimal solution
+%       (infeasible or failed); fluxes and grRatioMuts are 0
 %     - 3 : redundant, no longer used
 %     - 4 : involved in dead-end reaction
 % grRatioMuts : double

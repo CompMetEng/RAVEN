@@ -1,9 +1,10 @@
 function I=haveFlux(model,varargin)
 % haveFlux  Check which reactions can carry a flux.
 %
-% Checks which reactions can carry a (positive or negative) flux. Is used as
-% a faster version of getAllowedBounds if it is only interesting whether the
-% reactions can carry a flux or not.
+% Checks which reactions can carry a (positive or negative) flux under the
+% model's current bounds; other media or bounds are not explored. Is used
+% as a faster version of getAllowedBounds if it is only interesting whether
+% the reactions can carry a flux or not.
 %
 % Parameters
 % ----------
@@ -28,7 +29,7 @@ function I=haveFlux(model,varargin)
 % -------
 % I : logical
 %     logical array with true if the corresponding reaction can carry a
-%     flux.
+%     flux under the tested bounds.
 %
 % Examples
 % --------
@@ -38,6 +39,12 @@ function I=haveFlux(model,varargin)
 % -----
 % If a model has +/- Inf bounds then those are replaced with an arbitary
 % large value of +/- 10000 prior to solving.
+%
+% Dead-end reactions are removed (simplifyModel) before solving. A dead-end
+% reaction with a forced flux (lb > 0 or ub < 0) makes the model infeasible,
+% but it is removed like any other dead end, so the remaining reactions are
+% tested as if it were absent. A forced flux elsewhere in an infeasible
+% model gives false for all reactions.
 
 p=parseRAVENargs(varargin, {'cutOff',10^-6; 'rxns',[]; 'seed',[]});
 if ~isempty(p.seed)
@@ -65,6 +72,13 @@ rxns=model.rxns(indexes);
 
 %First remove all dead-end reactions
 smallModel=simplifyModel(model,false,false,true,true);
+
+%Nothing is left to solve when every reaction is a dead end, and reactions
+%without metabolites are limited by their bounds only
+if isempty(smallModel.rxns) || isempty(smallModel.mets)
+    I=ismember(rxns,smallModel.rxns(smallModel.ub>cutOff | smallModel.lb<-cutOff));
+    return
+end
 
 %Get the indexes of the reactions in the connected model
 indexes=getIndexes(smallModel,intersect(smallModel.rxns,rxns),'rxns');

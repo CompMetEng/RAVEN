@@ -26,6 +26,22 @@ classdef tBiomass < RavenTestCase
                 'protein', 0.5), ?MException);
         end
 
+        function scaleBiomassFractionBalancesToOne(testCase)
+            [m, cfg] = tBiomass.twoComponentToyModel();
+            out = scaleBiomassFraction(m, cfg, 'protein', 0.7, 'balanceOut', 'DNA');
+            f = getBiomassFractions(out, cfg);
+            testCase.verifyEqual(f.protein, 0.7, 'AbsTol', 1e-9);
+            testCase.verifyEqual(f.DNA, 0.3, 'AbsTol', 1e-9);
+        end
+
+        function scaleBiomassFractionRefusesNegativeBalance(testCase)
+            % Balancing protein 1.2 against DNA would need DNA at -0.2,
+            % which would turn the DNA pseudoreaction around.
+            [m, cfg] = tBiomass.twoComponentToyModel();
+            testCase.verifyError(@() scaleBiomassFraction(m, cfg, 'protein', 1.2, ...
+                'balanceOut', 'DNA'), 'scaleBiomassFraction:negativeBalance');
+        end
+
         function scaleBiomassPseudoreactionErrorsOnMissingComponent(testCase)
             cfg = testCase.biomassConfig();
             testCase.verifyError(@() scaleBiomassPseudoreaction(testCase.model, cfg, ...
@@ -93,6 +109,31 @@ classdef tBiomass < RavenTestCase
     end
 
     methods (Static, Access = private)
+        function [m, cfg] = twoComponentToyModel()
+            % Protein and DNA pseudoreactions in grams, 0.5 g/gDW each.
+            m = struct();
+            m.id        = 'toy';
+            m.rxns      = {'R1';'R2'};
+            m.rxnNames  = {'protein pseudoreaction';'DNA pseudoreaction'};
+            m.mets      = {'x_c';'y_c';'h_c';'prot_c';'dna_c'};
+            m.metNames  = {'x';'y';'H+';'protein';'DNA'};
+            m.metComps  = ones(5,1);
+            m.metCharges= zeros(5,1);
+            m.comps     = {'c'};
+            m.compNames = {'cytosol'};
+            m.S         = sparse([-0.5 0; 0 -0.5; 0 0; 1 0; 0 1]);
+            m.lb = [0;0]; m.ub = [1000;1000]; m.rev = [0;0]; m.c = [0;0]; m.b = zeros(5,1);
+            m.grRules = {'';''}; m.genes = {}; m.rxnGeneMat = sparse(2,0);
+
+            cfg = struct();
+            cfg.biomass_rxn = 'R1';
+            cfg.proton_met  = 'h_c';
+            cfg.components  = {struct('name','protein', ...
+                'pseudoreaction_name','protein pseudoreaction','mass_strategy','grams'), ...
+                struct('name','DNA', ...
+                'pseudoreaction_name','DNA pseudoreaction','mass_strategy','grams')};
+        end
+
         function [m, cfg] = protonToyModel()
             % One pseudoreaction: x_c -> protein, with h_c available to carry
             % the charge balance.

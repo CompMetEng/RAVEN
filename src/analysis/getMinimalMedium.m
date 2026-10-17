@@ -50,6 +50,16 @@ function [medium, mediumIdx] = getMinimalMedium(model, varargin)
 %
 % A y_i = 0 forces reaction i to carry non-negative flux (no net uptake);
 % y_i = 1 allows it to carry flux as low as lb_i.
+%
+% The minimal number of uptakes is guaranteed, but the medium itself need
+% not be unique: when several media of the same size support the growth
+% rate, the solver returns one of them, and another solver or solver
+% version can return a different one.
+%
+% The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled
+% GLPK solves it for small models (with a RAVEN:glpkMILP warning); for
+% larger models Gurobi is much faster and more reliable
+% (setRavenSolver('gurobi')).
 
 p = parseRAVENargs(varargin, {'minGrowth',[]; 'verbose',true});
 minGrowth = p.minGrowth;

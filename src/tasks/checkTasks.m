@@ -8,6 +8,12 @@ function [taskReport, essentialRxns, taskStructure, essentialFluxes]=checkTasks(
 % one new equation, and one change of reaction bounds. If more bounds are
 % needed to define the task, then several rows can be used for each task.
 %
+% The task inputs and outputs are applied to the boundary metabolites of
+% the model. The model's own exchange reactions are not closed: they keep
+% their bounds, so in a model without boundary metabolites they stay open
+% during every task. To let the task define the whole boundary, run
+% checkTasks on closeModel(model).
+%
 % Parameters
 % ----------
 % model : struct

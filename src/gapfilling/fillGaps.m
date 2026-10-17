@@ -55,7 +55,7 @@ function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(m
 %     - 'reference'   : MILP-based connectivity maximisation
 %     - 'fastLP'      : L1-norm LP relaxation via FASTCORE (gapFillFastLP)
 %     - 'swiftLP'     : SWIFTCORE single-LP variant (gapFillFastLP)
-%     - 'gapfillMILP' : growth-floor MILP with directionality repair
+%     - 'gapfillMILP' : growth-floor MILP adding database reactions
 %                       (gapFillMILP). Uses only models{1} as the database.
 %     - 'topological' : BFS metabolite producibility pre-screening
 %                       (gapFillTopological); no model modification.
@@ -92,6 +92,13 @@ function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(m
 %     [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=...
 %         fillGaps(model,models,allowNetProduction,useModelConstraints,...
 %         supressWarnings,rxnScores,params);
+%
+% Notes
+% -----
+% The 'reference' and 'gapfillMILP' algorithms solve a MILP with the
+% solver set by setRavenSolver. RAVEN's bundled GLPK solves it for small
+% models (with a RAVEN:glpkMILP warning); for larger models Gurobi is much
+% faster and more reliable (setRavenSolver('gurobi')).
 %
 % See Also
 % --------
@@ -135,7 +142,7 @@ switch lower(p.algorithm)
         if numel(models) < 1
             error('RAVEN:badInput', 'fillGaps: gapfillMILP requires at least one reference model.');
         end
-        [addedRxns, ~, newModel, exitFlag] = gapFillMILP(model, models{1}, ...
+        [addedRxns, newModel, exitFlag] = gapFillMILP(model, models{1}, ...
             'minGrowth', p.minGrowth, 'verbose', p.verbose, 'params', params);
         newConnected = {};
         cannotConnect = {};
