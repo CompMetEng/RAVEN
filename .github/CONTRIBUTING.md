@@ -41,7 +41,7 @@ A more detailed explanation or comments can be left in the commit description.
 * A merge with the mainbranch invokes a new release (see [versioning](#versioning)).
 
 ### Versioning
-RAVEN Toolbox follows [semantic versioning](https://semver.org/). After each successful Pull Request (PR) to `main`, the `version.txt` file should be updated in a separate PR. When this PR is merged, a new [release](https://github.com/SysBioChalmers/RAVEN/releases) should be specified, with a list detailing the most significant changes since the previous release.
+RAVEN Toolbox follows [semantic versioning](https://semver.org/). After each successful Pull Request (PR) to `main`, the `version.txt` file should be updated in a separate PR. When this PR is merged, a new [release](https://github.com/CompMetEng/RAVEN/releases) should be specified, with a list detailing the most significant changes since the previous release.
 
 Ensure that the documentation is also updated (in `devel`) before creating a PR to `main`. It can be updated by running `updateDocumentation()`.
 

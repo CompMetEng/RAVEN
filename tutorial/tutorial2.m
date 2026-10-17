@@ -4,7 +4,7 @@
 %   stoichiometric modelling. It is shown how to build a simple model from
 %   scratch, set parameters and perform simple simulations.
 %   See Tutorial 2 on the RAVEN wiki for more details:
-%   https://github.com/SysBioChalmers/RAVEN/wiki/Tutorials
+%   https://raven-docs.readthedocs.io/en/latest/tutorials/
 
 %Import the model into a RAVEN model structure
 smallModel=importModel('empty.xml');

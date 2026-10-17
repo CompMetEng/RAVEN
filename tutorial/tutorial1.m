@@ -9,7 +9,7 @@
 %   this tutorial. The model is provided as the SBML file
 %   "iAL1006 v1.00.xml".
 %   See Tutorial 1 on the RAVEN wiki for more details:
-%   https://github.com/SysBioChalmers/RAVEN/wiki/Tutorials
+%   https://raven-docs.readthedocs.io/en/latest/tutorials/
 
 %Import the model from SBML. This function performs a number of checks
 %regarding the model structure (such as for incorrectly written equations
