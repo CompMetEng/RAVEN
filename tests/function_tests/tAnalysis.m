@@ -274,6 +274,24 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(rm1.metZScores, rm2.metZScores);
         end
 
+        function reporterMetabolitesUsesPopulationStd(testCase)
+            % The closed-form background assumes genes drawn with
+            % replacement from the scored pool, so it divides by the
+            % population standard deviation of the gene Z-scores.
+            m = struct();
+            m.mets       = {'A';'B'};
+            m.metNames   = {'A';'B'};
+            m.genes      = {'g1';'g2';'g3'};
+            m.S          = sparse([1 0; 0 1]);
+            m.rxnGeneMat = sparse([1 1 0; 0 0 1]);
+            pvals = [0.01; 0.2; 0.5];
+            z = sqrt(2)*erfcinv(2*pvals);
+            expectedA = ((z(1)+z(2))/sqrt(2) - sqrt(2)*mean(z)) / std(z,1);
+            rm = reporterMetabolites(m, m.genes, pvals);
+            testCase.verifyEqual(rm.metZScores(strcmp(rm.mets,'A')), expectedA, 'AbsTol', 1e-12);
+            testCase.verifyEqual(rm.metPValues(strcmp(rm.mets,'A')), 0.5*erfc(expectedA/sqrt(2)), 'AbsTol', 1e-12);
+        end
+
         function FSEOFRuns(testCase)
             biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
             [~, exchIdx] = getExchangeRxns(testCase.model);
