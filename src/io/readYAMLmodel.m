@@ -58,9 +58,11 @@ end
 % A continuation line is recognised by NOT starting with '- ': every real
 % entry in this format, at every nesting depth (including a nested list
 % under a key, e.g. an annotation sub-entry indented 6+ spaces), is itself
-% introduced with a literal leading dash, while a folded scalar's
-% continuation is raw text with no list-item marker of its own.
-newLine=regexp(line_raw,'^ {6,}([^-\s].*)','tokenExtents');
+% introduced with a list-item marker (a dash followed by a space, or a dash
+% ending the line), while a folded scalar's continuation is raw text with no
+% list-item marker of its own. Such text can itself start with a dash, as in
+% a KEGG reaction name wrapped before "-epoxidizing)".
+newLine=regexp(line_raw,'^ {6,}((?!-(\s|$))\S.*)','tokenExtents');
 brokenLine=find(~cellfun('isempty',newLine));
 for i=flip(1:numel(brokenLine))
     extraLine = char(line_raw(brokenLine(i)));
