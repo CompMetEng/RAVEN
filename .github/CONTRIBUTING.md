@@ -30,8 +30,8 @@ A more detailed explanation or comments can be left in the commit description.
 * Once the newer version for any external software (BLAST+, DIAMOND, HMMER) is available, identify the newest version which is simultaneously available for macOS, Unix/Linux and Windows
 * Create a separate branch from the `devel` branch and name it e.g. `chore/updateBinaries`
 * Commit the changes for each program and operating system separately, e.g. `chore: update HMMER (Win) to 3.2.1`
-* As soon as all binaries for particular program are updated through commits, update the corresponding license file, if available and place it in e.g. `software/blast+` directory.
-* Update the version number in `RAVENdir/software/version.txt` file.
+* As soon as all binaries for particular program are updated through commits, update the corresponding license file, if available and place it in e.g. `src/external/blast+` directory.
+* Update the version number in `RAVENdir/src/external/version.txt` file.
 * Do some testing to ensure that the new binaries are working correctly. Upon successful tests, create a Pull Request to the `devel` branch.
 
 ### Pull Requests
@@ -41,7 +41,7 @@ A more detailed explanation or comments can be left in the commit description.
 * A merge with the mainbranch invokes a new release (see [versioning](#versioning)).
 
 ### Versioning
-RAVEN Toolbox follows [semantic versioning](https://semver.org/). After each successful Pull Request (PR) to `main`, the `version.txt` file should be updated in a separate PR. When this PR is merged, a new [release](https://github.com/SysBioChalmers/RAVEN/releases) should be specified, with a list detailing the most significant changes since the previous release.
+RAVEN Toolbox follows [semantic versioning](https://semver.org/). After each successful Pull Request (PR) to `main`, the `version.txt` file should be updated in a separate PR. When this PR is merged, a new [release](https://github.com/CompMetEng/RAVEN/releases) should be specified, with a list detailing the most significant changes since the previous release.
 
 Ensure that the documentation is also updated (in `devel`) before creating a PR to `main`. It can be updated by running `updateDocumentation()`.
 

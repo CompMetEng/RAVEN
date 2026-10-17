@@ -26,4 +26,4 @@ etc. etc.
 
 **I hereby confirm that I have:**
 <!-- Note: replace [ ] with [X] to check the box -->
-- [ ] Checked that a similar issue does not [already exist](https://github.com/SysBioChalmers/RAVEN/issues?q=is%3Aissue) or is already [discussed](https://github.com/SysBioChalmers/RAVEN/discussions).
+- [ ] Checked that a similar issue does not [already exist](https://github.com/CompMetEng/RAVEN/issues?q=is%3Aissue) or is already [discussed](https://github.com/CompMetEng/RAVEN/discussions).

@@ -28,7 +28,7 @@ function [currVer, installType] = checkRaven(developMode, checkBinaries)
 %                   1:  as MATLAB Add-On
 %                   2:  neither of the above, direct download of ZIP file
 %                   This matches the installations mentioned in the wiki:
-%                   https://github.com/SysBioChalmers/RAVEN/wiki/Installation
+%                   https://raven-docs.readthedocs.io/en/latest/installation/raven.html
 %                   0 = advanced / 1 = easy / 2 = medium
 %
 % Usage: [currVer, installType] = checkRaven(developMode)
@@ -82,7 +82,7 @@ if exist(fullfile(ravenDir,'version.txt'), 'file') == 2
     if ~versionOnly
         fprintf([currVer '\n']);
         try
-            newVer=strtrim(webread('https://raw.githubusercontent.com/SysBioChalmers/RAVEN/main/version.txt'));
+            newVer=strtrim(webread('https://raw.githubusercontent.com/CompMetEng/RAVEN/main/version.txt'));
             newVerNum=str2double(strsplit(newVer,'.'));
             currVerNum=str2double(strsplit(currVer,'.'));
             for i=1:3
@@ -95,10 +95,10 @@ if exist(fullfile(ravenDir,'version.txt'), 'file') == 2
                             printOrange('     to get the latest RAVEN release\n');
                         case 1
                             printOrange(myStr('     Instructions on how to upgrade',40))
-                            fprintf('<a href="https://github.com/SysBioChalmers/RAVEN/wiki/Installation#upgrade-raven-after-easy-installation">here</a>\n');
+                            fprintf('<a href="https://raven-docs.readthedocs.io/en/latest/installation/raven.html#upgrade">here</a>\n');
                         case 2
                             printOrange(myStr('     Instructions on how to upgrade',40))
-                            fprintf('<a href="https://github.com/SysBioChalmers/RAVEN/wiki/Installation#upgrade-raven-after-medium-installation">here</a>\n');                            
+                            fprintf('<a href="https://raven-docs.readthedocs.io/en/latest/installation/raven.html#upgrade">here</a>\n');                            
                     end
                     break
                 elseif i==3
@@ -166,7 +166,7 @@ fprintf('\n=== Model import and export ===\n');
 fprintf(myStr(' > Checking libSBML version',40))
 model = [];
 try
-    evalc('model = importModel(fullfile(ravenDir,''tutorial'',''empty.xml''));');
+    evalc('model = importModel(fullfile(ravenDir,''tutorials'',''data'',''empty.xml''));');
     try
         libSBMLver=OutputSBML_RAVEN; % Only works in libSBML 5.17.0+
         fprintf([libSBMLver.libSBML_version_string '\n']);
@@ -193,7 +193,7 @@ else
 end
 
 reportCheck('   > Export SBML format', @() exportModel(model, fullfile(tmpDir,'model.xml')));
-reportCheck('   > Import YAML format', @() readYAMLmodel(fullfile(ravenDir,'tutorial','empty.yml')));
+reportCheck('   > Import YAML format', @() readYAMLmodel(fullfile(ravenDir,'tutorials','data','empty.yml')));
 reportCheck('   > Export YAML format', @() writeYAMLmodel(model, fullfile(tmpDir,'model.yml')));
 
 reportCheck('   > Export Excel format', @() exportToExcelFormat(model, fullfile(tmpDir,'model.xlsx')));
@@ -300,7 +300,7 @@ elseif ismac
 else
     binEnd = '';
 end
-cmd = ['"' fullfile(ravenDir,'software',tool,[binName binEnd]) '" ' versionArg];
+cmd = ['"' fullfile(ravenDir,'src','external',tool,[binName binEnd]) '" ' versionArg];
 [status,~] = system(cmd);
 if status ~= 0
     error('%s did not execute (exit status %d)', binName, status);
@@ -339,7 +339,7 @@ if ispc
     status = 0; % No need to run on Windows
     return;
 end
-binDir = fullfile(ravenDir,'software');
+binDir = fullfile(ravenDir,'src','external');
 
 % blast+/diamond/hmmer may be present from an on-demand download
 % (downloadRavenBinaries already chmods those) or from the offline bundle;
