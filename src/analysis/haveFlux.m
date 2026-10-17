@@ -1,9 +1,10 @@
 function I=haveFlux(model,varargin)
 % haveFlux  Check which reactions can carry a flux.
 %
-% Checks which reactions can carry a (positive or negative) flux. Is used as
-% a faster version of getAllowedBounds if it is only interesting whether the
-% reactions can carry a flux or not.
+% Checks which reactions can carry a (positive or negative) flux under the
+% model's current bounds; other media or bounds are not explored. Is used
+% as a faster version of getAllowedBounds if it is only interesting whether
+% the reactions can carry a flux or not.
 %
 % Parameters
 % ----------
@@ -28,7 +29,7 @@ function I=haveFlux(model,varargin)
 % -------
 % I : logical
 %     logical array with true if the corresponding reaction can carry a
-%     flux.
+%     flux under the tested bounds.
 %
 % Examples
 % --------
