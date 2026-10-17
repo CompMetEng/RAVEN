@@ -126,7 +126,7 @@ This function is called by:
 0045 ravenPath=findRAVENroot();
 0046 
 0047 <span class="comment">% Load COBRA field information</span>
-0048 fid             = fopen(fullfile(ravenPath,<span class="string">'conversion'</span>,<span class="string">'COBRA_structure_fields.csv'</span>)); <span class="comment">% Taken from https://github.com/opencobra/cobratoolbox/blob/develop/src/base/io/definitions/COBRA_structure_fields.csv</span>
+0048 fid             = fopen(fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'conversion'</span>,<span class="string">'COBRA_structure_fields.csv'</span>)); <span class="comment">% Taken from https://github.com/opencobra/cobratoolbox/blob/develop/src/base/io/definitions/COBRA_structure_fields.csv</span>
 0049 fieldFile       = textscan(fid,repmat(<span class="string">'%s'</span>,1,15),<span class="string">'Delimiter'</span>,<span class="string">'\t'</span>,<span class="string">'HeaderLines'</span>,1);
 0050 dbFields        = ~cellfun(@isempty,fieldFile{5}); <span class="comment">% Only keep fields with database annotations that should be translated to xxxMiriams</span>
 0051 dbFields        = dbFields &amp; ~contains(fieldFile{1},{<span class="string">'metInChIString'</span>,<span class="string">'metKEGGID'</span>,<span class="string">'metPubChemID'</span>,<span class="string">'rxnECNumbers'</span>});
@@ -136,7 +136,7 @@ This function is called by:
 0055 fclose(fid);
 0056 
 0057 <span class="comment">% Load conversion between additional COBRA fields and namespaces:</span>
-0058 fid             = fopen(fullfile(ravenPath,<span class="string">'conversion'</span>,<span class="string">'cobraNamespaces.csv'</span>));
+0058 fid             = fopen(fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'conversion'</span>,<span class="string">'cobraNamespaces.csv'</span>));
 0059 fieldFile       = textscan(fid,<span class="string">'%s %s'</span>,<span class="string">'Delimiter'</span>,<span class="string">','</span>,<span class="string">'HeaderLines'</span>,0);
 0060 COBRAfields     = [COBRAfields; fieldFile{1}];
 0061 COBRAnamespace  = [COBRAnamespace; fieldFile{2}];

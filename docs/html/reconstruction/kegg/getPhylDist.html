@@ -93,7 +93,7 @@ This function is called by:
 0027 onlyInKingdom=p.onlyInKingdom;
 0028 
 0029 ravenPath=findRAVENroot();
-0030 distFile=fullfile(ravenPath,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>,<span class="string">'keggPhylDist.mat'</span>);
+0030 distFile=fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>,<span class="string">'keggPhylDist.mat'</span>);
 0031 <span class="keyword">if</span> ~exist(distFile,<span class="string">'file'</span>)
 0032     error(<span class="string">'getPhylDist:noData'</span>, <span class="keyword">...</span>
 0033         [<span class="string">'keggPhylDist.mat not found at '</span> strrep(distFile,<span class="string">'\'</span>,<span class="string">'/'</span>) <span class="string">'.\n'</span> <span class="keyword">...</span>

@@ -300,7 +300,7 @@ This function is called by:
 0224         <span class="comment">% Ensure that RAVEN glpk binary is used, return to original</span>
 0225         <span class="comment">% directory afterwards</span>
 0226         [ravenDir,currDir]=findRAVENroot();
-0227         cd(fullfile(ravenDir,<span class="string">'software'</span>,<span class="string">'GLPKmex'</span>))
+0227         cd(fullfile(ravenDir,<span class="string">'src'</span>,<span class="string">'external'</span>,<span class="string">'GLPKmex'</span>))
 0228         [xopt, fmin, errnum, extra] = glpk(prob.c, prob.A, prob.b, prob.lb, prob.ub, prob.csense, prob.vartype, prob.osense, solverparams);
 0229         cd(currDir)
 0230 

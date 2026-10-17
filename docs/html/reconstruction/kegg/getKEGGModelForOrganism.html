@@ -451,7 +451,7 @@ This function is called by:
 0295 <span class="comment">%First remove all reactions without genes</span>
 0296 <span class="keyword">if</span> keepSpontaneous==true
 0297     fprintf(<span class="string">'Removing non-spontaneous reactions without GPR rules... '</span>);
-0298     load(fullfile(ravenPath,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>,<span class="string">'keggModel.mat'</span>),<span class="string">'isSpontaneous'</span>);
+0298     load(fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>,<span class="string">'keggModel.mat'</span>),<span class="string">'isSpontaneous'</span>);
 0299     I=~any(model.rxnGeneMat,2)&amp;~ismember(model.rxns,isSpontaneous);
 0300     spontRxnsWithGenes=model.rxns(any(model.rxnGeneMat,2)&amp;~ismember(model.rxns,isSpontaneous));
 0301 <span class="keyword">else</span>
@@ -524,12 +524,12 @@ This function is called by:
 0368     binEnd=<span class="string">''</span>;
 0369 <span class="keyword">end</span>
 0370 <span class="comment">%Fetch the HMMER binary on demand if it is not already present</span>
-0371 <span class="keyword">if</span> ~exist(fullfile(ravenPath,<span class="string">'software'</span>,<span class="string">'hmmer'</span>,[<span class="string">'hmmsearch'</span> binEnd]),<span class="string">'file'</span>)
+0371 <span class="keyword">if</span> ~exist(fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'external'</span>,<span class="string">'hmmer'</span>,[<span class="string">'hmmsearch'</span> binEnd]),<span class="string">'file'</span>)
 0372     downloadRavenBinaries({<span class="string">'hmmer'</span>});
 0373 <span class="keyword">end</span>
 0374 tblFile=[tempname <span class="string">'.tblout'</span>];
 0375 fprintf(<span class="string">'Querying the user-specified FASTA file against the KEGG Orthology specific HMMs... '</span>);
-0376 [status, output]=system([<span class="string">'&quot;'</span> fullfile(ravenPath,<span class="string">'software'</span>,<span class="string">'hmmer'</span>,[<span class="string">'hmmsearch'</span> binEnd]) <span class="string">'&quot; --cpu &quot;'</span> num2str(cores) <span class="string">'&quot; --tblout &quot;'</span> tblFile <span class="string">'&quot; &quot;'</span> libraryFile <span class="string">'&quot; &quot;'</span> fastaFile <span class="string">'&quot;'</span>]);
+0376 [status, output]=system([<span class="string">'&quot;'</span> fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'external'</span>,<span class="string">'hmmer'</span>,[<span class="string">'hmmsearch'</span> binEnd]) <span class="string">'&quot; --cpu &quot;'</span> num2str(cores) <span class="string">'&quot; --tblout &quot;'</span> tblFile <span class="string">'&quot; &quot;'</span> libraryFile <span class="string">'&quot; &quot;'</span> fastaFile <span class="string">'&quot;'</span>]);
 0377 <span class="keyword">if</span> status~=0
 0378     EM=[<span class="string">'Error when querying the concatenated HMM library:\n'</span> output];
 0379     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);

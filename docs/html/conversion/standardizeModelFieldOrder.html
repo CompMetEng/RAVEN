@@ -100,12 +100,12 @@ This function is called by:
 0029 ravenPath=findRAVENroot();
 0030 
 0031 <span class="keyword">if</span> ~isfield(model,<span class="string">'rules'</span>) <span class="comment">% Check if model is RAVEN</span>
-0032     fid = fopen(fullfile(ravenPath,<span class="string">'conversion'</span>,<span class="string">'orderRavenFields.csv'</span>));
+0032     fid = fopen(fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'conversion'</span>,<span class="string">'orderRavenFields.csv'</span>));
 0033     fields = textscan(fid,<span class="string">'%s'</span>,<span class="string">'Delimiter'</span>,<span class="string">','</span>,<span class="string">'HeaderLines'</span>,0);
 0034     fields = fields{1};
 0035     fclose(fid);
 0036 <span class="keyword">else</span> <span class="comment">% If model is COBRA</span>
-0037     fid = fopen(fullfile(ravenPath,<span class="string">'conversion'</span>,<span class="string">'COBRA_structure_fields.csv'</span>)); <span class="comment">% Taken from https://github.com/opencobra/cobratoolbox/blob/develop/src/base/io/definitions/COBRA_structure_fields.csv</span>
+0037     fid = fopen(fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'conversion'</span>,<span class="string">'COBRA_structure_fields.csv'</span>)); <span class="comment">% Taken from https://github.com/opencobra/cobratoolbox/blob/develop/src/base/io/definitions/COBRA_structure_fields.csv</span>
 0038     fields = textscan(fid,repmat(<span class="string">'%s'</span>,1,15),<span class="string">'Delimiter'</span>,<span class="string">'\t'</span>,<span class="string">'HeaderLines'</span>,1);
 0039     fields = fields{1};
 0040     fclose(fid);

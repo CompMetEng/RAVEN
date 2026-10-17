@@ -132,7 +132,7 @@ This function is called by:
 0049 keepIncomplete=p.keepIncomplete;
 0050 keepGeneral=p.keepGeneral;
 0051 
-0052 modelFile=fullfile(ravenPath,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>,<span class="string">'keggModel.mat'</span>);
+0052 modelFile=fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>,<span class="string">'keggModel.mat'</span>);
 0053 <span class="keyword">if</span> isfile(modelFile)
 0054     fprintf([<span class="string">'Importing the global KEGG model from '</span> strrep(modelFile,<span class="string">'\'</span>,<span class="string">'/'</span>) <span class="string">'... '</span>]);
 0055     load(modelFile,<span class="string">'model'</span>,<span class="string">'KOModel'</span>,<span class="string">'isSpontaneous'</span>,<span class="string">'isUndefinedStoich'</span>,<span class="string">'isIncomplete'</span>,<span class="string">'isGeneral'</span>);
