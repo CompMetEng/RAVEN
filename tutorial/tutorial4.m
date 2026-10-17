@@ -1,7 +1,7 @@
 % tutorial4
 %   This script contains the list of functions necessary for running
 %   Tutorial 4, see Tutorial 4 on the RAVEN wiki for more details:
-%   https://github.com/SysBioChalmers/RAVEN/wiki/Tutorials
+%   https://raven-docs.readthedocs.io/en/latest/tutorials/
 %   Several key stages may be missing, try to fill these gaps before
 %   checking the solutions in tutorial4_solutions. It is assumed that the
 %   user is somewhat familiar with linear programming.

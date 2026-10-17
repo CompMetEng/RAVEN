@@ -6,7 +6,7 @@
 %   measured values (with one component left to absorb whatever is left,
 %   so the total stays at 1 g/gDW), and setGAM to apply a
 %   growth-associated maintenance value. See Tutorial 7 on the RAVEN wiki
-%   for more details: https://github.com/SysBioChalmers/RAVEN/wiki/Tutorials
+%   for more details: https://raven-docs.readthedocs.io/en/latest/tutorials/
 %
 %   A small hand-built model is used instead of a real GEM, so the
 %   pseudoreaction layout is visible in full below. Real GEMs lay this out

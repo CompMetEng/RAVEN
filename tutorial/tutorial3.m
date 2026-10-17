@@ -4,7 +4,7 @@
 %   data. A simplified model of yeast metabolism is used in this approach
 %   as an example.
 %   See Tutorial 3 on the RAVEN wiki for more details:
-%   https://github.com/SysBioChalmers/RAVEN/wiki/Tutorials
+%   https://raven-docs.readthedocs.io/en/latest/tutorials/
 %
 %   It is assumed that the user has already completed Tutorial 2
 

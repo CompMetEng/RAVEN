@@ -11,4 +11,4 @@
 <!-- Chose ONE of the following two options
 and replace [ ] with [X] to check the box.-->
 - [ ] This PR has `develop` as target branch, and will be resolved with a *squash-merge*.
-- [ ] This PR has `main` as target branch, and will be resolved as descriped [here](https://github.com/SysBioChalmers/RAVEN/wiki/Development-policy#make-a-new-release).
+- [ ] This PR has `main` as target branch, and will be resolved as described [here](https://github.com/CompMetEng/RAVEN/blob/develop/.github/CONTRIBUTING.md#versioning).

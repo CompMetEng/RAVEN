@@ -28,7 +28,7 @@ function [currVer, installType] = checkRaven(developMode, checkBinaries)
 %                   1:  as MATLAB Add-On
 %                   2:  neither of the above, direct download of ZIP file
 %                   This matches the installations mentioned in the wiki:
-%                   https://github.com/SysBioChalmers/RAVEN/wiki/Installation
+%                   https://raven-docs.readthedocs.io/en/latest/installation/raven.html
 %                   0 = advanced / 1 = easy / 2 = medium
 %
 % Usage: [currVer, installType] = checkRaven(developMode)
@@ -82,7 +82,7 @@ if exist(fullfile(ravenDir,'version.txt'), 'file') == 2
     if ~versionOnly
         fprintf([currVer '\n']);
         try
-            newVer=strtrim(webread('https://raw.githubusercontent.com/SysBioChalmers/RAVEN/main/version.txt'));
+            newVer=strtrim(webread('https://raw.githubusercontent.com/CompMetEng/RAVEN/main/version.txt'));
             newVerNum=str2double(strsplit(newVer,'.'));
             currVerNum=str2double(strsplit(currVer,'.'));
             for i=1:3
@@ -95,10 +95,10 @@ if exist(fullfile(ravenDir,'version.txt'), 'file') == 2
                             printOrange('     to get the latest RAVEN release\n');
                         case 1
                             printOrange(myStr('     Instructions on how to upgrade',40))
-                            fprintf('<a href="https://github.com/SysBioChalmers/RAVEN/wiki/Installation#upgrade-raven-after-easy-installation">here</a>\n');
+                            fprintf('<a href="https://raven-docs.readthedocs.io/en/latest/installation/raven.html#upgrade">here</a>\n');
                         case 2
                             printOrange(myStr('     Instructions on how to upgrade',40))
-                            fprintf('<a href="https://github.com/SysBioChalmers/RAVEN/wiki/Installation#upgrade-raven-after-medium-installation">here</a>\n');                            
+                            fprintf('<a href="https://raven-docs.readthedocs.io/en/latest/installation/raven.html#upgrade">here</a>\n');                            
                     end
                     break
                 elseif i==3

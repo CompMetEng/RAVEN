@@ -2,7 +2,7 @@ function orderedModel=standardizeModelFieldOrder(model)
 % standardizeModelFieldOrder  Order RAVEN model structure fields.
 %
 % Orders fields of a RAVEN model structure as specified at
-% https://github.com/SysBioChalmers/RAVEN/wiki/RAVEN-Model-Structure
+% https://raven-docs.readthedocs.io/en/latest/guide/model-structure.html
 %
 % The model fields themselves are not changed, only the order is modified.
 % For changing model fields between RAVEN and COBRA format, use
