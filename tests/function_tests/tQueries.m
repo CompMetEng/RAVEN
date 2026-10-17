@@ -293,6 +293,29 @@ classdef tQueries < RavenTestCase
             testCase.verifyEqual(idx, [1;2;3]);
         end
 
+        function getIndexesMetcompsFindsName(testCase)
+            m = testCase.model;
+            name = [m.metNames{1} '[' m.comps{m.metComps(1)} ']'];
+            testCase.verifyEqual(getIndexes(m, name, 'metcomps'), 1);
+        end
+
+        function getIndexesMetcompsAmbiguousNameErrors(testCase)
+            % Two metabolites with the same name in the same compartment
+            % cannot be told apart by name[comp]; the error names both.
+            m = testCase.model;
+            m.metNames{2} = m.metNames{1};
+            m.metComps(2) = m.metComps(1);
+            name = [m.metNames{1} '[' m.comps{m.metComps(1)} ']'];
+            try
+                getIndexes(m, name, 'metcomps');
+                testCase.verifyFail('No error for an ambiguous name[comp]');
+            catch e
+                testCase.verifySubstring(e.message, 'ambiguous');
+                testCase.verifySubstring(e.message, m.mets{1});
+                testCase.verifySubstring(e.message, m.mets{2});
+            end
+        end
+
         function getIndexesLogical(testCase)
             lg = getIndexes(testCase.model, testCase.model.rxns(1), 'rxns', true);
             testCase.verifyClass(lg, 'logical');

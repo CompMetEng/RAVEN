@@ -12,6 +12,8 @@ function indexes=getIndexes(model, objects, type, varargin)
 %     'rxns', 'mets', or 'genes' depending on what to retrieve. 'metnames'
 %     queries metabolite names, while 'metcomps' allows providing specific
 %     metabolites and their compartments in the format metaboliteName[comp].
+%     An error is raised if such a name matches no metabolite, or more than
+%     one.
 %     If a model.ec structure exists (GECKO 3), then also 'ecenzymes',
 %     'ecrxns' and 'ecgenes' are allowed.
 %
@@ -65,10 +67,14 @@ switch type
         for i=1:numel(objects)
             index=find(strcmp(mets(i),model.metNames));
             index=index(strcmp(comps(i),model.comps(model.metComps(index))));
-            if ~isempty(index)
+            if isscalar(index)
                 indexes(i)=index;
+            elseif isempty(index)
+                error(['Could not find object ''' objects{i} ''' in the model']);
             else
-                error(['Could not find object ' objects{i} ' in the model']);
+                error(['''' objects{i} ''' is ambiguous: it matches the ' ...
+                    'metabolites ' strjoin(model.mets(index),', ') ...
+                    '. Use metabolite ids (type ''mets'') instead.']);
             end
         end
         indexes=indexes(:);
