@@ -29,6 +29,25 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(I1, I2);
         end
 
+        function haveFluxAllDeadEnds(testCase)
+            % A model in which every reaction is a dead end has nothing
+            % left to solve after simplification; all reactions are
+            % blocked and no solver error is raised.
+            m = struct();
+            m.id = 'deadEnds'; m.rxns = {}; m.S = []; m.rev = [];
+            m.mets = {'A';'B';'C'}; m.metNames = m.mets;
+            m.comps = {'c'}; m.compNames = m.comps; m.metComps = [1;1;1];
+            m.genes = {}; m.grRules = {}; m.rxnGeneMat = [];
+            r = struct();
+            r.rxns = {'R1';'R2'};
+            r.equations = {'A[c] => B[c]';'B[c] => C[c]'};
+            evalc('m = addRxns(m, r, 3);');
+            m.lb = [0;0]; m.ub = [1000;1000];
+            m.c = [0;0]; m.b = zeros(3,1);
+            I = haveFlux(m);
+            testCase.verifyEqual(I, [false; false]);
+        end
+
         function getMinNrFluxesReturnsFlux(testCase)
             testCase.assumeMILPSolver();
             evalc('[x, I, exitFlag] = getMinNrFluxes(testCase.model, testCase.model.rxns);');

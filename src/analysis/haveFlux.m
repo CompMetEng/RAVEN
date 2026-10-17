@@ -66,6 +66,13 @@ rxns=model.rxns(indexes);
 %First remove all dead-end reactions
 smallModel=simplifyModel(model,false,false,true,true);
 
+%Nothing is left to solve when every reaction is a dead end, and reactions
+%without metabolites are limited by their bounds only
+if isempty(smallModel.rxns) || isempty(smallModel.mets)
+    I=ismember(rxns,smallModel.rxns(smallModel.ub>cutOff | smallModel.lb<-cutOff));
+    return
+end
+
 %Get the indexes of the reactions in the connected model
 indexes=getIndexes(smallModel,intersect(smallModel.rxns,rxns),'rxns');
 J=false(numel(indexes),1);
