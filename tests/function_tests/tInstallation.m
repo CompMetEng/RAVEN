@@ -49,6 +49,20 @@ classdef tInstallation < RavenTestCase
             testCase.verifyTrue(islogical(status) || isnumeric(status));
         end
 
+        function fetchToolboxAssetChecksDownloads(testCase)
+            % A small published asset is downloaded and matches the
+            % checksum of the toolbox-assets manifest; a second call reuses
+            % the file.
+            d = tempname;
+            cleanup = onCleanup(@() rmdir(d, 's'));
+            p = fetchToolboxAsset(d, 'transporters-2026-07-01', 'tcdb_substrates.tsv');
+            testCase.verifyTrue(isfile(p));
+            testCase.verifyFalse(isfile([p '.part']));
+            info = dir(p);
+            testCase.verifyEqual(info.bytes, 219635);
+            testCase.verifyEqual(fetchToolboxAsset(d, 'transporters-2026-07-01', 'tcdb_substrates.tsv'), p);
+        end
+
         function addRavenToUserPathExists(testCase)
             testCase.verifyEqual(exist('addRavenToUserPath','file'), 2);
         end
