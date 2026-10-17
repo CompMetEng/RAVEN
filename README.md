@@ -1,4 +1,4 @@
-<img src="./RAVEN.png" width="200px">
+<img src="img/RAVEN.png" width="200px">
 
 [![Current release](https://img.shields.io/github/release/CompMetEng/RAVEN/all.svg)](https://github.com/CompMetEng/RAVEN/releases/)
 [![GitHub Discussions](https://img.shields.io/github/discussions-search?query=repo%3ACompMetEng%2FRAVEN&label=GitHub%20Discussions)](https://github.com/CompMetEng/RAVEN/discussions)
