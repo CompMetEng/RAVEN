@@ -26,7 +26,7 @@ b = b(:);
 norms = sqrt(sum(A.^2, 2));
 
 % Variables [x (n, free); r (1, >=0)]; minimise -r (maximises the ball radius).
-prob.A      = [A, norms];
+prob.A      = sparse([A, norms]);      % Gurobi and SCIP require a sparse A
 prob.a      = prob.A;
 prob.b      = b;
 prob.csense = repmat('L', 1, m);

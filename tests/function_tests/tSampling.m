@@ -109,6 +109,17 @@ classdef tSampling < RavenTestCase
             testCase.verifyLessThan(max(abs(resid(:))), 1e-6);
         end
 
+        function randomSamplingCHRRWithGurobi(testCase)
+            % sampleChebyshevCenter must hand Gurobi a sparse constraint
+            % matrix, which Gurobi requires.
+            testCase.assumeSolver('gurobi');
+            evalc('setRavenSolver(''gurobi'')');
+            testCase.addTeardown(@() evalc('setRavenSolver(''glpk'')'));
+            evalc(['sols = randomSampling(testCase.model, 10, ''method'', ''chrr'', ' ...
+                '''thinning'', 5, ''nBurnin'', 20, ''seed'', 1);']);
+            testCase.verifySize(sols, [numel(testCase.model.rxns), 10]);
+        end
+
         function randomSamplingCHRRExposesInfo(testCase)
             % The CHRR convergence diagnostics must be reachable through the
             % documented randomSampling entry point, not only sampleCHRR.
