@@ -39,6 +39,12 @@ function I=haveFlux(model,varargin)
 % -----
 % If a model has +/- Inf bounds then those are replaced with an arbitary
 % large value of +/- 10000 prior to solving.
+%
+% Dead-end reactions are removed (simplifyModel) before solving. A dead-end
+% reaction with a forced flux (lb > 0 or ub < 0) makes the model infeasible,
+% but it is removed like any other dead end, so the remaining reactions are
+% tested as if it were absent. A forced flux elsewhere in an infeasible
+% model gives false for all reactions.
 
 p=parseRAVENargs(varargin, {'cutOff',10^-6; 'rxns',[]; 'seed',[]});
 if ~isempty(p.seed)
