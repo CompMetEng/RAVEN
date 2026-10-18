@@ -37,6 +37,12 @@
  them, so callers supply the release tag and asset name rather than
  this function hardcoding either.
 
+ A download is checked against the SHA-256 checksum that the
+ toolbox-assets manifest (release manifest-v3) lists for it. A file whose
+ checksum differs is deleted and an error is raised. An asset that the
+ manifest does not list, or a manifest that cannot be read, gives a
+ warning and the file is kept unchecked.
+
  Parameters
  ----------
  destDir : char
@@ -61,7 +67,9 @@ This function is called by:
 <li><a href="downloadRavenBinaries.html" class="code" title="function downloadRavenBinaries(tools)">downloadRavenBinaries</a>	downloadRavenBinaries</li></ul>
 <!-- crossreference -->
 
-
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function sha=manifestChecksum(url)</a></li><li><a href="#_sub2" class="code">function sha=findUrl(node,url)</a></li><li><a href="#_sub3" class="code">function sha=sha256File(path)</a></li></ul>
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function localPath=fetchToolboxAsset(destDir,releaseTag,assetName)</a>
@@ -75,39 +83,127 @@ This function is called by:
 0009 <span class="comment">% them, so callers supply the release tag and asset name rather than</span>
 0010 <span class="comment">% this function hardcoding either.</span>
 0011 <span class="comment">%</span>
-0012 <span class="comment">% Parameters</span>
-0013 <span class="comment">% ----------</span>
-0014 <span class="comment">% destDir : char</span>
-0015 <span class="comment">%     directory to download into (created if it does not exist yet).</span>
-0016 <span class="comment">% releaseTag : char</span>
-0017 <span class="comment">%     the toolbox-assets release tag, e.g. 'kegg118'.</span>
-0018 <span class="comment">% assetName : char</span>
-0019 <span class="comment">%     the release asset file name, e.g. 'kegg118_core.tar.gz'.</span>
-0020 <span class="comment">%</span>
-0021 <span class="comment">% Returns</span>
-0022 <span class="comment">% -------</span>
-0023 <span class="comment">% localPath : char</span>
-0024 <span class="comment">%     path to the downloaded file.</span>
-0025 
-0026 <span class="keyword">if</span> ~isfolder(destDir)
-0027     mkdir(destDir);
-0028 <span class="keyword">end</span>
-0029 localPath=fullfile(destDir,assetName);
-0030 <span class="keyword">if</span> isfile(localPath)
-0031     <span class="keyword">return</span>;
-0032 <span class="keyword">end</span>
-0033 fprintf([<span class="string">'Downloading '</span> assetName <span class="string">'... '</span>]);
-0034 <span class="keyword">try</span>
-0035     websave(localPath,[<span class="string">'https://github.com/CompMetEng/toolbox-assets/releases/download/'</span> releaseTag <span class="string">'/'</span> assetName]);
-0036 <span class="keyword">catch</span> ME
-0037     <span class="keyword">if</span> strcmp(ME.identifier,<span class="string">'MATLAB:webservices:HTTP404StatusCodeError'</span>)
-0038         error(<span class="string">'Failed to download %s, the server returned a 404 error, try again later. If the problem persists please report it on the RAVEN GitHub Issues page: https://github.com/SysBioChalmers/RAVEN/issues'</span>,assetName)
-0039     <span class="keyword">else</span>
-0040         rethrow(ME);
-0041     <span class="keyword">end</span>
-0042 <span class="keyword">end</span>
-0043 fprintf(<span class="string">'COMPLETE\n'</span>);
-0044 <span class="keyword">end</span></pre></div>
+0012 <span class="comment">% A download is checked against the SHA-256 checksum that the</span>
+0013 <span class="comment">% toolbox-assets manifest (release manifest-v3) lists for it. A file whose</span>
+0014 <span class="comment">% checksum differs is deleted and an error is raised. An asset that the</span>
+0015 <span class="comment">% manifest does not list, or a manifest that cannot be read, gives a</span>
+0016 <span class="comment">% warning and the file is kept unchecked.</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">% Parameters</span>
+0019 <span class="comment">% ----------</span>
+0020 <span class="comment">% destDir : char</span>
+0021 <span class="comment">%     directory to download into (created if it does not exist yet).</span>
+0022 <span class="comment">% releaseTag : char</span>
+0023 <span class="comment">%     the toolbox-assets release tag, e.g. 'kegg118'.</span>
+0024 <span class="comment">% assetName : char</span>
+0025 <span class="comment">%     the release asset file name, e.g. 'kegg118_core.tar.gz'.</span>
+0026 <span class="comment">%</span>
+0027 <span class="comment">% Returns</span>
+0028 <span class="comment">% -------</span>
+0029 <span class="comment">% localPath : char</span>
+0030 <span class="comment">%     path to the downloaded file.</span>
+0031 
+0032 <span class="keyword">if</span> ~isfolder(destDir)
+0033     mkdir(destDir);
+0034 <span class="keyword">end</span>
+0035 localPath=fullfile(destDir,assetName);
+0036 <span class="keyword">if</span> isfile(localPath)
+0037     <span class="keyword">return</span>;
+0038 <span class="keyword">end</span>
+0039 url=[<span class="string">'https://github.com/CompMetEng/toolbox-assets/releases/download/'</span> releaseTag <span class="string">'/'</span> assetName];
+0040 partPath=[localPath <span class="string">'.part'</span>];
+0041 fprintf([<span class="string">'Downloading '</span> assetName <span class="string">'... '</span>]);
+0042 <span class="keyword">try</span>
+0043     websave(partPath,url);
+0044 <span class="keyword">catch</span> ME
+0045     <span class="keyword">if</span> isfile(partPath)
+0046         delete(partPath);
+0047     <span class="keyword">end</span>
+0048     <span class="keyword">if</span> strcmp(ME.identifier,<span class="string">'MATLAB:webservices:HTTP404StatusCodeError'</span>)
+0049         error(<span class="string">'Failed to download %s, the server returned a 404 error, try again later. If the problem persists please report it on the RAVEN GitHub Issues page: https://github.com/CompMetEng/RAVEN/issues'</span>,assetName)
+0050     <span class="keyword">else</span>
+0051         rethrow(ME);
+0052     <span class="keyword">end</span>
+0053 <span class="keyword">end</span>
+0054 expected=<a href="#_sub1" class="code" title="subfunction sha=manifestChecksum(url)">manifestChecksum</a>(url);
+0055 <span class="keyword">if</span> isempty(expected)
+0056     warning(<span class="string">'RAVEN:fetchToolboxAsset:unverified'</span>,[<span class="string">'The toolbox-assets manifest gives no '</span> <span class="keyword">...</span>
+0057         <span class="string">'checksum for %s; the download is not verified.'</span>],assetName);
+0058 <span class="keyword">else</span>
+0059     actual=<a href="#_sub3" class="code" title="subfunction sha=sha256File(path)">sha256File</a>(partPath);
+0060     <span class="keyword">if</span> ~strcmpi(actual,expected)
+0061         delete(partPath);
+0062         error(<span class="string">'RAVEN:fetchToolboxAsset:checksum'</span>,[<span class="string">'The download of %s is not the published '</span> <span class="keyword">...</span>
+0063             <span class="string">'file (SHA-256 %s, expected %s) and was deleted. Try again; if it persists, '</span> <span class="keyword">...</span>
+0064             <span class="string">'report it on the RAVEN GitHub Issues page: https://github.com/CompMetEng/RAVEN/issues'</span>], <span class="keyword">...</span>
+0065             assetName,actual,expected)
+0066     <span class="keyword">end</span>
+0067 <span class="keyword">end</span>
+0068 movefile(partPath,localPath);
+0069 fprintf(<span class="string">'COMPLETE\n'</span>);
+0070 <span class="keyword">end</span>
+0071 
+0072 <a name="_sub1" href="#_subfunctions" class="code">function sha=manifestChecksum(url)</a>
+0073 <span class="comment">% The sha256 the toolbox-assets manifest lists for an asset URL, or '' when</span>
+0074 <span class="comment">% it lists none or cannot be read. The manifest is read once per session.</span>
+0075 <span class="keyword">persistent</span> manifest
+0076 sha=<span class="string">''</span>;
+0077 <span class="keyword">if</span> isempty(manifest)
+0078     <span class="keyword">try</span>
+0079         manifest=webread(<span class="string">'https://github.com/CompMetEng/toolbox-assets/releases/download/manifest-v3/manifest.json'</span>, <span class="keyword">...</span>
+0080             weboptions(<span class="string">'ContentType'</span>,<span class="string">'json'</span>,<span class="string">'Timeout'</span>,30));
+0081     <span class="keyword">catch</span> ME
+0082         warning(<span class="string">'RAVEN:fetchToolboxAsset:manifest'</span>,<span class="string">'Cannot read the toolbox-assets manifest: %s'</span>,ME.message);
+0083         <span class="keyword">return</span>
+0084     <span class="keyword">end</span>
+0085 <span class="keyword">end</span>
+0086 sha=<a href="#_sub2" class="code" title="subfunction sha=findUrl(node,url)">findUrl</a>(manifest,url);
+0087 <span class="keyword">end</span>
+0088 
+0089 <a name="_sub2" href="#_subfunctions" class="code">function sha=findUrl(node,url)</a>
+0090 <span class="comment">% Depth-first search for a struct with this url and a sha256 field. The</span>
+0091 <span class="comment">% manifest's file names are not valid MATLAB field names, so the search</span>
+0092 <span class="comment">% goes by value.</span>
+0093 sha=<span class="string">''</span>;
+0094 <span class="keyword">if</span> isstruct(node)
+0095     <span class="keyword">for</span> k=1:numel(node)
+0096         <span class="keyword">if</span> isfield(node(k),<span class="string">'url'</span>) &amp;&amp; isfield(node(k),<span class="string">'sha256'</span>) &amp;&amp; strcmp(node(k).url,url)
+0097             sha=node(k).sha256;
+0098             <span class="keyword">return</span>
+0099         <span class="keyword">end</span>
+0100         f=fieldnames(node(k));
+0101         <span class="keyword">for</span> i=1:numel(f)
+0102             sha=<a href="#_sub2" class="code" title="subfunction sha=findUrl(node,url)">findUrl</a>(node(k).(f{i}),url);
+0103             <span class="keyword">if</span> ~isempty(sha)
+0104                 <span class="keyword">return</span>
+0105             <span class="keyword">end</span>
+0106         <span class="keyword">end</span>
+0107     <span class="keyword">end</span>
+0108 <span class="keyword">elseif</span> iscell(node)
+0109     <span class="keyword">for</span> i=1:numel(node)
+0110         sha=<a href="#_sub2" class="code" title="subfunction sha=findUrl(node,url)">findUrl</a>(node{i},url);
+0111         <span class="keyword">if</span> ~isempty(sha)
+0112             <span class="keyword">return</span>
+0113         <span class="keyword">end</span>
+0114     <span class="keyword">end</span>
+0115 <span class="keyword">end</span>
+0116 <span class="keyword">end</span>
+0117 
+0118 <a name="_sub3" href="#_subfunctions" class="code">function sha=sha256File(path)</a>
+0119 <span class="comment">% SHA-256 of a file as lower-case hex, read in chunks.</span>
+0120 md=java.security.MessageDigest.getInstance(<span class="string">'SHA-256'</span>);
+0121 fid=fopen(path,<span class="string">'r'</span>);
+0122 cleanup=onCleanup(@() fclose(fid));
+0123 <span class="keyword">while</span> true
+0124     chunk=fread(fid,2^24,<span class="string">'*uint8'</span>);
+0125     <span class="keyword">if</span> isempty(chunk)
+0126         <span class="keyword">break</span>
+0127     <span class="keyword">end</span>
+0128     md.update(typecast(chunk,<span class="string">'int8'</span>));
+0129 <span class="keyword">end</span>
+0130 digest=typecast(md.digest(),<span class="string">'uint8'</span>);
+0131 sha=lower(reshape(dec2hex(digest,2)',1,[]));
+0132 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>
