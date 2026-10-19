@@ -264,12 +264,6 @@ function [x,I,exitFlag]=minNrFluxesReversible(model,toMinimize,scores,params,ver
 %One binary per reaction, on the reversible model. Trades a larger
 %constraint matrix for half the binaries on reversible reactions.
 
-% glpk solver as implemented by COBRA does not work well for MILP.
-global CBT_MILP_SOLVER
-if strcmp(getpref('RAVEN','solver'),'cobra') && strcmp(CBT_MILP_SOLVER,'glpk')
-    error('RAVEN:badInput', '%s', 'The current solver is set to ''cobra'', while in COBRA the MILP solver has been set to ''glpk''. The COBRA implementation of glpk is not well suitable for solving MILPs. Please install the Gurobi or an alternative MILP solver.');
-end
-
 exitFlag=1;
 
 %The trick to make this possible using a reversible model is that for

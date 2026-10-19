@@ -5,9 +5,9 @@ Anybody is welcome to contribute to the development of the RAVEN Toolbox, but pl
 Each function should start with a commented section describing the function and explaining the parameters. Existing functions can clarify what style should be used.
 
 ### Bugfixes, New Features and Functions
-* For any development, whether bug fixes, introducing new functions or new/updated features for existing functions: make a separate branch from `devel` and name the branch for instance after the function/feature you are fixing/developing. If you work on a fix, start the branch name with `fix/`, if you work on a feature, start the branch name with `feat/`. Examples: `fix/format_reactions` or `feat/new_algorithms`.
+* For any development, whether bug fixes, introducing new functions or new/updated features for existing functions: make a separate branch from `develop` and name the branch for instance after the function/feature you are fixing/developing. If you work on a fix, start the branch name with `fix/`, if you work on a feature, start the branch name with `feat/`. Examples: `fix/format_reactions` or `feat/new_algorithms`.
 * Make commits to this branch while developing. Aim for backward compatibility, and try to avoid very new MATLAB functions when possible, to accommodate users with older MATLAB versions.
-* When you are happy with your new function/feature, make a pull request to the `devel` branch. Also, see [Pull request](#pull-request) below.
+* When you are happy with your new function/feature, make a pull request to the `develop` branch. Also, see [Pull request](#pull-request) below.
 
 ### Semantic Commits
 Use semantic commit messages to make it easier to show what you are aiming to do:
@@ -28,14 +28,14 @@ A more detailed explanation or comments can be left in the commit description.
 
 ### External Software Update
 * Once the newer version for any external software (BLAST+, DIAMOND, HMMER) is available, identify the newest version which is simultaneously available for macOS, Unix/Linux and Windows
-* Create a separate branch from the `devel` branch and name it e.g. `chore/updateBinaries`
+* Create a separate branch from the `develop` branch and name it e.g. `chore/updateBinaries`
 * Commit the changes for each program and operating system separately, e.g. `chore: update HMMER (Win) to 3.2.1`
 * As soon as all binaries for particular program are updated through commits, update the corresponding license file, if available and place it in e.g. `src/external/blast+` directory.
 * Update the version number in `RAVENdir/src/external/version.txt` file.
-* Do some testing to ensure that the new binaries are working correctly. Upon successful tests, create a Pull Request to the `devel` branch.
+* Do some testing to ensure that the new binaries are working correctly. Upon successful tests, create a Pull Request to the `develop` branch.
 
 ### Pull Requests
-* No changes should be directly committed to the `main` or `devel` branches. Commits are made to side branches, after which pull requests are made for merging with `main` or `devel`.
+* No changes should be directly committed to the `main` or `develop` branches. Commits are made to side branches, after which pull requests are made for merging with `main` or `develop`.
 * The person making the pull request and the one accepting the merge _cannot_ be the same person.
 * Typically, wait a few days before merging, to allow for other developers to inspect the pull request.
 * A merge with the mainbranch invokes a new release (see [versioning](#versioning)).
@@ -43,11 +43,11 @@ A more detailed explanation or comments can be left in the commit description.
 ### Versioning
 RAVEN Toolbox follows [semantic versioning](https://semver.org/). After each successful Pull Request (PR) to `main`, the `version.txt` file should be updated in a separate PR. When this PR is merged, a new [release](https://github.com/CompMetEng/RAVEN/releases) should be specified, with a list detailing the most significant changes since the previous release.
 
-Ensure that the documentation is also updated (in `devel`) before creating a PR to `main`. It can be updated by running `updateDocumentation()`.
+Ensure that the documentation is also updated (in `develop`) before creating a PR to `main`. It can be updated by running `updateDocumentation()`.
 
 ### Categorize Releases
 * PRs pushed into `main` should be patch releases by default.
-* Developers who push PRs to `devel` may propose target release categories (e.g. minor or patch) that can be commented on and discussed by reviewers and other developers.
+* Developers who push PRs to `develop` may propose target release categories (e.g. minor or patch) that can be commented on and discussed by reviewers and other developers.
 * As a result of the above step, minor releases hopefully can be determined.
 * To help the process of categorizing releases, some conditions are suggested qualification for minor releases:
     * with database updates (e.g. KEGG)

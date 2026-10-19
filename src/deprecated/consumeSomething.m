@@ -11,9 +11,7 @@ function [solution, metabolite]=consumeSomething(model,varargin)
 %
 % findLeakMetabolite inserts allowExcretion (a produce-only option) in
 % position 4, so the arguments are translated rather than forwarded
-% verbatim. Forwarding them verbatim, as this wrapper previously did,
-% silently shifted params into allowExcretion and ignoreIntBounds into
-% params, so a requested ignoreIntBounds was dropped.
+% verbatim.
 %
 % See Also
 % --------
