@@ -364,8 +364,14 @@ for i=1:numel(line_key)
                 model = readFieldValue(model, 'metCharges', tline_value, pos);
                 readList=''; miriamKey='';
             case 'notes'
-                model = readFieldValue(model, 'metNotes', tline_value, pos);
-                readList=''; miriamKey='';
+                % A notes map (other tools' keys, as cobrapy and
+                % raven-toolbox write them) is read into the note text.
+                if isempty(tline_value) || strcmp(tline_value, '!!omap')
+                    readList = 'notes';
+                else
+                    model = readFieldValue(model, 'metNotes', tline_value, pos);
+                    readList=''; miriamKey='';
+                end
             case 'inchis'
                 model = readFieldValue(model, 'inchis', tline_value, pos);
                 readList=''; miriamKey='';
@@ -399,6 +405,8 @@ for i=1:numel(line_key)
                 switch readList
                     case 'annotation'
                         [metMiriams, miriamKey, metMirNo] = gatherAnnotation(pos,metMiriams,tline_key,tline_value,miriamKey,metMirNo);
+                    case 'notes'
+                        model = appendNote(model, 'metNotes', tline_key, tline_value, pos);
                     case 'smilesInAnnotation'
                         % A bare list item ("- OC(=O)...") has no colon,
                         % so tline_key is empty --- still inside the list.
@@ -445,8 +453,12 @@ for i=1:numel(line_key)
                 % `notes` is the canonical reaction-side key; `rxnNotes`
                 % is the legacy RAVEN MATLAB key, kept here for
                 % backward-compatible reads.
-                model = readFieldValue(model, 'rxnNotes', tline_value, pos);
-                readList=''; miriamKey='';
+                if isempty(tline_value) || strcmp(tline_value, '!!omap')
+                    readList = 'notes';
+                else
+                    model = readFieldValue(model, 'rxnNotes', tline_value, pos);
+                    readList=''; miriamKey='';
+                end
             case 'rxnFrom'
                 model = readFieldValue(model, 'rxnFrom', tline_value, pos);
                 readList=''; miriamKey='';
@@ -524,6 +536,8 @@ for i=1:numel(line_key)
                         subSysNo=subSysNo+1;
                     case 'annotation'
                         [rxnMiriams, miriamKey,rxnMirNo] = gatherAnnotation(pos,rxnMiriams,tline_key,tline_value,miriamKey,rxnMirNo);
+                    case 'notes'
+                        model = appendNote(model, 'rxnNotes', tline_key, tline_value, pos);
                     case 'equation'
                         coeff = sscanf(tline_value,'%f');
                         equations(equatiNo,1:3)={pos,tline_key,coeff};
@@ -876,6 +890,18 @@ if numel(model.(fieldName))<pos-1
     model.(fieldName)(end+1:pos,1) = {''};
 end
 model.(fieldName)(pos,1) = {value};
+end
+
+function model = appendNote(model, fieldName, key, value, pos)
+% One entry of a notes map: its value for the key 'note' (RAVEN's own note
+% text), 'key: value' otherwise; entries are separated by '; '.
+if ~strcmp(key, 'note')
+    value = [key ': ' value];
+end
+if numel(model.(fieldName)) >= pos && ~isempty(model.(fieldName){pos})
+    value = [model.(fieldName){pos} '; ' value];
+end
+model = readFieldValue(model, fieldName, value, pos);
 end
 
 function [miriams,miriamKey,entryNumber] = gatherAnnotation(pos,miriams,key,value,miriamKey,entryNumber)

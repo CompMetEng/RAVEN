@@ -294,6 +294,30 @@ classdef tIO < RavenTestCase
             testCase.verifyEqual(m2.annotation.geckopyVersion, '0.2.1');
         end
 
+        function readYAMLmodelReadsNotesMaps(testCase)
+            % cobrapy and raven-toolbox write other tools' notes as a map
+            % under "notes"; its entries are read into the note text.
+            m = testCase.model;
+            m.metNotes = repmat({''}, numel(m.mets), 1);
+            m.rxnNotes = repmat({''}, numel(m.rxns), 1);
+            m.metNotes{1} = 'METPLACEHOLDER';
+            m.rxnNotes{1} = 'RXNPLACEHOLDER';
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            txt = fileread(f);
+            txt = regexprep(txt, '( *)- notes: METPLACEHOLDER', ...
+                '$1- notes: !!omap\n$1  - enzyme_usage: Enzyme-usage pseudometabolite');
+            txt = regexprep(txt, '( *)- notes: RXNPLACEHOLDER', ...
+                '$1- notes: !!omap\n$1  - geckopy_warning: no match for g1\n$1  - note: curated');
+            fid = fopen(f, 'w'); fwrite(fid, txt); fclose(fid);
+            evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyEqual(m2.metNotes{1}, 'enzyme_usage: Enzyme-usage pseudometabolite');
+            testCase.verifyEqual(m2.rxnNotes{1}, 'geckopy_warning: no match for g1; curated');
+            testCase.verifyEqual(numel(m2.mets), numel(m.mets));
+            testCase.verifyEqual(numel(m2.rxns), numel(m.rxns));
+        end
+
         function exportForGitWritesRepo(testCase)
             d = [tempname filesep];
             mkdir(d);
