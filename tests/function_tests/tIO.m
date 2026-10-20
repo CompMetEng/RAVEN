@@ -207,6 +207,32 @@ classdef tIO < RavenTestCase
             testCase.verifyEqual(numel(m2.rxns), numel(testCase.model.rxns));
         end
 
+        function writeYAMLmodelQuotesYAML11Booleans(testCase)
+            % A YAML 1.1 loader such as PyYAML reads a plain y, n, yes, no,
+            % on or off in any case as a boolean, so these values are
+            % double-quoted. Longer words that start with them stay plain.
+            m = testCase.model;
+            quoted = {'NO'; 'Y'; 'n'; 'on'; 'yes'; 'off'};
+            plain  = {'NOS1'; 'onion'; 'off-target'};
+            m.metNames(1:6)    = quoted;
+            m.metFormulas(1:6) = quoted;
+            m.metNames(7:9)    = plain;
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            lines = splitlines(fileread(f));
+            for i = 1:numel(quoted)
+                testCase.verifyTrue(any(strcmp(lines, ['    - name: "' quoted{i} '"'])), quoted{i});
+                testCase.verifyTrue(any(strcmp(lines, ['    - formula: "' quoted{i} '"'])), quoted{i});
+            end
+            for i = 1:numel(plain)
+                testCase.verifyTrue(any(strcmp(lines, ['    - name: ' plain{i}])), plain{i});
+            end
+            evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyEqual(m2.metNames(1:9), m.metNames(1:9));
+            testCase.verifyEqual(m2.metFormulas(1:6), quoted);
+        end
+
         function readYAMLmodelJoinsContinuationStartingWithDash(testCase)
             % A writer that wraps long scalars can break a name right
             % before a dash, so the continuation line starts with "-"
