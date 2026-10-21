@@ -237,16 +237,16 @@ classdef tIO < RavenTestCase
             % Non-integers are written with as many digits as needed to read
             % back exactly (as Python does), not cut at 15 digits.
             m = testCase.model;
-            m.lb(1) = 1/3;
-            m.ub(1) = 0.1 + 0.2;
+            m.lb(1) = 0.1 + 0.2;
+            m.ub(1) = 1/3;
             m.lb(2) = 1.5e-7;
             m.ub(2) = 2.5;
             f = [tempname '.yml'];
             testCase.addTeardown(@() delete(f));
             evalc('writeYAMLmodel(m, f);');
             txt = fileread(f);
-            testCase.verifySubstring(txt, 'lower_bound: 0.3333333333333333');
-            testCase.verifySubstring(txt, 'upper_bound: 0.30000000000000004');
+            testCase.verifySubstring(txt, 'upper_bound: 0.3333333333333333');
+            testCase.verifySubstring(txt, 'lower_bound: 0.30000000000000004');
             testCase.verifySubstring(txt, 'lower_bound: 1.5e-07');
             testCase.verifySubstring(txt, 'upper_bound: 2.5');
             evalc('m2 = readYAMLmodel(f);');
