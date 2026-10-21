@@ -28,7 +28,8 @@ classdef tTasks < RavenTestCase
 
         function checkTasksWarnsWhenSeveralMetabolitesShareAName(testCase)
             m = testCase.taskTestModel();
-            m.metNames{7} = 'a';   % es is now also a[s], like as
+            m.metNames{3} = 'a';   % bc is now also called a[s], like as
+            m.metComps(3) = 1;
             task = testCase.taskTestStruct();
             lastwarn('');
             [~, report] = evalc('checkTasks(m, [], true, false, false, task);');
