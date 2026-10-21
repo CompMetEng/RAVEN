@@ -207,6 +207,54 @@ classdef tIO < RavenTestCase
             testCase.verifyEqual(numel(m2.rxns), numel(testCase.model.rxns));
         end
 
+        function writeYAMLmodelQuotesYAML11Booleans(testCase)
+            % A YAML 1.1 loader such as PyYAML reads a plain y, n, yes, no,
+            % on or off in any case as a boolean, so these values are
+            % double-quoted. Longer words that start with them stay plain.
+            m = testCase.model;
+            quoted = {'NO'; 'Y'; 'n'; 'on'; 'yes'; 'off'};
+            plain  = {'NOS1'; 'onion'; 'off-target'};
+            m.metNames(1:6)    = quoted;
+            m.metFormulas(1:6) = quoted;
+            m.metNames(7:9)    = plain;
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            lines = splitlines(fileread(f));
+            for i = 1:numel(quoted)
+                testCase.verifyTrue(any(strcmp(lines, ['    - name: "' quoted{i} '"'])), quoted{i});
+                testCase.verifyTrue(any(strcmp(lines, ['    - formula: "' quoted{i} '"'])), quoted{i});
+            end
+            for i = 1:numel(plain)
+                testCase.verifyTrue(any(strcmp(lines, ['    - name: ' plain{i}])), plain{i});
+            end
+            evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyEqual(m2.metNames(1:9), m.metNames(1:9));
+            testCase.verifyEqual(m2.metFormulas(1:6), quoted);
+        end
+
+        function writeYAMLmodelWritesShortestRoundTripFloats(testCase)
+            % Non-integers are written with as many digits as needed to read
+            % back exactly (as Python does), not cut at 15 digits.
+            m = testCase.model;
+            m.lb(1) = 0.1 + 0.2;
+            m.ub(1) = 1/3;
+            m.lb(2) = 1.5e-7;
+            m.ub(2) = 2.5;
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            txt = fileread(f);
+            testCase.verifySubstring(txt, 'upper_bound: 0.3333333333333333');
+            testCase.verifySubstring(txt, 'lower_bound: 0.30000000000000004');
+            testCase.verifySubstring(txt, 'lower_bound: 1.5e-07');
+            testCase.verifySubstring(txt, 'upper_bound: 2.5');
+            evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyEqual(m2.lb(1), m.lb(1));
+            testCase.verifyEqual(m2.ub(1), m.ub(1));
+            testCase.verifyEqual(m2.lb(2), m.lb(2));
+        end
+
         function readYAMLmodelJoinsContinuationStartingWithDash(testCase)
             % A writer that wraps long scalars can break a name right
             % before a dash, so the continuation line starts with "-"

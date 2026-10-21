@@ -19,8 +19,8 @@ function [newModel,remGenes] = removeLowScoreGenes(model,geneScores,varargin)
 %     score will try to be removed.
 %
 %     If all genes associated with a reaction have a negative score, then the
-%     least-negative gene will remain; if there is a tie, one will be selected
-%     at random.
+%     least-negative gene will remain; if there is a tie, the gene listed first
+%     in the rule will be kept.
 %
 %     If a negative-scoring gene is a subunit in a complex, it will not be
 %     removed; however, the entire complex may be removed. See the following
@@ -149,7 +149,7 @@ function [updatedRule,rScore] = processSimpleRule(rule,genes,gScores,isozymeScor
 
 
 % get IDs and indices of genes involved in rule
-ruleGenes = unique(regexp(rule,'[^&|\(\) ]+','match'));
+ruleGenes = unique(regexp(rule,'[^&|\(\) ]+','match'),'stable');
 [~,geneInd] = ismember(ruleGenes,genes);
 
 % rules with one or no genes remain unchanged
@@ -164,8 +164,8 @@ if ~contains(rule,'&')  % rule contains isozymes
     scoreMethod = isozymeScoring;
     negInd = gScores(geneInd) < 0;  % NaNs will return false here
     if all(negInd)
-        % deterministic least-negative: sort descending; stable sort breaks
-        % ties by original gene order (left-to-right in the rule string)
+        % deterministic least-negative: sort descending; the stable sort
+        % breaks ties by the order of the genes in the rule string
         [~,sortOrder] = sort(gScores(geneInd),'descend');
         maxInd = sortOrder(1);
         updatedRule = ruleGenes{maxInd};
@@ -179,7 +179,7 @@ if ~contains(rule,'&')  % rule contains isozymes
     end
     
     % update ruleGenes and their indices
-    ruleGenes = unique(regexp(updatedRule,'[^&|\(\) ]+','match'));
+    ruleGenes = unique(regexp(updatedRule,'[^&|\(\) ]+','match'),'stable');
     [~,geneInd] = ismember(ruleGenes,genes);
     
 elseif ~contains(rule,'|')  % rule contains enzyme complex

@@ -382,7 +382,15 @@ end
 if x == floor(x) && abs(x) < 1e16
     s = sprintf('%.1f', x);   % e.g. 1000 -> "1000.0"
 else
-    s = sprintf('%.15g', x);
+    % Shortest text that reads back as exactly x (15 to 17 significant
+    % digits), as Python's repr does, so 1/3 is written 0.3333333333333333
+    % and a value is never rounded on the way out.
+    for digits = 15:17
+        s = sprintf(['%.' num2str(digits) 'g'], x);
+        if str2double(s) == x
+            break
+        end
+    end
 end
 end
 
@@ -549,7 +557,9 @@ function tf = needsQuote(s)
 % because the text itself is not valid as a plain block scalar (leading
 % indicator character, a mid-string ": "/" #", leading/trailing
 % whitespace, or embedded control characters). Implements the YAML 1.2
-% rules for resolving implicit scalar types and analyzing scalar style.
+% rules for resolving implicit scalar types and analyzing scalar style,
+% and also quotes the YAML 1.1 booleans y, n, yes, no, on and off in any
+% case, which YAML 1.1 loaders such as PyYAML read as booleans.
 if isempty(s)
     tf = true;
     return
@@ -557,6 +567,7 @@ end
 
 resolverPattern = [ ...
     '^(true|True|TRUE|false|False|FALSE)$|' ...
+    '^([Yy]|[Nn]|[Yy][Ee][Ss]|[Nn][Oo]|[Oo][Nn]|[Oo][Ff][Ff])$|' ...
     '^[-+]?[0-9][0-9_]*\.[0-9_]*([eE][-+]?[0-9]+)?$|' ...
     '^[-+]?[0-9][0-9_]*[eE][-+]?[0-9]+$|' ...
     '^[-+]?\.[0-9_]+([eE][-+][0-9]+)?$|' ...

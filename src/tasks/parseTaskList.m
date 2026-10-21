@@ -41,14 +41,20 @@ function taskStruct=parseTaskList(inputFile)
 %       Several IDs can be delimited by ";". If so, then the same bounds
 %       are used for all reactions. If that is not wanted, then use several
 %       rows for the task
-%     - CHANGED LB : lower bound for the reaction
-%     - CHANGED UB : upper bound for the reaction
+%     - CHANGED LB : lower bound for the reaction. If empty, the lower bound
+%       of the reaction is left as it is
+%     - CHANGED UB : upper bound for the reaction. If empty, the upper bound
+%       of the reaction is left as it is
 %     - SHOULD FAIL : true if the correct behavior of the model is to not
-%       have a feasible solution given the constraints (optional, default
+%       have a feasible solution given the constraints. Any non-empty value
+%       except 0, false and no (any case) counts as true (optional, default
 %       false)
 %     - PRINT FLUX : true if the function should print the corresponding
-%       flux distribution for a task. Can be useful for testing (optional,
-%       default false)
+%       flux distribution for a task. Can be useful for testing. Read in
+%       the same way as SHOULD FAIL (optional, default false)
+%
+%     Headers are matched ignoring case and surrounding whitespace. In the
+%     ";"-delimited cells, items are trimmed and empty items are dropped.
 %
 % Returns
 % -------
@@ -71,8 +77,10 @@ function taskStruct=parseTaskList(inputFile)
 %       reversible and 0 for irreversible)
 %     - UBequ : array with upper bounds on equations (default, 1000)
 %     - changed : cell array with reactions to change bounds for
-%     - LBrxn : array with lower bounds on changed reactions
-%     - UBrxn : array with upper bounds on changed reactions
+%     - LBrxn : array with lower bounds on changed reactions (NaN if empty,
+%       meaning the bound is left unchanged)
+%     - UBrxn : array with upper bounds on changed reactions (NaN if empty,
+%       meaning the bound is left unchanged)
 %
 % Examples
 % --------
@@ -136,8 +144,12 @@ raw=cleanSheet(raw);
 
 %Captions
 columns={'ID';'DESCRIPTION';'IN';'IN LB';'IN UB';'OUT';'OUT LB';'OUT UB';'EQU';'EQU LB';'EQU UB';'CHANGED RXN';'CHANGED LB';'CHANGED UB';'SHOULD FAIL';'PRINT FLUX';'COMMENTS'};
-%Match the columns
-[I, colI]=ismember(columns,raw(1,:));
+%Match the columns. Headers are matched ignoring case and surrounding
+%whitespace, so "id" and " IN LB " are accepted.
+header=raw(1,:);
+isText=cellfun(@ischar,header);
+header(isText)=upper(strtrim(header(isText)));
+[I, colI]=ismember(columns,header);
 
 %Only ID is required. Columns that are absent get index 0 from ismember, which
 %cannot be used to index raw, so point them at a spare empty column instead:
@@ -204,10 +216,10 @@ else
     task.id=raw{2,colI(1)};
 end
 task.description=raw{2,colI(2)};
-if ~isempty(raw{2,colI(15)})
+if isTruthy(raw{2,colI(15)})
     task.shouldFail=true;
 end
-if ~isempty(raw{2,colI(16)})
+if isTruthy(raw{2,colI(16)})
     task.printFluxes=true;
 end
 if ~isempty(raw{2,colI(17)})
@@ -217,14 +229,14 @@ end
 for i=2:size(raw,1)
     %Set the inputs
     if ischar(raw{i,colI(3)})
-        inputs=regexp(raw{i,colI(3)},';','split');
+        inputs=splitList(raw{i,colI(3)});
         task.inputs=[task.inputs;inputs(:)];
         task.LBin=[task.LBin;ones(numel(inputs),1)*raw{i,colI(4)}];
         task.UBin=[task.UBin;ones(numel(inputs),1)*raw{i,colI(5)}];
     end
     %Set the outputs
     if ischar(raw{i,colI(6)})
-        outputs=regexp(raw{i,colI(6)},';','split');
+        outputs=splitList(raw{i,colI(6)});
         task.outputs=[task.outputs;outputs(:)];
         task.LBout=[task.LBout;ones(numel(outputs),1)*raw{i,colI(7)}];
         task.UBout=[task.UBout;ones(numel(outputs),1)*raw{i,colI(8)}];
@@ -249,10 +261,11 @@ for i=2:size(raw,1)
     end
     %Add changed bounds
     if ischar(raw{i,colI(12)})
-        changed=regexp(raw{i,colI(12)},';','split');
+        changed=splitList(raw{i,colI(12)});
         task.changed=[task.changed;changed(:)];
-        task.LBrxn=[task.LBrxn;ones(numel(changed),1)*raw{i,colI(13)}];
-        task.UBrxn=[task.UBrxn;ones(numel(changed),1)*raw{i,colI(14)}];
+        %An empty bound means "leave this bound as it is", stored as NaN
+        task.LBrxn=[task.LBrxn;ones(numel(changed),1)*boundOrNaN(raw{i,colI(13)})];
+        task.UBrxn=[task.UBrxn;ones(numel(changed),1)*boundOrNaN(raw{i,colI(14)})];
     end
     
     %Check if it should add more constraints
@@ -271,10 +284,10 @@ for i=2:size(raw,1)
             task.id=raw{i+1,colI(1)};
         end
         task.description=raw{i+1,colI(2)};
-        if ~isempty(raw{i+1,colI(15)})
+        if isTruthy(raw{i+1,colI(15)})
             task.shouldFail=true;
         end
-        if ~isempty(raw{i+1,colI(16)})
+        if isTruthy(raw{i+1,colI(16)})
             task.printFluxes=true;
         end
         if ~isempty(raw{i+1,colI(17)})
@@ -285,4 +298,34 @@ end
 
 %Should add more checks, such as unique IDs and missing headers
 
+end
+
+function tf = isTruthy(x)
+% A flag cell is true unless it is empty, 0, or one of the texts "0", "false"
+% and "no" (any case).
+if isempty(x)
+    tf = false;
+elseif ischar(x) || isstring(x)
+    tf = ~ismember(lower(strtrim(char(x))),{'','0','false','no'});
+elseif isnumeric(x) || islogical(x)
+    tf = any(x(:) ~= 0);
+else
+    tf = true;
+end
+end
+
+function items = splitList(str)
+% Split a ";"-delimited cell on ";", trim each item and drop empty ones, so
+% that "A; B;" gives {'A';'B'}.
+items = strtrim(regexp(str,';','split'));
+items = items(~cellfun(@isempty,items));
+end
+
+function b = boundOrNaN(x)
+% Bound for a changed reaction: NaN (leave unchanged) when the cell is empty.
+if isempty(x)
+    b = NaN;
+else
+    b = x;
+end
 end

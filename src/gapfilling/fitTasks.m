@@ -262,11 +262,14 @@ for i=1:numel(taskStructure)
         end
         %Add changed bounds
         if ~isempty(taskStructure(i).changed)
-            tModel=setParam(tModel,'lb',taskStructure(i).changed,taskStructure(i).LBrxn);
-            tModel=setParam(tModel,'ub',taskStructure(i).changed,taskStructure(i).UBrxn);
+            %NaN bounds mean "leave unchanged"
+            lbSet=~isnan(taskStructure(i).LBrxn);
+            ubSet=~isnan(taskStructure(i).UBrxn);
+            tModel=setParam(tModel,'lb',taskStructure(i).changed(lbSet),taskStructure(i).LBrxn(lbSet));
+            tModel=setParam(tModel,'ub',taskStructure(i).changed(ubSet),taskStructure(i).UBrxn(ubSet));
             if preMerged
-                tRefModel=setParam(tRefModel,'lb',taskStructure(i).changed,taskStructure(i).LBrxn);
-                tRefModel=setParam(tRefModel,'ub',taskStructure(i).changed,taskStructure(i).UBrxn);
+                tRefModel=setParam(tRefModel,'lb',taskStructure(i).changed(lbSet),taskStructure(i).LBrxn(lbSet));
+                tRefModel=setParam(tRefModel,'ub',taskStructure(i).changed(ubSet),taskStructure(i).UBrxn(ubSet));
             end
         end
         
