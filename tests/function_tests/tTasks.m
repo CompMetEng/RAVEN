@@ -26,6 +26,16 @@ classdef tTasks < RavenTestCase
             testCase.verifyNotEmpty(ts);
         end
 
+        function checkTasksWarnsWhenSeveralMetabolitesShareAName(testCase)
+            m = testCase.taskTestModel();
+            m.metNames{7} = 'a';   % es is now also a[s], like as
+            task = testCase.taskTestStruct();
+            lastwarn('');
+            [~, report] = evalc('checkTasks(m, [], true, false, false, task);');
+            testCase.verifySubstring(lastwarn, 'Several model metabolites match');
+            testCase.verifyTrue(report.ok == 1);
+        end
+
         function parseTaskListReadsFlagsListsAndHeadersLeniently(testCase)
             % Flags: "false"/"0"/"no" are false, other text is true. Lists
             % separated by ";" are trimmed and empty items dropped. Headers

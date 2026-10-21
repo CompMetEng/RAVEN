@@ -112,6 +112,13 @@ parfor (i=1:nTasks, nW)
     if ~isempty(taskStructure(i).inputs)
         [I, J]=ismember(upper(taskStructure(i).inputs),modelMets);
         J=J(I); %Only keep the ones with matches
+        %Several model metabolites can share a name[comp]. Only the first
+        %one is constrained, so tell the user when that happens
+        dupMets=duplicateMetNames(taskStructure(i).inputs(I),modelMets);
+        if ~isempty(dupMets)
+            EM=['Several model metabolites match input(s) in "[' taskStructure(i).id '] ' taskStructure(i).description '": ' strjoin(dupMets,', ') '. Only the first match is constrained'];
+            warning('RAVEN:warning', '%s', EM);
+        end
         K=ismember(upper(taskStructure(i).inputs),'ALLMETS');
         L=~cellfun('isempty',strfind(upper(taskStructure(i).inputs),'ALLMETSIN'));
         %Check that all metabolites are either real metabolites or
@@ -165,6 +172,13 @@ parfor (i=1:nTasks, nW)
     if ~isempty(taskStructure(i).outputs)
         [I, J]=ismember(upper(taskStructure(i).outputs),modelMets);
         J=J(I); %Only keep the ones with matches
+        %Several model metabolites can share a name[comp]. Only the first
+        %one is constrained, so tell the user when that happens
+        dupMets=duplicateMetNames(taskStructure(i).outputs(I),modelMets);
+        if ~isempty(dupMets)
+            EM=['Several model metabolites match output(s) in "[' taskStructure(i).id '] ' taskStructure(i).description '": ' strjoin(dupMets,', ') '. Only the first match is constrained'];
+            warning('RAVEN:warning', '%s', EM);
+        end
         K=ismember(upper(taskStructure(i).outputs),'ALLMETS');
         L=~cellfun('isempty',strfind(upper(taskStructure(i).outputs),'ALLMETSIN'));
         %Check that all metabolites are either real metabolites or
@@ -306,4 +320,14 @@ taskReport.id=ids;
 taskReport.description=descriptions;
 taskReport.ok=ok;
 
+end
+
+function dupMets = duplicateMetNames(names,modelMets)
+% Return the (upper-case) names that match more than one model metabolite.
+dupMets = unique(upper(names));
+isDup = false(size(dupMets));
+for k = 1:numel(dupMets)
+    isDup(k) = sum(strcmp(modelMets,dupMets{k})) > 1;
+end
+dupMets = dupMets(isDup);
 end
