@@ -26,6 +26,69 @@ classdef tTasks < RavenTestCase
             testCase.verifyNotEmpty(ts);
         end
 
+        function parseTaskListReadsFlagsListsAndHeadersLeniently(testCase)
+            % Flags: "false"/"0"/"no" are false, other text is true. Lists
+            % separated by ";" are trimmed and empty items dropped. Headers
+            % are matched ignoring case and whitespace. An empty CHANGED
+            % bound is NaN (leave the bound unchanged).
+            rows = {
+                {'' 'id' 'Description' 'Should Fail' 'IN' ' in lb ' 'IN UB' 'OUT' 'OUT LB' 'OUT UB' 'EQU' 'EQU LB' 'EQU UB' 'changed rxn' 'CHANGED LB' 'CHANGED UB' 'PRINT FLUX' 'COMMENTS'}
+                {'' 'T1' 'first' 'false' 'A[c]; B[c];' '' '5' '' '' '' '' '' '' 'R1; R2' '' '10' '0' ''}
+                {'' 'T2' 'second' 'yes' ';C[c]' '2' '' '' '' '' '' '' '' 'R3' '-5' '' 'No' ''}
+                {'' 'T3' 'third' '0' '' '' '' 'D[c]' '' '' '' '' '' '' '' '' 'TRUE' ''}
+                };
+            nCols = 20;
+            lines = cell(numel(rows),1);
+            for k = 1:numel(rows)
+                r = rows{k};
+                r(end+1:nCols) = {''};
+                lines{k} = strjoin(r, sprintf('\t'));
+            end
+            f = [tempname '.txt'];
+            fid = fopen(f,'w');
+            fprintf(fid,'%s\n',lines{:});
+            fclose(fid);
+            cleanup = onCleanup(@() delete(f));
+
+            ts = parseTaskList(f);
+            testCase.verifyEqual(numel(ts), 3);
+
+            testCase.verifyFalse(ts(1).shouldFail);
+            testCase.verifyFalse(ts(1).printFluxes);
+            testCase.verifyEqual(ts(1).inputs, {'A[c]';'B[c]'});
+            testCase.verifyEqual(ts(1).LBin, [0;0]);
+            testCase.verifyEqual(ts(1).UBin, [5;5]);
+            testCase.verifyEqual(ts(1).changed, {'R1';'R2'});
+            testCase.verifyTrue(all(isnan(ts(1).LBrxn)));
+            testCase.verifyEqual(ts(1).UBrxn, [10;10]);
+
+            testCase.verifyTrue(ts(2).shouldFail);
+            testCase.verifyFalse(ts(2).printFluxes);
+            testCase.verifyEqual(ts(2).inputs, {'C[c]'});
+            testCase.verifyEqual(ts(2).LBin, 2);
+            testCase.verifyEqual(ts(2).LBrxn, -5);
+            testCase.verifyTrue(isnan(ts(2).UBrxn));
+
+            testCase.verifyFalse(ts(3).shouldFail);
+            testCase.verifyTrue(ts(3).printFluxes);
+        end
+
+        function checkTasksLeavesNaNChangedBoundsAlone(testCase)
+            m = testCase.taskTestModel();
+            task = testCase.taskTestStruct();
+            task.changed = {'R2'};
+            task.LBrxn = NaN;
+            task.UBrxn = 1000;
+            [~, report] = evalc('checkTasks(m, [], true, false, false, task);');
+            testCase.verifyTrue(report.ok == 1);
+
+            % R2 can no longer carry flux from a[s] to a[c] with UB 0, and
+            % its lower bound (-1000) is kept
+            task.UBrxn = 0;
+            [~, report] = evalc('checkTasks(m, [], true, false, false, task);');
+            testCase.verifyTrue(report.ok == 0);
+        end
+
         function parseTaskListMatchesExpected(testCase)
             % The text and Excel task definitions must parse to identical
             % structs with exactly the expected fields and values.

@@ -244,8 +244,11 @@ parfor (i=1:nTasks, nW)
     end
     %Add changed bounds
     if ~isempty(taskStructure(i).changed)
-        tModel=setParam(tModel,'lb',taskStructure(i).changed,taskStructure(i).LBrxn);
-        tModel=setParam(tModel,'ub',taskStructure(i).changed,taskStructure(i).UBrxn);
+        %NaN bounds mean "leave unchanged"
+        lbSet=~isnan(taskStructure(i).LBrxn);
+        ubSet=~isnan(taskStructure(i).UBrxn);
+        tModel=setParam(tModel,'lb',taskStructure(i).changed(lbSet),taskStructure(i).LBrxn(lbSet));
+        tModel=setParam(tModel,'ub',taskStructure(i).changed(ubSet),taskStructure(i).UBrxn(ubSet));
     end
     
     %Solve and print
