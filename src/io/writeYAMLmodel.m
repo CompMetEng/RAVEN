@@ -382,7 +382,15 @@ end
 if x == floor(x) && abs(x) < 1e16
     s = sprintf('%.1f', x);   % e.g. 1000 -> "1000.0"
 else
-    s = sprintf('%.15g', x);
+    % Shortest text that reads back as exactly x (15 to 17 significant
+    % digits), as Python's repr does, so 1/3 is written 0.3333333333333333
+    % and a value is never rounded on the way out.
+    for digits = 15:17
+        s = sprintf(['%.' num2str(digits) 'g'], x);
+        if str2double(s) == x
+            break
+        end
+    end
 end
 end
 
