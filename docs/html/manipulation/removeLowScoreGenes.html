@@ -47,8 +47,8 @@
      score will try to be removed.
 
      If all genes associated with a reaction have a negative score, then the
-     least-negative gene will remain; if there is a tie, one will be selected
-     at random.
+     least-negative gene will remain; if there is a tie, the gene listed first
+     in the rule will be kept.
 
      If a negative-scoring gene is a subunit in a complex, it will not be
      removed; however, the entire complex may be removed. See the following
@@ -116,8 +116,8 @@ This function is called by:
 0019 <span class="comment">%     score will try to be removed.</span>
 0020 <span class="comment">%</span>
 0021 <span class="comment">%     If all genes associated with a reaction have a negative score, then the</span>
-0022 <span class="comment">%     least-negative gene will remain; if there is a tie, one will be selected</span>
-0023 <span class="comment">%     at random.</span>
+0022 <span class="comment">%     least-negative gene will remain; if there is a tie, the gene listed first</span>
+0023 <span class="comment">%     in the rule will be kept.</span>
 0024 <span class="comment">%</span>
 0025 <span class="comment">%     If a negative-scoring gene is a subunit in a complex, it will not be</span>
 0026 <span class="comment">%     removed; however, the entire complex may be removed. See the following</span>
@@ -246,7 +246,7 @@ This function is called by:
 0149 
 0150 
 0151 <span class="comment">% get IDs and indices of genes involved in rule</span>
-0152 ruleGenes = unique(regexp(rule,<span class="string">'[^&amp;|\(\) ]+'</span>,<span class="string">'match'</span>));
+0152 ruleGenes = unique(regexp(rule,<span class="string">'[^&amp;|\(\) ]+'</span>,<span class="string">'match'</span>),<span class="string">'stable'</span>);
 0153 [~,geneInd] = ismember(ruleGenes,genes);
 0154 
 0155 <span class="comment">% rules with one or no genes remain unchanged</span>
@@ -261,8 +261,8 @@ This function is called by:
 0164     scoreMethod = isozymeScoring;
 0165     negInd = gScores(geneInd) &lt; 0;  <span class="comment">% NaNs will return false here</span>
 0166     <span class="keyword">if</span> all(negInd)
-0167         <span class="comment">% deterministic least-negative: sort descending; stable sort breaks</span>
-0168         <span class="comment">% ties by original gene order (left-to-right in the rule string)</span>
+0167         <span class="comment">% deterministic least-negative: sort descending; the stable sort</span>
+0168         <span class="comment">% breaks ties by the order of the genes in the rule string</span>
 0169         [~,sortOrder] = sort(gScores(geneInd),<span class="string">'descend'</span>);
 0170         maxInd = sortOrder(1);
 0171         updatedRule = ruleGenes{maxInd};
@@ -276,7 +276,7 @@ This function is called by:
 0179     <span class="keyword">end</span>
 0180     
 0181     <span class="comment">% update ruleGenes and their indices</span>
-0182     ruleGenes = unique(regexp(updatedRule,<span class="string">'[^&amp;|\(\) ]+'</span>,<span class="string">'match'</span>));
+0182     ruleGenes = unique(regexp(updatedRule,<span class="string">'[^&amp;|\(\) ]+'</span>,<span class="string">'match'</span>),<span class="string">'stable'</span>);
 0183     [~,geneInd] = ismember(ruleGenes,genes);
 0184     
 0185 <span class="keyword">elseif</span> ~contains(rule,<span class="string">'|'</span>)  <span class="comment">% rule contains enzyme complex</span>

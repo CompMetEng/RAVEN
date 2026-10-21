@@ -454,230 +454,241 @@ This function is called by:
 0382 <span class="keyword">if</span> x == floor(x) &amp;&amp; abs(x) &lt; 1e16
 0383     s = sprintf(<span class="string">'%.1f'</span>, x);   <span class="comment">% e.g. 1000 -&gt; &quot;1000.0&quot;</span>
 0384 <span class="keyword">else</span>
-0385     s = sprintf(<span class="string">'%.15g'</span>, x);
-0386 <span class="keyword">end</span>
-0387 <span class="keyword">end</span>
-0388 
-0389 <a name="_sub6" href="#_subfunctions" class="code">function writeAnnotationSimple(model, fid, miriamsField, miriamValsField, miriamNamesField, pos, indent, subIndent)</a>
-0390 <span class="comment">% Emit a bare `annotation: !!omap` block from MIRIAM cross-references only</span>
-0391 <span class="comment">% (used for genes and compartments, which carry no extra non-MIRIAM</span>
-0392 <span class="comment">% annotation key and have no established reference format to follow —</span>
-0393 <span class="comment">% compartments in particular are just a flat {id: name} map with no</span>
-0394 <span class="comment">% per-compartment annotation at all — so the layout here follows only</span>
-0395 <span class="comment">% readYAMLmodel's own expectation that a compartment's annotation</span>
-0396 <span class="comment">% sub-entries are indented &gt;=6 spaces). Keys are emitted in alphabetical</span>
-0397 <span class="comment">% order, matching the sort order used elsewhere in this file.</span>
-0398 <span class="keyword">if</span> nargin &lt; 7
-0399     indent = <span class="string">'    '</span>;
-0400 <span class="keyword">end</span>
-0401 <span class="keyword">if</span> nargin &lt; 8
-0402     subIndent = length(indent)+2;
-0403 <span class="keyword">end</span>
-0404 <span class="keyword">if</span> ~isfield(model, miriamsField) || isempty(model.(miriamsField){pos})
-0405     <span class="keyword">return</span>
-0406 <span class="keyword">end</span>
-0407 names  = model.(miriamNamesField);
-0408 values = model.(miriamValsField);
-0409 entries = <a href="#_sub7" class="code" title="subfunction entries = collectMiriamEntries(names, values, pos)">collectMiriamEntries</a>(names, values, pos);
-0410 <span class="keyword">if</span> isempty(entries)
-0411     <span class="keyword">return</span>
-0412 <span class="keyword">end</span>
-0413 [~,order] = sort({entries.name});
-0414 entries = entries(order);
-0415 fprintf(fid, <span class="string">'%s- annotation: !!omap\n'</span>, indent);
-0416 <a href="#_sub9" class="code" title="subfunction emitAnnotationEntries(fid, entries, keyIndent)">emitAnnotationEntries</a>(fid, entries, subIndent);
-0417 <span class="keyword">end</span>
-0418 
-0419 <a name="_sub7" href="#_subfunctions" class="code">function entries = collectMiriamEntries(names, values, pos)</a>
-0420 entries = struct(<span class="string">'name'</span>, {}, <span class="string">'list'</span>, {}, <span class="string">'forceList'</span>, {});
-0421 <span class="keyword">for</span> j = 1:size(values, 2)
-0422     v = values{pos, j};
-0423     <span class="keyword">if</span> isempty(v); <span class="keyword">continue</span>; <span class="keyword">end</span>
-0424     list = strip(strsplit(strrep(v, <span class="string">' '</span>, <span class="string">''</span>), <span class="string">';'</span>));
-0425     entries(end+1) = struct(<span class="string">'name'</span>, names{j}, <span class="string">'list'</span>, {list}, <span class="string">'forceList'</span>, false); <span class="comment">%#ok&lt;AGROW&gt;</span>
-0426 <span class="keyword">end</span>
-0427 <span class="keyword">end</span>
-0428 
-0429 <a name="_sub8" href="#_subfunctions" class="code">function writeAnnotation(model, fid, kind, pos)</a>
-0430 <span class="comment">% Emit the per-entry `annotation` block, fusing MIRIAM cross-references</span>
-0431 <span class="comment">% with the non-MIRIAM annotation keys: `smiles` for metabolites and</span>
-0432 <span class="comment">% `ec-code` (EC numbers) for reactions — both are written inside</span>
-0433 <span class="comment">% `annotation` rather than as top-level entry keys. `ec-code` is always</span>
-0434 <span class="comment">% emitted as a list, even when there is a single code. All keys (MIRIAMs</span>
-0435 <span class="comment">% and the extra key together) are emitted in alphabetical order.</span>
-0436 <span class="keyword">switch</span> kind
-0437     <span class="keyword">case</span> <span class="string">'met'</span>
-0438         miriamsField     = <span class="string">'metMiriams'</span>;
-0439         miriamNamesField = <span class="string">'newMetMiriamNames'</span>;
-0440         miriamValsField  = <span class="string">'newMetMiriams'</span>;
-0441         extraName        = <span class="string">'smiles'</span>;
-0442         extraField       = <span class="string">'metSmiles'</span>;
-0443     <span class="keyword">case</span> <span class="string">'rxn'</span>
-0444         miriamsField     = <span class="string">'rxnMiriams'</span>;
-0445         miriamNamesField = <span class="string">'newRxnMiriamNames'</span>;
-0446         miriamValsField  = <span class="string">'newRxnMiriams'</span>;
-0447         extraName        = <span class="string">'ec-code'</span>;
-0448         extraField       = <span class="string">'eccodes'</span>;
-0449     <span class="keyword">otherwise</span>
-0450         error(<span class="string">'writeAnnotation:unsupportedKind'</span>, <span class="string">'Unsupported kind: %s'</span>, kind);
-0451 <span class="keyword">end</span>
-0452 
-0453 hasMiriams = isfield(model, miriamsField) &amp;&amp; ~isempty(model.(miriamsField){pos});
-0454 hasExtra   = isfield(model, extraField) &amp;&amp; pos &lt;= numel(model.(extraField)) <span class="keyword">...</span>
-0455              &amp;&amp; ~isempty(model.(extraField){pos});
-0456 
-0457 <span class="keyword">if</span> ~hasMiriams &amp;&amp; ~hasExtra
-0458     <span class="keyword">return</span>;
+0385     <span class="comment">% Shortest text that reads back as exactly x (15 to 17 significant</span>
+0386     <span class="comment">% digits), as Python's repr does, so 1/3 is written 0.3333333333333333</span>
+0387     <span class="comment">% and a value is never rounded on the way out.</span>
+0388     <span class="keyword">for</span> digits = 15:17
+0389         s = sprintf([<span class="string">'%.'</span> num2str(digits) <span class="string">'g'</span>], x);
+0390         <span class="keyword">if</span> str2double(s) == x
+0391             <span class="keyword">break</span>
+0392         <span class="keyword">end</span>
+0393     <span class="keyword">end</span>
+0394 <span class="keyword">end</span>
+0395 <span class="keyword">end</span>
+0396 
+0397 <a name="_sub6" href="#_subfunctions" class="code">function writeAnnotationSimple(model, fid, miriamsField, miriamValsField, miriamNamesField, pos, indent, subIndent)</a>
+0398 <span class="comment">% Emit a bare `annotation: !!omap` block from MIRIAM cross-references only</span>
+0399 <span class="comment">% (used for genes and compartments, which carry no extra non-MIRIAM</span>
+0400 <span class="comment">% annotation key and have no established reference format to follow —</span>
+0401 <span class="comment">% compartments in particular are just a flat {id: name} map with no</span>
+0402 <span class="comment">% per-compartment annotation at all — so the layout here follows only</span>
+0403 <span class="comment">% readYAMLmodel's own expectation that a compartment's annotation</span>
+0404 <span class="comment">% sub-entries are indented &gt;=6 spaces). Keys are emitted in alphabetical</span>
+0405 <span class="comment">% order, matching the sort order used elsewhere in this file.</span>
+0406 <span class="keyword">if</span> nargin &lt; 7
+0407     indent = <span class="string">'    '</span>;
+0408 <span class="keyword">end</span>
+0409 <span class="keyword">if</span> nargin &lt; 8
+0410     subIndent = length(indent)+2;
+0411 <span class="keyword">end</span>
+0412 <span class="keyword">if</span> ~isfield(model, miriamsField) || isempty(model.(miriamsField){pos})
+0413     <span class="keyword">return</span>
+0414 <span class="keyword">end</span>
+0415 names  = model.(miriamNamesField);
+0416 values = model.(miriamValsField);
+0417 entries = <a href="#_sub7" class="code" title="subfunction entries = collectMiriamEntries(names, values, pos)">collectMiriamEntries</a>(names, values, pos);
+0418 <span class="keyword">if</span> isempty(entries)
+0419     <span class="keyword">return</span>
+0420 <span class="keyword">end</span>
+0421 [~,order] = sort({entries.name});
+0422 entries = entries(order);
+0423 fprintf(fid, <span class="string">'%s- annotation: !!omap\n'</span>, indent);
+0424 <a href="#_sub9" class="code" title="subfunction emitAnnotationEntries(fid, entries, keyIndent)">emitAnnotationEntries</a>(fid, entries, subIndent);
+0425 <span class="keyword">end</span>
+0426 
+0427 <a name="_sub7" href="#_subfunctions" class="code">function entries = collectMiriamEntries(names, values, pos)</a>
+0428 entries = struct(<span class="string">'name'</span>, {}, <span class="string">'list'</span>, {}, <span class="string">'forceList'</span>, {});
+0429 <span class="keyword">for</span> j = 1:size(values, 2)
+0430     v = values{pos, j};
+0431     <span class="keyword">if</span> isempty(v); <span class="keyword">continue</span>; <span class="keyword">end</span>
+0432     list = strip(strsplit(strrep(v, <span class="string">' '</span>, <span class="string">''</span>), <span class="string">';'</span>));
+0433     entries(end+1) = struct(<span class="string">'name'</span>, names{j}, <span class="string">'list'</span>, {list}, <span class="string">'forceList'</span>, false); <span class="comment">%#ok&lt;AGROW&gt;</span>
+0434 <span class="keyword">end</span>
+0435 <span class="keyword">end</span>
+0436 
+0437 <a name="_sub8" href="#_subfunctions" class="code">function writeAnnotation(model, fid, kind, pos)</a>
+0438 <span class="comment">% Emit the per-entry `annotation` block, fusing MIRIAM cross-references</span>
+0439 <span class="comment">% with the non-MIRIAM annotation keys: `smiles` for metabolites and</span>
+0440 <span class="comment">% `ec-code` (EC numbers) for reactions — both are written inside</span>
+0441 <span class="comment">% `annotation` rather than as top-level entry keys. `ec-code` is always</span>
+0442 <span class="comment">% emitted as a list, even when there is a single code. All keys (MIRIAMs</span>
+0443 <span class="comment">% and the extra key together) are emitted in alphabetical order.</span>
+0444 <span class="keyword">switch</span> kind
+0445     <span class="keyword">case</span> <span class="string">'met'</span>
+0446         miriamsField     = <span class="string">'metMiriams'</span>;
+0447         miriamNamesField = <span class="string">'newMetMiriamNames'</span>;
+0448         miriamValsField  = <span class="string">'newMetMiriams'</span>;
+0449         extraName        = <span class="string">'smiles'</span>;
+0450         extraField       = <span class="string">'metSmiles'</span>;
+0451     <span class="keyword">case</span> <span class="string">'rxn'</span>
+0452         miriamsField     = <span class="string">'rxnMiriams'</span>;
+0453         miriamNamesField = <span class="string">'newRxnMiriamNames'</span>;
+0454         miriamValsField  = <span class="string">'newRxnMiriams'</span>;
+0455         extraName        = <span class="string">'ec-code'</span>;
+0456         extraField       = <span class="string">'eccodes'</span>;
+0457     <span class="keyword">otherwise</span>
+0458         error(<span class="string">'writeAnnotation:unsupportedKind'</span>, <span class="string">'Unsupported kind: %s'</span>, kind);
 0459 <span class="keyword">end</span>
 0460 
-0461 entries = struct(<span class="string">'name'</span>, {}, <span class="string">'list'</span>, {}, <span class="string">'forceList'</span>, {});
-0462 <span class="keyword">if</span> hasMiriams
-0463     entries = <a href="#_sub7" class="code" title="subfunction entries = collectMiriamEntries(names, values, pos)">collectMiriamEntries</a>(model.(miriamNamesField), model.(miriamValsField), pos);
-0464 <span class="keyword">end</span>
-0465 <span class="keyword">if</span> hasExtra
-0466     <span class="comment">% EC numbers / SMILES are always emitted as a list, even when there is</span>
-0467     <span class="comment">% a single value — unlike a MIRIAM entry, which collapses to a bare</span>
-0468     <span class="comment">% scalar when there is only one.</span>
-0469     codes = strip(strsplit(strrep(model.(extraField){pos}, <span class="string">' '</span>, <span class="string">''</span>), <span class="string">';'</span>));
-0470     codes = codes(~cellfun(<span class="string">'isempty'</span>, codes));
-0471     <span class="keyword">if</span> ~isempty(codes)
-0472         entries(end+1) = struct(<span class="string">'name'</span>, extraName, <span class="string">'list'</span>, {codes}, <span class="string">'forceList'</span>, true); <span class="comment">%#ok&lt;AGROW&gt;</span>
-0473     <span class="keyword">end</span>
-0474 <span class="keyword">end</span>
-0475 <span class="keyword">if</span> isempty(entries)
-0476     <span class="keyword">return</span>
-0477 <span class="keyword">end</span>
-0478 [~,order] = sort({entries.name});
-0479 entries = entries(order);
-0480 
-0481 fprintf(fid, <span class="string">'    - annotation: !!omap\n'</span>);
-0482 <a href="#_sub9" class="code" title="subfunction emitAnnotationEntries(fid, entries, keyIndent)">emitAnnotationEntries</a>(fid, entries, 6);
-0483 <span class="keyword">end</span>
-0484 
-0485 <a name="_sub9" href="#_subfunctions" class="code">function emitAnnotationEntries(fid, entries, keyIndent)</a>
-0486 <span class="comment">% Shared tail for writeAnnotation / writeAnnotationSimple: entries are</span>
-0487 <span class="comment">% already sorted by name; emit each as a bare scalar (single value) or a</span>
-0488 <span class="comment">% block list (multiple values), at the given key indent.</span>
-0489 pad = repmat(<span class="string">' '</span>, 1, keyIndent);
-0490 <span class="keyword">for</span> e = entries
-0491     <span class="keyword">if</span> numel(e.list) == 1 &amp;&amp; ~e.forceList
-0492         <a href="#_sub10" class="code" title="subfunction emitScalarLine(fid, prefix, value, keyIndent, bareNumeric)">emitScalarLine</a>(fid, [pad <span class="string">'- '</span> e.name], e.list{1}, keyIndent)
-0493     <span class="keyword">else</span>
-0494         fprintf(fid, <span class="string">'%s- %s:\n'</span>, pad, e.name);
-0495         <span class="keyword">for</span> k = 1:numel(e.list)
-0496             <a href="#_sub11" class="code" title="subfunction emitListItem(fid, dashPrefix, value, keyIndent)">emitListItem</a>(fid, [pad <span class="string">'  -'</span>], e.list{k}, keyIndent+2)
-0497         <span class="keyword">end</span>
-0498     <span class="keyword">end</span>
-0499 <span class="keyword">end</span>
-0500 <span class="keyword">end</span>
-0501 
-0502 <a name="_sub10" href="#_subfunctions" class="code">function emitScalarLine(fid, prefix, value, keyIndent, bareNumeric)</a>
-0503 <span class="comment">% Emit &quot;PREFIX: VALUE\n&quot; (double-quoted when needed), where PREFIX is the</span>
-0504 <span class="comment">% &quot;    - key&quot; part with no trailing colon and value is the raw,</span>
-0505 <span class="comment">% unescaped scalar content.</span>
-0506 <span class="comment">%</span>
-0507 <span class="comment">% bareNumeric (default false): value is already a pre-formatted number</span>
-0508 <span class="comment">% (from formatFloat) that must never be quoted — numbers are never</span>
-0509 <span class="comment">% ambiguous once formatted.</span>
-0510 <span class="keyword">if</span> nargin &lt; 5
-0511     bareNumeric = false;
-0512 <span class="keyword">end</span>
-0513 fprintf(fid, <span class="string">'%s:'</span>, prefix);
-0514 <a href="#_sub12" class="code" title="subfunction emitScalarCore(fid, ~, value, ~, bareNumeric)">emitScalarCore</a>(fid, length(prefix)+1, value, keyIndent, bareNumeric)
-0515 <span class="keyword">end</span>
-0516 
-0517 <a name="_sub11" href="#_subfunctions" class="code">function emitListItem(fid, dashPrefix, value, keyIndent)</a>
-0518 <span class="comment">% Emit &quot;DASHPREFIX VALUE\n&quot; for a plain sequence entry (no key, just the</span>
-0519 <span class="comment">% &quot;- &quot; marker) — e.g. a subsystem, EC code, SMILES or MIRIAM list item.</span>
-0520 <span class="comment">% Unlike emitScalarLine, no colon is written.</span>
-0521 fprintf(fid, <span class="string">'%s'</span>, dashPrefix);
-0522 <a href="#_sub12" class="code" title="subfunction emitScalarCore(fid, ~, value, ~, bareNumeric)">emitScalarCore</a>(fid, length(dashPrefix), value, keyIndent, false)
+0461 hasMiriams = isfield(model, miriamsField) &amp;&amp; ~isempty(model.(miriamsField){pos});
+0462 hasExtra   = isfield(model, extraField) &amp;&amp; pos &lt;= numel(model.(extraField)) <span class="keyword">...</span>
+0463              &amp;&amp; ~isempty(model.(extraField){pos});
+0464 
+0465 <span class="keyword">if</span> ~hasMiriams &amp;&amp; ~hasExtra
+0466     <span class="keyword">return</span>;
+0467 <span class="keyword">end</span>
+0468 
+0469 entries = struct(<span class="string">'name'</span>, {}, <span class="string">'list'</span>, {}, <span class="string">'forceList'</span>, {});
+0470 <span class="keyword">if</span> hasMiriams
+0471     entries = <a href="#_sub7" class="code" title="subfunction entries = collectMiriamEntries(names, values, pos)">collectMiriamEntries</a>(model.(miriamNamesField), model.(miriamValsField), pos);
+0472 <span class="keyword">end</span>
+0473 <span class="keyword">if</span> hasExtra
+0474     <span class="comment">% EC numbers / SMILES are always emitted as a list, even when there is</span>
+0475     <span class="comment">% a single value — unlike a MIRIAM entry, which collapses to a bare</span>
+0476     <span class="comment">% scalar when there is only one.</span>
+0477     codes = strip(strsplit(strrep(model.(extraField){pos}, <span class="string">' '</span>, <span class="string">''</span>), <span class="string">';'</span>));
+0478     codes = codes(~cellfun(<span class="string">'isempty'</span>, codes));
+0479     <span class="keyword">if</span> ~isempty(codes)
+0480         entries(end+1) = struct(<span class="string">'name'</span>, extraName, <span class="string">'list'</span>, {codes}, <span class="string">'forceList'</span>, true); <span class="comment">%#ok&lt;AGROW&gt;</span>
+0481     <span class="keyword">end</span>
+0482 <span class="keyword">end</span>
+0483 <span class="keyword">if</span> isempty(entries)
+0484     <span class="keyword">return</span>
+0485 <span class="keyword">end</span>
+0486 [~,order] = sort({entries.name});
+0487 entries = entries(order);
+0488 
+0489 fprintf(fid, <span class="string">'    - annotation: !!omap\n'</span>);
+0490 <a href="#_sub9" class="code" title="subfunction emitAnnotationEntries(fid, entries, keyIndent)">emitAnnotationEntries</a>(fid, entries, 6);
+0491 <span class="keyword">end</span>
+0492 
+0493 <a name="_sub9" href="#_subfunctions" class="code">function emitAnnotationEntries(fid, entries, keyIndent)</a>
+0494 <span class="comment">% Shared tail for writeAnnotation / writeAnnotationSimple: entries are</span>
+0495 <span class="comment">% already sorted by name; emit each as a bare scalar (single value) or a</span>
+0496 <span class="comment">% block list (multiple values), at the given key indent.</span>
+0497 pad = repmat(<span class="string">' '</span>, 1, keyIndent);
+0498 <span class="keyword">for</span> e = entries
+0499     <span class="keyword">if</span> numel(e.list) == 1 &amp;&amp; ~e.forceList
+0500         <a href="#_sub10" class="code" title="subfunction emitScalarLine(fid, prefix, value, keyIndent, bareNumeric)">emitScalarLine</a>(fid, [pad <span class="string">'- '</span> e.name], e.list{1}, keyIndent)
+0501     <span class="keyword">else</span>
+0502         fprintf(fid, <span class="string">'%s- %s:\n'</span>, pad, e.name);
+0503         <span class="keyword">for</span> k = 1:numel(e.list)
+0504             <a href="#_sub11" class="code" title="subfunction emitListItem(fid, dashPrefix, value, keyIndent)">emitListItem</a>(fid, [pad <span class="string">'  -'</span>], e.list{k}, keyIndent+2)
+0505         <span class="keyword">end</span>
+0506     <span class="keyword">end</span>
+0507 <span class="keyword">end</span>
+0508 <span class="keyword">end</span>
+0509 
+0510 <a name="_sub10" href="#_subfunctions" class="code">function emitScalarLine(fid, prefix, value, keyIndent, bareNumeric)</a>
+0511 <span class="comment">% Emit &quot;PREFIX: VALUE\n&quot; (double-quoted when needed), where PREFIX is the</span>
+0512 <span class="comment">% &quot;    - key&quot; part with no trailing colon and value is the raw,</span>
+0513 <span class="comment">% unescaped scalar content.</span>
+0514 <span class="comment">%</span>
+0515 <span class="comment">% bareNumeric (default false): value is already a pre-formatted number</span>
+0516 <span class="comment">% (from formatFloat) that must never be quoted — numbers are never</span>
+0517 <span class="comment">% ambiguous once formatted.</span>
+0518 <span class="keyword">if</span> nargin &lt; 5
+0519     bareNumeric = false;
+0520 <span class="keyword">end</span>
+0521 fprintf(fid, <span class="string">'%s:'</span>, prefix);
+0522 <a href="#_sub12" class="code" title="subfunction emitScalarCore(fid, ~, value, ~, bareNumeric)">emitScalarCore</a>(fid, length(prefix)+1, value, keyIndent, bareNumeric)
 0523 <span class="keyword">end</span>
 0524 
-0525 <a name="_sub12" href="#_subfunctions" class="code">function emitScalarCore(fid, ~, value, ~, bareNumeric)</a>
-0526 <span class="comment">% Shared tail for emitScalarLine / emitListItem: writes a single space</span>
-0527 <span class="comment">% after ':' or '-', then the value, double-quoted when needed (matching</span>
-0528 <span class="comment">% Prettier's YAML default). No folding — this format never wraps a</span>
-0529 <span class="comment">% scalar across lines, however long, so the two unused positional</span>
-0530 <span class="comment">% arguments (column and key indent) only exist to keep every call site's</span>
-0531 <span class="comment">% signature stable.</span>
-0532 <span class="keyword">if</span> bareNumeric
-0533     fprintf(fid, <span class="string">' %s\n'</span>, value);
-0534     <span class="keyword">return</span>
-0535 <span class="keyword">end</span>
-0536 <span class="keyword">if</span> <a href="#_sub13" class="code" title="subfunction tf = needsQuote(s)">needsQuote</a>(value)
-0537     escaped = strrep(value, <span class="string">'\'</span>, <span class="string">'\\'</span>);
-0538     escaped = strrep(escaped, <span class="string">'&quot;'</span>, <span class="string">'\&quot;'</span>);
-0539     fprintf(fid, <span class="string">' &quot;%s&quot;\n'</span>, escaped);
-0540 <span class="keyword">else</span>
+0525 <a name="_sub11" href="#_subfunctions" class="code">function emitListItem(fid, dashPrefix, value, keyIndent)</a>
+0526 <span class="comment">% Emit &quot;DASHPREFIX VALUE\n&quot; for a plain sequence entry (no key, just the</span>
+0527 <span class="comment">% &quot;- &quot; marker) — e.g. a subsystem, EC code, SMILES or MIRIAM list item.</span>
+0528 <span class="comment">% Unlike emitScalarLine, no colon is written.</span>
+0529 fprintf(fid, <span class="string">'%s'</span>, dashPrefix);
+0530 <a href="#_sub12" class="code" title="subfunction emitScalarCore(fid, ~, value, ~, bareNumeric)">emitScalarCore</a>(fid, length(dashPrefix), value, keyIndent, false)
+0531 <span class="keyword">end</span>
+0532 
+0533 <a name="_sub12" href="#_subfunctions" class="code">function emitScalarCore(fid, ~, value, ~, bareNumeric)</a>
+0534 <span class="comment">% Shared tail for emitScalarLine / emitListItem: writes a single space</span>
+0535 <span class="comment">% after ':' or '-', then the value, double-quoted when needed (matching</span>
+0536 <span class="comment">% Prettier's YAML default). No folding — this format never wraps a</span>
+0537 <span class="comment">% scalar across lines, however long, so the two unused positional</span>
+0538 <span class="comment">% arguments (column and key indent) only exist to keep every call site's</span>
+0539 <span class="comment">% signature stable.</span>
+0540 <span class="keyword">if</span> bareNumeric
 0541     fprintf(fid, <span class="string">' %s\n'</span>, value);
-0542 <span class="keyword">end</span>
+0542     <span class="keyword">return</span>
 0543 <span class="keyword">end</span>
-0544 
-0545 <a name="_sub13" href="#_subfunctions" class="code">function tf = needsQuote(s)</a>
-0546 <span class="comment">% Whether this scalar needs quoting when written: either because a plain</span>
-0547 <span class="comment">% (bare) reading would resolve to a non-string YAML type (bool/int/float/</span>
-0548 <span class="comment">% null/timestamp — this writer never emits explicit type tags), or</span>
-0549 <span class="comment">% because the text itself is not valid as a plain block scalar (leading</span>
-0550 <span class="comment">% indicator character, a mid-string &quot;: &quot;/&quot; #&quot;, leading/trailing</span>
-0551 <span class="comment">% whitespace, or embedded control characters). Implements the YAML 1.2</span>
-0552 <span class="comment">% rules for resolving implicit scalar types and analyzing scalar style.</span>
-0553 <span class="keyword">if</span> isempty(s)
-0554     tf = true;
-0555     <span class="keyword">return</span>
-0556 <span class="keyword">end</span>
-0557 
-0558 resolverPattern = [ <span class="keyword">...</span>
-0559     <span class="string">'^(true|True|TRUE|false|False|FALSE)$|'</span> <span class="keyword">...</span>
-0560     <span class="string">'^[-+]?[0-9][0-9_]*\.[0-9_]*([eE][-+]?[0-9]+)?$|'</span> <span class="keyword">...</span>
-0561     <span class="string">'^[-+]?[0-9][0-9_]*[eE][-+]?[0-9]+$|'</span> <span class="keyword">...</span>
-0562     <span class="string">'^[-+]?\.[0-9_]+([eE][-+][0-9]+)?$|'</span> <span class="keyword">...</span>
-0563     <span class="string">'^[-+]?\.(inf|Inf|INF)$|'</span> <span class="keyword">...</span>
-0564     <span class="string">'^\.(nan|NaN|NAN)$|'</span> <span class="keyword">...</span>
-0565     <span class="string">'^[-+]?0b[01_]+$|'</span> <span class="keyword">...</span>
-0566     <span class="string">'^[-+]?0o?[0-7_]+$|'</span> <span class="keyword">...</span>
-0567     <span class="string">'^[-+]?[0-9_]+$|'</span> <span class="keyword">...</span>
-0568     <span class="string">'^[-+]?0x[0-9a-fA-F_]+$|'</span> <span class="keyword">...</span>
-0569     <span class="string">'^(~|[Nn]ull|NULL)$|'</span> <span class="keyword">...</span>
-0570     <span class="string">'^[0-9]{4}-[0-9]{2}-[0-9]{2}$'</span> <span class="keyword">...</span>
-0571 ];
-0572 <span class="keyword">if</span> ~isempty(regexp(s, resolverPattern, <span class="string">'once'</span>))
-0573     tf = true;
-0574     <span class="keyword">return</span>
-0575 <span class="keyword">end</span>
-0576 
-0577 first = s(1);
-0578 <span class="keyword">if</span> any(first == <span class="string">'#,[]{}&amp;*!|&gt;''&quot;%@`'</span>)
-0579     tf = true; <span class="keyword">return</span>
-0580 <span class="keyword">end</span>
-0581 followedByWs = (numel(s) == 1) || <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(s(2));
-0582 <span class="keyword">if</span> (first == <span class="string">'?'</span> || first == <span class="string">':'</span>) &amp;&amp; followedByWs
-0583     tf = true; <span class="keyword">return</span>
-0584 <span class="keyword">end</span>
-0585 <span class="keyword">if</span> first == <span class="string">'-'</span> &amp;&amp; followedByWs
-0586     tf = true; <span class="keyword">return</span>
-0587 <span class="keyword">end</span>
-0588 <span class="keyword">if</span> <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(first) || <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(s(end))
-0589     tf = true; <span class="keyword">return</span>
-0590 <span class="keyword">end</span>
-0591 <span class="keyword">if</span> any(s == char(10)) || any(s == char(13))
-0592     tf = true; <span class="keyword">return</span>
-0593 <span class="keyword">end</span>
-0594 <span class="keyword">for</span> i = 2:numel(s)
-0595     ch = s(i);
-0596     <span class="keyword">if</span> ch == <span class="string">':'</span> &amp;&amp; ((i == numel(s)) || <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(s(i+1)))
-0597         tf = true; <span class="keyword">return</span>
-0598     <span class="keyword">end</span>
-0599     <span class="keyword">if</span> ch == <span class="string">'#'</span> &amp;&amp; <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(s(i-1))
-0600         tf = true; <span class="keyword">return</span>
-0601     <span class="keyword">end</span>
-0602 <span class="keyword">end</span>
-0603 tf = false;
+0544 <span class="keyword">if</span> <a href="#_sub13" class="code" title="subfunction tf = needsQuote(s)">needsQuote</a>(value)
+0545     escaped = strrep(value, <span class="string">'\'</span>, <span class="string">'\\'</span>);
+0546     escaped = strrep(escaped, <span class="string">'&quot;'</span>, <span class="string">'\&quot;'</span>);
+0547     fprintf(fid, <span class="string">' &quot;%s&quot;\n'</span>, escaped);
+0548 <span class="keyword">else</span>
+0549     fprintf(fid, <span class="string">' %s\n'</span>, value);
+0550 <span class="keyword">end</span>
+0551 <span class="keyword">end</span>
+0552 
+0553 <a name="_sub13" href="#_subfunctions" class="code">function tf = needsQuote(s)</a>
+0554 <span class="comment">% Whether this scalar needs quoting when written: either because a plain</span>
+0555 <span class="comment">% (bare) reading would resolve to a non-string YAML type (bool/int/float/</span>
+0556 <span class="comment">% null/timestamp — this writer never emits explicit type tags), or</span>
+0557 <span class="comment">% because the text itself is not valid as a plain block scalar (leading</span>
+0558 <span class="comment">% indicator character, a mid-string &quot;: &quot;/&quot; #&quot;, leading/trailing</span>
+0559 <span class="comment">% whitespace, or embedded control characters). Implements the YAML 1.2</span>
+0560 <span class="comment">% rules for resolving implicit scalar types and analyzing scalar style,</span>
+0561 <span class="comment">% and also quotes the YAML 1.1 booleans y, n, yes, no, on and off in any</span>
+0562 <span class="comment">% case, which YAML 1.1 loaders such as PyYAML read as booleans.</span>
+0563 <span class="keyword">if</span> isempty(s)
+0564     tf = true;
+0565     <span class="keyword">return</span>
+0566 <span class="keyword">end</span>
+0567 
+0568 resolverPattern = [ <span class="keyword">...</span>
+0569     <span class="string">'^(true|True|TRUE|false|False|FALSE)$|'</span> <span class="keyword">...</span>
+0570     <span class="string">'^([Yy]|[Nn]|[Yy][Ee][Ss]|[Nn][Oo]|[Oo][Nn]|[Oo][Ff][Ff])$|'</span> <span class="keyword">...</span>
+0571     <span class="string">'^[-+]?[0-9][0-9_]*\.[0-9_]*([eE][-+]?[0-9]+)?$|'</span> <span class="keyword">...</span>
+0572     <span class="string">'^[-+]?[0-9][0-9_]*[eE][-+]?[0-9]+$|'</span> <span class="keyword">...</span>
+0573     <span class="string">'^[-+]?\.[0-9_]+([eE][-+][0-9]+)?$|'</span> <span class="keyword">...</span>
+0574     <span class="string">'^[-+]?\.(inf|Inf|INF)$|'</span> <span class="keyword">...</span>
+0575     <span class="string">'^\.(nan|NaN|NAN)$|'</span> <span class="keyword">...</span>
+0576     <span class="string">'^[-+]?0b[01_]+$|'</span> <span class="keyword">...</span>
+0577     <span class="string">'^[-+]?0o?[0-7_]+$|'</span> <span class="keyword">...</span>
+0578     <span class="string">'^[-+]?[0-9_]+$|'</span> <span class="keyword">...</span>
+0579     <span class="string">'^[-+]?0x[0-9a-fA-F_]+$|'</span> <span class="keyword">...</span>
+0580     <span class="string">'^(~|[Nn]ull|NULL)$|'</span> <span class="keyword">...</span>
+0581     <span class="string">'^[0-9]{4}-[0-9]{2}-[0-9]{2}$'</span> <span class="keyword">...</span>
+0582 ];
+0583 <span class="keyword">if</span> ~isempty(regexp(s, resolverPattern, <span class="string">'once'</span>))
+0584     tf = true;
+0585     <span class="keyword">return</span>
+0586 <span class="keyword">end</span>
+0587 
+0588 first = s(1);
+0589 <span class="keyword">if</span> any(first == <span class="string">'#,[]{}&amp;*!|&gt;''&quot;%@`'</span>)
+0590     tf = true; <span class="keyword">return</span>
+0591 <span class="keyword">end</span>
+0592 followedByWs = (numel(s) == 1) || <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(s(2));
+0593 <span class="keyword">if</span> (first == <span class="string">'?'</span> || first == <span class="string">':'</span>) &amp;&amp; followedByWs
+0594     tf = true; <span class="keyword">return</span>
+0595 <span class="keyword">end</span>
+0596 <span class="keyword">if</span> first == <span class="string">'-'</span> &amp;&amp; followedByWs
+0597     tf = true; <span class="keyword">return</span>
+0598 <span class="keyword">end</span>
+0599 <span class="keyword">if</span> <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(first) || <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(s(end))
+0600     tf = true; <span class="keyword">return</span>
+0601 <span class="keyword">end</span>
+0602 <span class="keyword">if</span> any(s == char(10)) || any(s == char(13))
+0603     tf = true; <span class="keyword">return</span>
 0604 <span class="keyword">end</span>
-0605 
-0606 <a name="_sub14" href="#_subfunctions" class="code">function tf = isWs(ch)</a>
-0607 tf = ch == <span class="string">' '</span> || ch == char(9) || ch == char(10) || ch == char(13);
-0608 <span class="keyword">end</span></pre></div>
+0605 <span class="keyword">for</span> i = 2:numel(s)
+0606     ch = s(i);
+0607     <span class="keyword">if</span> ch == <span class="string">':'</span> &amp;&amp; ((i == numel(s)) || <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(s(i+1)))
+0608         tf = true; <span class="keyword">return</span>
+0609     <span class="keyword">end</span>
+0610     <span class="keyword">if</span> ch == <span class="string">'#'</span> &amp;&amp; <a href="#_sub14" class="code" title="subfunction tf = isWs(ch)">isWs</a>(s(i-1))
+0611         tf = true; <span class="keyword">return</span>
+0612     <span class="keyword">end</span>
+0613 <span class="keyword">end</span>
+0614 tf = false;
+0615 <span class="keyword">end</span>
+0616 
+0617 <a name="_sub14" href="#_subfunctions" class="code">function tf = isWs(ch)</a>
+0618 tf = ch == <span class="string">' '</span> || ch == char(9) || ch == char(10) || ch == char(13);
+0619 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

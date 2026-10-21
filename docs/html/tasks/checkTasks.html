@@ -104,7 +104,9 @@ This function is called by:
 </ul>
 <!-- crossreference -->
 
-
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function dupMets = duplicateMetNames(names,modelMets)</a></li></ul>
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [taskReport, essentialRxns, taskStructure, essentialFluxes]=checkTasks(model,inputFile,varargin)</a>
@@ -221,198 +223,225 @@ This function is called by:
 0112     <span class="keyword">if</span> ~isempty(taskStructure(i).inputs)
 0113         [I, J]=ismember(upper(taskStructure(i).inputs),modelMets);
 0114         J=J(I); <span class="comment">%Only keep the ones with matches</span>
-0115         K=ismember(upper(taskStructure(i).inputs),<span class="string">'ALLMETS'</span>);
-0116         L=~cellfun(<span class="string">'isempty'</span>,strfind(upper(taskStructure(i).inputs),<span class="string">'ALLMETSIN'</span>));
-0117         <span class="comment">%Check that all metabolites are either real metabolites or</span>
-0118         <span class="comment">%ALLMETS/ALLMETSIN</span>
-0119         <span class="keyword">if</span> ~all(I|K|L)
-0120             fprintf([<span class="string">'ERROR: Could not find all inputs in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot;\n'</span>]);
-0121             ok(i)=false;
-0122             <span class="keyword">continue</span>;
-0123         <span class="keyword">end</span>
-0124         <span class="keyword">if</span> numel(J)~=numel(unique(J))
-0125             EM=[<span class="string">'The constraints on some input(s) in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; are defined more than one time'</span>];
-0126             error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0127         <span class="keyword">end</span>
-0128         <span class="comment">%If all metabolites should be added</span>
-0129         <span class="keyword">if</span> any(K)
-0130             <span class="comment">%Check if ALLMETS is the first metabolite. Otherwise print a</span>
-0131             <span class="comment">%warning since it will write over any other constraints that</span>
-0132             <span class="comment">%are set</span>
-0133             <span class="keyword">if</span> K(1)==0
-0134                 EM=[<span class="string">'ALLMETS is used as an input in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; but it it not the first metabolite in the list. Constraints defined for the metabolites before it will be over-written'</span>];
-0135                 warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
-0136             <span class="keyword">end</span>
-0137             <span class="comment">%Use the first match of ALLMETS. There should only be one, but</span>
-0138             <span class="comment">%still..</span>
-0139             tModel.b(:,1)=taskStructure(i).UBin(find(K,1))*-1;
-0140         <span class="keyword">end</span>
-0141         <span class="comment">%If metabolites in a specific compartment should be used</span>
-0142         <span class="keyword">if</span> any(L)
-0143             L=find(L);
-0144             <span class="keyword">for</span> j=1:numel(L)
-0145                 <span class="comment">%The compartment defined</span>
-0146                 compartment=upper(taskStructure(i).inputs{L(j)}(11:end-1));
-0147                 <span class="comment">%Check if it exists in the model</span>
-0148                 C=find(ismember(upper(model.comps),compartment));
-0149                 <span class="keyword">if</span> any(C)
-0150                     <span class="comment">%Match to metabolites</span>
-0151                     tModel.b(model.metComps==C,1)=taskStructure(i).UBin(L(j))*-1;
-0152                 <span class="keyword">else</span>
-0153                     EM=[<span class="string">'The compartment defined for ALLMETSIN in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; does not exist'</span>];
-0154                     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0155                 <span class="keyword">end</span>
-0156             <span class="keyword">end</span>
-0157         <span class="keyword">end</span>
-0158         <span class="comment">%Then add the normal constraints</span>
-0159         <span class="keyword">if</span> any(J)
-0160             tModel.b(J,1)=taskStructure(i).UBin(I)*-1;
-0161             tModel.b(J,2)=taskStructure(i).LBin(I)*-1;
-0162         <span class="keyword">end</span>
-0163     <span class="keyword">end</span>
-0164     <span class="comment">%Set the outputs</span>
-0165     <span class="keyword">if</span> ~isempty(taskStructure(i).outputs)
-0166         [I, J]=ismember(upper(taskStructure(i).outputs),modelMets);
-0167         J=J(I); <span class="comment">%Only keep the ones with matches</span>
-0168         K=ismember(upper(taskStructure(i).outputs),<span class="string">'ALLMETS'</span>);
-0169         L=~cellfun(<span class="string">'isempty'</span>,strfind(upper(taskStructure(i).outputs),<span class="string">'ALLMETSIN'</span>));
-0170         <span class="comment">%Check that all metabolites are either real metabolites or</span>
-0171         <span class="comment">%ALLMETS/ALLMETSIN</span>
-0172         <span class="keyword">if</span> ~all(I|K|L)
-0173             fprintf([<span class="string">'ERROR: Could not find all outputs in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot;\n'</span>]);
-0174             ok(i)=false;
-0175             <span class="keyword">continue</span>;
-0176         <span class="keyword">end</span>
-0177         <span class="keyword">if</span> numel(J)~=numel(unique(J))
-0178             EM=[<span class="string">'The constraints on some output(s) in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; are defined more than one time'</span>];
-0179             error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0180         <span class="keyword">end</span>
-0181         <span class="comment">%If all metabolites should be added</span>
-0182         <span class="keyword">if</span> any(K)
-0183             <span class="comment">%Check if ALLMETS is the first metabolite. Otherwise print a</span>
-0184             <span class="comment">%warning since it will write over any other constraints that</span>
-0185             <span class="comment">%are set</span>
-0186             <span class="keyword">if</span> K(1)==0
-0187                 EM=[<span class="string">'ALLMETS is used as an output in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; but it it not the first metabolite in the list. Constraints defined for the metabolites before it will be over-written'</span>];
-0188                 warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
-0189             <span class="keyword">end</span>
-0190             <span class="comment">%Use the first match of ALLMETS. There should only be one, but</span>
-0191             <span class="comment">%still..</span>
-0192             tModel.b(:,2)=taskStructure(i).UBout(find(K,1));
-0193         <span class="keyword">end</span>
-0194         <span class="comment">%If metabolites in a specific compartment should be used</span>
-0195         <span class="keyword">if</span> any(L)
-0196             L=find(L);
-0197             <span class="keyword">for</span> j=1:numel(L)
-0198                 <span class="comment">%The compartment defined</span>
-0199                 compartment=upper(taskStructure(i).outputs{L(j)}(11:end-1));
-0200                 <span class="comment">%Check if it exists in the model</span>
-0201                 C=find(ismember(upper(model.comps),compartment));
-0202                 <span class="keyword">if</span> any(C)
-0203                     <span class="comment">%Match to metabolites</span>
-0204                     tModel.b(model.metComps==C,2)=taskStructure(i).UBout(L(j));
-0205                 <span class="keyword">else</span>
-0206                     EM=[<span class="string">'The compartment defined for ALLMETSIN in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; does not exist'</span>];
-0207                     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0208                 <span class="keyword">end</span>
-0209             <span class="keyword">end</span>
-0210         <span class="keyword">end</span>
-0211         <span class="comment">%Then add the normal constraints</span>
-0212         <span class="keyword">if</span> any(J)
-0213             <span class="comment">%Verify that IN and OUT bounds are consistent. Cannot require</span>
-0214             <span class="comment">%that a metabolite is simultaneously input AND output at some</span>
-0215             <span class="comment">%nonzero flux.</span>
-0216             I = find(I);  <span class="comment">% otherwise indexing becomes confusing</span>
-0217             nonzero_LBin = tModel.b(J,2) &lt; 0;
-0218             nonzero_LBout = taskStructure(i).LBout(I) &gt; 0;
-0219             <span class="keyword">if</span> any(nonzero_LBin &amp; nonzero_LBout)
-0220                 EM=[<span class="string">'The IN LB and OUT LB in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; cannot be nonzero for the same metabolite'</span>];
-0221                 error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0222             <span class="keyword">end</span>
-0223             tModel.b(J(nonzero_LBout),1)=taskStructure(i).LBout(I(nonzero_LBout));
-0224             tModel.b(J,2)=taskStructure(i).UBout(I);
-0225         <span class="keyword">end</span>
-0226     <span class="keyword">end</span>
-0227     <span class="comment">%Add new rxns</span>
-0228     <span class="keyword">if</span> ~isempty(taskStructure(i).equations)
-0229         <span class="comment">% num2str on the whole column right-aligns every row to a common</span>
-0230         <span class="comment">% width, embedding a leading space in &quot;TEMPORARY_ 1&quot; once any id</span>
-0231         <span class="comment">% reaches two digits (&quot;TEMPORARY_10&quot;); format each one independently.</span>
-0232         rxnIds=arrayfun(@(x) sprintf(<span class="string">'TEMPORARY_%d'</span>,x), <span class="keyword">...</span>
-0233             (1:numel(taskStructure(i).equations))', <span class="string">'UniformOutput'</span>, false);
-0234         <span class="comment">% Built as a single struct() call, not incremental rxn.field=...</span>
-0235         <span class="comment">% assignments: parfor's variable classifier cannot establish that a</span>
-0236         <span class="comment">% variable built up via several dot-indexed assignments is a</span>
-0237         <span class="comment">% same-shape temporary in every iteration, and rejects it outright.</span>
-0238         rxn=struct(<span class="string">'equations'</span>,{taskStructure(i).equations}, <span class="keyword">...</span>
-0239             <span class="string">'lb'</span>,taskStructure(i).LBequ, <span class="string">'ub'</span>,taskStructure(i).UBequ, <span class="keyword">...</span>
-0240             <span class="string">'rxns'</span>,{rxnIds});
-0241         <span class="comment">%Allow for new metabolites to be added. This is because it should</span>
-0242         <span class="comment">%be possible to add, say, a whole new pathway</span>
-0243         tModel=addRxns(tModel,rxn,3,[],true);
-0244     <span class="keyword">end</span>
-0245     <span class="comment">%Add changed bounds</span>
-0246     <span class="keyword">if</span> ~isempty(taskStructure(i).changed)
-0247         tModel=setParam(tModel,<span class="string">'lb'</span>,taskStructure(i).changed,taskStructure(i).LBrxn);
-0248         tModel=setParam(tModel,<span class="string">'ub'</span>,taskStructure(i).changed,taskStructure(i).UBrxn);
-0249     <span class="keyword">end</span>
-0250     
-0251     <span class="comment">%Solve and print</span>
-0252     sol=solveLP(tModel);
-0253     <span class="keyword">if</span> ~isempty(sol.x)
-0254         <span class="comment">%assign the fluxes</span>
-0255         essentialFluxes(:,i) = sol.x(1:numel(model.rxns));
-0256         
-0257         <span class="keyword">if</span> ~taskStructure(i).shouldFail
-0258             ok(i)=true;
-0259             <span class="keyword">if</span> printOnlyFailed==false &amp;&amp; printOutput==true
-0260                 fprintf([<span class="string">'PASS: ['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'\n'</span>]);
-0261             <span class="keyword">end</span>
-0262             <span class="comment">%Calculate the essential reactions</span>
-0263             <span class="keyword">if</span> getEssential==true
-0264                 [~, taskEssential]=getEssentialRxns(tModel);
-0265                 <span class="comment">%This is because there could be more reactions in tModel</span>
-0266                 <span class="comment">%than in model. Built as a full local column and written</span>
-0267                 <span class="comment">%with a plain ':' row index: parfor only accepts a sliced</span>
-0268                 <span class="comment">%output write when every subscript besides the loop</span>
-0269                 <span class="comment">%variable is ':', not a data-dependent index vector.</span>
-0270                 essentialCol=false(numel(model.rxns),1);
-0271                 essentialCol(taskEssential(taskEssential&lt;=numel(model.rxns)))=true;
-0272                 essentialRxns(:,i)=essentialCol;
-0273             <span class="keyword">end</span>
-0274         <span class="keyword">else</span>
-0275             ok(i)=false;
-0276             <span class="keyword">if</span> printOutput==true
-0277                 fprintf([<span class="string">'PASS (should fail): ['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'\n'</span>]);
+0115         <span class="comment">%Several model metabolites can share a name[comp]. Only the first</span>
+0116         <span class="comment">%one is constrained, so tell the user when that happens</span>
+0117         dupMets=<a href="#_sub1" class="code" title="subfunction dupMets = duplicateMetNames(names,modelMets)">duplicateMetNames</a>(taskStructure(i).inputs(I),modelMets);
+0118         <span class="keyword">if</span> ~isempty(dupMets)
+0119             EM=[<span class="string">'Several model metabolites match input(s) in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot;: '</span> strjoin(dupMets,<span class="string">', '</span>) <span class="string">'. Only the first match is constrained'</span>];
+0120             warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0121         <span class="keyword">end</span>
+0122         K=ismember(upper(taskStructure(i).inputs),<span class="string">'ALLMETS'</span>);
+0123         L=~cellfun(<span class="string">'isempty'</span>,strfind(upper(taskStructure(i).inputs),<span class="string">'ALLMETSIN'</span>));
+0124         <span class="comment">%Check that all metabolites are either real metabolites or</span>
+0125         <span class="comment">%ALLMETS/ALLMETSIN</span>
+0126         <span class="keyword">if</span> ~all(I|K|L)
+0127             fprintf([<span class="string">'ERROR: Could not find all inputs in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot;\n'</span>]);
+0128             ok(i)=false;
+0129             <span class="keyword">continue</span>;
+0130         <span class="keyword">end</span>
+0131         <span class="keyword">if</span> numel(J)~=numel(unique(J))
+0132             EM=[<span class="string">'The constraints on some input(s) in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; are defined more than one time'</span>];
+0133             error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0134         <span class="keyword">end</span>
+0135         <span class="comment">%If all metabolites should be added</span>
+0136         <span class="keyword">if</span> any(K)
+0137             <span class="comment">%Check if ALLMETS is the first metabolite. Otherwise print a</span>
+0138             <span class="comment">%warning since it will write over any other constraints that</span>
+0139             <span class="comment">%are set</span>
+0140             <span class="keyword">if</span> K(1)==0
+0141                 EM=[<span class="string">'ALLMETS is used as an input in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; but it it not the first metabolite in the list. Constraints defined for the metabolites before it will be over-written'</span>];
+0142                 warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0143             <span class="keyword">end</span>
+0144             <span class="comment">%Use the first match of ALLMETS. There should only be one, but</span>
+0145             <span class="comment">%still..</span>
+0146             tModel.b(:,1)=taskStructure(i).UBin(find(K,1))*-1;
+0147         <span class="keyword">end</span>
+0148         <span class="comment">%If metabolites in a specific compartment should be used</span>
+0149         <span class="keyword">if</span> any(L)
+0150             L=find(L);
+0151             <span class="keyword">for</span> j=1:numel(L)
+0152                 <span class="comment">%The compartment defined</span>
+0153                 compartment=upper(taskStructure(i).inputs{L(j)}(11:end-1));
+0154                 <span class="comment">%Check if it exists in the model</span>
+0155                 C=find(ismember(upper(model.comps),compartment));
+0156                 <span class="keyword">if</span> any(C)
+0157                     <span class="comment">%Match to metabolites</span>
+0158                     tModel.b(model.metComps==C,1)=taskStructure(i).UBin(L(j))*-1;
+0159                 <span class="keyword">else</span>
+0160                     EM=[<span class="string">'The compartment defined for ALLMETSIN in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; does not exist'</span>];
+0161                     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0162                 <span class="keyword">end</span>
+0163             <span class="keyword">end</span>
+0164         <span class="keyword">end</span>
+0165         <span class="comment">%Then add the normal constraints</span>
+0166         <span class="keyword">if</span> any(J)
+0167             tModel.b(J,1)=taskStructure(i).UBin(I)*-1;
+0168             tModel.b(J,2)=taskStructure(i).LBin(I)*-1;
+0169         <span class="keyword">end</span>
+0170     <span class="keyword">end</span>
+0171     <span class="comment">%Set the outputs</span>
+0172     <span class="keyword">if</span> ~isempty(taskStructure(i).outputs)
+0173         [I, J]=ismember(upper(taskStructure(i).outputs),modelMets);
+0174         J=J(I); <span class="comment">%Only keep the ones with matches</span>
+0175         <span class="comment">%Several model metabolites can share a name[comp]. Only the first</span>
+0176         <span class="comment">%one is constrained, so tell the user when that happens</span>
+0177         dupMets=<a href="#_sub1" class="code" title="subfunction dupMets = duplicateMetNames(names,modelMets)">duplicateMetNames</a>(taskStructure(i).outputs(I),modelMets);
+0178         <span class="keyword">if</span> ~isempty(dupMets)
+0179             EM=[<span class="string">'Several model metabolites match output(s) in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot;: '</span> strjoin(dupMets,<span class="string">', '</span>) <span class="string">'. Only the first match is constrained'</span>];
+0180             warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0181         <span class="keyword">end</span>
+0182         K=ismember(upper(taskStructure(i).outputs),<span class="string">'ALLMETS'</span>);
+0183         L=~cellfun(<span class="string">'isempty'</span>,strfind(upper(taskStructure(i).outputs),<span class="string">'ALLMETSIN'</span>));
+0184         <span class="comment">%Check that all metabolites are either real metabolites or</span>
+0185         <span class="comment">%ALLMETS/ALLMETSIN</span>
+0186         <span class="keyword">if</span> ~all(I|K|L)
+0187             fprintf([<span class="string">'ERROR: Could not find all outputs in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot;\n'</span>]);
+0188             ok(i)=false;
+0189             <span class="keyword">continue</span>;
+0190         <span class="keyword">end</span>
+0191         <span class="keyword">if</span> numel(J)~=numel(unique(J))
+0192             EM=[<span class="string">'The constraints on some output(s) in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; are defined more than one time'</span>];
+0193             error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0194         <span class="keyword">end</span>
+0195         <span class="comment">%If all metabolites should be added</span>
+0196         <span class="keyword">if</span> any(K)
+0197             <span class="comment">%Check if ALLMETS is the first metabolite. Otherwise print a</span>
+0198             <span class="comment">%warning since it will write over any other constraints that</span>
+0199             <span class="comment">%are set</span>
+0200             <span class="keyword">if</span> K(1)==0
+0201                 EM=[<span class="string">'ALLMETS is used as an output in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; but it it not the first metabolite in the list. Constraints defined for the metabolites before it will be over-written'</span>];
+0202                 warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0203             <span class="keyword">end</span>
+0204             <span class="comment">%Use the first match of ALLMETS. There should only be one, but</span>
+0205             <span class="comment">%still..</span>
+0206             tModel.b(:,2)=taskStructure(i).UBout(find(K,1));
+0207         <span class="keyword">end</span>
+0208         <span class="comment">%If metabolites in a specific compartment should be used</span>
+0209         <span class="keyword">if</span> any(L)
+0210             L=find(L);
+0211             <span class="keyword">for</span> j=1:numel(L)
+0212                 <span class="comment">%The compartment defined</span>
+0213                 compartment=upper(taskStructure(i).outputs{L(j)}(11:end-1));
+0214                 <span class="comment">%Check if it exists in the model</span>
+0215                 C=find(ismember(upper(model.comps),compartment));
+0216                 <span class="keyword">if</span> any(C)
+0217                     <span class="comment">%Match to metabolites</span>
+0218                     tModel.b(model.metComps==C,2)=taskStructure(i).UBout(L(j));
+0219                 <span class="keyword">else</span>
+0220                     EM=[<span class="string">'The compartment defined for ALLMETSIN in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; does not exist'</span>];
+0221                     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0222                 <span class="keyword">end</span>
+0223             <span class="keyword">end</span>
+0224         <span class="keyword">end</span>
+0225         <span class="comment">%Then add the normal constraints</span>
+0226         <span class="keyword">if</span> any(J)
+0227             <span class="comment">%Verify that IN and OUT bounds are consistent. Cannot require</span>
+0228             <span class="comment">%that a metabolite is simultaneously input AND output at some</span>
+0229             <span class="comment">%nonzero flux.</span>
+0230             I = find(I);  <span class="comment">% otherwise indexing becomes confusing</span>
+0231             nonzero_LBin = tModel.b(J,2) &lt; 0;
+0232             nonzero_LBout = taskStructure(i).LBout(I) &gt; 0;
+0233             <span class="keyword">if</span> any(nonzero_LBin &amp; nonzero_LBout)
+0234                 EM=[<span class="string">'The IN LB and OUT LB in &quot;['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'&quot; cannot be nonzero for the same metabolite'</span>];
+0235                 error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0236             <span class="keyword">end</span>
+0237             tModel.b(J(nonzero_LBout),1)=taskStructure(i).LBout(I(nonzero_LBout));
+0238             tModel.b(J,2)=taskStructure(i).UBout(I);
+0239         <span class="keyword">end</span>
+0240     <span class="keyword">end</span>
+0241     <span class="comment">%Add new rxns</span>
+0242     <span class="keyword">if</span> ~isempty(taskStructure(i).equations)
+0243         <span class="comment">% num2str on the whole column right-aligns every row to a common</span>
+0244         <span class="comment">% width, embedding a leading space in &quot;TEMPORARY_ 1&quot; once any id</span>
+0245         <span class="comment">% reaches two digits (&quot;TEMPORARY_10&quot;); format each one independently.</span>
+0246         rxnIds=arrayfun(@(x) sprintf(<span class="string">'TEMPORARY_%d'</span>,x), <span class="keyword">...</span>
+0247             (1:numel(taskStructure(i).equations))', <span class="string">'UniformOutput'</span>, false);
+0248         <span class="comment">% Built as a single struct() call, not incremental rxn.field=...</span>
+0249         <span class="comment">% assignments: parfor's variable classifier cannot establish that a</span>
+0250         <span class="comment">% variable built up via several dot-indexed assignments is a</span>
+0251         <span class="comment">% same-shape temporary in every iteration, and rejects it outright.</span>
+0252         rxn=struct(<span class="string">'equations'</span>,{taskStructure(i).equations}, <span class="keyword">...</span>
+0253             <span class="string">'lb'</span>,taskStructure(i).LBequ, <span class="string">'ub'</span>,taskStructure(i).UBequ, <span class="keyword">...</span>
+0254             <span class="string">'rxns'</span>,{rxnIds});
+0255         <span class="comment">%Allow for new metabolites to be added. This is because it should</span>
+0256         <span class="comment">%be possible to add, say, a whole new pathway</span>
+0257         tModel=addRxns(tModel,rxn,3,[],true);
+0258     <span class="keyword">end</span>
+0259     <span class="comment">%Add changed bounds</span>
+0260     <span class="keyword">if</span> ~isempty(taskStructure(i).changed)
+0261         <span class="comment">%NaN bounds mean &quot;leave unchanged&quot;</span>
+0262         lbSet=~isnan(taskStructure(i).LBrxn);
+0263         ubSet=~isnan(taskStructure(i).UBrxn);
+0264         tModel=setParam(tModel,<span class="string">'lb'</span>,taskStructure(i).changed(lbSet),taskStructure(i).LBrxn(lbSet));
+0265         tModel=setParam(tModel,<span class="string">'ub'</span>,taskStructure(i).changed(ubSet),taskStructure(i).UBrxn(ubSet));
+0266     <span class="keyword">end</span>
+0267     
+0268     <span class="comment">%Solve and print</span>
+0269     sol=solveLP(tModel);
+0270     <span class="keyword">if</span> ~isempty(sol.x)
+0271         <span class="comment">%assign the fluxes</span>
+0272         essentialFluxes(:,i) = sol.x(1:numel(model.rxns));
+0273         
+0274         <span class="keyword">if</span> ~taskStructure(i).shouldFail
+0275             ok(i)=true;
+0276             <span class="keyword">if</span> printOnlyFailed==false &amp;&amp; printOutput==true
+0277                 fprintf([<span class="string">'PASS: ['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'\n'</span>]);
 0278             <span class="keyword">end</span>
-0279         <span class="keyword">end</span>
-0280     <span class="keyword">else</span>
-0281         <span class="keyword">if</span> ~taskStructure(i).shouldFail
-0282             ok(i)=false;
-0283             <span class="keyword">if</span> printOutput==true
-0284                 fprintf([<span class="string">'FAIL: ['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'\n'</span>]);
-0285             <span class="keyword">end</span>
-0286         <span class="keyword">else</span>
-0287             ok(i)=true;
-0288             <span class="keyword">if</span> printOnlyFailed==false &amp;&amp; printOutput==true
-0289                 fprintf([<span class="string">'FAIL (should fail): ['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'\n'</span>]);
+0279             <span class="comment">%Calculate the essential reactions</span>
+0280             <span class="keyword">if</span> getEssential==true
+0281                 [~, taskEssential]=getEssentialRxns(tModel);
+0282                 <span class="comment">%This is because there could be more reactions in tModel</span>
+0283                 <span class="comment">%than in model. Built as a full local column and written</span>
+0284                 <span class="comment">%with a plain ':' row index: parfor only accepts a sliced</span>
+0285                 <span class="comment">%output write when every subscript besides the loop</span>
+0286                 <span class="comment">%variable is ':', not a data-dependent index vector.</span>
+0287                 essentialCol=false(numel(model.rxns),1);
+0288                 essentialCol(taskEssential(taskEssential&lt;=numel(model.rxns)))=true;
+0289                 essentialRxns(:,i)=essentialCol;
 0290             <span class="keyword">end</span>
-0291         <span class="keyword">end</span>
-0292     <span class="keyword">end</span>
-0293     <span class="keyword">if</span> taskStructure(i).printFluxes &amp;&amp; ~isempty(sol.x)
-0294         sol=solveLP(tModel,1);
-0295         <span class="keyword">if</span> ~isempty(sol.x)
-0296             printFluxes(tModel,sol.x,false,10^-6,[],<span class="string">'%rxnID (%eqn):%flux\n'</span>);
-0297             fprintf(<span class="string">'\n'</span>);
-0298         <span class="keyword">end</span>
-0299     <span class="keyword">end</span>
-0300 <span class="keyword">end</span>
-0301 
-0302 taskReport.id=ids;
-0303 taskReport.description=descriptions;
-0304 taskReport.ok=ok;
-0305 
-0306 <span class="keyword">end</span></pre></div>
+0291         <span class="keyword">else</span>
+0292             ok(i)=false;
+0293             <span class="keyword">if</span> printOutput==true
+0294                 fprintf([<span class="string">'PASS (should fail): ['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'\n'</span>]);
+0295             <span class="keyword">end</span>
+0296         <span class="keyword">end</span>
+0297     <span class="keyword">else</span>
+0298         <span class="keyword">if</span> ~taskStructure(i).shouldFail
+0299             ok(i)=false;
+0300             <span class="keyword">if</span> printOutput==true
+0301                 fprintf([<span class="string">'FAIL: ['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'\n'</span>]);
+0302             <span class="keyword">end</span>
+0303         <span class="keyword">else</span>
+0304             ok(i)=true;
+0305             <span class="keyword">if</span> printOnlyFailed==false &amp;&amp; printOutput==true
+0306                 fprintf([<span class="string">'FAIL (should fail): ['</span> taskStructure(i).id <span class="string">'] '</span> taskStructure(i).description <span class="string">'\n'</span>]);
+0307             <span class="keyword">end</span>
+0308         <span class="keyword">end</span>
+0309     <span class="keyword">end</span>
+0310     <span class="keyword">if</span> taskStructure(i).printFluxes &amp;&amp; ~isempty(sol.x)
+0311         sol=solveLP(tModel,1);
+0312         <span class="keyword">if</span> ~isempty(sol.x)
+0313             printFluxes(tModel,sol.x,false,10^-6,[],<span class="string">'%rxnID (%eqn):%flux\n'</span>);
+0314             fprintf(<span class="string">'\n'</span>);
+0315         <span class="keyword">end</span>
+0316     <span class="keyword">end</span>
+0317 <span class="keyword">end</span>
+0318 
+0319 taskReport.id=ids;
+0320 taskReport.description=descriptions;
+0321 taskReport.ok=ok;
+0322 
+0323 <span class="keyword">end</span>
+0324 
+0325 <a name="_sub1" href="#_subfunctions" class="code">function dupMets = duplicateMetNames(names,modelMets)</a>
+0326 <span class="comment">% Return the (upper-case) names that match more than one model metabolite.</span>
+0327 dupMets = unique(upper(names));
+0328 isDup = false(size(dupMets));
+0329 <span class="keyword">for</span> k = 1:numel(dupMets)
+0330     isDup(k) = sum(strcmp(modelMets,dupMets{k})) &gt; 1;
+0331 <span class="keyword">end</span>
+0332 dupMets = dupMets(isDup);
+0333 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>
