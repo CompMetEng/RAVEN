@@ -62,6 +62,29 @@ classdef tINIT < RavenTestCase
             testCase.verifyEqual(full(mm.rxnGeneMat), ones(1, numel(mm.genes)));
         end
 
+        function removeLowScoreGenesTieKeepsFirstGeneInRule(testCase)
+            % With every isozyme negative and tied, the gene listed first in
+            % the rule is kept (not the alphabetically first one), and the
+            % order of the surviving genes follows the rule.
+            m = struct();
+            m.id = 'test';
+            m.rxns = {'R1';'R2'}; m.rxnNames = {'R1';'R2'};
+            m.mets = {'A';'B'}; m.metNames = {'A';'B'}; m.metComps = [1;1];
+            m.comps = {'c'}; m.compNames = {'c'};
+            m.S = sparse([-1 -1;1 1]); m.lb = [0;0]; m.ub = [1000;1000];
+            m.rev = [0;0]; m.c = [0;0]; m.b = [0;0];
+            m.genes = {'G1';'G2';'G3';'G4'};
+            m.grRules = {'G2 or G1';'G4 or G3 or G2'};
+            m.rxnGeneMat = sparse([1 1 0 0;0 1 1 1]);
+            evalc('[mm, removed] = removeLowScoreGenes(m, [-1;-1;1;-1]);');
+            testCase.verifyEqual(mm.grRules{1}, 'G2');
+            testCase.verifyEqual(mm.grRules{2}, 'G3');
+            testCase.verifyEqual(sort(removed), {'G1';'G4'});
+
+            evalc('mm = removeLowScoreGenes(m, [1;1;1;1]);');
+            testCase.verifyEqual(mm.grRules, m.grRules);
+        end
+
         function reverseRxnsRuns(testCase)
             % R1 = '=> a[s]'; R3 = 'a[c] <=> b[c] + c[c]'
             testModel = getTstModel();
