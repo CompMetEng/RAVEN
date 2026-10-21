@@ -79,6 +79,12 @@ if isempty(metIdx)
     error('The to-be-replaced metabolite cannot be found in the model.');
 end
 
+% Either of the two rows can be the one that survives the merge: with identifiers the
+% replacement stays, by name the replaced metabolite is renamed and stays while the
+% replacement's row is deleted below. Both ids are kept so that contractModel is
+% restricted to the metabolite that is left.
+repMetIds = [repMetIds; model.mets(metIdx)];
+
 rxnsWithMet = find(model.S(metIdx,:));
 if verbose==true
     fprintf('\n\nThe following reactions contain the to-be-replaced metabolite as reactant:\n')
@@ -173,10 +179,13 @@ end
 
 % This could now have created duplicate reactions. Contract model.
 % repIdx may point past the end, or at the wrong row, once idxDelete has
-% shifted things above; re-resolve the replacement metabolite by id.
+% shifted things above; re-resolve the metabolite that is left by id. An empty
+% list must not reach contractModel, which would then check every reaction.
 % distReverse is passed by name rather than positionally as [], which
 % parseRAVENargs would take literally instead of falling back to its
 % documented default of true.
 repIdx = find(ismember(model.mets, repMetIds));
-model=contractModel(model,'mets',repIdx);
+if ~isempty(repIdx)
+    model=contractModel(model,'mets',repIdx);
+end
 end

@@ -608,6 +608,39 @@ classdef tManipulation < RavenTestCase
             testCase.verifyEqual(numel(m2.mets), 2); % oxygen and o2 merged
         end
 
+        function replaceMetsByNameLeavesUnrelatedDuplicatesAlone(testCase)
+            % Merging "oxygen" into "o2" makes r1 a duplicate of r2, which is
+            % contracted. unrelated1 and unrelated2 are duplicates of each
+            % other that do not involve either metabolite; contractModel is
+            % restricted to the reactions of the merged metabolite, so they
+            % must stay. (By name the replacement's row is the one deleted,
+            % so the restriction has to follow the metabolite that is left.)
+            m = tManipulation.duplicateModel();
+            evalc('m2 = replaceMets(m, ''oxygen'', ''o2'');');
+            testCase.verifyEqual(numel(m2.mets), 3);
+            testCase.verifyTrue(all(ismember({'unrelated1';'unrelated2'}, m2.rxns)));
+            testCase.verifyEqual(sum(ismember({'r1';'r2'}, m2.rxns)), 1);
+            testCase.verifyEqual(numel(m2.rxns), 3);
+        end
+
+        function replaceMetsByIdLeavesUnrelatedDuplicatesAlone(testCase)
+            m = tManipulation.duplicateModel();
+            evalc('m2 = replaceMets(m, ''a'', ''b'', ''identifiers'', true);');
+            testCase.verifyEqual(numel(m2.mets), 3);
+            testCase.verifyTrue(all(ismember({'unrelated1';'unrelated2'}, m2.rxns)));
+            testCase.verifyEqual(sum(ismember({'r1';'r2'}, m2.rxns)), 1);
+        end
+
+        function replaceMetsByNameStillContractsTheNewDuplicate(testCase)
+            % The restriction must not switch the contraction off: r1 and
+            % r2 become identical once the two metabolites are one.
+            m = tManipulation.duplicateModel();
+            evalc('m2 = replaceMets(m, ''oxygen'', ''o2'');');
+            testCase.verifyLessThan(numel(m2.rxns), numel(m.rxns));
+            rowO2 = find(strcmp(m2.metNames, 'o2'));
+            testCase.verifyEqual(numel(rowO2), 1);
+        end
+
         function setExchangeBoundsFindsAllMultiExchangeMets(testCase)
             % Every metabolite exchanged by more than one reaction must be
             % reported, not just whichever one happens to line up between
@@ -896,6 +929,25 @@ classdef tManipulation < RavenTestCase
     end
 
     methods (Static, Access = private)
+
+        function m = duplicateModel()
+            % a and b are named oxygen and o2; r1 (a => x) and r2 (b => x) become
+            % duplicates once they are one metabolite. unrelated1 and unrelated2
+            % (both d =>) are duplicates of each other from the start.
+            m = struct();
+            m.id        = 'dup';
+            m.rxns      = {'r1';'r2';'unrelated1';'unrelated2'};
+            m.rxnNames  = m.rxns;
+            m.mets      = {'a';'b';'x';'d'};
+            m.metNames  = {'oxygen';'o2';'x';'d'};
+            m.metComps  = [1;1;1;1];
+            m.comps     = {'c'};
+            m.compNames = {'cytosol'};
+            m.S         = sparse([-1 0 0 0; 0 -1 0 0; 1 1 0 0; 0 0 -1 -1]);
+            m.lb = -1000*ones(4,1); m.ub = 1000*ones(4,1); m.rev = ones(4,1);
+            m.c = zeros(4,1); m.b = zeros(4,1);
+            m.genes = {}; m.grRules = repmat({''},4,1); m.rxnGeneMat = sparse(4,0);
+        end
 
         function m = twoMetModel()
             % Single reaction a -> b in one compartment.
