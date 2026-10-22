@@ -22,9 +22,6 @@ function out=exportForGit(model,varargin)
 %     cell array of strings specifying in what file formats the model
 %     should be exported (default all formats as {'mat', 'txt', 'xlsx',
 %     'xml', 'yml'}).
-% mainBranchFlag : logical
-%     if true, function will error if RAVEN (and GECKO for enzyme-
-%     constrained models) is/are not on the main branch (default false).
 % subDirs : logical
 %     whether model files for each file format should be written in their
 %     own subdirectory, with 'model' as parent directory, in accordance to
@@ -41,18 +38,15 @@ function out=exportForGit(model,varargin)
 %
 % Examples
 % --------
-%     exportForGit(model, prefix, path, formats, mainBranchFlag, subDirs, ...
+%     exportForGit(model, prefix, path, formats, subDirs, ...
 %         COBRAtext, neverPrefixIDs);
-p=parseRAVENargs(varargin, {'prefix',[]; 'path',[]; 'formats',[]; 'mainBranchFlag',[]; 'subDirs',[]; 'COBRAtext',[]; 'neverPrefixIDs',false});
-prefix=p.prefix; path=p.path; formats=p.formats; mainBranchFlag=p.mainBranchFlag; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
+p=parseRAVENargs(varargin, {'prefix',[]; 'path',[]; 'formats',[]; 'subDirs',[]; 'COBRAtext',[]; 'neverPrefixIDs',false});
+prefix=p.prefix; path=p.path; formats=p.formats; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
 if isempty(COBRAtext)
     COBRAtext=false;
 end
 if isempty(subDirs)
     subDirs=true;
-end
-if isempty(mainBranchFlag)
-    mainBranchFlag=false;
 end
 if isempty(formats)
     formats={'mat', 'txt', 'xlsx', 'xml', 'yml'};
@@ -79,9 +73,9 @@ model=sortIdentifiers(model);
 
 %Get versions or commits of toolboxes. GECKO is only relevant for
 %enzyme-constrained models (those with an "ec" field).
-RAVENver = getToolboxVersion('RAVEN','ravenCobraWrapper.m',mainBranchFlag);
+RAVENver = getToolboxVersion('RAVEN','ravenCobraWrapper.m');
 if isfield(model,'ec')
-    GECKOver = getToolboxVersion('GECKO','GECKOInstaller.m',mainBranchFlag);
+    GECKOver = getToolboxVersion('GECKO','GECKOInstaller.m');
 else
     GECKOver = [];
 end
@@ -125,12 +119,12 @@ if ismember('txt', formats)
         eqns=constructEquations(model,model.rxns);
         grRules=model.grRules;
     end
-    fprintf(fid, 'Rxn name\tFormula\tGene-reaction association\tLB\tUB\tObjective\n');
+    fprintf(fid, 'Rxn id\tFormula\tGene-reaction association\tLB\tUB\tObjective\n');
     for i = 1:numel(model.rxns)
         fprintf(fid, '%s\t', model.rxns{i});
-        fprintf(fid, '%s \t', eqns{i});
+        fprintf(fid, '%s\t', strtrim(eqns{i}));
         fprintf(fid, '%s\t', grRules{i});
-        fprintf(fid, '%6.2f\t%6.2f\t%6.2f\n', model.lb(i), model.ub(i), model.c(i));
+        fprintf(fid, '%s\t%s\t%s\n', shortestNumber(model.lb(i)), shortestNumber(model.ub(i)), shortestNumber(model.c(i)));
     end
     fclose(fid);
 end
@@ -173,7 +167,33 @@ end
 fclose(fid);
 end
 
-function version = getToolboxVersion(toolbox,fileID,mainBranchFlag)
+function s = shortestNumber(x)
+% shortestNumber  The shortest text that reads back as exactly x, so a bound
+% is never rounded on the way out (1/3 is 0.3333333333333333, 1000 is 1000).
+if isinf(x)
+    if x > 0
+        s = 'Inf';
+    else
+        s = '-Inf';
+    end
+    return
+elseif isnan(x)
+    s = 'NaN';
+    return
+end
+if x == floor(x) && abs(x) < 1e15
+    s = sprintf('%d', x);
+    return
+end
+for digits = 1:17
+    s = sprintf(['%.' num2str(digits) 'g'], x);
+    if str2double(s) == x
+        break
+    end
+end
+end
+
+function version = getToolboxVersion(toolbox,fileID)
 % getToolboxVersion  Return the version of RAVEN or GECKO.
 %
 % Returns the version of the toolbox as stated in its version.txt, or
@@ -182,7 +202,6 @@ function version = getToolboxVersion(toolbox,fileID,mainBranchFlag)
 % toolbox        name of the toolbox (e.g. 'RAVEN' or 'GECKO').
 % fileID         a file only found in that toolbox, used to locate its root
 %                (e.g. 'ravenCobraWrapper.m' or 'GECKOInstaller.m').
-% mainBranchFlag if true, error if the toolbox is not on the main branch.
 currentPath = pwd;
 version     = '';
 
@@ -202,15 +221,6 @@ try
 catch
     disp([toolbox ' toolbox cannot be found'])
     version = 'unknown';
-end
-%Check if in main:
-if mainBranchFlag
-    [~,currentBranch] = system('git rev-parse --abbrev-ref HEAD');
-    currentBranch = strtrim(currentBranch);
-    if ~any([strcmp(currentBranch, "main"), strcmp(currentBranch, "master")])
-        cd(currentPath);
-        error(['ERROR: ' toolbox ' not in main (or master) branch. Check-out this branch of ' toolbox ' before submitting model for Git.'])
-    end
 end
 %Read the version from the toolbox version.txt; report 'unknown' otherwise
 if isempty(version)

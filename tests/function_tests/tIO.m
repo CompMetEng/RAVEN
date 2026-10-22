@@ -18,14 +18,27 @@ classdef tIO < RavenTestCase
             testCase.verifySubstring(dep, 'RAVEN_toolbox');
         end
 
-        function exportForGitMainBranchFlagRejectsNonMain(testCase)
-            % mainBranchFlag should error when RAVEN is *not* on main/master,
-            % which this test, run from a feature branch, always satisfies.
+        function exportForGitTxtKeepsBoundsExactly(testCase)
+            % The txt file is a lossless table: bounds and objective are
+            % written with the digits needed to read them back unchanged.
+            m = testCase.taskTestModel();
+            m.lb(2) = -1/3; m.ub(2) = 0.1; m.ub(3) = 1e-7;
             outDir = tempname; mkdir(outDir);
             c = onCleanup(@() rmdir(outDir,'s'));
-            testCase.verifyError(@() evalc(['exportForGit(testCase.model,''path'',outDir,' ...
-                '''formats'',{''xml''},''subDirs'',false,''mainBranchFlag'',true);']), ...
-                ?MException);
+            evalc("exportForGit(m,'path',outDir,'formats',{'txt'},'subDirs',false)");
+            lines = strsplit(strtrim(fileread(fullfile(outDir,'model.txt'))), newline);
+            testCase.verifyEqual(strsplit(lines{1}, sprintf('\t'), 'CollapseDelimiters', false), ...
+                {'Rxn id','Formula','Gene-reaction association','LB','UB','Objective'});
+            fields = cellfun(@(l) strsplit(l, sprintf('\t'), 'CollapseDelimiters', false), lines(2:end), 'UniformOutput', false);
+            ids = cellfun(@(f) f{1}, fields, 'UniformOutput', false);
+            [~, order] = ismember(ids, m.rxns);
+            lb = cellfun(@(f) str2double(f{4}), fields);
+            ub = cellfun(@(f) str2double(f{5}), fields);
+            testCase.verifyEqual(lb(:), m.lb(order));
+            testCase.verifyEqual(ub(:), m.ub(order));
+            testCase.verifyTrue(any(strcmp(cellfun(@(f) f{4}, fields, 'UniformOutput', false), '0.3333333333333333')) ...
+                || any(strcmp(cellfun(@(f) f{4}, fields, 'UniformOutput', false), '-0.3333333333333333')));
+            testCase.verifyFalse(any(cellfun(@(f) endsWith(f{2}, ' '), fields)));
         end
 
         function importModelHandlesSpeciesAndReactionEdgeCases(testCase)
