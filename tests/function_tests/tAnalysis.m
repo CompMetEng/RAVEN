@@ -311,6 +311,20 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(rm.metPValues(strcmp(rm.mets,'A')), 0.5*erfc(expectedA/sqrt(2)), 'AbsTol', 1e-12);
         end
 
+        function reporterMetabolitesGivesZeroScoreWhenBackgroundStdIsZero(testCase)
+            % All scored genes have the same Z-score, so the background
+            % standard deviation is 0 and no metabolite stands out.
+            m = struct();
+            m.mets       = {'A';'B'};
+            m.metNames   = {'A';'B'};
+            m.genes      = {'g1';'g2';'g3'};
+            m.S          = sparse([1 0; 0 1]);
+            m.rxnGeneMat = sparse([1 1 0; 0 0 1]);
+            rm = reporterMetabolites(m, m.genes, [0.2; 0.2; 0.2]);
+            testCase.verifyEqual(rm.metZScores, zeros(2,1));
+            testCase.verifyEqual(rm.metPValues, 0.5*ones(2,1));
+        end
+
         function FSEOFRuns(testCase)
             biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
             [~, exchIdx] = getExchangeRxns(testCase.model);

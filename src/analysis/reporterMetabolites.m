@@ -142,10 +142,16 @@ stdZ(isnan(stdZ))=[];
 %distribution. For n genes drawn with replacement from the scored-gene pool
 %(mean mu, population std sigma), the aggregate Z = sum(z)/sqrt(n) has:
 %  E[Z] = sqrt(n)*mu  and  Std[Z] = sigma  (independent of n)
-%so the corrected score is (metZ - sqrt(n)*mu) / sigma.
+%so the corrected score is (metZ - sqrt(n)*mu) / sigma. When sigma is 0 (all
+%scored genes have the same Z-score) no metabolite stands out from the
+%background, and the corrected score is 0 (P-value 0.5).
 mu = mean(geneZScores);
 sigma = std(geneZScores,1);
-metZScores = (metZScores - sqrt(metNGenes) .* mu) ./ sigma;
+if sigma > 0
+    metZScores = (metZScores - sqrt(metNGenes) .* mu) ./ sigma;
+else
+    metZScores = zeros(size(metZScores));
+end
 
 %Calculate the P-values (upper-tail of the standard normal). Uses the base
 %MATLAB erfc so this does not depend on the Statistics Toolbox normcdf:
