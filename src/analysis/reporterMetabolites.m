@@ -144,10 +144,12 @@ stdZ(isnan(stdZ))=[];
 %  E[Z] = sqrt(n)*mu  and  Std[Z] = sigma  (independent of n)
 %so the corrected score is (metZ - sqrt(n)*mu) / sigma. When sigma is 0 (all
 %scored genes have the same Z-score) no metabolite stands out from the
-%background, and the corrected score is 0 (P-value 0.5).
+%background, and the corrected score is 0 (P-value 0.5). Identical Z-scores
+%usually give a sigma of a few units of floating-point rounding rather than
+%exactly 0, so sigma counts as 0 below 100*eps(max(abs(Z))).
 mu = mean(geneZScores);
 sigma = std(geneZScores,1);
-if sigma > 0
+if sigma > 100*eps(max(abs(geneZScores)))
     metZScores = (metZScores - sqrt(metNGenes) .* mu) ./ sigma;
 else
     metZScores = zeros(size(metZScores));

@@ -325,6 +325,23 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(rm.metPValues, 0.5*ones(2,1));
         end
 
+        function reporterMetabolitesGivesZeroScoreForRoundedIdenticalZScores(testCase)
+            % The mean of identical Z-scores can differ from them by
+            % rounding, which must not read as a background spread. These
+            % gene counts leave a rounding residual.
+            for n = [7 8 15]
+                m = struct();
+                m.mets       = {'A'};
+                m.metNames   = {'A'};
+                m.genes      = arrayfun(@(i) sprintf('g%d',i), 1:n, 'UniformOutput', false)';
+                m.S          = sparse(1);
+                m.rxnGeneMat = sparse(ones(1, n));
+                rm = reporterMetabolites(m, m.genes, 0.2*ones(n,1));
+                testCase.verifyEqual(rm.metZScores, 0);
+                testCase.verifyEqual(rm.metPValues, 0.5);
+            end
+        end
+
         function FSEOFRuns(testCase)
             biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
             [~, exchIdx] = getExchangeRxns(testCase.model);
