@@ -276,6 +276,22 @@ classdef tINIT < RavenTestCase
                 {'R1';'R2';'R4';'R6';'R7';'R8'})));
         end
 
+        function ftINITWithoutRemoveGenesDropsGenesOfRemovedReactions(testCase)
+            % Genes that no remaining reaction uses are not in the output,
+            % also when removeGenes is false.
+            testCase.assumeMILPSolver();
+            testModel = getTstModel();
+            evalc('prepData = prepINITModel(testModel, {}, {}, false, {}, ''s'');');
+            arrayData.genes     = testModel.genes;
+            arrayData.tissues   = {'a'};
+            arrayData.levels    = getExprForRxnScore(getTstModelRxnScores());
+            arrayData.threshold = 1;
+            evalc(['resModel = ftINIT(prepData,arrayData.tissues{1},[],[],' ...
+                'arrayData,[],getINITSteps(),false,true,struct(),false);']);
+            testCase.verifyLessThan(numel(resModel.genes), numel(testModel.genes));
+            testCase.verifyTrue(all(full(any(resModel.rxnGeneMat,1))));
+        end
+
         function ftINITResolveTiesAndProveAbsGapStillRunCorrectly(testCase)
             % resolveTies and proveAbsGap are threaded through ftINIT ->
             % ftINITInternalAlg (main extraction) and, for resolveTies, also

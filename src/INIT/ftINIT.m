@@ -448,7 +448,7 @@ model = outModel;
 %be performed also without manipulating the b vector in the model (which is what is done in the gap-filling).
 exchRxns = getExchangeRxns(prepData.refModel);
 deletedRxnsInINIT = setdiff(prepData.refModel.rxns,union(union(initModel.rxns, addedRxnsForTasks), exchRxns));
-outModel = removeReactions(prepData.refModel, deletedRxnsInINIT, true); %we skip removing the genes for now, I'm not sure it is desirable
+outModel = removeReactions(prepData.refModel, deletedRxnsInINIT, true, true);
 
 % If requested, attempt to remove negative-score genes from the model, 
 % depending on their role (isozyme or complex subunit) in each grRule.
