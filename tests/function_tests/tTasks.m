@@ -37,6 +37,77 @@ classdef tTasks < RavenTestCase
             testCase.verifyTrue(report.ok == 1);
         end
 
+        function parseTaskListDefaultsMissingOptionalColumns(testCase)
+            % Absent optional columns take their documented defaults: bounds
+            % 0 (lower) and 1000 (upper), and empty comments.
+            f = tTasks.writeTaskFile({
+                {'' 'ID' 'IN' 'OUT'}
+                {'' 'T1' 'A[c]' 'B[c]'}
+                });
+            ts = parseTaskList(f);
+            testCase.verifyEqual(ts.LBin, 0);
+            testCase.verifyEqual(ts.UBin, 1000);
+            testCase.verifyEqual(ts.LBout, 0);
+            testCase.verifyEqual(ts.UBout, 1000);
+            testCase.verifyEqual(ts.comments, '');
+        end
+
+        function parseTaskListSkipsLeadingCommentRows(testCase)
+            % Rows starting with a non-empty cell are comments, also when
+            % they come before the header row.
+            f = tTasks.writeTaskFile({
+                {'# first comment'}
+                {'# second comment'}
+                {'' 'ID' 'IN'}
+                {'' 'T1' 'A[c]'}
+                });
+            ts = parseTaskList(f);
+            testCase.verifyEqual(numel(ts), 1);
+            testCase.verifyEqual(ts.id, 'T1');
+            testCase.verifyEqual(ts.inputs, {'A[c]'});
+        end
+
+        function parseTaskListWarnsAndSkipsRowsBeforeFirstId(testCase)
+            f = tTasks.writeTaskFile({
+                {'' 'ID' 'IN'}
+                {'' '' 'X[c]'}
+                {'' 'T1' 'A[c]'}
+                });
+            lastwarn('');
+            ts = parseTaskList(f);
+            testCase.verifySubstring(lastwarn, 'before the first task id');
+            testCase.verifyEqual(numel(ts), 1);
+            testCase.verifyEqual(ts.id, 'T1');
+            testCase.verifyEqual(ts.inputs, {'A[c]'});
+        end
+
+        function parseTaskListRefusesNonNumericBound(testCase)
+            f = tTasks.writeTaskFile({
+                {'' 'ID' 'IN' 'IN LB'}
+                {'' 'T1' 'A[c]' 'abc'}
+                });
+            testCase.verifyError(@() parseTaskList(f), 'RAVEN:badInput');
+        end
+
+        function parseTaskListRefusesXls(testCase)
+            f = [tempname '.xls'];
+            fid = fopen(f,'w'); fclose(fid);
+            cleanup = onCleanup(@() delete(f));
+            testCase.verifyError(@() parseTaskList(f), 'RAVEN:badInput');
+        end
+
+        function parseTaskListReadsXlsx(testCase)
+            f = [tempname '.xlsx'];
+            % a filled first column keeps the empty header cell in the sheet range
+            writecell({'' 'ID' 'IN' 'IN LB'; '' 'T1' 'A[c];B[c]' 2; '' 'T2' 'C[c]' ''; '# note' '' '' ''}, f, 'Sheet', 'TASKS');
+            cleanup = onCleanup(@() delete(f));
+            ts = parseTaskList(f);
+            testCase.verifyEqual(numel(ts), 2);
+            testCase.verifyEqual(ts(1).inputs, {'A[c]';'B[c]'});
+            testCase.verifyEqual(ts(1).LBin, [2;2]);
+            testCase.verifyEqual(ts(2).LBin, 0);
+        end
+
         function parseTaskListReadsFlagsListsAndHeadersLeniently(testCase)
             % Flags: "false"/"0"/"no" are false, other text is true. Lists
             % separated by ";" are trimmed and empty items dropped. Headers
@@ -101,16 +172,13 @@ classdef tTasks < RavenTestCase
         end
 
         function parseTaskListMatchesExpected(testCase)
-            % The text and Excel task definitions must parse to identical
-            % structs with exactly the expected fields and values.
+            % The text task definitions must parse to structs with exactly the
+            % expected fields and values.
             dataDir   = fullfile(testCase.ravenRoot,'tests','function_tests','test_data');
             txtFile   = fullfile(dataDir,'test_tasks.txt');
-            xlsFile   = fullfile(dataDir,'test_tasks.xls');
             testCase.assumeDependency(exist(txtFile,'file')==2, 'test_tasks.txt');
-            testCase.assumeDependency(exist(xlsFile,'file')==2, 'test_tasks.xls');
 
             taskStruct      = parseTaskList(txtFile);
-            taskStructExcel = parseTaskList(xlsFile);
 
             expTask1.id          = 'ER';
             expTask1.description = 'Aerobic rephosphorylation of ATP from glucose';
@@ -132,10 +200,8 @@ classdef tTasks < RavenTestCase
             testCase.verifyNotEqual(taskStruct(1), expTask1);
             expTask1.UBrxn = 60;
             testCase.verifyEqual(taskStruct(1), expTask1);
-            testCase.verifyEqual(taskStructExcel(1), expTask1);
 
             testCase.verifyEqual(length(taskStruct), 2);
-            testCase.verifyEqual(length(taskStructExcel), 2);
 
             expTask2.id          = 'BS';
             expTask2.description = 'ATP de novo synthesis';
@@ -155,11 +221,23 @@ classdef tTasks < RavenTestCase
             expTask2.LBrxn       = [];
             expTask2.UBrxn       = [];
             testCase.verifyEqual(taskStruct(2), expTask2);
-            testCase.verifyEqual(taskStructExcel(2), expTask2);
-
-            % the two formats must produce identical results
-            testCase.verifyEqual(taskStruct, taskStructExcel);
         end
 
+    end
+
+    methods (Static, Access = private)
+        function f = writeTaskFile(rows)
+            % Write rows (cell arrays of cells) as a tab-delimited task list.
+            % The file is deleted when the calling test ends.
+            lines = cell(numel(rows),1);
+            for k = 1:numel(rows)
+                lines{k} = strjoin(rows{k}, sprintf('\t'));
+            end
+            f = [tempname '.txt'];
+            fid = fopen(f,'w');
+            fprintf(fid,'%s\n',lines{:});
+            fclose(fid);
+            evalin('caller', sprintf('cleanup = onCleanup(@() delete(''%s''));', f));
+        end
     end
 end

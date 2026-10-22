@@ -5,10 +5,11 @@ function taskStruct=parseTaskList(inputFile)
 % ----------
 % inputFile : char
 %     a task list in either Excel (*.xlsx, with a sheet named TASKS with
-%     all relevant content) or tab-delimited (*.txt) format. The file may
-%     contain the following column headers (note, all rows starting with a
-%     non-empty cell are removed; the first row after that is considered
-%     the headers):
+%     all relevant content) or tab-delimited (*.txt) format. The old binary
+%     *.xls format is not supported. The file may contain the following
+%     column headers (note, all rows starting with a non-empty cell are
+%     removed; the first row after that is considered the headers; the
+%     header row itself must therefore start with an empty cell):
 %
 %     - ID : the only required header. Each task must have a unique id
 %       (string or numeric). Tasks can span multiple rows, only the first
@@ -126,8 +127,10 @@ if strcmp(extractAfter(inputFile,strlength(inputFile) - 4), '.txt')
     fclose(fid);
     raw = [C{:}];%unnest the cell array of cell arrays into a 2-dim cell array
 else
-    %Read the TASKS sheet from an Excel file (readcell handles both .xls
-    %and .xlsx).
+    if endsWith(lower(char(inputFile)),'.xls')
+        error('RAVEN:badInput', '%s', [inputFile ': the old binary .xls format is not supported. Save the task list as .xlsx (sheet ''TASKS'') or as a tab-delimited .txt file.']);
+    end
+    %Read the TASKS sheet from an Excel file
     try
         raw=readcell(inputFile,'Sheet','TASKS');
     catch
@@ -136,6 +139,17 @@ else
     %Normalise blank cells (which readcell returns as "missing") to [], as
     %expected by the downstream cleanSheet/parsing.
     raw(cellfun(@(x) all(ismissing(x)),raw))={[]};
+end
+
+%Leading rows that start with a non-empty cell are comments; the first row
+%with an empty first cell is the header row
+if iscell(raw)
+    firstBlank=cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),raw(:,1));
+    first=find(firstBlank,1);
+    if isempty(first)
+        error('RAVEN:badInput', '%s', 'The TASKS sheet must have a column named ID');
+    end
+    raw=raw(first:end,:);
 end
 
 %Remove all lines starting with "#" (or actually any character) and all
@@ -152,10 +166,13 @@ header(isText)=upper(strtrim(header(isText)));
 [I, colI]=ismember(columns,header);
 
 %Only ID is required. Columns that are absent get index 0 from ismember, which
-%cannot be used to index raw, so point them at a spare empty column instead:
-%every optional field then reads as empty and its default applies.
-raw(:,end+1)={[]};
-colI(colI==0)=size(raw,2);
+%cannot be used to index raw, so point each of them at its own spare empty
+%column instead: every optional field then reads as empty and its default
+%applies.
+absent=find(colI==0);
+nOld=size(raw,2);
+raw(:,nOld+(1:numel(absent)))={[]};
+colI(absent)=nOld+(1:numel(absent));
 
 %If read from  a text file, the numbers will be strings - fix that
 if convNumeric % safeguard; a no-op if the columns are already numeric
@@ -166,7 +183,28 @@ if convNumeric % safeguard; a no-op if the columns are already numeric
     numeric(1,:) = 1;
     for colind = 1:numel(cols)
         col = cols(colind);
-        raw(~numeric(:,colind),col) = cellfun(@str2num, raw(~numeric(:,colind),col), 'UniformOutput', false);
+        for r = find(~numeric(:,colind))'
+            if ischar(raw{r,col}) && ~isempty(strtrim(raw{r,col}))
+                value = str2num(raw{r,col}); %#ok<ST2NM>
+                if ~isempty(value)
+                    raw{r,col} = value;
+                end
+            else
+                raw{r,col} = [];
+            end
+        end
+    end
+end
+
+%Every bound that is given must be a number
+numericNames = columns([4 5 7 8 10 11 13 14]);
+numericCols = colI([4 5 7 8 10 11 13 14]);
+for k = 1:numel(numericCols)
+    for r = 2:size(raw,1)
+        x = raw{r,numericCols(k)};
+        if ~isempty(x) && ~(isnumeric(x) && isscalar(x))
+            error('RAVEN:badInput', 'The value in column %s of task list row %d is not a number', numericNames{k}, r);
+        end
     end
 end
 
@@ -176,7 +214,19 @@ if I(1)==0
     error('RAVEN:badInput', '%s', EM);
 end
 
-%make sure numerical fields are converted from strings
+%Rows before the first task id belong to no task
+firstId=find(~cellfun(@isempty,raw(2:end,colI(1))),1)+1;
+if isempty(firstId)
+    firstId=size(raw,1)+1;
+end
+if firstId>2
+    warning('RAVEN:warning', 'Skipping %d row(s) before the first task id', firstId-2);
+    raw(2:firstId-1,:)=[];
+end
+if size(raw,1)<2
+    taskStruct=[];
+    return;
+end
 
 %Add default bounds where needed
 for i=[4 5 7 8]
