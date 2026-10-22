@@ -8,7 +8,8 @@ function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 %
 % For every metabolite in the biomass pseudoreaction whose model.metNames
 % entry is in cofactorMetNames, the stoichiometric coefficient is set to
-% ±value preserving the sign of the current coefficient. Yeast-GEM scales
+% ±value preserving the sign of the current coefficient. An error is raised
+% before the model is changed if ngamRxn is given and is not in the model. Yeast-GEM scales
 % ATP, ADP, H2O, H+ and phosphate (with ATP and H2O on the substrate side,
 % ADP / H+ / phosphate on the product side).
 %
@@ -61,6 +62,12 @@ if ~any(bioPos)
         'Reaction %s not found in model.', biomassRxn);
 end
 
+setNgam = ~isempty(ngamRxn) && ~isempty(ngamValue);
+if setNgam && ~all(ismember(cellstr(ngamRxn), model.rxns))
+    error('setGAM:missingNgamRxn', ...
+        'NGAM reaction %s not found in model.', strjoin(cellstr(ngamRxn), ', '));
+end
+
 for i = 1:length(model.mets)
     S_ix = model.S(i, bioPos);
     isCofactor = any(strcmp(cofactorMetNames, model.metNames{i}));
@@ -69,7 +76,7 @@ for i = 1:length(model.mets)
     end
 end
 
-if ~isempty(ngamRxn) && ~isempty(ngamValue)
+if setNgam
     model = setParam(model, 'eq', ngamRxn, ngamValue);
 end
 end

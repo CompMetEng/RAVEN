@@ -76,6 +76,21 @@ classdef tBiomass < RavenTestCase
             testCase.verifyEqual(full(out.S(strcmp(out.mets,'h_c'), 1)), -1, 'AbsTol', 1e-9);
         end
 
+        function scaleBiomassPseudoreactionRefusesMissingProton(testCase)
+            [m, cfg] = tBiomass.protonToyModel();
+            cfg.proton_met = 'nohydrogen_c';
+            testCase.verifyError(@() scaleBiomassPseudoreaction(m, cfg, 'protein', 0.5), ...
+                'scaleBiomassPseudoreaction:missingProton');
+        end
+
+        function setGAMRefusesMissingNgamRxn(testCase)
+            % The model is not changed when the NGAM reaction is not found.
+            biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
+            testCase.verifyError(@() setGAM(testCase.model, 50, biomassRxn, ...
+                {'ATP','ADP','H2O','H+','Phosphate'}, 'ngamRxn', 'noSuchRxn', 'ngamValue', 1), ...
+                'setGAM:missingNgamRxn');
+        end
+
         function scaleBiomassPseudoreactionRefusesUnknownCharge(testCase)
             % An unset charge on a participating metabolite leaves the charge
             % balance unknown. Treating it as neutral would silently write the
