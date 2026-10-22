@@ -91,6 +91,14 @@ classdef tBiomass < RavenTestCase
                 'setGAM:missingNgamRxn');
         end
 
+        function setGAMRefusesMissingNgamRxnWithoutValue(testCase)
+            % The reaction is checked whenever it is given.
+            biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
+            testCase.verifyError(@() setGAM(testCase.model, 50, biomassRxn, ...
+                {'ATP','ADP','H2O','H+','Phosphate'}, 'ngamRxn', 'noSuchRxn'), ...
+                'setGAM:missingNgamRxn');
+        end
+
         function scaleBiomassPseudoreactionRefusesUnknownCharge(testCase)
             % An unset charge on a participating metabolite leaves the charge
             % balance unknown. Treating it as neutral would silently write the
