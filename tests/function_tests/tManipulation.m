@@ -440,6 +440,19 @@ classdef tManipulation < RavenTestCase
             testCase.verifyEqual(ids{1}, 'p.002');
         end
 
+        function generateNewIdsFollowsNumericallyLargestId(testCase)
+            % 'R_9' sorts after 'R_10' as text; the next id comes from 10.
+            m.rxns = {'R_9'; 'R_10'};
+            ids = generateNewIds(m, 'rxns', 'R_', 'quantity', 2);
+            testCase.verifyEqual(ids, {'R_11'; 'R_12'});
+        end
+
+        function generateNewIdsKeepsPaddingOfLargestId(testCase)
+            m.rxns = {'R_0009'; 'R_0010'};
+            ids = generateNewIds(m, 'rxns', 'R_');
+            testCase.verifyEqual(ids, {'R_0011'});
+        end
+
         function mergeCompartmentsSingleComp(testCase)
             evalc('m2 = mergeCompartments(testCase.model);');
             testCase.verifyNumElements(m2.comps, 1);

@@ -52,10 +52,16 @@ existingIds=existingIds(~cellfun(@isempty,regexp(existingIds,['^' escapedPrefix]
 
 if ~isempty(existingIds)
     existingIds=regexprep(existingIds,['^' escapedPrefix],'');
-    existingIds=sort(existingIds);
-    lastId=existingIds{end};
-    numLength=length(lastId);
-    lastId=str2double(lastId);
+    numbers=str2double(existingIds);
+    if all(isnan(numbers))
+        [~,I]=sort(existingIds);
+        lastId=existingIds{I(end)};
+        numLength=length(lastId);
+        lastId=NaN;
+    else
+        [lastId,I]=max(numbers);
+        numLength=length(existingIds{I});
+    end
 else
     lastId=0;
     fprintf(['No ' type ' ids with prefix "' prefix ...

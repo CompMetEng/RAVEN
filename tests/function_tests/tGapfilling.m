@@ -464,6 +464,35 @@ classdef tGapfilling < RavenTestCase
             testCase.verifyGreaterThanOrEqual(sol.f, 8 - 1e-6);
         end
 
+        function gapFillMILPUsesFiniteBoundsAsBigM(testCase)
+            % A universal reaction with ub 5000 can carry a growth floor of
+            % 1500 although bigM is 1000: only infinite bounds use bigM.
+            evalc('setRavenSolver(''glpk'')');
+            warnState = warning('off','RAVEN:glpkMILP');
+            testCase.addTeardown(@() warning(warnState));
+            gapModel = struct();
+            gapModel.id='gapModel'; gapModel.rxns={'ExA';'Bio'}; gapModel.rxnNames=gapModel.rxns;
+            gapModel.mets={'a';'b'}; gapModel.metNames=gapModel.mets; gapModel.metComps=[1;1];
+            gapModel.comps={'c'}; gapModel.compNames={'c'};
+            gapModel.S=sparse([1 0; 0 -1]); % ExA: =>a  Bio: b=>
+            gapModel.lb=[0;0]; gapModel.ub=[5000;5000]; gapModel.rev=[0;0];
+            gapModel.c=[0;1]; gapModel.b=zeros(2,1);
+            gapModel.genes={}; gapModel.grRules={'';''}; gapModel.rxnGeneMat=sparse(2,0);
+
+            modelDB = struct();
+            modelDB.id='DB'; modelDB.rxns={'T1'}; modelDB.rxnNames=modelDB.rxns;
+            modelDB.mets={'a';'b'}; modelDB.metNames=modelDB.mets; modelDB.metComps=[1;1];
+            modelDB.comps={'c'}; modelDB.compNames={'c'};
+            modelDB.S=sparse([-1;1]); % T1: a=>b
+            modelDB.lb=0; modelDB.ub=5000; modelDB.rev=0; modelDB.c=0; modelDB.b=zeros(2,1);
+            modelDB.genes={}; modelDB.grRules={''}; modelDB.rxnGeneMat=sparse(1,0);
+
+            evalc(['[addedRxns,newModel,exitFlag] = gapFillMILP(gapModel, modelDB, ' ...
+                '''minGrowth'', 1500, ''bigM'', 1000, ''verbose'', false);']);
+            testCase.verifyEqual(exitFlag, 1);
+            testCase.verifyEqual(addedRxns, {'T1'});
+        end
+
         function gapFillMILPKeepsDraftDirections(testCase)
             % A draft reaction running in the wrong direction is not
             % reversed: with only that repair available the MILP has no
