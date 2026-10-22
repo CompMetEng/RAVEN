@@ -1,5 +1,5 @@
 function model=sortModel(model,varargin)
-% sortModel  Standardize a model's internal ordering: by default orients
+% sortModel  Standardize a model's internal ordering: can orient
 % reversible reactions consistently; can also reorder metabolites within
 % reaction equations and/or reactions within each subsystem, depending on
 % which options are enabled.
@@ -13,7 +13,7 @@ function model=sortModel(model,varargin)
 % --------------------
 % sortReversible : logical
 %     sorts the reversible reactions so that the metabolite that is first
-%     in lexicographical order is a reactant (default true).
+%     in lexicographical order is a reactant (default false).
 % sortMetName : logical
 %     sort the metabolite names in the equation, also uses compartment
 %     abbreviation (default false).
@@ -37,7 +37,7 @@ function model=sortModel(model,varargin)
 % --------
 %     model = sortModel(model, sortReversible, sortMetName, sortReactionOrder);
 
-p=parseRAVENargs(varargin, {'sortReversible',true; 'sortMetName',false; 'sortReactionOrder',false; 'seed',[]});
+p=parseRAVENargs(varargin, {'sortReversible',false; 'sortMetName',false; 'sortReactionOrder',false; 'seed',[]});
 if ~isempty(p.seed)
     rng(p.seed);
 end

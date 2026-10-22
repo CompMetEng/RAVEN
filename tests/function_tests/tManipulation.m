@@ -751,6 +751,21 @@ classdef tManipulation < RavenTestCase
             testCase.verifyEqual(numel(m2.mets), numel(testCase.model.mets));
         end
 
+        function sortModelKeepsDirectionByDefault(testCase)
+            % Only sortReversible=true reorients a reversible reaction; the
+            % default leaves the stoichiometry as given.
+            m = struct();
+            m.id = 'toy'; m.rxns = {'R1'}; m.mets = {'A[c]';'B[c]'};
+            m.metNames = {'A';'B'}; m.comps = {'c'}; m.metComps = [1;1];
+            m.S = sparse([1;-1]); m.lb = -1000; m.ub = 1000; m.rev = 1;
+            m.c = 0; m.b = [0;0]; m.genes = cell(0,1);
+            m.rxnGeneMat = sparse(1,0); m.grRules = {''};
+            m2 = sortModel(m);
+            testCase.verifyEqual(full(m2.S), [1;-1]);
+            m3 = sortModel(m, 'sortReversible', true);
+            testCase.verifyEqual(full(m3.S), [-1;1]);
+        end
+
         function sortReactionOrderSeedIsReproducible(testCase)
             % The local search proposes swaps randomly; a given seed must
             % make its result reproducible across runs.

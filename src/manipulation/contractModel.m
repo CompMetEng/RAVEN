@@ -50,7 +50,7 @@ mets=p.mets;
 
 %First sort the model so that reversible reactions are in the same
 %direction
-modelS=sortModel(model);
+modelS=sortModel(model,true);
 
 %Get a list of duplicate reactions
 if distReverse
