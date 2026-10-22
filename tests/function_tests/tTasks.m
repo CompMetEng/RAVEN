@@ -90,10 +90,98 @@ classdef tTasks < RavenTestCase
         end
 
         function parseTaskListRefusesXls(testCase)
-            f = [tempname '.xls'];
-            fid = fopen(f,'w'); fclose(fid);
-            cleanup = onCleanup(@() delete(f));
-            testCase.verifyError(@() parseTaskList(f), 'RAVEN:badInput');
+            % The message names the supported formats, also for an upper
+            % case extension.
+            for ext = {'.xls','.XLS'}
+                f = [tempname ext{1}];
+                fid = fopen(f,'w'); fclose(fid);
+                cleanup = onCleanup(@() delete(f)); %#ok<NASGU>
+                try
+                    parseTaskList(f);
+                    msg = '';
+                    id = '';
+                catch err
+                    msg = err.message;
+                    id = err.identifier;
+                end
+                testCase.verifyEqual(id, 'RAVEN:badInput');
+                testCase.verifySubstring(msg, '.xlsx');
+                testCase.verifySubstring(msg, '.txt');
+            end
+        end
+
+        function parseTaskListIgnoresEmptyRows(testCase)
+            % A row without content, also one of white space, is neither a
+            % header nor a task row.
+            f = tTasks.writeTaskFile({
+                {'# comment' '' '' ''}
+                {'' '' '' ''}
+                {' ' '  ' '' ''}
+                {'' 'ID' 'IN' 'IN LB'}
+                {'' '' '' ''}
+                {'' 'T1' 'A[c]' '2'}
+                });
+            ts = parseTaskList(f);
+            testCase.verifyEqual(numel(ts), 1);
+            testCase.verifyEqual(ts.id, 'T1');
+            testCase.verifyEqual(ts.LBin, 2);
+
+            x = [tempname '.xlsx'];
+            writecell({'# comment' '' '' ''; '' '' '' ''; '' 'ID' 'IN' 'IN LB'; '' 'T1' 'A[c]' 2}, x, 'Sheet', 'TASKS');
+            cleanupX = onCleanup(@() delete(x)); %#ok<NASGU>
+            ts = parseTaskList(x);
+            testCase.verifyEqual(numel(ts), 1);
+            testCase.verifyEqual(ts.id, 'T1');
+            testCase.verifyEqual(ts.LBin, 2);
+        end
+
+        function parseTaskListReportsRowOfTheFile(testCase)
+            % Comment rows are removed before parsing; the message still
+            % gives the row as it is in the file.
+            f = tTasks.writeTaskFile({
+                {'# c1' '' '' ''}
+                {'# c2' '' '' ''}
+                {'' 'ID' 'IN' 'IN LB'}
+                {'# c3' '' '' ''}
+                {'' 'T1' 'A[c]' 'abc'}
+                });
+            try
+                parseTaskList(f);
+                msg = '';
+            catch err
+                msg = err.message;
+            end
+            testCase.verifySubstring(msg, 'row 5 of the task list');
+        end
+
+        function parseTaskListConvertsNumbersTypedAsText(testCase)
+            % A bound that Excel holds as text is read as the number, as in
+            % a tab-delimited file; other text is still refused.
+            f = [tempname '.xlsx'];
+            % a filled first column keeps the empty header cell in the sheet range
+            writecell({'' 'ID' 'IN' 'IN LB'; '' 'T1' 'A[c]' '2'; '# note' '' '' ''}, f, 'Sheet', 'TASKS');
+            cleanup = onCleanup(@() delete(f)); %#ok<NASGU>
+            ts = parseTaskList(f);
+            testCase.verifyEqual(ts.LBin, 2);
+
+            g = [tempname '.xlsx'];
+            writecell({'' 'ID' 'IN' 'IN LB'; '' 'T1' 'A[c]' 'abc'; '# note' '' '' ''}, g, 'Sheet', 'TASKS');
+            cleanupG = onCleanup(@() delete(g)); %#ok<NASGU>
+            testCase.verifyError(@() parseTaskList(g), 'RAVEN:badInput');
+        end
+
+        function parseTaskListExcelMatchesText(testCase)
+            % The same task definitions give the same structs from Excel and
+            % from a tab-delimited file.
+            txtFile = fullfile(testCase.ravenRoot,'tests','function_tests', ...
+                'test_data','test_tasks.txt');
+            testCase.assumeDependency(exist(txtFile,'file')==2, 'test_tasks.txt');
+            cells = readcell(txtFile, 'FileType', 'text', 'Delimiter', '\t', 'TextType', 'char');
+            cells(cellfun(@(x) all(ismissing(x)), cells)) = {[]};
+            x = [tempname '.xlsx'];
+            writecell(cells, x, 'Sheet', 'TASKS');
+            cleanup = onCleanup(@() delete(x)); %#ok<NASGU>
+            testCase.verifyEqual(parseTaskList(x), parseTaskList(txtFile));
         end
 
         function parseTaskListReadsXlsx(testCase)

@@ -116,13 +116,11 @@ if ~isfile(inputFile)
 end
 
 %Load the tasks file
-convNumeric = false;
 if strcmp(extractAfter(inputFile,strlength(inputFile) - 4), '.txt')
     %load from tab delimited text file
     fid = fopen(inputFile);
     %Need to read numeric columns as strings, this is converted further
     %down. If not, the titles would be lost.
-    convNumeric = true;
     C = textscan(fid,'%q%q%q%q%q%q%q%q%q%q%q%q%q%q%q%q%q%q%q%q%*[^\n]', 'Delimiter', '\t');
     fclose(fid);
     raw = [C{:}];%unnest the cell array of cell arrays into a 2-dim cell array
@@ -141,20 +139,34 @@ else
     raw(cellfun(@(x) all(ismissing(x)),raw))={[]};
 end
 
+%Rows without any content carry no information (a header must not be
+%mistaken for one of them). fileRow keeps the row numbers of the file for
+%error messages.
+if iscell(raw)
+    emptyRow=all(cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),raw),2);
+    fileRow=find(~emptyRow);
+    raw=raw(~emptyRow,:);
+end
+
 %Leading rows that start with a non-empty cell are comments; the first row
 %with an empty first cell is the header row
 if iscell(raw)
+    if isempty(raw)
+        error('RAVEN:badInput', '%s', 'The TASKS sheet must have a column named ID');
+    end
     firstBlank=cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),raw(:,1));
     first=find(firstBlank,1);
     if isempty(first)
         error('RAVEN:badInput', '%s', 'The TASKS sheet must have a column named ID');
     end
     raw=raw(first:end,:);
+    fileRow=fileRow(first:end);
 end
 
 %Remove all lines starting with "#" (or actually any character) and all
 %empty columns
-raw=cleanSheet(raw);
+[raw,keptRows]=cleanSheet(raw);
+fileRow=fileRow(keptRows);
 
 %Captions
 columns={'ID';'DESCRIPTION';'IN';'IN LB';'IN UB';'OUT';'OUT LB';'OUT UB';'EQU';'EQU LB';'EQU UB';'CHANGED RXN';'CHANGED LB';'CHANGED UB';'SHOULD FAIL';'PRINT FLUX';'COMMENTS'};
@@ -174,23 +186,24 @@ nOld=size(raw,2);
 raw(:,nOld+(1:numel(absent)))={[]};
 colI(absent)=nOld+(1:numel(absent));
 
-%If read from  a text file, the numbers will be strings - fix that
-if convNumeric % safeguard; a no-op if the columns are already numeric
-    numericColumns = [0 0 0 1 1 0 1 1 0 1 1 0 1 1 0 0 0] == 1;
-    cols = colI(numericColumns);
-    numeric = cellfun(@isnumeric,raw(:,cols));
-    %trick to avoid messing up the title row:
-    numeric(1,:) = 1;
-    for colind = 1:numel(cols)
-        col = cols(colind);
-        for r = find(~numeric(:,colind))'
-            if ischar(raw{r,col}) && ~isempty(strtrim(raw{r,col}))
-                value = str2num(raw{r,col}); %#ok<ST2NM>
-                if ~isempty(value)
-                    raw{r,col} = value;
-                end
-            else
-                raw{r,col} = [];
+%Text cells (every cell of a text file, and numbers typed as text in Excel)
+%are converted to numbers; text that is not a number stays and is refused
+%below
+numericColumns = [0 0 0 1 1 0 1 1 0 1 1 0 1 1 0 0 0] == 1;
+cols = colI(numericColumns);
+numeric = cellfun(@isnumeric,raw(:,cols));
+%trick to avoid messing up the title row:
+numeric(1,:) = 1;
+for colind = 1:numel(cols)
+    col = cols(colind);
+    for r = find(~numeric(:,colind))'
+        x = raw{r,col};
+        if ischar(x) && isempty(strtrim(x))
+            raw{r,col} = [];
+        elseif ischar(x)
+            value = str2double(x);
+            if ~isnan(value) || strcmpi(strtrim(x),'nan')
+                raw{r,col} = value;
             end
         end
     end
@@ -203,7 +216,7 @@ for k = 1:numel(numericCols)
     for r = 2:size(raw,1)
         x = raw{r,numericCols(k)};
         if ~isempty(x) && ~(isnumeric(x) && isscalar(x))
-            error('RAVEN:badInput', 'The value in column %s of task list row %d is not a number', numericNames{k}, r);
+            error('RAVEN:badInput', 'The value in column %s of row %d of the task list is not a number', numericNames{k}, fileRow(r));
         end
     end
 end
@@ -222,6 +235,7 @@ end
 if firstId>2
     warning('RAVEN:warning', 'Skipping %d row(s) before the first task id', firstId-2);
     raw(2:firstId-1,:)=[];
+    fileRow(2:firstId-1)=[];
 end
 if size(raw,1)<2
     taskStruct=[];
