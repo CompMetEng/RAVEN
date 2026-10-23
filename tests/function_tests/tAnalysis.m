@@ -385,6 +385,36 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(rm.metZScores(ia(2)), expectedB, 'RelTol', 1e-3);
         end
 
+        function reporterMetabolitesKeepsPrecisionWithOutlierFirst(testCase)
+            % The first gene has a Z-score of about 37 and the other 19999
+            % genes differ from each other by about 1e-13 (the last one has a
+            % p-value 1000 ulps lower). Moments taken relative to the first
+            % gene's Z-score are off by about 5e-10 (relative); moments
+            % relative to the mean are within 1e-13. The reference shifts by
+            % the second gene's Z-score.
+            n = 20000;
+            pv = 0.37*ones(n,1);
+            pv(1) = 1e-300;
+            pv(n) = 0.37 - 1000*eps(0.37);
+            z = sqrt(2)*erfcinv(2*pv);
+            m = struct();
+            m.mets       = {'A';'B'};
+            m.metNames   = {'A';'B'};
+            m.genes      = arrayfun(@(i) sprintf('g%d',i), 1:n, 'UniformOutput', false)';
+            m.S          = sparse([1 0; 0 1]);
+            G = zeros(2,n); G(1,2:11) = 1; G(2,n) = 1;
+            m.rxnGeneMat = sparse(G);
+            rm = reporterMetabolites(m, m.genes, pv);
+            [~,ia] = ismember({'A','B'}, rm.mets);
+            zr = z - z(2);
+            mu = mean(zr);
+            sigma = std(zr,1);
+            expectedA = (sum(zr(2:11))/sqrt(10) - sqrt(10)*mu)/sigma;
+            expectedB = (zr(n) - mu)/sigma;
+            testCase.verifyEqual(rm.metZScores(ia(1)), expectedA, 'RelTol', 1e-11);
+            testCase.verifyEqual(rm.metZScores(ia(2)), expectedB, 'RelTol', 1e-11);
+        end
+
         function FSEOFRuns(testCase)
             biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
             [~, exchIdx] = getExchangeRxns(testCase.model);

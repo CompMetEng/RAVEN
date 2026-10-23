@@ -103,12 +103,13 @@ geneZScores(geneZScores==inf)=15;
 %For each metabolite, calculate the aggregate Z-score and keep track of the
 %number of neighbouring genes
 metZScores=nan(numel(model.mets),1);
-%Sums are taken on Z-scores relative to the first gene's, which keeps the
-%rounding error proportional to the spread of the Z-scores instead of to their size
+%Sums are taken on Z-scores relative to their mean (found in two passes, the
+%second relative to the first gene's Z-score), which keeps the rounding error
+%proportional to the spread of the Z-scores instead of to their size
 metZShifted=nan(numel(model.mets),1);
-z0=0;
+zCentre=0;
 if ~isempty(geneZScores)
-    z0=geneZScores(1);
+    zCentre=geneZScores(1)+mean(geneZScores-geneZScores(1));
 end
 metNGenes=nan(numel(model.mets),1);
 meanZ=nan(numel(model.mets),1);
@@ -131,7 +132,7 @@ for i=1:numel(model.mets)
     %Calculate the aggregated Z-score for the metabolite
     if any(K)
         metZScores(i)=sum(geneZScores(K))/sqrt(numel(K));
-        metZShifted(i)=sum(geneZScores(K)-z0)/sqrt(numel(K));
+        metZShifted(i)=sum(geneZScores(K)-zCentre)/sqrt(numel(K));
         meanZ(i)=mean(geneZScores(K));
         stdZ(i)=std(geneZScores(K));
         metNGenes(i)=numel(K);
@@ -154,13 +155,12 @@ stdZ(isnan(stdZ))=[];
 %so the corrected score is (metZ - sqrt(n)*mu) / sigma. When sigma is 0 (all
 %scored genes have the same Z-score) no metabolite stands out from the
 %background, and the corrected score is 0 (P-value 0.5). The moments are
-%taken on Z-scores shifted by the first gene's Z-score, so that mu and the
-%numerator keep their precision when the Z-scores are close to each other.
-%The mean of many identical Z-scores carries a rounding error that grows with their number,
-%which makes sigma a small positive value instead of 0. The spread of the
-%Z-scores is therefore tested instead: it counts as 0 up to
-%100*eps(max(abs(Z))).
-zShifted = geneZScores - z0;
+%taken on Z-scores shifted by their mean, so that mu and the numerator keep
+%their precision when the Z-scores are close to each other or the first one is
+%an outlier. Identical Z-scores then give exactly 0 for the numerator, and the
+%test of the spread of the Z-scores (0 up to 100*eps(max(abs(Z)))) only
+%prevents a division of 0 by 0.
+zShifted = geneZScores - zCentre;
 muShifted = mean(zShifted);
 sigma = std(zShifted,1);
 if max(geneZScores)-min(geneZScores) > 100*eps(max(abs(geneZScores)))
