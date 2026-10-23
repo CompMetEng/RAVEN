@@ -5,6 +5,9 @@ function solutions = sampleACHR(model, nSamples, thinning, warmup, seed)
 % {v : S*v = 0, lb <= v <= ub}, using the ACHR algorithm (Kaufman & Smith 1998).
 % No rounding is performed, so on strongly elongated polytopes (e.g.
 % enzyme-constrained models) mixing is slower than sampleCHRR; prefer CHRR there.
+% Each step direction is projected onto the null space of the stoichiometric
+% matrix (dense basis from null(), as in sampleCHRR), so the rounding error in
+% S*v does not grow with the number of steps.
 %
 % Parameters
 % ----------
@@ -41,6 +44,10 @@ lb = model.lb(:);
 ub = model.ub(:);
 nW = size(warmup, 1);
 
+% Null-space basis of S; directions are projected onto it so that every step
+% preserves S*v.
+N = null(full(model.S));
+
 center = mean(warmup, 1)';             % nRxns-by-1
 prev = center;
 nTotal = 0;
@@ -53,6 +60,7 @@ nSteps = thinning*nSamples;
 for stepno = 1:nSteps
     pidx = randi(nW);
     delta = warmup(pidx, :)' - center;
+    delta = N*(N'*delta);
 
     posD = delta > dirTol;
     negD = delta < -dirTol;

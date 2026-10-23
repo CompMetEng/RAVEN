@@ -90,6 +90,21 @@ classdef tSampling < RavenTestCase
             testCase.verifyLessThan(max(abs(resid(:))), 1e-6);
         end
 
+        function sampleACHRKeepsSteadyStateOverManySteps(testCase)
+            % The residual of S*v must stay at rounding level when the chain
+            % runs for many steps: with 100 steps between samples, a step that
+            % is not confined to the null space of S lets the residual grow
+            % by orders of magnitude over 1000 samples.
+            m = tSampling.parallelModel();
+            evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            evalc('sols = sampleACHR(m, 1000, 100, warmup, 1);');
+            resid = m.S * sols;
+            testCase.verifyLessThan(max(abs(resid(:))), 1e-9);
+            testCase.verifyGreaterThanOrEqual(min(sols, [], 2), m.lb - 1e-9);
+            testCase.verifyLessThanOrEqual(max(sols, [], 2), m.ub + 1e-9);
+            testCase.verifyGreaterThan(std(sols(2, :)), 0.1);
+        end
+
         % ---- randomSampling dispatch ------------------------------------
 
         function randomSamplingDefaultsToACHR(testCase)
@@ -170,6 +185,28 @@ classdef tSampling < RavenTestCase
     end
 
     methods (Static, Access = private)
+
+        function m = parallelModel()
+            m = struct();
+            m.id       = 'parallel';
+            m.rxns     = {'EX_in';'R1';'R2';'EX_out'};
+            m.rxnNames = m.rxns;
+            m.mets     = {'a';'b'};
+            m.metNames = {'a';'b'};
+            m.metComps = [1;1];
+            m.comps    = {'c'};
+            m.compNames= {'cytosol'};
+            %             EX_in  R1  R2  EX_out
+            m.S = sparse([ 1    -1  -1   0;    % a
+                           0     1   1  -1]);  % b
+            m.lb  = [0;0;0;0];
+            m.ub  = [10;6;6;1000];
+            m.rev = [0;0;0;0];
+            m.c   = [0;0;0;0];
+            m.b   = zeros(2,1);
+            m.genes = {}; m.grRules = {'';'';'';''}; m.rxnGeneMat = sparse(4,0);
+            m.metFormulas = {'C';'C'};
+        end
 
         function m = loopModel()
             m = struct();
