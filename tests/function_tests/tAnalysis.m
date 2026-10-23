@@ -329,17 +329,36 @@ classdef tAnalysis < RavenTestCase
             % The mean of identical Z-scores can differ from them by
             % rounding, which must not read as a background spread. These
             % gene counts leave a rounding residual.
-            for n = [7 8 15]
+            for n = [7 8 15 20000]
                 m = struct();
                 m.mets       = {'A'};
                 m.metNames   = {'A'};
                 m.genes      = arrayfun(@(i) sprintf('g%d',i), 1:n, 'UniformOutput', false)';
                 m.S          = sparse(1);
                 m.rxnGeneMat = sparse(ones(1, n));
-                rm = reporterMetabolites(m, m.genes, 0.2*ones(n,1));
-                testCase.verifyEqual(rm.metZScores, 0);
-                testCase.verifyEqual(rm.metPValues, 0.5);
+                for pv = [0.2 0.37]
+                    rm = reporterMetabolites(m, m.genes, pv*ones(n,1));
+                    testCase.verifyEqual(rm.metZScores, 0);
+                    testCase.verifyEqual(rm.metPValues, 0.5);
+                end
             end
+        end
+
+        function reporterMetabolitesKeepsTinyRealSpreadOfZScores(testCase)
+            % A spread far above rounding is a background: three genes
+            % whose Z-scores differ by 1e-10 are scored against it.
+            m = struct();
+            m.mets       = {'A'};
+            m.metNames   = {'A'};
+            m.genes      = {'g1';'g2';'g3'};
+            m.S          = sparse(1);
+            m.rxnGeneMat = sparse([1 1 0]);
+            z = 1e-10*[1;2;3];
+            pvals = 0.5*erfc(z/sqrt(2));
+            rm = reporterMetabolites(m, m.genes, pvals);
+            zz = sqrt(2)*erfcinv(2*pvals);
+            expected = ((zz(1)+zz(2))/sqrt(2) - sqrt(2)*mean(zz)) / std(zz,1);
+            testCase.verifyEqual(rm.metZScores, expected, 'RelTol', 1e-6);
         end
 
         function FSEOFRuns(testCase)

@@ -99,6 +99,19 @@ classdef tBiomass < RavenTestCase
                 'setGAM:missingNgamRxn');
         end
 
+        function setGAMTreatsEmptyNgamRxnAsNotGiven(testCase)
+            % An empty id sets no NGAM and is no missing reaction.
+            biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
+            cof = {'ATP','ADP','H2O','H+','Phosphate'};
+            ref = setGAM(testCase.model, 50, biomassRxn, cof);
+            for empty = {'', {''}, "", {'';''}}
+                m = setGAM(testCase.model, 50, biomassRxn, cof, 'ngamRxn', empty{1}, 'ngamValue', 1);
+                testCase.verifyEqual(m.S, ref.S);
+                testCase.verifyEqual(m.lb, ref.lb);
+                testCase.verifyEqual(m.ub, ref.ub);
+            end
+        end
+
         function scaleBiomassPseudoreactionRefusesUnknownCharge(testCase)
             % An unset charge on a participating metabolite leaves the charge
             % balance unknown. Treating it as neutral would silently write the

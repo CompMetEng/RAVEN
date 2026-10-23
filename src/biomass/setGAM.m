@@ -55,6 +55,11 @@ end
 p=parseRAVENargs(varargin, {'ngamRxn',[]; 'ngamValue',[]});
 ngamRxn=p.ngamRxn;
 ngamValue=p.ngamValue;
+%An empty id counts as not given
+if ~isempty(ngamRxn)
+    ngamRxn=cellstr(ngamRxn);
+    ngamRxn=ngamRxn(~cellfun(@isempty,ngamRxn));
+end
 
 bioPos = strcmp(model.rxns, biomassRxn);
 if ~any(bioPos)
@@ -63,9 +68,9 @@ if ~any(bioPos)
 end
 
 setNgam = ~isempty(ngamRxn) && ~isempty(ngamValue);
-if ~isempty(ngamRxn) && ~all(ismember(cellstr(ngamRxn), model.rxns))
+if ~isempty(ngamRxn) && ~all(ismember(ngamRxn, model.rxns))
     error('setGAM:missingNgamRxn', ...
-        'NGAM reaction %s not found in model.', strjoin(cellstr(ngamRxn), ', '));
+        'NGAM reaction %s not found in model.', strjoin(ngamRxn, ', '));
 end
 
 for i = 1:length(model.mets)

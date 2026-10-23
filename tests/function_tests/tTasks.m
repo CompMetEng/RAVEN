@@ -135,15 +135,16 @@ classdef tTasks < RavenTestCase
             testCase.verifyEqual(ts.LBin, 2);
         end
 
-        function parseTaskListReportsRowOfTheFile(testCase)
-            % Comment rows are removed before parsing; the message still
-            % gives the row as it is in the file.
+        function parseTaskListReportsDataRowOfBadNumber(testCase)
+            % The row is counted after the header, comment rows and empty
+            % rows are removed, and the message says so.
             f = tTasks.writeTaskFile({
                 {'# c1' '' '' ''}
-                {'# c2' '' '' ''}
+                {'' '' '' ''}
                 {'' 'ID' 'IN' 'IN LB'}
                 {'# c3' '' '' ''}
-                {'' 'T1' 'A[c]' 'abc'}
+                {'' 'T1' 'A[c]' '1'}
+                {'' 'T2' 'A[c]' 'abc'}
                 });
             try
                 parseTaskList(f);
@@ -151,7 +152,33 @@ classdef tTasks < RavenTestCase
             catch err
                 msg = err.message;
             end
-            testCase.verifySubstring(msg, 'row 5 of the task list');
+            testCase.verifySubstring(msg, 'task list data row 2 is not a number');
+            testCase.verifySubstring(msg, 'counted after');
+        end
+
+        function parseTaskListRefusesTextThatOnlyLooksLikeANumber(testCase)
+            % str2double reads '1,5' as 15 and '2i' as a complex number.
+            for bad = {'1,5','1,000','2i','1 2','1_000','0x10'}
+                f = tTasks.writeTaskFile({
+                    {'' 'ID' 'IN' 'IN LB'}
+                    {'' 'T1' 'A[c]' bad{1}}
+                    });
+                testCase.verifyError(@() parseTaskList(f), 'RAVEN:badInput', bad{1});
+            end
+            x = [tempname '.xlsx'];
+            writecell({'' 'ID' 'IN' 'IN LB'; '' 'T1' 'A[c]' '1,5'; '# note' '' '' ''}, x, 'Sheet', 'TASKS');
+            cleanupX = onCleanup(@() delete(x)); %#ok<NASGU>
+            testCase.verifyError(@() parseTaskList(x), 'RAVEN:badInput');
+            f = tTasks.writeTaskFile({
+                {'' 'ID' 'IN' 'IN LB' 'IN UB'}
+                {'' 'T1' 'A[c]' '-1e3' 'Inf'}
+                {'' 'T2' 'A[c]' ' 2.5 ' '.5'}
+                });
+            ts = parseTaskList(f);
+            testCase.verifyEqual(ts(1).LBin, -1000);
+            testCase.verifyEqual(ts(1).UBin, Inf);
+            testCase.verifyEqual(ts(2).LBin, 2.5);
+            testCase.verifyEqual(ts(2).UBin, 0.5);
         end
 
         function parseTaskListConvertsNumbersTypedAsText(testCase)

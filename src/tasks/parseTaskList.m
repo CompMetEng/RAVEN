@@ -140,11 +140,9 @@ else
 end
 
 %Rows without any content carry no information (a header must not be
-%mistaken for one of them). fileRow keeps the row numbers of the file for
-%error messages.
+%mistaken for one of them)
 if iscell(raw)
     emptyRow=all(cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),raw),2);
-    fileRow=find(~emptyRow);
     raw=raw(~emptyRow,:);
 end
 
@@ -160,13 +158,11 @@ if iscell(raw)
         error('RAVEN:badInput', '%s', 'The TASKS sheet must have a column named ID');
     end
     raw=raw(first:end,:);
-    fileRow=fileRow(first:end);
 end
 
 %Remove all lines starting with "#" (or actually any character) and all
 %empty columns
-[raw,keptRows]=cleanSheet(raw);
-fileRow=fileRow(keptRows);
+raw=cleanSheet(raw);
 
 %Captions
 columns={'ID';'DESCRIPTION';'IN';'IN LB';'IN UB';'OUT';'OUT LB';'OUT UB';'EQU';'EQU LB';'EQU UB';'CHANGED RXN';'CHANGED LB';'CHANGED UB';'SHOULD FAIL';'PRINT FLUX';'COMMENTS'};
@@ -201,9 +197,10 @@ for colind = 1:numel(cols)
         if ischar(x) && isempty(strtrim(x))
             raw{r,col} = [];
         elseif ischar(x)
-            value = str2double(x);
-            if ~isnan(value) || strcmpi(strtrim(x),'nan')
-                raw{r,col} = value;
+            %Only plain numbers are accepted; str2double alone would also read
+            %'1,5' as 15, '1,000' as 1000 and '2i' as a complex number
+            if ~isempty(regexpi(strtrim(x),'^([+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?|[+-]?inf|nan)$','once'))
+                raw{r,col} = str2double(x);
             end
         end
     end
@@ -216,7 +213,7 @@ for k = 1:numel(numericCols)
     for r = 2:size(raw,1)
         x = raw{r,numericCols(k)};
         if ~isempty(x) && ~(isnumeric(x) && isscalar(x))
-            error('RAVEN:badInput', 'The value in column %s of row %d of the task list is not a number', numericNames{k}, fileRow(r));
+            error('RAVEN:badInput', 'The value in column %s of task list data row %d is not a number (rows are counted after the header, comment rows and empty rows are removed)', numericNames{k}, r-1);
         end
     end
 end
@@ -235,7 +232,6 @@ end
 if firstId>2
     warning('RAVEN:warning', 'Skipping %d row(s) before the first task id', firstId-2);
     raw(2:firstId-1,:)=[];
-    fileRow(2:firstId-1)=[];
 end
 if size(raw,1)<2
     taskStruct=[];
