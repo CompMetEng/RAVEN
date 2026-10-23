@@ -142,6 +142,26 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(out.metMiriams{1}.value, {'C00001'});
         end
 
+        function curateModelFromTablesTreatsNaNChargeAsNotGiven(testCase)
+            % A NaN charge counts like an empty charge cell: 0 when other
+            % charges are given and overwriteWithEmpty is true, unchanged
+            % when it is false; a new metabolite gets 0.
+            model = tCuration.existingFieldsModel();
+            metsF = tCuration.writeTsv(testCase, { ...
+                'metNames\tcomps\tcharge', 'A\tc\tNaN', 'B\tc\t5', 'Z\tc\tnan'});
+            evalc('out = curateModelFromTables(model,metsF);');
+            idxA = find(strcmp(out.metNames,'A'));
+            idxZ = find(strcmp(out.metNames,'Z'));
+            testCase.verifyEqual(out.metCharges(idxA), 0);
+            testCase.verifyEqual(out.metCharges(idxZ), 0);
+            testCase.verifyFalse(any(isnan(out.metCharges)));
+
+            evalc('out = curateModelFromTables(model,metsF,''overwriteWithEmpty'',false);');
+            testCase.verifyEqual(out.metCharges(idxA), 1);
+            testCase.verifyEqual(out.metCharges(strcmp(out.metNames,'B')), 5);
+            testCase.verifyEqual(out.metCharges(idxZ), 0);
+        end
+
         function curateModelFromTablesRejectsNonLogicalOverwriteWithEmpty(testCase)
             model = tCuration.toyModel();
             metsF = tCuration.writeTsv(testCase, {'metNames\tcomps', 'A\tc'});

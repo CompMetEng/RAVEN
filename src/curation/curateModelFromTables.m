@@ -64,7 +64,8 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     empty grRules cells never overwrite. The charge, confidence score, lb,
 %     ub and rev cells are read as numbers (no expression is evaluated) or as
 %     'true'/'false' in any case, read as 1/0; any other text raises
-%     RAVEN:badInput. A bound or rev cell with NaN counts as not given. The
+%     RAVEN:badInput. A charge, bound or rev cell with NaN counts as not given
+%     (a charge cell with NaN is treated like an empty charge cell). The
 %     rev column sets the reversibility of existing reactions only; for new
 %     reactions it follows from lb.
 %
@@ -125,6 +126,8 @@ if ~strcmp(metsInfo,'none')
     end
     if isfield(col,'metCharges')
         metsToAdd.metCharges = cellfun(@(x) parseNumberCell(x,'charge','metsInfo'),data(:,col.metCharges),'UniformOutput',false);
+        isNanCharge = cellfun(@(x) isscalar(x) && isnan(x),metsToAdd.metCharges);
+        metsToAdd.metCharges(isNanCharge) = {[]}; % a NaN charge counts as not given
         emptyEntry = cellfun(@isempty,metsToAdd.metCharges);
         emptyCharge = emptyEntry;
         if all(emptyEntry)
