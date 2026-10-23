@@ -2,10 +2,10 @@ function newIds=generateNewIds(model,type,prefix,varargin)
 % generateNewIds  Generate a list of new metabolite or reaction ids.
 %
 % The ids are sequentially numbered with a defined prefix. The model is
-% queried for the highest existing number of that type of id. A suffix
-% counts as a number when str2double reads it as a finite integer value;
-% text, Inf, NaN, fractions (r_2.5) and numbers that overflow (r_1e400) do
-% not count.
+% queried for the highest existing number of that type of id. Suffixes are
+% read with str2double. A suffix counts as a number when the result is a
+% finite integer value below 2^53; text, Inf, NaN, fractions (r_2.5) and
+% numbers of 2^53 or more (r_1e300, r_1e400) do not count.
 %
 % Parameters
 % ----------
@@ -56,7 +56,7 @@ existingIds=existingIds(~cellfun(@isempty,regexp(existingIds,['^' escapedPrefix]
 if ~isempty(existingIds)
     existingIds=regexprep(existingIds,['^' escapedPrefix],'');
     numbers=str2double(existingIds);
-    notInteger=~isfinite(numbers) | imag(numbers)~=0 | real(numbers)~=floor(real(numbers));
+    notInteger=~isfinite(numbers) | imag(numbers)~=0 | real(numbers)~=floor(real(numbers)) | abs(real(numbers))>=flintmax;
     numbers=real(numbers);
     numbers(notInteger)=NaN;
     if all(isnan(numbers))

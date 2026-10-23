@@ -12,7 +12,8 @@ function prepData = prepINITModel(origRefModel, taskStruct, varargin)
 % taskStruct : struct
 %     the essential tasks. Can be loaded with for example
 %     taskStruct = parseTaskList('../data/metabolicTasks_Essential.txt').
-%     The task ids must be unique: a repeated id raises RAVEN:badInput.
+%     The task ids must be unique character vectors: a repeated id, a non-text
+%     id or a missing id field raises RAVEN:badInput.
 %
 % Name-Value Arguments
 % --------------------
@@ -61,7 +62,14 @@ skipScaling=p.skipScaling;
 runParallel=p.runParallel;
 
 if ~isempty(taskStruct)
+    if ~isfield(taskStruct,'id')
+        error('RAVEN:badInput','The task structure must have an id field');
+    end
     taskIds = {taskStruct.id};
+    if ~all(cellfun(@(x) ischar(x) && (isrow(x) || isempty(x)),taskIds))
+        error('RAVEN:badInput','The task ids must be character vectors');
+    end
+    taskIds(cellfun(@isempty,taskIds)) = {'<empty>'};
     [uniqueIds,~,idIdx] = unique(taskIds,'stable');
     repeatedIds = uniqueIds(accumarray(idIdx(:),1) > 1);
     if ~isempty(repeatedIds)

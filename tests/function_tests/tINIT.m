@@ -33,6 +33,29 @@ classdef tINIT < RavenTestCase
             testCase.verifyEmpty(strfind(err.message, 'ETH_AER'));
         end
 
+        function prepINITModelRefusesTaskIdsThatAreNotText(testCase)
+            % Non-text ids, a missing id field and empty ids are reported
+            % as RAVEN:badInput.
+            bad = {struct('id',{"a","a"}), struct('id',{1,1}), struct('name',{'a','b'})};
+            for i = 1:numel(bad)
+                err = [];
+                try
+                    prepINITModel(struct(), bad{i});
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            end
+            err = [];
+            try
+                prepINITModel(struct(), struct('id',{'','','b'}));
+            catch err
+            end
+            testCase.verifyNotEmpty(err);
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            testCase.verifySubstring(err.message, '<empty>');
+        end
+
         function getExprForRxnScoreRuns(testCase)
             expr = getExprForRxnScore(rand(10, 1), 1);
             testCase.verifyNotEmpty(expr);

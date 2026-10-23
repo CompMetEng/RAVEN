@@ -196,6 +196,84 @@ classdef tCuration < RavenTestCase
             testCase.verifySubstring(err.message, 'low');
         end
 
+        function curateModelFromTablesReadsTrueFalseRev(testCase)
+            % A rev cell can be written as true or false.
+            model = tCuration.toyModel();
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', ...
+                '2\tnewRxn\tA\tc\t-1', '2\tnewRxn\tC\tc\t1'});
+            infoF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tlb\tub\trev', ...
+                '1\tdupRxn\t\t\ttrue', '2\tnewRxn\t-3\t4\tfalse'});
+            evalc(['out = curateModelFromTables(model,''none'',''rxnsCoeffs'',' ...
+                'coeffsF,''rxnsInfo'',infoF);']);
+            testCase.verifyNumElements(out.rxns, 2);
+            testCase.verifyEqual(out.lb(2), -3);
+            testCase.verifyEqual(out.ub(2), 4);
+        end
+
+        function curateModelFromTablesRefusesComplexBoundAndKeepsOnNaN(testCase)
+            % A complex bound is refused; a NaN bound counts as not given.
+            model = tCuration.toyModel();
+            model.lb = -5;
+            model.ub = 7;
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1'});
+            complexF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tlb', '1\tdupRxn\t1i'});
+            err = [];
+            try
+                curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',complexF);
+            catch err
+            end
+            testCase.verifyNotEmpty(err);
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            nanF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tlb', '1\tdupRxn\tNaN'});
+            evalc(['out = curateModelFromTables(model,''none'',''rxnsCoeffs'',' ...
+                'coeffsF,''rxnsInfo'',nanF);']);
+            testCase.verifyEqual(out.lb, -5);
+        end
+
+        function curateModelFromTablesRejectsOverwriteWithEmptyThatIsNotZeroOrOne(testCase)
+            model = tCuration.toyModel();
+            metsF = tCuration.writeTsv(testCase, {'metNames\tcomps', 'A\tc'});
+            for bad = {2, NaN, [true false], {true}}
+                err = [];
+                try
+                    curateModelFromTables(model,metsF,'overwriteWithEmpty',bad{1});
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            end
+        end
+
+        function curateModelFromTablesBlankMiriamAndGrRulesCountAsEmpty(testCase)
+            % A cell with only blanks leaves the MIRIAM annotation of an
+            % existing metabolite when overwriteWithEmpty is false, and
+            % never replaces a gene rule.
+            model = tCuration.existingFieldsModel();
+            model.grRules = {'g1'};
+            model.rxnGeneMat = sparse(1,1,1);
+            metsF = tCuration.writeTsv(testCase, { ...
+                'metNames\tcomps\tkegg.compound', 'A\tc\t '});
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\t\tA\tc\t-1', '1\t\tB\tc\t-1', ...
+                '1\t\tC\tc\t1',  '1\t\tH\tc\t1'});
+            infoF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tgrRules', '1\t\t   '});
+            evalc(['out = curateModelFromTables(model,metsF,''rxnsCoeffs'',coeffsF,' ...
+                '''rxnsInfo'',infoF,''overwriteWithEmpty'',false);']);
+            testCase.verifyEqual(out.metMiriams{1}.value, {'C00001'});
+            testCase.verifyEqual(out.grRules, {'g1'});
+        end
+
         function curateModelFromTablesRequiresKeyColumns(testCase)
             model = tCuration.toyModel();
             metsF = tCuration.writeTsv(testCase, {'metNames\tformula', 'A\tC1'});

@@ -7,8 +7,9 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % If the *.tsv files contain metabolites, reactions and/or genes that are
 % already present in the model, then information in the model will be
 % overwritten. Note that this includes empty annotations in the *.tsv
-% files, unless 'overwriteWithEmpty' is false! Metabolites are matched by metaboliteName[comp]; reactions by the
-% stoichiometry of its reactants and products; genes by their gene name.
+% files, unless 'overwriteWithEmpty' is false! Metabolites are matched by
+% metaboliteName[comp]; reactions by the stoichiometry of its reactants and
+% products; genes by their gene name.
 % This function can therefore be used to add new entities in the model, or
 % curate those already existing in the model.
 %
@@ -58,8 +59,10 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     reaction empties the corresponding field of the model (an empty charge
 %     or confidence score becomes 0). If false, an empty cell leaves the
 %     existing value unchanged and only the cells with a value are written
-%     (default true). Empty lb, ub and rev cells and empty grRules cells never
-%     overwrite.
+%     (default true). Must be a scalar logical or 0/1. Empty lb, ub and rev
+%     cells and empty grRules cells never overwrite. A bound or rev cell
+%     must be a real number, 'true' or 'false'; a cell with NaN counts as
+%     not given.
 %
 % Returns
 % -------
@@ -79,8 +82,9 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 
 p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]; 'overwriteWithEmpty',true});
 overwriteWithEmpty=p.overwriteWithEmpty;
-if ~(islogical(overwriteWithEmpty) || isnumeric(overwriteWithEmpty)) || ~isscalar(overwriteWithEmpty)
-    error('RAVEN:badInput','overwriteWithEmpty must be a logical scalar');
+if ~((islogical(overwriteWithEmpty) || isnumeric(overwriteWithEmpty)) && isscalar(overwriteWithEmpty) ...
+        && ~isnan(overwriteWithEmpty) && ismember(overwriteWithEmpty,[0 1]))
+    error('RAVEN:badInput','overwriteWithEmpty must be a scalar logical or 0/1');
 end
 overwriteWithEmpty=logical(overwriteWithEmpty);
 genesInfo=p.genesInfo;
@@ -356,7 +360,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
             newModel = writeExistingField(newModel,f{1},existingRxn,values,skip);
         end
         if isfield(rxnsToAdd,'grRules')
-            emptyEntries = cellfun(@isempty,rxnsToAdd.grRules(notNewRxn));
+            emptyEntries = emptyCells(rxnsToAdd.grRules(notNewRxn));
             if ~all(emptyEntries)
                 newModel    = changeGrRules(newModel,newModel.rxns(existingRxn(~emptyEntries)),rxnsToAdd.grRules(notNewRxn(~emptyEntries)),true);
             end
@@ -480,7 +484,7 @@ newModel=model;
 miriamValues    = miriamData(inputIndex,:);
 if nargin>6 && skipEmpty
     for i=1:numel(miriamName)
-        given = ~cellfun(@isempty,miriamValues(:,i));
+        given = ~emptyCells(miriamValues(:,i));
         if any(given)
             if ~isfield(newModel,[type 'Miriams'])
                 newModel.([type 'Miriams'])=cell(numel(newModel.([type 's'])),1);
@@ -509,15 +513,18 @@ empty = cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),values(:))
 end
 
 function values = parseNumericCells(cells,field)
-% Numbers from table cells, NaN where the cell is empty. A cell that is not
-% a number raises an error.
+% Numbers from table cells, NaN where the cell is empty or says NaN. A cell
+% that is not a real number (or true/false) raises an error.
 values = nan(numel(cells),1);
 for i=1:numel(cells)
     if isempty(strtrim(cells{i}))
         continue
     end
     v = str2num(cells{i}); %#ok<ST2NM>
-    if ~(isnumeric(v) && isscalar(v))
+    if islogical(v) && isscalar(v)
+        v = double(v);
+    end
+    if ~(isnumeric(v) && isscalar(v) && isreal(v))
         error('RAVEN:badInput','The %s value "%s" in the rxnsInfo file is not a number',field,cells{i});
     end
     values(i) = v;

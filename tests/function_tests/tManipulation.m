@@ -468,6 +468,14 @@ classdef tManipulation < RavenTestCase
             testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_001'});
         end
 
+        function generateNewIdsIgnoresSuffixesBeyondDoublePrecision(testCase)
+            % Numbers of 2^53 or more cannot be incremented exactly.
+            m.rxns = {'r_1e300'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_9007199254740992'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+        end
+
         function mergeCompartmentsSingleComp(testCase)
             evalc('m2 = mergeCompartments(testCase.model);');
             testCase.verifyNumElements(m2.comps, 1);
