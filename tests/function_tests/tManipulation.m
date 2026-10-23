@@ -469,11 +469,16 @@ classdef tManipulation < RavenTestCase
         end
 
         function generateNewIdsIgnoresSuffixesBeyondDoublePrecision(testCase)
-            % Numbers of 2^53 or more cannot be incremented exactly.
+            % Numbers of 2^52 or more cannot be told from fractions and
+            % cannot be incremented exactly.
             m.rxns = {'r_1e300'; 'r_0003'};
             testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
             m.rxns = {'r_9007199254740992'; 'r_0003'};
             testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_4503599627370496.5'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_4503599627370495'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_4503599627370496'});
         end
 
         function mergeCompartmentsSingleComp(testCase)

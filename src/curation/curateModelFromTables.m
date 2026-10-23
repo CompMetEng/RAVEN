@@ -59,10 +59,14 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     reaction empties the corresponding field of the model (an empty charge
 %     or confidence score becomes 0). If false, an empty cell leaves the
 %     existing value unchanged and only the cells with a value are written
-%     (default true). Must be a scalar logical or 0/1. Empty lb, ub and rev
-%     cells and empty grRules cells never overwrite. A bound or rev cell
-%     must be a real number, 'true' or 'false'; a cell with NaN counts as
-%     not given.
+%     (default true). Must be a scalar logical or 0/1. A cell with only
+%     blanks counts as empty in both modes. Empty lb, ub and rev cells and
+%     empty grRules cells never overwrite. The charge, confidence score, lb,
+%     ub and rev cells are read as numbers (no expression is evaluated) or as
+%     'true'/'false' in any case, read as 1/0; any other text raises
+%     RAVEN:badInput. A bound or rev cell with NaN counts as not given. The
+%     rev column sets the reversibility of existing reactions only; for new
+%     reactions it follows from lb.
 %
 % Returns
 % -------
@@ -83,7 +87,7 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]; 'overwriteWithEmpty',true});
 overwriteWithEmpty=p.overwriteWithEmpty;
 if ~((islogical(overwriteWithEmpty) || isnumeric(overwriteWithEmpty)) && isscalar(overwriteWithEmpty) ...
-        && ~isnan(overwriteWithEmpty) && ismember(overwriteWithEmpty,[0 1]))
+        && isreal(overwriteWithEmpty) && ~isnan(overwriteWithEmpty) && ismember(overwriteWithEmpty,[0 1]))
     error('RAVEN:badInput','overwriteWithEmpty must be a scalar logical or 0/1');
 end
 overwriteWithEmpty=logical(overwriteWithEmpty);
@@ -120,7 +124,7 @@ if ~strcmp(metsInfo,'none')
         metsToAdd.(f{1}) = data(:,col.(f{1}));
     end
     if isfield(col,'metCharges')
-        metsToAdd.metCharges = cellfun(@str2num,data(:,col.metCharges),'UniformOutput',false);
+        metsToAdd.metCharges = cellfun(@(x) parseNumberCell(x,'charge','metsInfo'),data(:,col.metCharges),'UniformOutput',false);
         emptyEntry = cellfun(@isempty,metsToAdd.metCharges);
         emptyCharge = emptyEntry;
         if all(emptyEntry)
@@ -276,7 +280,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         rxnsToAdd.(f{1}) = parseNumericCells(data(:,col.(f{1})),f{1});
     end
     if isfield(col,'rxnConfidenceScores')
-        rxnsToAdd.rxnConfidenceScores   = cellfun(@str2num,data(:,col.rxnConfidenceScores),'UniformOutput',false);
+        rxnsToAdd.rxnConfidenceScores   = cellfun(@(x) parseNumberCell(x,'rxnConfidenceScores','rxnsInfo'),data(:,col.rxnConfidenceScores),'UniformOutput',false);
         emptyEntry = cellfun(@isempty,rxnsToAdd.rxnConfidenceScores);
         emptyScore = emptyEntry;
         if all(emptyEntry)
@@ -426,6 +430,8 @@ data   = repmat({''},nRows,nCols);
 for i=1:nCols
     data(1:numel(raw{i}),i) = raw{i};
 end
+blank = cellfun(@(x) ischar(x) && isempty(strtrim(x)),data);
+data(blank) = {''};
 end
 
 function [col,miriamCols] = matchColumns(header,fileName,required,spec)
@@ -514,19 +520,35 @@ end
 
 function values = parseNumericCells(cells,field)
 % Numbers from table cells, NaN where the cell is empty or says NaN. A cell
-% that is not a real number (or true/false) raises an error.
+% that is not a number (or true/false) raises an error.
 values = nan(numel(cells),1);
 for i=1:numel(cells)
-    if isempty(strtrim(cells{i}))
-        continue
+    v = parseNumberCell(cells{i},field,'rxnsInfo');
+    if ~isempty(v)
+        values(i) = v;
     end
-    v = str2num(cells{i}); %#ok<ST2NM>
-    if islogical(v) && isscalar(v)
-        v = double(v);
-    end
-    if ~(isnumeric(v) && isscalar(v) && isreal(v))
-        error('RAVEN:badInput','The %s value "%s" in the rxnsInfo file is not a number',field,cells{i});
-    end
-    values(i) = v;
+end
+end
+
+function v = parseNumberCell(text,field,fileLabel)
+% Real number from a table cell: [] for an empty cell, 1 or 0 for
+% true or false in any case, otherwise the value read by str2double, which
+% evaluates nothing. Text that is not a real number or NaN raises an error.
+text = strtrim(text);
+if isempty(text)
+    v = [];
+    return
+end
+switch lower(text)
+    case 'true'
+        v = 1;
+        return
+    case 'false'
+        v = 0;
+        return
+end
+v = str2double(text);
+if (isnan(v) && ~strcmpi(text,'nan')) || ~isreal(v)
+    error('RAVEN:badInput','The %s value "%s" in the %s file is not a number',field,text,fileLabel);
 end
 end

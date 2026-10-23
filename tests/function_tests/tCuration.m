@@ -197,7 +197,9 @@ classdef tCuration < RavenTestCase
         end
 
         function curateModelFromTablesReadsTrueFalseRev(testCase)
-            % A rev cell can be written as true or false.
+            % A rev cell can be written as true or false in any case. It sets
+            % the reversibility of an existing reaction; for a new reaction
+            % the reversibility follows from lb.
             model = tCuration.toyModel();
             coeffsF = tCuration.writeTsv(testCase, { ...
                 'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
@@ -206,12 +208,87 @@ classdef tCuration < RavenTestCase
                 '2\tnewRxn\tA\tc\t-1', '2\tnewRxn\tC\tc\t1'});
             infoF = tCuration.writeTsv(testCase, { ...
                 'rxnIdx\trxnNames\tlb\tub\trev', ...
-                '1\tdupRxn\t\t\ttrue', '2\tnewRxn\t-3\t4\tfalse'});
+                '1\tdupRxn\t\t\tTRUE', '2\tnewRxn\t-3\t4\tfalse'});
             evalc(['out = curateModelFromTables(model,''none'',''rxnsCoeffs'',' ...
                 'coeffsF,''rxnsInfo'',infoF);']);
             testCase.verifyNumElements(out.rxns, 2);
+            testCase.verifyEqual(out.rev(1), 1);
             testCase.verifyEqual(out.lb(2), -3);
             testCase.verifyEqual(out.ub(2), 4);
+            testCase.verifyEqual(out.rev(2), 1);
+            model.rev = 1;
+            infoF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\trev', '1\tdupRxn\tFalse'});
+            coeffs1F = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1'});
+            evalc(['out = curateModelFromTables(model,''none'',''rxnsCoeffs'',' ...
+                'coeffs1F,''rxnsInfo'',infoF);']);
+            testCase.verifyEqual(out.rev(1), 0);
+        end
+
+        function curateModelFromTablesReadsNumbersWithoutEvaluatingText(testCase)
+            % Cell text is read as a number or true/false; no expression is
+            % evaluated, and other text raises RAVEN:badInput.
+            model = tCuration.toyModel();
+            d = tempname; mkdir(d);
+            testCase.addTeardown(@() rmdir(d,'s'));
+            marker = fullfile(d,'executed');
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1'});
+            cells = {sprintf('system(''touch %s'')',marker), 'pi', '1/2', '[3]'};
+            for i = 1:numel(cells)
+                infoF = tCuration.writeTsv(testCase, { ...
+                    'rxnIdx\trxnNames\tlb', ['1\tdupRxn\t' strrep(cells{i},'\','\\')]});
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            end
+            testCase.verifyEqual(exist(marker,'file'), 0);
+            metsF = tCuration.writeTsv(testCase, {'metNames\tcomps\tcharge', 'A\tc\tpi'});
+            err = [];
+            try
+                curateModelFromTables(model,metsF);
+            catch err
+            end
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            infoF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\trxnConfidenceScores', '1\tdupRxn\t2+1'});
+            err = [];
+            try
+                curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF);
+            catch err
+            end
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            infoF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tlb\tub\trxnConfidenceScores', '1\tdupRxn\t -1e1 \t-Inf\t3'});
+            evalc(['out = curateModelFromTables(model,''none'',''rxnsCoeffs'',' ...
+                'coeffsF,''rxnsInfo'',infoF);']);
+            testCase.verifyEqual(out.lb(1), -10);
+            testCase.verifyEqual(out.ub(1), -Inf);
+            testCase.verifyEqual(out.rxnConfidenceScores(1), 3);
+        end
+
+        function curateModelFromTablesBlankCellsCountAsEmptyWhenOverwriting(testCase)
+            % A cell with only blanks is an empty cell: it removes the
+            % MIRIAM namespace and empties the formula of an existing
+            % metabolite.
+            model = tCuration.existingFieldsModel();
+            metsF = tCuration.writeTsv(testCase, { ...
+                'metNames\tcomps\tformula\tkegg.compound', ...
+                'A\tc\t" "\t" "', 'B\tc\tF2\tC00002'});
+            evalc('out = curateModelFromTables(model,metsF);');
+            testCase.verifyEqual(out.metFormulas{1}, '');
+            testCase.verifyTrue(isempty(out.metMiriams{1}) || ~isfield(out.metMiriams{1},'name') ...
+                || ~any(strcmp(out.metMiriams{1}.name,'kegg.compound')));
+            testCase.verifyEqual(out.metMiriams{2}.value, {'C00002'});
         end
 
         function curateModelFromTablesRefusesComplexBoundAndKeepsOnNaN(testCase)
@@ -242,7 +319,7 @@ classdef tCuration < RavenTestCase
         function curateModelFromTablesRejectsOverwriteWithEmptyNotZeroOrOne(testCase)
             model = tCuration.toyModel();
             metsF = tCuration.writeTsv(testCase, {'metNames\tcomps', 'A\tc'});
-            for bad = {2, NaN, [true false], {true}}
+            for bad = {2, NaN, [true false], {true}, complex(1,0)}
                 err = [];
                 try
                     curateModelFromTables(model,metsF,'overwriteWithEmpty',bad{1});

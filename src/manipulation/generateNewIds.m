@@ -4,8 +4,8 @@ function newIds=generateNewIds(model,type,prefix,varargin)
 % The ids are sequentially numbered with a defined prefix. The model is
 % queried for the highest existing number of that type of id. Suffixes are
 % read with str2double. A suffix counts as a number when the result is a
-% finite integer value below 2^53; text, Inf, NaN, fractions (r_2.5) and
-% numbers of 2^53 or more (r_1e300, r_1e400) do not count.
+% finite integer value below 2^52; text, Inf, NaN, fractions (r_2.5) and
+% numbers of 2^52 or more (r_1e300, r_1e400) do not count.
 %
 % Parameters
 % ----------
@@ -56,7 +56,7 @@ existingIds=existingIds(~cellfun(@isempty,regexp(existingIds,['^' escapedPrefix]
 if ~isempty(existingIds)
     existingIds=regexprep(existingIds,['^' escapedPrefix],'');
     numbers=str2double(existingIds);
-    notInteger=~isfinite(numbers) | imag(numbers)~=0 | real(numbers)~=floor(real(numbers)) | abs(real(numbers))>=flintmax;
+    notInteger=~isfinite(numbers) | imag(numbers)~=0 | real(numbers)~=floor(real(numbers)) | abs(real(numbers))>=flintmax/2;
     numbers=real(numbers);
     numbers(notInteger)=NaN;
     if all(isnan(numbers))

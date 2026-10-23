@@ -13,7 +13,8 @@ function prepData = prepINITModel(origRefModel, taskStruct, varargin)
 %     the essential tasks. Can be loaded with for example
 %     taskStruct = parseTaskList('../data/metabolicTasks_Essential.txt').
 %     The task ids must be unique character vectors: a repeated id, a non-text
-%     id or a missing id field raises RAVEN:badInput.
+%     id or a missing id field raises RAVEN:badInput. One task may have an
+%     empty id; several empty ids count as a repeated id.
 %
 % Name-Value Arguments
 % --------------------
@@ -69,9 +70,16 @@ if ~isempty(taskStruct)
     if ~all(cellfun(@(x) ischar(x) && (isrow(x) || isempty(x)),taskIds))
         error('RAVEN:badInput','The task ids must be character vectors');
     end
-    taskIds(cellfun(@isempty,taskIds)) = {'<empty>'};
-    [uniqueIds,~,idIdx] = unique(taskIds,'stable');
-    repeatedIds = uniqueIds(accumarray(idIdx(:),1) > 1);
+    emptyIds = cellfun(@isempty,taskIds);
+    repeatedIds = {};
+    if any(~emptyIds)
+        [uniqueIds,~,idIdx] = unique(taskIds(~emptyIds),'stable');
+        repeatedIds = uniqueIds(accumarray(idIdx(:),1) > 1);
+        repeatedIds = repeatedIds(:)';
+    end
+    if sum(emptyIds) > 1
+        repeatedIds = [repeatedIds, {sprintf('(empty id, used %d times)',sum(emptyIds))}];
+    end
     if ~isempty(repeatedIds)
         error('RAVEN:badInput','The task ids must be unique, but these are used more than once:\n\t%s', ...
             strjoin(repeatedIds,'\n\t'));
