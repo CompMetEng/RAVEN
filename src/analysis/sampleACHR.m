@@ -5,9 +5,11 @@ function solutions = sampleACHR(model, nSamples, thinning, warmup, seed)
 % {v : S*v = 0, lb <= v <= ub}, using the ACHR algorithm (Kaufman & Smith 1998).
 % No rounding is performed, so on strongly elongated polytopes (e.g.
 % enzyme-constrained models) mixing is slower than sampleCHRR; prefer CHRR there.
-% Each step direction is projected onto the null space of the stoichiometric
-% matrix (dense basis from null(), as in sampleCHRR), so the rounding error in
-% S*v does not grow with the number of steps.
+% Reactions whose bounds or warmup values coincide never move. The remaining
+% reactions are corrected towards S*v = 0 every few steps and before each
+% recorded sample, with a sparse Cholesky factor of the row-normalised S*S'
+% (no dense null-space basis), so the rounding error in S*v does not grow with
+% the number of steps and samples stay inside the bounds.
 %
 % Parameters
 % ----------
@@ -44,14 +46,17 @@ lb = model.lb(:);
 ub = model.ub(:);
 nW = size(warmup, 1);
 
-% Null-space basis of S; directions are projected onto it so that every step
-% preserves S*v.
-N = null(full(model.S));
+% Reactions that cannot move: fixed bounds, or identical value in all warmup
+% points. Directions and corrections act on the other reactions only.
+spread = (max(warmup, [], 1) - min(warmup, [], 1))';
+free = (ub - lb > 1e-9) & (spread > 1e-9);
+proj = buildSteadyStateCorrection(model.S, free, lb, ub);
+corrEvery = min(thinning, 20);
 
 center = mean(warmup, 1)';             % nRxns-by-1
-prev = center;
+prev = restoreSteadyState(center, proj);
+center = prev;
 nTotal = 0;
-dirTol = 1e-12;
 
 solutions = zeros(nRxns, nSamples);
 rec = 0;
@@ -60,7 +65,8 @@ nSteps = thinning*nSamples;
 for stepno = 1:nSteps
     pidx = randi(nW);
     delta = warmup(pidx, :)' - center;
-    delta = N*(N'*delta);
+    delta(~free) = 0;
+    dirTol = 1e-12*max(1, max(abs(delta)));
 
     posD = delta > dirTol;
     negD = delta < -dirTol;
@@ -74,16 +80,55 @@ for stepno = 1:nSteps
 
     if tHi > tLo
         alpha = tLo + rand*(tHi - tLo);
-        prev = prev + alpha*delta;
+        prev = min(max(prev + alpha*delta, lb), ub);
     end
 
     % Running centre (quasi-Markovian ACHR: centre converges and steadies).
     center = (nTotal*center + prev) / (nTotal + 1);
     nTotal = nTotal + 1;
 
+    if mod(stepno, corrEvery) == 0 || mod(stepno, thinning) == 0
+        prev = restoreSteadyState(prev, proj);
+        center = restoreSteadyState(center, proj);
+    end
+
     if mod(stepno, thinning) == 0
         rec = rec + 1;
         solutions(:, rec) = prev;
     end
 end
+end
+
+function proj = buildSteadyStateCorrection(S, free, lb, ub)
+% Sparse factor of the row-normalised S(:,free)*S(:,free)' with a small ridge,
+% used to move a flux vector onto S*v = 0 through the free reactions only.
+Sf = S(:, free);
+rowNorm = sqrt(full(sum(Sf.^2, 2)));
+keep = rowNorm > 0;
+rowNorm = rowNorm(keep);
+Sn = spdiags(1./rowNorm, 0, numel(rowNorm), numel(rowNorm))*Sf(keep, :);
+A = Sn*Sn' + 1e-10*speye(size(Sn, 1));
+[R, flag, p] = chol(A, 'vector');
+if flag ~= 0
+    error('sampleACHR:factorization', 'The stoichiometric matrix could not be factorized.');
+end
+proj = struct('S', S, 'free', free, 'keep', keep, 'rowNorm', rowNorm, ...
+    'Sn', Sn, 'R', R, 'Rt', R', 'p', p, 'lb', lb, 'ub', ub);
+end
+
+function v = restoreSteadyState(v, proj)
+% Removes the residual of S*v through the free reactions (a few ridge-regularised
+% projection passes), then clips v to its bounds.
+tol = 1e-12*max(1, max(abs(v)));
+for it = 1:8
+    r = proj.S*v;
+    if max(abs(r)) <= tol
+        break
+    end
+    rn = r(proj.keep) ./ proj.rowNorm;
+    x = zeros(size(rn));
+    x(proj.p) = proj.R \ (proj.Rt \ rn(proj.p));
+    v(proj.free) = v(proj.free) - proj.Sn'*x;
+end
+v = min(max(v, proj.lb), proj.ub);
 end

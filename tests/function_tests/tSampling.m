@@ -105,6 +105,24 @@ classdef tSampling < RavenTestCase
             testCase.verifyGreaterThan(std(sols(2, :)), 0.1);
         end
 
+        function sampleACHRMovesOnModelWithFixedReaction(testCase)
+            % Fixed (and thereby forced) reactions keep an exact zero step; the chain
+            % must still move at (nearly) every step, stay inside the bounds
+            % and keep S*v at rounding level.
+            m = tSampling.fixedReactionModel();
+            evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            evalc('sols = sampleACHR(m, 3000, 1, warmup, 1);');
+            moved = mean(any(diff(sols, 1, 2) ~= 0, 1));
+            testCase.verifyGreaterThan(moved, 0.9);
+            testCase.verifyLessThan(max(abs(m.S * sols), [], 'all'), 1e-9);
+            testCase.verifyGreaterThanOrEqual(min(sols, [], 2), m.lb - 1e-9);
+            testCase.verifyLessThanOrEqual(max(sols, [], 2), m.ub + 1e-9);
+            testCase.verifyEqual(sols([3 5], :), 700*ones(2, 3000), 'AbsTol', 1e-9);
+            evalc('sols = sampleACHR(m, 300, 100, warmup, 2);');
+            testCase.verifyLessThan(max(abs(m.S * sols), [], 'all'), 1e-9);
+            testCase.verifyGreaterThan(std(sols(2, :)), 0.1);
+        end
+
         % ---- randomSampling dispatch ------------------------------------
 
         function randomSamplingDefaultsToACHR(testCase)
@@ -206,6 +224,32 @@ classdef tSampling < RavenTestCase
             m.b   = zeros(2,1);
             m.genes = {}; m.grRules = {'';'';'';''}; m.rxnGeneMat = sparse(4,0);
             m.metFormulas = {'C';'C'};
+        end
+
+        function m = fixedReactionModel()
+            % EX_in -> a -> R1 -> b -> EX_out, a -> R2 -> c -> FIX, with FIX
+            % fixed at 700. R2 is forced to 700 through c, so R2 and FIX do
+            % not move, and the null-space basis carries rounding noise on them.
+            m = struct();
+            m.id       = 'fixedReaction';
+            m.rxns     = {'EX_in';'R1';'R2';'EX_out';'FIX'};
+            m.rxnNames = m.rxns;
+            m.mets     = {'a';'b';'c'};
+            m.metNames = m.mets;
+            m.metComps = [1;1;1];
+            m.comps    = {'c'};
+            m.compNames= {'cytosol'};
+            %             EX_in  R1  R2  EX_out  FIX
+            m.S = sparse([ 1    -1  -1   0       0;    % a
+                           0     1   0  -1       0;    % b
+                           0     0   1   0      -1]);  % c
+            m.lb  = [0;0;0;0;700];
+            m.ub  = [1000;1000;1000;1000;700];
+            m.rev = zeros(5, 1);
+            m.c   = zeros(5, 1);
+            m.b   = zeros(3, 1);
+            m.genes = {}; m.grRules = repmat({''}, 5, 1); m.rxnGeneMat = sparse(5, 0);
+            m.metFormulas = repmat({'C'}, 3, 1);
         end
 
         function m = loopModel()
