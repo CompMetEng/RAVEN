@@ -22,6 +22,9 @@ function out=exportForGit(model,varargin)
 %     cell array of strings specifying in what file formats the model
 %     should be exported (default all formats as {'mat', 'txt', 'xlsx',
 %     'xml', 'yml'}).
+% mainBranchFlag : logical
+%     if true, function will error if RAVEN (and GECKO for enzyme-
+%     constrained models) is/are not on the main branch (default false).
 % subDirs : logical
 %     whether model files for each file format should be written in their
 %     own subdirectory, with 'model' as parent directory, in accordance to
@@ -38,15 +41,18 @@ function out=exportForGit(model,varargin)
 %
 % Examples
 % --------
-%     exportForGit(model, prefix, path, formats, subDirs, ...
+%     exportForGit(model, prefix, path, formats, mainBranchFlag, subDirs, ...
 %         COBRAtext, neverPrefixIDs);
-p=parseRAVENargs(varargin, {'prefix',[]; 'path',[]; 'formats',[]; 'subDirs',[]; 'COBRAtext',[]; 'neverPrefixIDs',false});
-prefix=p.prefix; path=p.path; formats=p.formats; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
+p=parseRAVENargs(varargin, {'prefix',[]; 'path',[]; 'formats',[]; 'mainBranchFlag',[]; 'subDirs',[]; 'COBRAtext',[]; 'neverPrefixIDs',false});
+prefix=p.prefix; path=p.path; formats=p.formats; mainBranchFlag=p.mainBranchFlag; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
 if isempty(COBRAtext)
     COBRAtext=false;
 end
 if isempty(subDirs)
     subDirs=true;
+end
+if isempty(mainBranchFlag)
+    mainBranchFlag=false;
 end
 if isempty(formats)
     formats={'mat', 'txt', 'xlsx', 'xml', 'yml'};
@@ -73,9 +79,9 @@ model=sortIdentifiers(model);
 
 %Get versions or commits of toolboxes. GECKO is only relevant for
 %enzyme-constrained models (those with an "ec" field).
-RAVENver = getToolboxVersion('RAVEN','ravenCobraWrapper.m');
+RAVENver = getToolboxVersion('RAVEN','ravenCobraWrapper.m',mainBranchFlag);
 if isfield(model,'ec')
-    GECKOver = getToolboxVersion('GECKO','GECKOInstaller.m');
+    GECKOver = getToolboxVersion('GECKO','GECKOInstaller.m',mainBranchFlag);
 else
     GECKOver = [];
 end
@@ -193,7 +199,7 @@ for digits = 1:17
 end
 end
 
-function version = getToolboxVersion(toolbox,fileID)
+function version = getToolboxVersion(toolbox,fileID,mainBranchFlag)
 % getToolboxVersion  Return the version of RAVEN or GECKO.
 %
 % Returns the version of the toolbox as stated in its version.txt, or
@@ -202,6 +208,7 @@ function version = getToolboxVersion(toolbox,fileID)
 % toolbox        name of the toolbox (e.g. 'RAVEN' or 'GECKO').
 % fileID         a file only found in that toolbox, used to locate its root
 %                (e.g. 'ravenCobraWrapper.m' or 'GECKOInstaller.m').
+% mainBranchFlag if true, error if the toolbox is not on the main branch.
 currentPath = pwd;
 version     = '';
 
@@ -221,6 +228,15 @@ try
 catch
     disp([toolbox ' toolbox cannot be found'])
     version = 'unknown';
+end
+%Check if in main:
+if mainBranchFlag
+    [~,currentBranch] = system('git rev-parse --abbrev-ref HEAD');
+    currentBranch = strtrim(currentBranch);
+    if ~any([strcmp(currentBranch, "main"), strcmp(currentBranch, "master")])
+        cd(currentPath);
+        error(['ERROR: ' toolbox ' not in main (or master) branch. Check-out this branch of ' toolbox ' before submitting model for Git.'])
+    end
 end
 %Read the version from the toolbox version.txt; report 'unknown' otherwise
 if isempty(version)

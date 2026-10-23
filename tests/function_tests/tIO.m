@@ -18,6 +18,28 @@ classdef tIO < RavenTestCase
             testCase.verifySubstring(dep, 'RAVEN_toolbox');
         end
 
+        function exportForGitKeepsPositionOfMainBranchFlag(testCase)
+            % The fifth positional argument is mainBranchFlag and the sixth
+            % is subDirs, as in calls written for earlier versions.
+            f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
+            evalc('model = importModel(f);');
+            outDir = tempname; mkdir(outDir);
+            c = onCleanup(@() rmdir(outDir,'s'));
+            evalc("exportForGit(model,'pre',outDir,{'xml'},false,false)");
+            testCase.verifyTrue(isfile(fullfile(outDir,'pre.xml')));
+        end
+
+        function exportForGitMainBranchFlagRefusesOtherBranch(testCase)
+            % Skipped when the checkout under test is on main or master.
+            [~,branch] = system(['git -C "' testCase.ravenRoot '" rev-parse --abbrev-ref HEAD']);
+            testCase.assumeFalse(any(strcmp(strtrim(branch),{'main','master'})), 'checkout is on the main branch');
+            f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
+            evalc('model = importModel(f);');
+            outDir = tempname; mkdir(outDir);
+            c = onCleanup(@() rmdir(outDir,'s'));
+            testCase.verifyError(@() evalc("exportForGit(model,'path',outDir,'formats',{'xml'},'mainBranchFlag',true,'subDirs',false)"), ?MException);
+        end
+
         function exportForGitTxtKeepsBoundsExactly(testCase)
             % The txt file is a lossless table: bounds and objective are
             % written with the digits needed to read them back unchanged.
