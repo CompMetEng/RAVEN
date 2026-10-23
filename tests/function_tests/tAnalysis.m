@@ -361,6 +361,30 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(rm.metZScores, expected, 'RelTol', 1e-6);
         end
 
+        function reporterMetabolitesKeepsPrecisionOfCloseZScores(testCase)
+            % 20000 genes with the same p-value except one that is 1000
+            % ulps lower: the Z-scores differ by about 1e-13, so the scores
+            % need the shifted moments. A has 10 of the identical genes,
+            % B has the shifted gene.
+            n = 20000;
+            pv = 0.37*ones(n,1);
+            pv(n) = 0.37 - 1000*eps(0.37);
+            z = sqrt(2)*erfcinv(2*pv);
+            m = struct();
+            m.mets       = {'A';'B'};
+            m.metNames   = {'A';'B'};
+            m.genes      = arrayfun(@(i) sprintf('g%d',i), 1:n, 'UniformOutput', false)';
+            m.S          = sparse([1 0; 0 1]);
+            G = zeros(2,n); G(1,1:10) = 1; G(2,n) = 1;
+            m.rxnGeneMat = sparse(G);
+            rm = reporterMetabolites(m, m.genes, pv);
+            [~,ia] = ismember({'A','B'}, rm.mets);
+            sgn = sign(z(n)-z(1));
+            testCase.verifyEqual(rm.metZScores(ia(1)), -sgn*sqrt(10/(n-1)), 'RelTol', 1e-3);
+            expectedB = sgn*sqrt(n-1);
+            testCase.verifyEqual(rm.metZScores(ia(2)), expectedB, 'RelTol', 1e-3);
+        end
+
         function FSEOFRuns(testCase)
             biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
             [~, exchIdx] = getExchangeRxns(testCase.model);

@@ -215,6 +215,10 @@ for k = 1:numel(numericCols)
         if ~isempty(x) && ~(isnumeric(x) && isscalar(x))
             error('RAVEN:badInput', 'The value in column %s of task list data row %d is not a number (rows are counted after the header, comment rows and empty rows are removed)', numericNames{k}, r-1);
         end
+        %NaN means "leave unchanged" only in the bounds of changed reactions
+        if k <= 6 && isnumeric(x) && isscalar(x) && isnan(x)
+            error('RAVEN:badInput', 'The value in column %s of task list data row %d is NaN, which is only accepted in the bounds of changed reactions (rows are counted after the header, comment rows and empty rows are removed)', numericNames{k}, r-1);
+        end
     end
 end
 

@@ -156,6 +156,34 @@ classdef tTasks < RavenTestCase
             testCase.verifySubstring(msg, 'counted after');
         end
 
+        function parseTaskListRefusesNaNOutsideChangedBounds(testCase)
+            % NaN means "leave unchanged" in the bounds of changed
+            % reactions only; in the other bound columns it is refused.
+            for col = {'IN LB','IN UB','OUT LB','OUT UB','EQU LB','EQU UB'}
+                for val = {'NaN','nan'}
+                    f = tTasks.writeTaskFile({
+                        {'' 'ID' 'IN' col{1}}
+                        {'' 'T1' 'A[c]' val{1}}
+                        });
+                    try
+                        parseTaskList(f);
+                        testCase.verifyFail(['parseTaskList accepted ' val{1} ' in ' col{1}]);
+                    catch err
+                        testCase.verifyEqual(err.identifier, 'RAVEN:badInput', [col{1} ' ' val{1}]);
+                        testCase.verifySubstring(err.message, col{1});
+                        testCase.verifySubstring(err.message, 'NaN');
+                    end
+                end
+            end
+            f = tTasks.writeTaskFile({
+                {'' 'ID' 'CHANGED RXN' 'CHANGED LB' 'CHANGED UB'}
+                {'' 'T1' 'R1' 'NaN' '5'}
+                });
+            ts = parseTaskList(f);
+            testCase.verifyTrue(isnan(ts(1).LBrxn));
+            testCase.verifyEqual(ts(1).UBrxn, 5);
+        end
+
         function parseTaskListRefusesTextThatOnlyLooksLikeANumber(testCase)
             % str2double reads '1,5' as 15 and '2i' as a complex number.
             for bad = {'1,5','1,000','2i','0x10'}

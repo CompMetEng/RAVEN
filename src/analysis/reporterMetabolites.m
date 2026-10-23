@@ -103,6 +103,13 @@ geneZScores(geneZScores==inf)=15;
 %For each metabolite, calculate the aggregate Z-score and keep track of the
 %number of neighbouring genes
 metZScores=nan(numel(model.mets),1);
+%Sums are taken on Z-scores relative to the first gene's, which keeps the
+%rounding error proportional to the spread of the Z-scores instead of to their size
+metZShifted=nan(numel(model.mets),1);
+z0=0;
+if ~isempty(geneZScores)
+    z0=geneZScores(1);
+end
 metNGenes=nan(numel(model.mets),1);
 meanZ=nan(numel(model.mets),1);
 stdZ=nan(numel(model.mets),1);
@@ -124,6 +131,7 @@ for i=1:numel(model.mets)
     %Calculate the aggregated Z-score for the metabolite
     if any(K)
         metZScores(i)=sum(geneZScores(K))/sqrt(numel(K));
+        metZShifted(i)=sum(geneZScores(K)-z0)/sqrt(numel(K));
         meanZ(i)=mean(geneZScores(K));
         stdZ(i)=std(geneZScores(K));
         metNGenes(i)=numel(K);
@@ -133,6 +141,7 @@ end
 %Remove the metabolites which have no Z-scores
 mets=model.mets(~isnan(metZScores));
 metNames=model.metNames(~isnan(metZScores));
+metZShifted(isnan(metZScores))=[];
 metZScores(isnan(metZScores))=[];
 metNGenes(isnan(metNGenes))=[];
 meanZ(isnan(meanZ))=[];
@@ -144,15 +153,18 @@ stdZ(isnan(stdZ))=[];
 %  E[Z] = sqrt(n)*mu  and  Std[Z] = sigma  (independent of n)
 %so the corrected score is (metZ - sqrt(n)*mu) / sigma. When sigma is 0 (all
 %scored genes have the same Z-score) no metabolite stands out from the
-%background, and the corrected score is 0 (P-value 0.5). The mean of many
-%identical Z-scores carries a rounding error that grows with their number,
+%background, and the corrected score is 0 (P-value 0.5). The moments are
+%taken on Z-scores shifted by the first gene's Z-score, so that mu and the
+%numerator keep their precision when the Z-scores are close to each other.
+%The mean of many identical Z-scores carries a rounding error that grows with their number,
 %which makes sigma a small positive value instead of 0. The spread of the
 %Z-scores is therefore tested instead: it counts as 0 up to
 %100*eps(max(abs(Z))).
-mu = mean(geneZScores);
-sigma = std(geneZScores,1);
+zShifted = geneZScores - z0;
+muShifted = mean(zShifted);
+sigma = std(zShifted,1);
 if max(geneZScores)-min(geneZScores) > 100*eps(max(abs(geneZScores)))
-    metZScores = (metZScores - sqrt(metNGenes) .* mu) ./ sigma;
+    metZScores = (metZShifted - sqrt(metNGenes) .* muShifted) ./ sigma;
 else
     metZScores = zeros(size(metZScores));
 end
