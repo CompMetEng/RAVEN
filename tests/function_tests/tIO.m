@@ -306,14 +306,29 @@ classdef tIO < RavenTestCase
             testCase.addTeardown(@() delete(f));
             evalc('writeYAMLmodel(m, f);');
             txt = fileread(f);
+            % The metabolite's map has a key named like an entry field and a
+            % quoted list item with ': ', and is followed by an annotation.
             txt = regexprep(txt, '( *)- notes: METPLACEHOLDER', ...
-                '$1- notes: !!omap\n$1  - enzyme_usage: Enzyme-usage pseudometabolite');
+                ['$1- notes: !!omap\n$1  - enzyme_usage: Enzyme-usage pseudometabolite\n' ...
+                 '$1  - name: other\n$1  - refs:\n$1    - "PMID: 1"\n$1    - b\n' ...
+                 '$1- annotation: !!omap\n$1  - sbo: SBO:0000252']);
+            % The reaction's map comes before other fields, has keys named
+            % like entry fields and a list value.
             txt = regexprep(txt, '( *)- notes: RXNPLACEHOLDER', ...
-                '$1- notes: !!omap\n$1  - geckopy_warning: no match for g1\n$1  - note: curated');
+                ['$1- notes: !!omap\n$1  - geckopy_warning: no match for g1\n$1  - id: R99\n' ...
+                 '$1  - name: other\n$1  - refs:\n$1    - a\n$1    - b\n$1  - note: curated\n' ...
+                 '$1- rxnFrom: test']);
             fid = fopen(f, 'w'); fwrite(fid, txt); fclose(fid);
             evalc('m2 = readYAMLmodel(f);');
-            testCase.verifyEqual(m2.metNotes{1}, 'enzyme_usage: Enzyme-usage pseudometabolite');
-            testCase.verifyEqual(m2.rxnNotes{1}, 'geckopy_warning: no match for g1; curated');
+            testCase.verifyEqual(m2.metNotes{1}, ...
+                'enzyme_usage: Enzyme-usage pseudometabolite; name: other; refs: PMID: 1, b');
+            testCase.verifyEqual(m2.metNames, m.metNames);
+            testCase.verifyTrue(any(strcmp(m2.metMiriams{1}.name, 'sbo')));
+            testCase.verifyEqual(m2.rxnNotes{1}, ...
+                'geckopy_warning: no match for g1; id: R99; name: other; refs: a, b; curated');
+            testCase.verifyEqual(m2.rxns, m.rxns);
+            testCase.verifyEqual(m2.rxnNames, m.rxnNames);
+            testCase.verifyEqual(m2.rxnFrom{1}, 'test');
             testCase.verifyEqual(numel(m2.mets), numel(m.mets));
             testCase.verifyEqual(numel(m2.rxns), numel(m.rxns));
         end

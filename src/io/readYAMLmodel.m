@@ -195,6 +195,7 @@ else
 end
 
 section = 0;
+readList = '';
 metMiriams=cell(100000,3);   metMirNo=1;
 rxnMiriams=cell(100000,3);   rxnMirNo=1;
 geneMiriams=cell(100000,3);  genMirNo=1;
@@ -346,6 +347,12 @@ for i=1:numel(line_key)
 
     % import metabolites:
     if section == 2
+        % The lines of a notes map are indented below the entry's own
+        % fields; their keys are not entry fields, whatever their name.
+        if strcmp(readList, 'notes') && ~isempty(regexp(tline_raw, '^ {6,}', 'once'))
+            model = appendNote(model, 'metNotes', tline_raw, tline_key, tline_value, pos);
+            continue
+        end
         switch tline_key
             case 'id'
                 pos = pos + 1;
@@ -405,8 +412,6 @@ for i=1:numel(line_key)
                 switch readList
                     case 'annotation'
                         [metMiriams, miriamKey, metMirNo] = gatherAnnotation(pos,metMiriams,tline_key,tline_value,miriamKey,metMirNo);
-                    case 'notes'
-                        model = appendNote(model, 'metNotes', tline_key, tline_value, pos);
                     case 'smilesInAnnotation'
                         % A bare list item ("- OC(=O)...") has no colon,
                         % so tline_key is empty --- still inside the list.
@@ -429,6 +434,12 @@ for i=1:numel(line_key)
 
     % import reactions:
     if section == 3
+        % The lines of a notes map are indented below the entry's own
+        % fields; their keys are not entry fields, whatever their name.
+        if strcmp(readList, 'notes') && ~isempty(regexp(tline_raw, '^ {6,}', 'once'))
+            model = appendNote(model, 'rxnNotes', tline_raw, tline_key, tline_value, pos);
+            continue
+        end
         switch tline_key
             case 'id'
                 pos = pos + 1;
@@ -536,8 +547,6 @@ for i=1:numel(line_key)
                         subSysNo=subSysNo+1;
                     case 'annotation'
                         [rxnMiriams, miriamKey,rxnMirNo] = gatherAnnotation(pos,rxnMiriams,tline_key,tline_value,miriamKey,rxnMirNo);
-                    case 'notes'
-                        model = appendNote(model, 'rxnNotes', tline_key, tline_value, pos);
                     case 'equation'
                         coeff = sscanf(tline_value,'%f');
                         equations(equatiNo,1:3)={pos,tline_key,coeff};
@@ -892,16 +901,45 @@ end
 model.(fieldName)(pos,1) = {value};
 end
 
-function model = appendNote(model, fieldName, key, value, pos)
-% One entry of a notes map: its value for the key 'note' (RAVEN's own note
-% text), 'key: value' otherwise; entries are separated by '; '.
-if ~strcmp(key, 'note')
-    value = [key ': ' value];
+function model = appendNote(model, fieldName, raw, key, value, pos)
+% One line of a notes map: a 'note' entry adds its value (RAVEN's own note
+% text), another entry adds 'key: value', a list item adds its value to the
+% entry above it. Entries are separated by '; ', list items by ', '. A
+% quoted list item is read whole, as the key detection would split it at
+% a ': ' inside the quotes.
+item = regexp(raw, '^ +- ([''"])(.*)\1$', 'tokens', 'once');
+if ~isempty(item)
+    key = '';
+    value = item{2};
 end
-if numel(model.(fieldName)) >= pos && ~isempty(model.(fieldName){pos})
-    value = [model.(fieldName){pos} '; ' value];
+if strcmp(value, '!!omap')
+    value = '';
 end
-model = readFieldValue(model, fieldName, value, pos);
+text = '';
+if numel(model.(fieldName)) >= pos
+    text = model.(fieldName){pos};
+end
+if isempty(key)
+    if isempty(text) || endsWith(text, ':')
+        text = strtrim([text ' ' value]);
+    else
+        text = [text ', ' value];
+    end
+else
+    if isempty(value)
+        entry = [key ':'];
+    elseif strcmp(key, 'note')
+        entry = value;
+    else
+        entry = [key ': ' value];
+    end
+    if isempty(text)
+        text = entry;
+    else
+        text = [text '; ' entry];
+    end
+end
+model = readFieldValue(model, fieldName, text, pos);
 end
 
 function [miriams,miriamKey,entryNumber] = gatherAnnotation(pos,miriams,key,value,miriamKey,entryNumber)
