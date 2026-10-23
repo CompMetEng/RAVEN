@@ -11,7 +11,8 @@ function repMets=reporterMetabolites(model,genes,genePValues,varargin)
 % genes : cell
 %     a cell array of gene names (should match with model.genes).
 % genePValues : double
-%     P-values for differential expression of the genes.
+%     P-values for differential expression of the genes. Values must lie in
+%     [0, 1]; NaN values are ignored, any other value raises an error.
 %
 % Name-Value Arguments
 % --------------------
@@ -78,6 +79,15 @@ if ~isfield(model,'rxnGeneMat')
     error('RAVEN:badInput', '%s', EM);
 end
 
+%All P-values that are given must lie in [0,1]; NaN means that no P-value
+%is available and is removed below
+badP=~isnan(genePValues) & (genePValues<0 | genePValues>1);
+if any(badP)
+    firstBad=find(badP,1);
+    EM=sprintf('The P-values must lie between 0 and 1, but %d of them do not. The first is %g (gene %s)',nnz(badP),genePValues(firstBad),genes{firstBad});
+    error('RAVEN:badInput', '%s', EM);
+end
+
 %Remove the genes which are not in the model
 genePValues(~ismember(genes,model.genes))=[];
 if any(geneFoldChanges)
@@ -139,14 +149,15 @@ for i=1:numel(model.mets)
     end
 end
 
-%Remove the metabolites which have no Z-scores
-mets=model.mets(~isnan(metZScores));
-metNames=model.metNames(~isnan(metZScores));
-metZShifted(isnan(metZScores))=[];
-metZScores(isnan(metZScores))=[];
-metNGenes(isnan(metNGenes))=[];
-meanZ(isnan(meanZ))=[];
-stdZ(isnan(stdZ))=[];
+%Remove the metabolites which have no Z-scores, from all fields alike
+noScore=isnan(metZScores);
+mets=model.mets(~noScore);
+metNames=model.metNames(~noScore);
+metZShifted(noScore)=[];
+metZScores(noScore)=[];
+metNGenes(noScore)=[];
+meanZ(noScore)=[];
+stdZ(noScore)=[];
 
 %Correct for background using the closed-form moments of the sampling
 %distribution. For n genes drawn with replacement from the scored-gene pool

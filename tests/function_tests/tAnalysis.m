@@ -415,6 +415,57 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(rm.metZScores(ia(2)), expectedB, 'RelTol', 1e-11);
         end
 
+        function reporterMetabolitesRefusesPValuesOutsideZeroOne(testCase)
+            % Three metabolites around the gene sets {1,2}, {3,4} and {5,6}.
+            m = struct();
+            m.mets       = {'A';'B';'C'};
+            m.metNames   = {'A';'B';'C'};
+            m.genes      = {'g1';'g2';'g3';'g4';'g5';'g6'};
+            m.S          = sparse(eye(3));
+            m.rxnGeneMat = sparse([1 1 0 0 0 0; 0 0 1 1 0 0; 0 0 0 0 1 1]);
+            bad = {[0.2 0.4 0.7 0.3 0.1 1+eps], ...
+                   [Inf 0.2 0.4 0.7 -Inf 0.1], ...
+                   [0.2 0.4 0.7 0.3 0.1 -eps], ...
+                   [0.2 0.4 0.7 0.3 0.1 -Inf]};
+            for i = 1:numel(bad)
+                testCase.verifyError(@() reporterMetabolites(m, m.genes, bad{i}'), 'RAVEN:badInput');
+            end
+            % The message gives the number of values and the first one.
+            try
+                reporterMetabolites(m, m.genes, [0.2 1.5 0.7 0.3 -0.1 0.1]');
+                testCase.verifyFail('No error for P-values outside [0,1]');
+            catch ME
+                testCase.verifyEqual(ME.identifier, 'RAVEN:badInput');
+                testCase.verifySubstring(ME.message, '2 of them');
+                testCase.verifySubstring(ME.message, '1.5 (gene g2)');
+            end
+            % A value that is outside the range is refused also for a gene
+            % that is not in the model.
+            testCase.verifyError(@() reporterMetabolites(m, [m.genes; {'gX'}], [0.2 0.4 0.7 0.3 0.1 0.5 2]'), 'RAVEN:badInput');
+            % 0 and 1 are valid, NaN is ignored
+            rm = reporterMetabolites(m, m.genes, [0 0.4 0.7 0.3 NaN 1]');
+            testCase.verifyEqual(numel(rm.mets), 3);
+            testCase.verifyEqual(rm.metNGenes(strcmp(rm.mets,'C')), 1);
+        end
+
+        function reporterMetabolitesFieldsStayAlignedWithoutScoredGenes(testCase)
+            % Metabolite C has no scored gene. All result fields drop it
+            % together, so that they stay aligned with the metabolites.
+            m = struct();
+            m.mets       = {'A';'B';'C'};
+            m.metNames   = {'A';'B';'C'};
+            m.genes      = {'g1';'g2';'g3';'g4'};
+            m.S          = sparse(eye(3));
+            m.rxnGeneMat = sparse([1 1 0 0; 0 0 1 0; 0 0 0 0]);
+            rm = reporterMetabolites(m, m.genes, [0.01; 0.2; 0.5; 0.9]);
+            testCase.verifyEqual(sort(rm.mets), {'A';'B'});
+            for f = {'metNames','metZScores','metPValues','metNGenes','meanZ','stdZ'}
+                testCase.verifyEqual(numel(rm.(f{1})), 2, f{1});
+            end
+            testCase.verifyEqual(rm.metNGenes(strcmp(rm.mets,'A')), 2);
+            testCase.verifyEqual(rm.metNGenes(strcmp(rm.mets,'B')), 1);
+        end
+
         function FSEOFRuns(testCase)
             biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
             [~, exchIdx] = getExchangeRxns(testCase.model);
