@@ -235,7 +235,7 @@ if mainBranchFlag
     currentBranch = strtrim(currentBranch);
     if ~any([strcmp(currentBranch, "main"), strcmp(currentBranch, "master")])
         cd(currentPath);
-        error(['ERROR: ' toolbox ' not in main (or master) branch. Check-out this branch of ' toolbox ' before submitting model for Git.'])
+        error('RAVEN:notMainBranch',['ERROR: ' toolbox ' not in main (or master) branch. Check-out this branch of ' toolbox ' before submitting model for Git.'])
     end
 end
 %Read the version from the toolbox version.txt; report 'unknown' otherwise

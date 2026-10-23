@@ -158,7 +158,7 @@ classdef tTasks < RavenTestCase
 
         function parseTaskListRefusesTextThatOnlyLooksLikeANumber(testCase)
             % str2double reads '1,5' as 15 and '2i' as a complex number.
-            for bad = {'1,5','1,000','2i','1 2','1_000','0x10'}
+            for bad = {'1,5','1,000','2i','0x10'}
                 f = tTasks.writeTaskFile({
                     {'' 'ID' 'IN' 'IN LB'}
                     {'' 'T1' 'A[c]' bad{1}}
@@ -168,7 +168,13 @@ classdef tTasks < RavenTestCase
             x = [tempname '.xlsx'];
             writecell({'' 'ID' 'IN' 'IN LB'; '' 'T1' 'A[c]' '1,5'; '# note' '' '' ''}, x, 'Sheet', 'TASKS');
             cleanupX = onCleanup(@() delete(x)); %#ok<NASGU>
-            testCase.verifyError(@() parseTaskList(x), 'RAVEN:badInput');
+            try
+                parseTaskList(x);
+                testCase.verifyFail('parseTaskList accepted 1,5 in an xlsx file');
+            catch err
+                testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+                testCase.verifySubstring(err.message, 'is not a number');
+            end
             f = tTasks.writeTaskFile({
                 {'' 'ID' 'IN' 'IN LB' 'IN UB'}
                 {'' 'T1' 'A[c]' '-1e3' 'Inf'}

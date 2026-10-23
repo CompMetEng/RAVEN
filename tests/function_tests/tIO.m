@@ -20,13 +20,24 @@ classdef tIO < RavenTestCase
 
         function exportForGitKeepsPositionOfMainBranchFlag(testCase)
             % The fifth positional argument is mainBranchFlag and the sixth
-            % is subDirs, as in calls written for earlier versions.
+            % is subDirs, as in calls written for earlier versions: with
+            % only the flag given, subDirs keeps its default and the files
+            % are written in subfolders.
             f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
             evalc('model = importModel(f);');
             outDir = tempname; mkdir(outDir);
             c = onCleanup(@() rmdir(outDir,'s'));
-            evalc("exportForGit(model,'pre',outDir,{'xml'},false,false)");
-            testCase.verifyTrue(isfile(fullfile(outDir,'pre.xml')));
+            evalc("exportForGit(model,'pre',outDir,{'xml'},false)");
+            testCase.verifyTrue(isfile(fullfile(outDir,'model','xml','pre.xml')));
+            testCase.verifyFalse(isfile(fullfile(outDir,'pre.xml')));
+
+            % The call used for Human-GEM: empty subDirs slot, flag false
+            flatDir = tempname; mkdir(flatDir);
+            c2 = onCleanup(@() rmdir(flatDir,'s'));
+            evalc("exportForGit(model,'Human-GEM',flatDir,{'xml','txt'},'',false)");
+            testCase.verifyTrue(isfile(fullfile(flatDir,'Human-GEM.xml')));
+            testCase.verifyTrue(isfile(fullfile(flatDir,'Human-GEM.txt')));
+            testCase.verifyFalse(isfolder(fullfile(flatDir,'model')));
         end
 
         function exportForGitMainBranchFlagRefusesOtherBranch(testCase)
@@ -37,7 +48,7 @@ classdef tIO < RavenTestCase
             evalc('model = importModel(f);');
             outDir = tempname; mkdir(outDir);
             c = onCleanup(@() rmdir(outDir,'s'));
-            testCase.verifyError(@() evalc("exportForGit(model,'path',outDir,'formats',{'xml'},'mainBranchFlag',true,'subDirs',false)"), ?MException);
+            testCase.verifyError(@() exportForGit(model,'path',outDir,'formats',{'xml'},'mainBranchFlag',true,'subDirs',false), 'RAVEN:notMainBranch');
         end
 
         function exportForGitTxtKeepsBoundsExactly(testCase)
