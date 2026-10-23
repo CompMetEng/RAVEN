@@ -83,7 +83,9 @@ classdef tSampling < RavenTestCase
         end
 
         function sampleACHRReturnsSteadyState(testCase)
+            lastwarn('');
             evalc('sols = sampleACHR(testCase.model, 10, 5, [], 1);');
+            testCase.verifyNotEqual(tSampling.lastWarningId(), 'sampleACHR:steadyStateNotRestored');
             nRxns = numel(testCase.model.rxns);
             testCase.verifySize(sols, [nRxns, 10]);
             resid = testCase.model.S * sols;
@@ -97,7 +99,9 @@ classdef tSampling < RavenTestCase
             % by orders of magnitude over 1000 samples.
             m = tSampling.parallelModel();
             evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            lastwarn('');
             evalc('sols = sampleACHR(m, 1000, 100, warmup, 1);');
+            testCase.verifyNotEqual(tSampling.lastWarningId(), 'sampleACHR:steadyStateNotRestored');
             resid = m.S * sols;
             testCase.verifyLessThan(max(abs(resid(:))), 1e-9);
             testCase.verifyGreaterThanOrEqual(min(sols, [], 2), m.lb - 1e-9);
@@ -111,7 +115,9 @@ classdef tSampling < RavenTestCase
             % and keep S*v at rounding level.
             m = tSampling.fixedReactionModel();
             evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            lastwarn('');
             evalc('sols = sampleACHR(m, 3000, 1, warmup, 1);');
+            testCase.verifyNotEqual(tSampling.lastWarningId(), 'sampleACHR:steadyStateNotRestored');
             moved = mean(any(diff(sols, 1, 2) ~= 0, 1));
             testCase.verifyGreaterThan(moved, 0.9);
             testCase.verifyLessThan(max(abs(m.S * sols), [], 'all'), 1e-9);
@@ -121,6 +127,94 @@ classdef tSampling < RavenTestCase
             evalc('sols = sampleACHR(m, 300, 100, warmup, 2);');
             testCase.verifyLessThan(max(abs(m.S * sols), [], 'all'), 1e-9);
             testCase.verifyGreaterThan(std(sols(2, :)), 0.1);
+        end
+
+        function sampleACHRKeepsNearlyConstantReactionConstant(testCase)
+            % A reaction whose warmup values differ by less than 1e-9 does not move:
+            % its recorded value is the warmup mean in every sample, and the
+            % steady state is kept through the other reactions.
+            m = tSampling.nearlyFixedReactionModel();
+            evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            s = rng; testCase.addTeardown(@() rng(s));
+            rng(5);
+            warmup(:, end) = 3 + 5e-10*rand(size(warmup, 1), 1);
+            sols = sampleACHR(m, 200, 20, warmup, 1);
+            testCase.verifyEqual(max(sols(end, :)) - min(sols(end, :)), 0);
+            testCase.verifyLessThan(max(abs(m.S * sols), [], 'all'), 1e-9);
+            testCase.verifyGreaterThan(std(sols(2, :)), 0.1);
+        end
+
+        function sampleACHRStaysAtSteadyStateOverMillionsOfSteps(testCase)
+            % One sample after two million steps: the residual of S*v must not grow
+            % between recorded samples, which needs the correction every few steps
+            % (a correction only before the recorded sample leaves a residual of
+            % about 0.3 here).
+            m = tSampling.parallelModel();
+            evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            sols = sampleACHR(m, 1, 2e6, warmup, 1);
+            testCase.verifyLessThan(max(abs(m.S * sols), [], 'all'), 1e-9);
+            testCase.verifyGreaterThanOrEqual(sols, m.lb - 1e-9);
+            testCase.verifyLessThanOrEqual(sols, m.ub + 1e-9);
+        end
+
+        function sampleACHRMovesFromWarmupWithRoundingNoise(testCase)
+            % Warmup values that differ from a vertex by 1e-9 to 3e-9 must not stall
+            % the chain: reactions with no warmup spread get an exact zero step,
+            % directions below a tolerance relative to the largest component are
+            % ignored, and the correction keeps the point inside the polytope. The
+            % fractions of moving steps are 0.99 and 0.96; without one of these
+            % three, they drop to 0.6 or below at one of the two noise levels.
+            m = testCase.model;
+            evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            s = rng; testCase.addTeardown(@() rng(s));
+            rng(3);
+            noise = randn(size(warmup));
+            sols = sampleACHR(m, 300, 20, warmup + 1e-9*noise, 1);
+            testCase.verifyGreaterThan(mean(any(diff(sols, 1, 2) ~= 0, 1)), 0.97);
+            sols = sampleACHR(m, 300, 20, warmup + 3e-9*noise, 1);
+            testCase.verifyGreaterThan(mean(any(diff(sols, 1, 2) ~= 0, 1)), 0.93);
+            testCase.verifyLessThan(max(abs(m.S * sols), [], 'all'), 1e-8);
+        end
+
+        function sampleACHRWarnsForWarmupThatIsInfeasibleForTheModel(testCase)
+            % Warmup points of the model without the fixed ATP maintenance flux do
+            % not satisfy the model with it; the samples keep a residual far above
+            % rounding and sampleACHR says so.
+            m = testCase.model;
+            evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            i = find(contains(lower(m.rxns), 'atpm'), 1);
+            testCase.assertNotEmpty(i);
+            m.lb(i) = 20;
+            m.ub(i) = 20;
+            testCase.verifyWarning(@() sampleACHR(m, 200, 20, warmup, 1), ...
+                'sampleACHR:steadyStateNotRestored');
+        end
+
+        function sampleACHRWarnsForNoisyWarmup(testCase)
+            % Warmup values that are off by 1e-5 leave a residual above 1e-9 after
+            % the clip to the bounds.
+            m = testCase.model;
+            evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            s = rng; testCase.addTeardown(@() rng(s));
+            rng(3);
+            noisy = warmup + 1e-5*randn(size(warmup));
+            testCase.verifyWarning(@() sampleACHR(m, 300, 20, noisy, 1), ...
+                'sampleACHR:steadyStateNotRestored');
+        end
+
+        function sampleACHRWarnsForNearlyDependentRows(testCase)
+            % Two rows of S that differ by 1e-7 times a column: the correction
+            % cannot separate them, the implied constraint is lost and the
+            % residual stays near 3e-7.
+            d = 1e-7;
+            S = [1  -1      -1  0  0;
+                 1  -(1+d)  -1  0  d;
+                 0   1       1 -1  0;
+                 0   0       0  1 -1];
+            m = tSampling.modelFromMatrix(S, zeros(5, 1), [10; 6; 6; 1000; 1000]);
+            evalc('warmup = sampleWarmupPoints(m, ''runParallel'', false);');
+            testCase.verifyWarning(@() sampleACHR(m, 500, 100, warmup, 1), ...
+                'sampleACHR:steadyStateNotRestored');
         end
 
         % ---- randomSampling dispatch ------------------------------------
@@ -203,6 +297,46 @@ classdef tSampling < RavenTestCase
     end
 
     methods (Static, Access = private)
+
+        function m = modelFromMatrix(S, lb, ub)
+            % A model with the given stoichiometric matrix and bounds, without genes.
+            [nMets, nRxns] = size(S);
+            m = struct();
+            m.id       = 'fromMatrix';
+            m.rxns     = arrayfun(@(i) sprintf('R%d', i), (1:nRxns)', 'UniformOutput', false);
+            m.rxnNames = m.rxns;
+            m.mets     = arrayfun(@(i) sprintf('m%d', i), (1:nMets)', 'UniformOutput', false);
+            m.metNames = m.mets;
+            m.metComps = ones(nMets, 1);
+            m.comps    = {'c'};
+            m.compNames= {'cytosol'};
+            m.S = sparse(S);
+            m.lb  = lb;
+            m.ub  = ub;
+            m.rev = zeros(nRxns, 1);
+            m.c   = zeros(nRxns, 1);
+            m.b   = zeros(nMets, 1);
+            m.genes = {}; m.grRules = repmat({''}, nRxns, 1); m.rxnGeneMat = sparse(nRxns, 0);
+            m.metFormulas = repmat({'C'}, nMets, 1);
+        end
+
+        function id = lastWarningId()
+            [~, id] = lastwarn;
+        end
+
+        function m = nearlyFixedReactionModel()
+            % The parallel model plus a reaction without metabolites.
+            m = tSampling.parallelModel();
+            m.rxns{end+1, 1} = 'NF';
+            m.rxnNames = m.rxns;
+            m.S(:, end+1) = 0;
+            m.lb(end+1, 1) = 0;
+            m.ub(end+1, 1) = 10;
+            m.rev(end+1, 1) = 0;
+            m.c(end+1, 1) = 0;
+            m.grRules{end+1, 1} = '';
+            m.rxnGeneMat(end+1, :) = 0;
+        end
 
         function m = parallelModel()
             m = struct();

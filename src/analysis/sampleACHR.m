@@ -9,7 +9,11 @@ function solutions = sampleACHR(model, nSamples, thinning, warmup, seed)
 % reactions are corrected towards S*v = 0 every few steps and before each
 % recorded sample, with a sparse Cholesky factor of the row-normalised S*S'
 % (no dense null-space basis), so the rounding error in S*v does not grow with
-% the number of steps and samples stay inside the bounds.
+% the number of steps and samples stay inside the bounds. The guarantee
+% S*v = 0 holds for a well-conditioned S and warmup points that are feasible
+% for the model. When the largest residual of a recorded sample exceeds 1e-9
+% times max(1, max(abs(v))) (nearly dependent rows of S, a noisy or infeasible
+% warmup), sampleACHR issues the warning sampleACHR:steadyStateNotRestored.
 %
 % Parameters
 % ----------
@@ -60,6 +64,7 @@ nTotal = 0;
 
 solutions = zeros(nRxns, nSamples);
 rec = 0;
+worstResidual = 0;
 nSteps = thinning*nSamples;
 
 for stepno = 1:nSteps
@@ -95,7 +100,15 @@ for stepno = 1:nSteps
     if mod(stepno, thinning) == 0
         rec = rec + 1;
         solutions(:, rec) = prev;
+        worstResidual = max(worstResidual, ...
+            max(abs(model.S*prev))/max(1, max(abs(prev))));
     end
+end
+if worstResidual > 1e-9
+    warning('sampleACHR:steadyStateNotRestored', ...
+        ['The largest residual of S*v over the samples is %.3g times max(1, max(abs(v))), ' ...
+         'above 1e-9. The rows of S are nearly dependent or the warmup points are not ' ...
+         'feasible for the model.'], worstResidual);
 end
 end
 
