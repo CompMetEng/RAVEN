@@ -453,6 +453,21 @@ classdef tManipulation < RavenTestCase
             testCase.verifyEqual(ids, {'R_0011'});
         end
 
+        function generateNewIdsIgnoresSuffixesThatAreNotIntegers(testCase)
+            % Inf, fractions and overflowing numbers are not counted as
+            % numbers; the next id follows the other suffixes.
+            m.rxns = {'r_inf'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_001'});
+            m.rxns = {'r_9.5'; 'r_3'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_4'});
+            m.rxns = {'r_1e400'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_1d2'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_2.5'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_001'});
+        end
+
         function mergeCompartmentsSingleComp(testCase)
             evalc('m2 = mergeCompartments(testCase.model);');
             testCase.verifyNumElements(m2.comps, 1);

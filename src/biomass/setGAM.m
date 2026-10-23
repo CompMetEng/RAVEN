@@ -9,7 +9,8 @@ function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 % For every metabolite in the biomass pseudoreaction whose model.metNames
 % entry is in cofactorMetNames, the stoichiometric coefficient is set to
 % ±value preserving the sign of the current coefficient. An error is raised
-% before the model is changed if ngamRxn is given and is not in the model.
+% before the model is changed if ngamRxn is given and is not in the model,
+% and if ngamValue is given without ngamRxn (RAVEN:badInput).
 % Yeast-GEM scales ATP, ADP, H2O, H+ and phosphate (with ATP and H2O on the
 % substrate side, ADP / H+ / phosphate on the product side).
 %
@@ -59,6 +60,10 @@ ngamValue=p.ngamValue;
 if ~isempty(ngamRxn)
     ngamRxn=cellstr(ngamRxn);
     ngamRxn=ngamRxn(~cellfun(@isempty,ngamRxn));
+end
+if ~isempty(ngamValue) && isempty(ngamRxn)
+    error('RAVEN:badInput', ...
+        'ngamValue is given without ngamRxn. Give the NGAM reaction id as ''ngamRxn''.');
 end
 
 bioPos = strcmp(model.rxns, biomassRxn);

@@ -6,6 +6,10 @@ function out=exportForGit(model,varargin)
 % model as SBML L3V1 FBCv2 (both XML and YAML), COBRA text, Matlab MAT-file
 % and Microsoft Excel formats.
 %
+% The flags mainBranchFlag, subDirs, COBRAtext and neverPrefixIDs accept a
+% scalar logical or 0/1, or an empty value for the default. Text and other
+% types raise RAVEN:badInput.
+%
 % Parameters
 % ----------
 % model : struct
@@ -45,15 +49,10 @@ function out=exportForGit(model,varargin)
 %         COBRAtext, neverPrefixIDs);
 p=parseRAVENargs(varargin, {'prefix',[]; 'path',[]; 'formats',[]; 'mainBranchFlag',[]; 'subDirs',[]; 'COBRAtext',[]; 'neverPrefixIDs',false});
 prefix=p.prefix; path=p.path; formats=p.formats; mainBranchFlag=p.mainBranchFlag; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
-if isempty(COBRAtext)
-    COBRAtext=false;
-end
-if isempty(subDirs)
-    subDirs=true;
-end
-if isempty(mainBranchFlag)
-    mainBranchFlag=false;
-end
+COBRAtext=checkFlag(COBRAtext,'COBRAtext',false);
+subDirs=checkFlag(subDirs,'subDirs',true);
+mainBranchFlag=checkFlag(mainBranchFlag,'mainBranchFlag',false);
+neverPrefixIDs=checkFlag(neverPrefixIDs,'neverPrefixIDs',false);
 if isempty(formats)
     formats={'mat', 'txt', 'xlsx', 'xml', 'yml'};
 else
@@ -256,5 +255,16 @@ function slashPos = getSlashPos(path)
 slashPos = strfind(path,'\');       %Windows
 if isempty(slashPos)
     slashPos = strfind(path,'/');   %MAC/Linux
+end
+end
+
+function flag = checkFlag(flag, name, default)
+%An empty value gives the default; otherwise a scalar logical or 0/1 is required
+if isempty(flag)
+    flag = default;
+elseif (islogical(flag) || isnumeric(flag)) && isscalar(flag) && (flag == 0 || flag == 1)
+    flag = logical(flag);
+else
+    error('RAVEN:badInput', '%s must be a scalar logical or 0/1.', name);
 end
 end

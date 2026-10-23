@@ -40,6 +40,24 @@ classdef tIO < RavenTestCase
             testCase.verifyFalse(isfolder(fullfile(flatDir,'model')));
         end
 
+        function exportForGitRefusesFlagsThatAreNotLogical(testCase)
+            % Text and other types raise before anything is written; a
+            % numeric 0 or 1 is accepted as a flag.
+            f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
+            evalc('model = importModel(f);');
+            outDir = tempname; mkdir(outDir);
+            c = onCleanup(@() rmdir(outDir,'s'));
+            for flag = {'mainBranchFlag','subDirs','COBRAtext','neverPrefixIDs'}
+                for bad = {'false', "true", {1}, 2, [1 0], NaN}
+                    testCase.verifyError(@() exportForGit(model,'path',outDir,'formats',{'xml'},flag{1},bad{1}), 'RAVEN:badInput');
+                end
+            end
+            d = dir(outDir);
+            testCase.verifyEmpty(setdiff({d.name},{'.','..'}));
+            evalc("exportForGit(model,'path',outDir,'formats',{'xml'},'mainBranchFlag',0,'subDirs',0,'COBRAtext',0,'neverPrefixIDs',0)");
+            testCase.verifyTrue(isfile(fullfile(outDir,'model.xml')));
+        end
+
         function exportForGitMainBranchFlagRefusesOtherBranch(testCase)
             % Skipped when the checkout under test is on main or master.
             [~,branch] = system(['git -C "' testCase.ravenRoot '" rev-parse --abbrev-ref HEAD']);
