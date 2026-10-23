@@ -264,7 +264,7 @@ function flag = checkFlag(flag, name, default)
 %An empty value gives the default; otherwise a scalar logical or 0/1 is required
 if isempty(flag)
     flag = default;
-elseif (islogical(flag) || isnumeric(flag)) && isscalar(flag) && (flag == 0 || flag == 1)
+elseif (islogical(flag) || isnumeric(flag)) && isscalar(flag) && isreal(flag) && (flag == 0 || flag == 1)
     flag = logical(flag);
 else
     error('RAVEN:badInput', '%s must be a scalar logical or 0/1.', name);

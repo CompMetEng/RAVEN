@@ -248,6 +248,63 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(out.rev(1), 0);
         end
 
+        function curateModelFromTablesRefusesCommasHexAndOtherNumberText(testCase)
+            % Only plain decimal numbers, Inf, NaN and true/false are read;
+            % a decimal comma, hexadecimal and similar text raise an error
+            % instead of being read as another number.
+            model = tCuration.toyModel();
+            coeffsF = tCuration.dupRxnCoeffs(testCase);
+            for txt = {'1,5','-0,5','1,000','0x10','1d3','1_0','Infinity','1+2i','1i','--5','abc'}
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\tlb','1\tdupRxn\t' txt{1}});
+                testCase.verifyError(@() curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF),'RAVEN:badInput');
+                metsF = tCuration.writeTsv(testCase, {'metNames\tcomps\tcharge',['A\tc\t' txt{1}]});
+                testCase.verifyError(@() curateModelFromTables(model,metsF),'RAVEN:badInput');
+            end
+        end
+
+        function curateModelFromTablesReadsPlainDecimalNumbers(testCase)
+            model = tCuration.toyModel();
+            coeffsF = tCuration.dupRxnCoeffs(testCase);
+            texts = {'+5','.5','5.','1e3',' -2.5E-1 ','TRUE','false'};
+            expected = [5 0.5 5 1000 -0.25 1 0];
+            for i = 1:numel(texts)
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\tlb',['1\tdupRxn\t' texts{i}]});
+                evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF);');
+                testCase.verifyEqual(out.lb(1), expected(i));
+            end
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\tlb\tub','1\tdupRxn\tNaN\t-INF'});
+            evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF);');
+            testCase.verifyEqual(out.lb(1), 0);
+            testCase.verifyEqual(out.ub(1), -Inf);
+        end
+
+        function curateModelFromTablesRefusesTextInIndexAndCoefficientColumns(testCase)
+            % A coefficient or index that is not a number raises an error
+            % instead of dropping the metabolite from the reaction.
+            model = tCuration.toyModel();
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\tabc', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1'});
+            testCase.verifyError(@() curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF),'RAVEN:badInput');
+            coeffsF = tCuration.dupRxnCoeffs(testCase);
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','x1\tdupRxn'});
+            testCase.verifyError(@() curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF),'RAVEN:badInput');
+        end
+
+        function curateModelFromTablesTreatsNaNScoreAsNotGiven(testCase)
+            % A NaN confidence score counts like an empty cell, so the
+            % existing score is not replaced by NaN.
+            model = tCuration.existingFieldsModel();
+            coeffsF = tCuration.dupRxnCoeffs(testCase);
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\trxnConfidenceScores','1\tdupRxn\tNaN'});
+            for flag = [true false]
+                evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF,''overwriteWithEmpty'',flag);');
+                testCase.verifyEqual(out.rxnConfidenceScores(1), 3);
+            end
+        end
+
         function curateModelFromTablesReadsNumbersWithoutEvaluatingText(testCase)
             % Cell text is read as a number or true/false; no expression is
             % evaluated, and other text raises RAVEN:badInput.
@@ -380,6 +437,14 @@ classdef tCuration < RavenTestCase
     end
 
     methods (Static, Access = private)
+
+        function f = dupRxnCoeffs(testCase)
+            % Coefficients of A + B -> C + H as reaction 1, "dupRxn".
+            f = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1'});
+        end
 
         function model = toyModel()
             % Single reaction: A + B -> C + H, all in one compartment.

@@ -48,7 +48,7 @@ classdef tIO < RavenTestCase
             outDir = tempname; mkdir(outDir);
             c = onCleanup(@() rmdir(outDir,'s'));
             for flag = {'mainBranchFlag','subDirs','COBRAtext','neverPrefixIDs'}
-                for bad = {'false', "true", {1}, 2, [1 0], NaN}
+                for bad = {'false', "true", {1}, 2, [1 0], NaN, complex(1,0)}
                     testCase.verifyError(@() exportForGit(model,'path',outDir,'formats',{'xml'},flag{1},bad{1}), 'RAVEN:badInput');
                 end
             end

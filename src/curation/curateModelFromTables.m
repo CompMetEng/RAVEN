@@ -62,12 +62,15 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     (default true). Must be a scalar logical or 0/1. A cell with only
 %     blanks counts as empty in both modes. Empty lb, ub and rev cells and
 %     empty grRules cells never overwrite. The charge, confidence score, lb,
-%     ub and rev cells are read as numbers (no expression is evaluated) or as
-%     'true'/'false' in any case, read as 1/0; any other text raises
-%     RAVEN:badInput. A charge, bound or rev cell with NaN counts as not given
-%     (a charge cell with NaN is treated like an empty charge cell). The
-%     rev column sets the reversibility of existing reactions only; for new
-%     reactions it follows from lb.
+%     ub, rev, rxnIdx and coefficient cells are read as plain decimal numbers
+%     (digits with an optional sign, decimal point and exponent), Inf, NaN, or
+%     'true'/'false' in any case (read as 1/0). Any other text, including
+%     text with a comma, hexadecimal numbers and expressions, raises
+%     RAVEN:badInput; no expression is evaluated. An empty or NaN cell counts
+%     as not given in the charge, confidence score, lb, ub and rev columns (an
+%     empty or NaN charge or confidence score is treated alike). The rev
+%     column sets the reversibility of existing reactions only; for new
+%     reactions it is derived from lb and ub.
 %
 % Returns
 % -------
@@ -244,11 +247,11 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         'metNames',    {'metNames','metName'}; ...
         'comps',       {'comps','comp'}; ...
         'coefficient', {'coefficient','coefficients','coeffs','stoichCoeffs'}});
-    rxnCheck.coeffsIdx = str2double(data(:,col.rxnIdx));
+    rxnCheck.coeffsIdx = parseNumericCells(data(:,col.rxnIdx),'rxnIdx','rxnsCoeffs');
     rxns.rxnNames   = data(:,col.rxnNames);
     rxns.metNames   = data(:,col.metNames);
     rxns.comps      = data(:,col.comps);
-    rxns.coeffs     = str2double(data(:,col.coefficient));
+    rxns.coeffs     = parseNumericCells(data(:,col.coefficient),'coefficient','rxnsCoeffs');
     rxnCheck.coeffs = strcat(data(:,col.rxnIdx),'***',rxns.rxnNames);
 
     % ... and then additional reaction-specific data.
@@ -265,7 +268,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         'rxnNotes',            {'rxnNotes'}; ...
         'rxnReferences',       {'rxnReferences'}; ...
         'rxnConfidenceScores', {'rxnConfidenceScores'}});
-    rxnCheck.rxnsIdx = str2double(data(:,col.rxnIdx));
+    rxnCheck.rxnsIdx = parseNumericCells(data(:,col.rxnIdx),'rxnIdx','rxnsInfo');
     rxnCheck.rxns = strcat(data(:,col.rxnIdx),'***',data(:,col.rxnNames));
 
     notMatching = setxor(rxnCheck.coeffs,rxnCheck.rxns);
@@ -280,10 +283,12 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         rxnsToAdd.(f{1}) = data(:,col.(f{1}));
     end
     for f = intersect({'lb','ub','rev'},fieldnames(col)','stable')
-        rxnsToAdd.(f{1}) = parseNumericCells(data(:,col.(f{1})),f{1});
+        rxnsToAdd.(f{1}) = parseNumericCells(data(:,col.(f{1})),f{1},'rxnsInfo');
     end
     if isfield(col,'rxnConfidenceScores')
         rxnsToAdd.rxnConfidenceScores   = cellfun(@(x) parseNumberCell(x,'rxnConfidenceScores','rxnsInfo'),data(:,col.rxnConfidenceScores),'UniformOutput',false);
+        isNanScore = cellfun(@(x) isscalar(x) && isnan(x),rxnsToAdd.rxnConfidenceScores);
+        rxnsToAdd.rxnConfidenceScores(isNanScore) = {[]}; % a NaN score counts as not given
         emptyEntry = cellfun(@isempty,rxnsToAdd.rxnConfidenceScores);
         emptyScore = emptyEntry;
         if all(emptyEntry)
@@ -521,12 +526,12 @@ function empty = emptyCells(values)
 empty = cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),values(:));
 end
 
-function values = parseNumericCells(cells,field)
+function values = parseNumericCells(cells,field,fileLabel)
 % Numbers from table cells, NaN where the cell is empty or says NaN. A cell
 % that is not a number (or true/false) raises an error.
 values = nan(numel(cells),1);
 for i=1:numel(cells)
-    v = parseNumberCell(cells{i},field,'rxnsInfo');
+    v = parseNumberCell(cells{i},field,fileLabel);
     if ~isempty(v)
         values(i) = v;
     end
@@ -534,24 +539,30 @@ end
 end
 
 function v = parseNumberCell(text,field,fileLabel)
-% Real number from a table cell: [] for an empty cell, 1 or 0 for
-% true or false in any case, otherwise the value read by str2double, which
-% evaluates nothing. Text that is not a real number or NaN raises an error.
+% Real number from a table cell: [] for an empty cell, 1 or 0 for true or
+% false in any case, NaN or +/-Inf for those words in any case, otherwise a
+% plain decimal number (digits with an optional sign, decimal point and
+% exponent). Any other text raises an error; nothing is evaluated.
 text = strtrim(text);
 if isempty(text)
     v = [];
     return
 end
-switch lower(text)
-    case 'true'
-        v = 1;
-        return
-    case 'false'
-        v = 0;
-        return
-end
-v = str2double(text);
-if (isnan(v) && ~strcmpi(text,'nan')) || ~isreal(v)
+word = lower(text);
+if strcmp(word,'true')
+    v = 1;
+elseif strcmp(word,'false')
+    v = 0;
+elseif ~isempty(regexp(word,'^[+-]?nan$','once'))
+    v = NaN;
+elseif ~isempty(regexp(word,'^[+-]?inf$','once'))
+    v = Inf;
+    if word(1)=='-'
+        v = -Inf;
+    end
+elseif ~isempty(regexp(text,'^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?$','once'))
+    v = str2double(text);
+else
     error('RAVEN:badInput','The %s value "%s" in the %s file is not a number',field,text,fileLabel);
 end
 end

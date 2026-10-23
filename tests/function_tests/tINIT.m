@@ -56,17 +56,17 @@ classdef tINIT < RavenTestCase
             testCase.verifySubstring(err.message, 'empty id, used 2 times');
         end
 
-        function prepINITModelAcceptsOneEmptyTaskIdAndIdLookingLikeAPlaceholder(testCase)
-            % A single empty id is not a repeated id, and an id that looks
-            % like a placeholder is not confused with it.
+        function prepINITModelAcceptsOneEmptyTaskId(testCase)
+            % A single empty id is not a repeated id: the id check passes and
+            % the call stops later, on the empty model structure.
             err = [];
             try
                 prepINITModel(struct(), struct('id',{'<empty>',''}));
             catch err
             end
-            if ~isempty(err)
-                testCase.verifyEmpty(strfind(err.message, 'used more than once'));
-            end
+            testCase.verifyNotEmpty(err);
+            testCase.verifyNotEqual(err.identifier, 'RAVEN:badInput');
+            testCase.verifyEmpty(strfind(err.message, 'used more than once'));
         end
 
         function getExprForRxnScoreRuns(testCase)
