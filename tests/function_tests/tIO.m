@@ -69,6 +69,22 @@ classdef tIO < RavenTestCase
             testCase.verifyError(@() exportForGit(model,'path',outDir,'formats',{'xml'},'mainBranchFlag',true,'subDirs',false), 'RAVEN:notMainBranch');
         end
 
+        function exportForGitCreatesMissingPath(testCase)
+            % A path that does not exist, with missing parent folders, is
+            % created with and without the per-format subfolders.
+            f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
+            evalc('model = importModel(f);');
+            root = tempname; mkdir(root);
+            c = onCleanup(@() rmdir(root,'s'));
+            flatDir = fullfile(root,'a','b','flat');
+            evalc("exportForGit(model,'path',flatDir,'formats',{'xml'},'subDirs',false)");
+            testCase.verifyTrue(isfile(fullfile(flatDir,'model.xml')));
+            testCase.verifyTrue(isfile(fullfile(flatDir,'dependencies.txt')));
+            treeDir = fullfile(root,'c','d','tree');
+            evalc("exportForGit(model,'path',treeDir,'formats',{'xml'},'subDirs',true)");
+            testCase.verifyTrue(isfile(fullfile(treeDir,'model','xml','model.xml')));
+        end
+
         function exportForGitTxtKeepsBoundsExactly(testCase)
             % The txt file is a lossless table: bounds and objective are
             % written with the digits needed to read them back unchanged.

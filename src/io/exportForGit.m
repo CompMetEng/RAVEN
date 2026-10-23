@@ -21,7 +21,8 @@ function out=exportForGit(model,varargin)
 %     prefix for all filenames (default 'model').
 % path : char
 %     path where the directory structure should be generated and populated
-%     with all files (default current working directory).
+%     with all files (default current working directory). The folder, with
+%     any missing parent folders, is created if it does not exist.
 % formats : cell
 %     cell array of strings specifying in what file formats the model
 %     should be exported (default all formats as {'mat', 'txt', 'xlsx',
@@ -97,7 +98,7 @@ catch % before 5.17.0
     delete('tempModelForLibSBMLversion.xml');
 end
 
-% Make models folder, no warnings if folder already exists
+% Make the folders, no warnings if they already exist
 if subDirs
     path=fullfile(path,'model');
     filePath=strcat(path,filesep,{'txt','yml','mat','xlsx','xml'});
@@ -106,6 +107,7 @@ if subDirs
         [~,~,~]=mkdir(fullfile(path,formats{i}));
     end
 else
+    [~,~,~]=mkdir(path);
     filePath=cell(1,5); filePath(:)={path};
 end
 
