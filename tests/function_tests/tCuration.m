@@ -239,7 +239,7 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(out.lb, -5);
         end
 
-        function curateModelFromTablesRejectsOverwriteWithEmptyThatIsNotZeroOrOne(testCase)
+        function curateModelFromTablesRejectsOverwriteWithEmptyNotZeroOrOne(testCase)
             model = tCuration.toyModel();
             metsF = tCuration.writeTsv(testCase, {'metNames\tcomps', 'A\tc'});
             for bad = {2, NaN, [true false], {true}}
@@ -261,13 +261,13 @@ classdef tCuration < RavenTestCase
             model.grRules = {'g1'};
             model.rxnGeneMat = sparse(1,1,1);
             metsF = tCuration.writeTsv(testCase, { ...
-                'metNames\tcomps\tkegg.compound', 'A\tc\t '});
+                'metNames\tcomps\tkegg.compound', 'A\tc\t" "'});
             coeffsF = tCuration.writeTsv(testCase, { ...
                 'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
                 '1\t\tA\tc\t-1', '1\t\tB\tc\t-1', ...
                 '1\t\tC\tc\t1',  '1\t\tH\tc\t1'});
             infoF = tCuration.writeTsv(testCase, { ...
-                'rxnIdx\trxnNames\tgrRules', '1\t\t   '});
+                'rxnIdx\trxnNames\tgrRules', '1\t\t"   "'});
             evalc(['out = curateModelFromTables(model,metsF,''rxnsCoeffs'',coeffsF,' ...
                 '''rxnsInfo'',infoF,''overwriteWithEmpty'',false);']);
             testCase.verifyEqual(out.metMiriams{1}.value, {'C00001'});
