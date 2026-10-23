@@ -7,7 +7,7 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % If the *.tsv files contain metabolites, reactions and/or genes that are
 % already present in the model, then information in the model will be
 % overwritten. Note that this includes empty annotations in the *.tsv
-% files! Metabolites are matched by metaboliteName[comp]; reactions by the
+% files, unless 'overwriteWithEmpty' is false! Metabolites are matched by metaboliteName[comp]; reactions by the
 % stoichiometry of its reactants and products; genes by their gene name.
 % This function can therefore be used to add new entities in the model, or
 % curate those already existing in the model.
@@ -17,7 +17,10 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % table supplies is written to new and existing entities alike; a field the
 % model does not have yet is created, with its default value for the other
 % entities, unless all supplied values for it are empty. An empty grRules
-% cell leaves the rule of an existing reaction unchanged.
+% cell leaves the rule of an existing reaction unchanged, and so does an
+% empty lb, ub or rev cell: an empty bound means that no bound is given.
+% A new reaction without a lb gets a lower bound of -Inf, and one without an
+% ub gets model.annotation.defaultUB (Inf if the model has none).
 %
 % Parameters
 % ----------
@@ -50,6 +53,13 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     'M_' for the BiGG default) (default 'M_').
 % rxnPrefix : char
 %     Prefix used to mint fresh reaction ids (default 'R_').
+% overwriteWithEmpty : logical
+%     if true, an empty cell in a row of an existing metabolite, gene or
+%     reaction empties the corresponding field of the model (an empty charge
+%     or confidence score becomes 0). If false, an empty cell leaves the
+%     existing value unchanged and only the cells with a value are written
+%     (default true). Empty lb, ub and rev cells and empty grRules cells never
+%     overwrite.
 %
 % Returns
 % -------
@@ -67,7 +77,12 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % listed core fields is treated as a MIRIAM annotation namespace and
 % stored on the matching entity.
 
-p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]});
+p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]; 'overwriteWithEmpty',true});
+overwriteWithEmpty=p.overwriteWithEmpty;
+if ~(islogical(overwriteWithEmpty) || isnumeric(overwriteWithEmpty)) || ~isscalar(overwriteWithEmpty)
+    error('RAVEN:badInput','overwriteWithEmpty must be a logical scalar');
+end
+overwriteWithEmpty=logical(overwriteWithEmpty);
 genesInfo=p.genesInfo;
 rxnsCoeffs=p.rxnsCoeffs;
 rxnsInfo=p.rxnsInfo;
@@ -103,6 +118,7 @@ if ~strcmp(metsInfo,'none')
     if isfield(col,'metCharges')
         metsToAdd.metCharges = cellfun(@str2num,data(:,col.metCharges),'UniformOutput',false);
         emptyEntry = cellfun(@isempty,metsToAdd.metCharges);
+        emptyCharge = emptyEntry;
         if all(emptyEntry)
             metsToAdd       = rmfield(metsToAdd,'metCharges');
         else % If some charges are given, assume 0 for those without charges specified
@@ -130,9 +146,17 @@ if ~strcmp(metsInfo,'none')
     % Overwrite annotation of existing entries
     if any(existingMets)
         for f = optFields
-            newModel = writeExistingField(newModel,f{1},existingMetsIdx,metsToAdd.(f{1})(existingMets));
+            skip = [];
+            if ~overwriteWithEmpty
+                if strcmp(f{1},'metCharges')
+                    skip = emptyCharge(existingMets);
+                else
+                    skip = emptyCells(metsToAdd.(f{1})(existingMets));
+                end
+            end
+            newModel = writeExistingField(newModel,f{1},existingMetsIdx,metsToAdd.(f{1})(existingMets),skip);
         end
-        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),existingMets,existingMetsIdx,'met');
+        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),existingMets,existingMetsIdx,'met',~overwriteWithEmpty);
         warning(['The following metabolites are already present in the model, '...
             'their annotation will be overwritten to match the metsInfo file. '...
             'If you do not particularly want to curate their annotations, it '...
@@ -173,9 +197,13 @@ if ~strcmp(genesInfo,'none')
             'will be overwritten to match the genesInfo file: \n\t\t%s'],...
             strjoin(genesToAdd.genes(notNewGene),'\n\t\t'));
         if isfield(genesToAdd,'geneShortNames')
-            newModel = writeExistingField(newModel,'geneShortNames',existingGene,genesToAdd.geneShortNames(notNewGene));
+            skip = [];
+            if ~overwriteWithEmpty
+                skip = emptyCells(genesToAdd.geneShortNames(notNewGene));
+            end
+            newModel = writeExistingField(newModel,'geneShortNames',existingGene,genesToAdd.geneShortNames(notNewGene),skip);
         end
-        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewGene,existingGene,'gene');
+        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewGene,existingGene,'gene',~overwriteWithEmpty);
     end
 
     % Continue with new genes
@@ -241,11 +269,12 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         rxnsToAdd.(f{1}) = data(:,col.(f{1}));
     end
     for f = intersect({'lb','ub','rev'},fieldnames(col)','stable')
-        rxnsToAdd.(f{1}) = cellfun(@str2num,data(:,col.(f{1})));
+        rxnsToAdd.(f{1}) = parseNumericCells(data(:,col.(f{1})),f{1});
     end
     if isfield(col,'rxnConfidenceScores')
         rxnsToAdd.rxnConfidenceScores   = cellfun(@str2num,data(:,col.rxnConfidenceScores),'UniformOutput',false);
         emptyEntry = cellfun(@isempty,rxnsToAdd.rxnConfidenceScores);
+        emptyScore = emptyEntry;
         if all(emptyEntry)
             rxnsToAdd           = rmfield(rxnsToAdd,'rxnConfidenceScores');
         else % If some rxnConfidenceScores are given, assume 0 for those without rxnConfidenceScores specified
@@ -298,17 +327,33 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
             'reactions, their annotation will be overwritten to match the '...
             'rxnCoeffs file: \n\t\t(Existing reaction ID): New reaction name\n\t\t%s'],...
             strjoin(strcat('(',newModel.rxns(existingRxn),{'): '},rxnsToAdd.rxnNames(notNewRxn)),'\n\t\t'));
-        newModel.rxnNames(existingRxn) = rxnsToAdd.rxnNames(notNewRxn);
+        nameValues = rxnsToAdd.rxnNames(notNewRxn);
+        nameIdx    = existingRxn;
+        if ~overwriteWithEmpty
+            nameIdx    = nameIdx(~emptyCells(nameValues));
+            nameValues = nameValues(~emptyCells(nameValues));
+        end
+        newModel.rxnNames(nameIdx) = nameValues;
         for f = intersect({'lb','ub','rev'},fieldnames(rxnsToAdd)','stable')
-            newModel.(f{1})(existingRxn) = rxnsToAdd.(f{1})(notNewRxn);
+            values = rxnsToAdd.(f{1})(notNewRxn);
+            given  = ~isnan(values);
+            newModel.(f{1})(existingRxn(given)) = values(given);
         end
         for f = optFields
             values = rxnsToAdd.(f{1})(notNewRxn);
+            skip = [];
+            if ~overwriteWithEmpty
+                if strcmp(f{1},'rxnConfidenceScores')
+                    skip = emptyScore(notNewRxn);
+                else
+                    skip = emptyCells(values);
+                end
+            end
             if strcmp(f{1},'subSystems') && isfield(newModel,'subSystems') ...
                     && any(cellfun(@iscell,newModel.subSystems))
                 values = cellfun(@(x) {x}, values, 'UniformOutput', false);
             end
-            newModel = writeExistingField(newModel,f{1},existingRxn,values);
+            newModel = writeExistingField(newModel,f{1},existingRxn,values,skip);
         end
         if isfield(rxnsToAdd,'grRules')
             emptyEntries = cellfun(@isempty,rxnsToAdd.grRules(notNewRxn));
@@ -316,7 +361,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
                 newModel    = changeGrRules(newModel,newModel.rxns(existingRxn(~emptyEntries)),rxnsToAdd.grRules(notNewRxn(~emptyEntries)),true);
             end
         end
-        newModel    = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewRxn,existingRxn,'rxn');
+        newModel    = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewRxn,existingRxn,'rxn',~overwriteWithEmpty);
     end
 
     % Continue with new reactions
@@ -326,6 +371,16 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         rxnsToAdd.rxnNames      = rxnsToAdd.rxnNames(toAdd);
         for f = intersect({'lb','ub','rev','grRules'},fieldnames(rxnsToAdd)','stable')
             rxnsToAdd.(f{1}) = rxnsToAdd.(f{1})(toAdd);
+        end
+        if isfield(rxnsToAdd,'lb')
+            rxnsToAdd.lb(isnan(rxnsToAdd.lb)) = -inf;
+        end
+        if isfield(rxnsToAdd,'ub')
+            defaultUB = inf;
+            if isfield(newModel,'annotation') && isfield(newModel.annotation,'defaultUB')
+                defaultUB = newModel.annotation.defaultUB;
+            end
+            rxnsToAdd.ub(isnan(rxnsToAdd.ub)) = defaultUB;
         end
         for f = optFields
             rxnsToAdd.(f{1}) = rxnsToAdd.(f{1})(toAdd);
@@ -389,10 +444,18 @@ end
 miriamCols = find(~isCore & ~cellfun(@isempty,header));
 end
 
-function model = writeExistingField(model,field,modelIdx,values)
+function model = writeExistingField(model,field,modelIdx,values,skip)
 % Write the values of an optional field onto existing entities. A field
 % the model does not have is created from its ravenModelFields default,
-% unless all supplied values are empty.
+% unless all supplied values are empty. Entries flagged in the logical
+% vector skip are not written.
+if nargin>4 && ~isempty(skip)
+    modelIdx = modelIdx(~skip(:)');
+    values   = values(~skip(:));
+    if isempty(modelIdx)
+        return
+    end
+end
 if ~isfield(model,field)
     if iscell(values) && all(cellfun(@isempty,values))
         return
@@ -409,9 +472,25 @@ end
 model.(field)(modelIdx) = values;
 end
 
-function newModel = extractAndAddMiriam(model,miriamName,miriamData,inputIndex,modelIndex,type)
+function newModel = extractAndAddMiriam(model,miriamName,miriamData,inputIndex,modelIndex,type,skipEmpty)
+% Replace the MIRIAM annotations of the entities in modelIndex with the
+% values of the table rows in inputIndex. With skipEmpty, an empty cell
+% leaves the annotation of that entity unchanged.
 newModel=model;
 miriamValues    = miriamData(inputIndex,:);
+if nargin>6 && skipEmpty
+    for i=1:numel(miriamName)
+        given = ~cellfun(@isempty,miriamValues(:,i));
+        if any(given)
+            if ~isfield(newModel,[type 'Miriams'])
+                newModel.([type 'Miriams'])=cell(numel(newModel.([type 's'])),1);
+            end
+            idx = modelIndex(:);
+            newModel = editMiriam(newModel,type,idx(given),miriamName{i},miriamValues(given,i),'replace');
+        end
+    end
+    return
+end
 emptyMiriam     = all(cellfun(@isempty,miriamValues),1);
 miriamName(emptyMiriam)     = [];
 miriamValues(:,emptyMiriam) = [];
@@ -420,5 +499,27 @@ if ~isfield(newModel,[type 'Miriams'])
 end
 for i=1:numel(miriamName)
     newModel = editMiriam(newModel,type,modelIndex,miriamName{i},miriamValues(:,i),'replace');
+end
+end
+
+function empty = emptyCells(values)
+% Logical column vector that is true for the empty entries of a cell array
+% of text (a cell with only blanks counts as empty) or of a numeric cell.
+empty = cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),values(:));
+end
+
+function values = parseNumericCells(cells,field)
+% Numbers from table cells, NaN where the cell is empty. A cell that is not
+% a number raises an error.
+values = nan(numel(cells),1);
+for i=1:numel(cells)
+    if isempty(strtrim(cells{i}))
+        continue
+    end
+    v = str2num(cells{i}); %#ok<ST2NM>
+    if ~(isnumeric(v) && isscalar(v))
+        error('RAVEN:badInput','The %s value "%s" in the rxnsInfo file is not a number',field,cells{i});
+    end
+    values(i) = v;
 end
 end

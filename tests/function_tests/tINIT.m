@@ -19,6 +19,20 @@ classdef tINIT < RavenTestCase
             testCase.verifyNotEmpty(steps);
         end
 
+        function prepINITModelRefusesRepeatedTaskIds(testCase)
+            % A task list with a repeated id is refused before any step runs.
+            tasks = struct('id',{'ATP_GLC','ETH_AER','ATP_GLC'});
+            err = [];
+            try
+                prepINITModel(struct(), tasks);
+            catch err
+            end
+            testCase.verifyNotEmpty(err);
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            testCase.verifySubstring(err.message, 'ATP_GLC');
+            testCase.verifyEmpty(strfind(err.message, 'ETH_AER'));
+        end
+
         function getExprForRxnScoreRuns(testCase)
             expr = getExprForRxnScore(rand(10, 1), 1);
             testCase.verifyNotEmpty(expr);

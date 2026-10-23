@@ -12,6 +12,7 @@ function prepData = prepINITModel(origRefModel, taskStruct, varargin)
 % taskStruct : struct
 %     the essential tasks. Can be loaded with for example
 %     taskStruct = parseTaskList('../data/metabolicTasks_Essential.txt').
+%     The task ids must be unique: a repeated id raises RAVEN:badInput.
 %
 % Name-Value Arguments
 % --------------------
@@ -58,6 +59,17 @@ customRxnsToIgnore=p.customRxnsToIgnore;
 extComp=p.extComp;
 skipScaling=p.skipScaling;
 runParallel=p.runParallel;
+
+if ~isempty(taskStruct)
+    taskIds = {taskStruct.id};
+    [uniqueIds,~,idIdx] = unique(taskIds,'stable');
+    repeatedIds = uniqueIds(accumarray(idIdx(:),1) > 1);
+    if ~isempty(repeatedIds)
+        error('RAVEN:badInput','The task ids must be unique, but these are used more than once:\n\t%s', ...
+            strjoin(repeatedIds,'\n\t'));
+    end
+end
+
 disp('Step 1: Gene rules')
 [origRefModel.grRules, origRefModel.rxnGeneMat] = standardizeGrRules(origRefModel, true);
 

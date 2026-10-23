@@ -107,6 +107,95 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(out.geneMiriams{1}.value, {'P12345'});
         end
 
+        function curateModelFromTablesOverwritesExistingWithEmptyCells(testCase)
+            % By default an empty cell empties the field of an existing
+            % metabolite, gene or reaction; an empty charge becomes 0.
+            model = tCuration.existingFieldsModel();
+            [metsF, genesF, coeffsF, infoF] = tCuration.emptyCellTables(testCase);
+            evalc(['out = curateModelFromTables(model,metsF,''genesInfo'',genesF,' ...
+                '''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF);']);
+
+            testCase.verifyEqual(out.metFormulas{1}, '');
+            testCase.verifyEqual(out.metFormulas{2}, 'F2');
+            testCase.verifyEqual(out.metCharges(1:2), [0;5]);
+            testCase.verifyEqual(out.geneShortNames, {''});
+            testCase.verifyEqual(out.rxnNotes, {''});
+            testCase.verifyEqual(out.eccodes, {''});
+        end
+
+        function curateModelFromTablesKeepsExistingWithEmptyCellsWhenAsked(testCase)
+            % overwriteWithEmpty=false writes only the cells with a value.
+            model = tCuration.existingFieldsModel();
+            [metsF, genesF, coeffsF, infoF] = tCuration.emptyCellTables(testCase);
+            evalc(['out = curateModelFromTables(model,metsF,''genesInfo'',genesF,' ...
+                '''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF,''overwriteWithEmpty'',false);']);
+
+            testCase.verifyEqual(out.metFormulas{1}, 'CH4');
+            testCase.verifyEqual(out.metFormulas{2}, 'F2');
+            testCase.verifyEqual(out.metCharges(1:2), [1;5]);
+            testCase.verifyEqual(out.geneShortNames, {'OLD'});
+            testCase.verifyEqual(out.rxnNotes, {'old note'});
+            testCase.verifyEqual(out.rxnConfidenceScores, 3);
+            testCase.verifyEqual(out.eccodes, {'1.1.1.1'});
+            testCase.verifyEqual(out.rxnNames, {'ATP hydrolysis with proton'});
+            testCase.verifyEqual(out.rxnMiriams{1}.value, {'R00001'});
+            testCase.verifyEqual(out.metMiriams{1}.value, {'C00001'});
+        end
+
+        function curateModelFromTablesRejectsNonLogicalOverwriteWithEmpty(testCase)
+            model = tCuration.toyModel();
+            metsF = tCuration.writeTsv(testCase, {'metNames\tcomps', 'A\tc'});
+            err = [];
+            try
+                curateModelFromTables(model,metsF,'overwriteWithEmpty','yes');
+            catch err
+            end
+            testCase.verifyNotEmpty(err);
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+        end
+
+        function curateModelFromTablesTreatsEmptyBoundsAsNotGiven(testCase)
+            % An empty lb or ub cell leaves the bound of an existing
+            % reaction unchanged. A new reaction gets -Inf for a missing lb
+            % and the default upper bound for a missing ub.
+            model = tCuration.toyModel();
+            model.lb = -5;
+            model.ub = 7;
+            model.annotation.defaultUB = 500;
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', ...
+                '2\tnewRxn\tA\tc\t-1', '2\tnewRxn\tB\tc\t-1', ...
+                '2\tnewRxn\tC\tc\t1', ...
+                '3\tboundRxn\tA\tc\t-1', '3\tboundRxn\tC\tc\t1'});
+            infoF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tlb\tub\trev', ...
+                '1\tdupRxn\t\t\t', '2\tnewRxn\t\t\t', '3\tboundRxn\t-2\t3\t1'});
+            evalc(['out = curateModelFromTables(model,''none'',''rxnsCoeffs'',' ...
+                'coeffsF,''rxnsInfo'',infoF);']);
+
+            testCase.verifyEqual(out.lb, [-5; -Inf; -2]);
+            testCase.verifyEqual(out.ub, [7; 500; 3]);
+        end
+
+        function curateModelFromTablesRefusesTextAsBound(testCase)
+            model = tCuration.toyModel();
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tnewRxn\tA\tc\t-1', '1\tnewRxn\tC\tc\t1'});
+            infoF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tlb\tub', '1\tnewRxn\tlow\t1000'});
+            err = [];
+            try
+                curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF);
+            catch err
+            end
+            testCase.verifyNotEmpty(err);
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            testCase.verifySubstring(err.message, 'low');
+        end
+
         function curateModelFromTablesRequiresKeyColumns(testCase)
             model = tCuration.toyModel();
             metsF = tCuration.writeTsv(testCase, {'metNames\tformula', 'A\tC1'});
@@ -143,6 +232,40 @@ classdef tCuration < RavenTestCase
             model.rxnNotes    = {''};
             model.rxnReferences = {''};
             model.rxnConfidenceScores = 0;
+        end
+
+        function model = existingFieldsModel()
+            % toyModel with every curated field filled in.
+            model = tCuration.toyModel();
+            model.metFormulas = {'CH4';'F2';'';''};
+            model.metCharges  = [1;2;3;4];
+            model.genes       = {'g1'};
+            model.geneShortNames = {'OLD'};
+            model.rxnGeneMat  = sparse(1,1);
+            model.eccodes     = {'1.1.1.1'};
+            model.rxnNotes    = {'old note'};
+            model.rxnConfidenceScores = 3;
+            model.metMiriams  = {struct('name',{{'kegg.compound'}},'value',{{'C00001'}});[];[];[]};
+            model.rxnMiriams  = {struct('name',{{'kegg.reaction'}},'value',{{'R00001'}})};
+        end
+
+        function [metsF, genesF, coeffsF, infoF] = emptyCellTables(testCase)
+            % Rows for existing entities: A has no formula, charge or MIRIAM
+            % value (B has a formula and a charge); the gene has no short
+            % name; the reaction has no name, EC code, note, confidence
+            % score or MIRIAM value.
+            metsF = tCuration.writeTsv(testCase, { ...
+                'metNames\tcomps\tformula\tcharge\tkegg.compound', ...
+                'A\tc\t\t\t', 'B\tc\tF2\t5\t'});
+            genesF = tCuration.writeTsv(testCase, { ...
+                'genes\tgeneShortNames', 'g1\t'});
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\t\tA\tc\t-1', '1\t\tB\tc\t-1', ...
+                '1\t\tC\tc\t1',  '1\t\tH\tc\t1'});
+            infoF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\teccodes\trxnNotes\trxnConfidenceScores\tkegg.reaction', ...
+                '1\t\t\t\t\t'});
         end
 
         function [coeffsF, infoF] = writeRxnTables(testCase, metNames, coeffs)
