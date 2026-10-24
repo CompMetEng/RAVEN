@@ -19,6 +19,57 @@ classdef tINIT < RavenTestCase
             testCase.verifyNotEmpty(steps);
         end
 
+        function prepINITModelRefusesRepeatedTaskIds(testCase)
+            % A task list with a repeated id is refused before any step runs.
+            tasks = struct('id',{'ATP_GLC','ETH_AER','ATP_GLC'});
+            err = [];
+            try
+                prepINITModel(struct(), tasks);
+            catch err
+            end
+            testCase.verifyNotEmpty(err);
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            testCase.verifySubstring(err.message, 'ATP_GLC');
+            testCase.verifyEmpty(strfind(err.message, 'ETH_AER'));
+        end
+
+        function prepINITModelRefusesTaskIdsThatAreNotText(testCase)
+            % Non-text ids, a missing id field and empty ids are reported
+            % as RAVEN:badInput.
+            bad = {struct('id',{"a","a"}), struct('id',{1,1}), struct('name',{'a','b'})};
+            for i = 1:numel(bad)
+                err = [];
+                try
+                    prepINITModel(struct(), bad{i});
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            end
+            err = [];
+            try
+                prepINITModel(struct(), struct('id',{'','','b'}));
+            catch err
+            end
+            testCase.verifyNotEmpty(err);
+            testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            testCase.verifySubstring(err.message, 'empty id, used 2 times');
+        end
+
+        function prepINITModelAcceptsOneEmptyTaskId(testCase)
+            % A single empty id is not a repeated id: the id check passes and
+            % prepINITModel completes.
+            testCase.assumeMILPSolver();
+            testModel = getTstModel();
+            tasks = getTstModelTasks();
+            extra = tasks(1);
+            extra.id = '';
+            tasks(end+1) = extra;
+            evalc('prepData = prepINITModel(testModel, tasks, {}, false, {}, ''s'');');
+            testCase.verifyTrue(isstruct(prepData));
+            testCase.verifyTrue(isfield(prepData,'taskStruct'));
+        end
+
         function getExprForRxnScoreRuns(testCase)
             expr = getExprForRxnScore(rand(10, 1), 1);
             testCase.verifyNotEmpty(expr);
@@ -274,6 +325,22 @@ classdef tINIT < RavenTestCase
             % the model now takes the "correct" path (incl. R2), skipping R9/R10
             testCase.verifyTrue(all(strcmp(resModel.rxns, ...
                 {'R1';'R2';'R4';'R6';'R7';'R8'})));
+        end
+
+        function ftINITWithoutRemoveGenesDropsGenesOfRemovedReactions(testCase)
+            % Genes that no remaining reaction uses are not in the output,
+            % also when removeGenes is false.
+            testCase.assumeMILPSolver();
+            testModel = getTstModel();
+            evalc('prepData = prepINITModel(testModel, {}, {}, false, {}, ''s'');');
+            arrayData.genes     = testModel.genes;
+            arrayData.tissues   = {'a'};
+            arrayData.levels    = getExprForRxnScore(getTstModelRxnScores());
+            arrayData.threshold = 1;
+            evalc(['resModel = ftINIT(prepData,arrayData.tissues{1},[],[],' ...
+                'arrayData,[],getINITSteps(),false,true,struct(),false);']);
+            testCase.verifyLessThan(numel(resModel.genes), numel(testModel.genes));
+            testCase.verifyTrue(all(full(any(resModel.rxnGeneMat,1))));
         end
 
         function ftINITResolveTiesAndProveAbsGapStillRunCorrectly(testCase)

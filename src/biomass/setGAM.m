@@ -8,9 +8,11 @@ function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 %
 % For every metabolite in the biomass pseudoreaction whose model.metNames
 % entry is in cofactorMetNames, the stoichiometric coefficient is set to
-% ±value preserving the sign of the current coefficient. Yeast-GEM scales
-% ATP, ADP, H2O, H+ and phosphate (with ATP and H2O on the substrate side,
-% ADP / H+ / phosphate on the product side).
+% ±value preserving the sign of the current coefficient. An error is raised
+% before the model is changed if ngamRxn is given and is not in the model,
+% and if ngamValue is given without ngamRxn (RAVEN:badInput).
+% Yeast-GEM scales ATP, ADP, H2O, H+ and phosphate (with ATP and H2O on the
+% substrate side, ADP / H+ / phosphate on the product side).
 %
 % Parameters
 % ----------
@@ -54,11 +56,26 @@ end
 p=parseRAVENargs(varargin, {'ngamRxn',[]; 'ngamValue',[]});
 ngamRxn=p.ngamRxn;
 ngamValue=p.ngamValue;
+%An empty id counts as not given
+if ~isempty(ngamRxn)
+    ngamRxn=cellstr(ngamRxn);
+    ngamRxn=ngamRxn(~cellfun(@isempty,ngamRxn));
+end
+if ~isempty(ngamValue) && isempty(ngamRxn)
+    error('RAVEN:badInput', ...
+        'ngamValue is given without ngamRxn. Give the NGAM reaction id as ''ngamRxn''.');
+end
 
 bioPos = strcmp(model.rxns, biomassRxn);
 if ~any(bioPos)
     error('setGAM:missingBiomassRxn', ...
         'Reaction %s not found in model.', biomassRxn);
+end
+
+setNgam = ~isempty(ngamRxn) && ~isempty(ngamValue);
+if ~isempty(ngamRxn) && ~all(ismember(ngamRxn, model.rxns))
+    error('setGAM:missingNgamRxn', ...
+        'NGAM reaction %s not found in model.', strjoin(ngamRxn, ', '));
 end
 
 for i = 1:length(model.mets)
@@ -69,7 +86,7 @@ for i = 1:length(model.mets)
     end
 end
 
-if ~isempty(ngamRxn) && ~isempty(ngamValue)
+if setNgam
     model = setParam(model, 'eq', ngamRxn, ngamValue);
 end
 end

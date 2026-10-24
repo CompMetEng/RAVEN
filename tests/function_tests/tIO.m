@@ -18,14 +18,94 @@ classdef tIO < RavenTestCase
             testCase.verifySubstring(dep, 'RAVEN_toolbox');
         end
 
-        function exportForGitMainBranchFlagRejectsNonMain(testCase)
-            % mainBranchFlag should error when RAVEN is *not* on main/master,
-            % which this test, run from a feature branch, always satisfies.
+        function exportForGitKeepsPositionOfMainBranchFlag(testCase)
+            % The fifth positional argument is mainBranchFlag and the sixth
+            % is subDirs, as in calls written for earlier versions: with
+            % only the flag given, subDirs keeps its default and the files
+            % are written in subfolders.
+            f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
+            evalc('model = importModel(f);');
             outDir = tempname; mkdir(outDir);
             c = onCleanup(@() rmdir(outDir,'s'));
-            testCase.verifyError(@() evalc(['exportForGit(testCase.model,''path'',outDir,' ...
-                '''formats'',{''xml''},''subDirs'',false,''mainBranchFlag'',true);']), ...
-                ?MException);
+            evalc("exportForGit(model,'pre',outDir,{'xml'},false)");
+            testCase.verifyTrue(isfile(fullfile(outDir,'model','xml','pre.xml')));
+            testCase.verifyFalse(isfile(fullfile(outDir,'pre.xml')));
+
+            % The call used for Human-GEM: empty subDirs slot, flag false
+            flatDir = tempname; mkdir(flatDir);
+            c2 = onCleanup(@() rmdir(flatDir,'s'));
+            evalc("exportForGit(model,'Human-GEM',flatDir,{'xml','txt'},'',false)");
+            testCase.verifyTrue(isfile(fullfile(flatDir,'Human-GEM.xml')));
+            testCase.verifyTrue(isfile(fullfile(flatDir,'Human-GEM.txt')));
+            testCase.verifyFalse(isfolder(fullfile(flatDir,'model')));
+        end
+
+        function exportForGitRefusesFlagsThatAreNotLogical(testCase)
+            % Text and other types raise before anything is written; a
+            % numeric 0 or 1 is accepted as a flag.
+            f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
+            evalc('model = importModel(f);');
+            outDir = tempname; mkdir(outDir);
+            c = onCleanup(@() rmdir(outDir,'s'));
+            for flag = {'mainBranchFlag','subDirs','COBRAtext','neverPrefixIDs'}
+                for bad = {'false', "true", {1}, 2, [1 0], NaN, complex(1,0)}
+                    testCase.verifyError(@() exportForGit(model,'path',outDir,'formats',{'xml'},flag{1},bad{1}), 'RAVEN:badInput');
+                end
+            end
+            d = dir(outDir);
+            testCase.verifyEmpty(setdiff({d.name},{'.','..'}));
+            evalc("exportForGit(model,'path',outDir,'formats',{'xml'},'mainBranchFlag',0,'subDirs',0,'COBRAtext',0,'neverPrefixIDs',0)");
+            testCase.verifyTrue(isfile(fullfile(outDir,'model.xml')));
+        end
+
+        function exportForGitMainBranchFlagRefusesOtherBranch(testCase)
+            % Skipped when the checkout under test is on main or master.
+            [~,branch] = system(['git -C "' testCase.ravenRoot '" rev-parse --abbrev-ref HEAD']);
+            testCase.assumeFalse(any(strcmp(strtrim(branch),{'main','master'})), 'checkout is on the main branch');
+            f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
+            evalc('model = importModel(f);');
+            outDir = tempname; mkdir(outDir);
+            c = onCleanup(@() rmdir(outDir,'s'));
+            testCase.verifyError(@() exportForGit(model,'path',outDir,'formats',{'xml'},'mainBranchFlag',true,'subDirs',false), 'RAVEN:notMainBranch');
+        end
+
+        function exportForGitCreatesMissingPath(testCase)
+            % A path that does not exist, with missing parent folders, is
+            % created with and without the per-format subfolders.
+            f = fullfile(testCase.ravenRoot,'tutorials','data','empty.xml');
+            evalc('model = importModel(f);');
+            root = tempname; mkdir(root);
+            c = onCleanup(@() rmdir(root,'s'));
+            flatDir = fullfile(root,'a','b','flat');
+            evalc("exportForGit(model,'path',flatDir,'formats',{'xml'},'subDirs',false)");
+            testCase.verifyTrue(isfile(fullfile(flatDir,'model.xml')));
+            testCase.verifyTrue(isfile(fullfile(flatDir,'dependencies.txt')));
+            treeDir = fullfile(root,'c','d','tree');
+            evalc("exportForGit(model,'path',treeDir,'formats',{'xml'},'subDirs',true)");
+            testCase.verifyTrue(isfile(fullfile(treeDir,'model','xml','model.xml')));
+        end
+
+        function exportForGitTxtKeepsBoundsExactly(testCase)
+            % The txt file is a lossless table: bounds and objective are
+            % written with the digits needed to read them back unchanged.
+            m = testCase.taskTestModel();
+            m.lb(2) = -1/3; m.ub(2) = 0.1; m.ub(3) = 1e-7;
+            outDir = tempname; mkdir(outDir);
+            c = onCleanup(@() rmdir(outDir,'s'));
+            evalc("exportForGit(m,'path',outDir,'formats',{'txt'},'subDirs',false)");
+            lines = strsplit(strtrim(fileread(fullfile(outDir,'model.txt'))), newline);
+            testCase.verifyEqual(strsplit(lines{1}, sprintf('\t'), 'CollapseDelimiters', false), ...
+                {'Rxn id','Formula','Gene-reaction association','LB','UB','Objective'});
+            fields = cellfun(@(l) strsplit(l, sprintf('\t'), 'CollapseDelimiters', false), lines(2:end), 'UniformOutput', false);
+            ids = cellfun(@(f) f{1}, fields, 'UniformOutput', false);
+            [~, order] = ismember(ids, m.rxns);
+            lb = cellfun(@(f) str2double(f{4}), fields);
+            ub = cellfun(@(f) str2double(f{5}), fields);
+            testCase.verifyEqual(lb(:), m.lb(order));
+            testCase.verifyEqual(ub(:), m.ub(order));
+            testCase.verifyTrue(any(strcmp(cellfun(@(f) f{4}, fields, 'UniformOutput', false), '0.3333333333333333')) ...
+                || any(strcmp(cellfun(@(f) f{4}, fields, 'UniformOutput', false), '-0.3333333333333333')));
+            testCase.verifyFalse(any(cellfun(@(f) endsWith(f{2}, ' '), fields)));
         end
 
         function importModelHandlesSpeciesAndReactionEdgeCases(testCase)

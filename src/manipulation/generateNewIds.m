@@ -2,7 +2,10 @@ function newIds=generateNewIds(model,type,prefix,varargin)
 % generateNewIds  Generate a list of new metabolite or reaction ids.
 %
 % The ids are sequentially numbered with a defined prefix. The model is
-% queried for the highest existing number of that type of id.
+% queried for the highest existing number of that type of id. Suffixes are
+% read with str2double. A suffix counts as a number when the result is a
+% finite integer value below 2^52; text, Inf, NaN, fractions (r_2.5) and
+% numbers of 2^52 or more (r_1e300, r_1e400) do not count.
 %
 % Parameters
 % ----------
@@ -52,10 +55,19 @@ existingIds=existingIds(~cellfun(@isempty,regexp(existingIds,['^' escapedPrefix]
 
 if ~isempty(existingIds)
     existingIds=regexprep(existingIds,['^' escapedPrefix],'');
-    existingIds=sort(existingIds);
-    lastId=existingIds{end};
-    numLength=length(lastId);
-    lastId=str2double(lastId);
+    numbers=str2double(existingIds);
+    notInteger=~isfinite(numbers) | imag(numbers)~=0 | real(numbers)~=floor(real(numbers)) | abs(real(numbers))>=flintmax/2;
+    numbers=real(numbers);
+    numbers(notInteger)=NaN;
+    if all(isnan(numbers))
+        [~,I]=sort(existingIds);
+        lastId=existingIds{I(end)};
+        numLength=length(lastId);
+        lastId=NaN;
+    else
+        [lastId,I]=max(numbers);
+        numLength=length(existingIds{I});
+    end
 else
     lastId=0;
     fprintf(['No ' type ' ids with prefix "' prefix ...

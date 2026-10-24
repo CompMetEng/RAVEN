@@ -6,6 +6,10 @@ function out=exportForGit(model,varargin)
 % model as SBML L3V1 FBCv2 (both XML and YAML), COBRA text, Matlab MAT-file
 % and Microsoft Excel formats.
 %
+% The flags mainBranchFlag, subDirs, COBRAtext and neverPrefixIDs accept a
+% scalar logical or 0/1, or an empty value for the default. Text and other
+% types raise RAVEN:badInput.
+%
 % Parameters
 % ----------
 % model : struct
@@ -17,7 +21,8 @@ function out=exportForGit(model,varargin)
 %     prefix for all filenames (default 'model').
 % path : char
 %     path where the directory structure should be generated and populated
-%     with all files (default current working directory).
+%     with all files (default current working directory). The folder, with
+%     any missing parent folders, is created if it does not exist.
 % formats : cell
 %     cell array of strings specifying in what file formats the model
 %     should be exported (default all formats as {'mat', 'txt', 'xlsx',
@@ -45,15 +50,10 @@ function out=exportForGit(model,varargin)
 %         COBRAtext, neverPrefixIDs);
 p=parseRAVENargs(varargin, {'prefix',[]; 'path',[]; 'formats',[]; 'mainBranchFlag',[]; 'subDirs',[]; 'COBRAtext',[]; 'neverPrefixIDs',false});
 prefix=p.prefix; path=p.path; formats=p.formats; mainBranchFlag=p.mainBranchFlag; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
-if isempty(COBRAtext)
-    COBRAtext=false;
-end
-if isempty(subDirs)
-    subDirs=true;
-end
-if isempty(mainBranchFlag)
-    mainBranchFlag=false;
-end
+COBRAtext=checkFlag(COBRAtext,'COBRAtext',false);
+subDirs=checkFlag(subDirs,'subDirs',true);
+mainBranchFlag=checkFlag(mainBranchFlag,'mainBranchFlag',false);
+neverPrefixIDs=checkFlag(neverPrefixIDs,'neverPrefixIDs',false);
 if isempty(formats)
     formats={'mat', 'txt', 'xlsx', 'xml', 'yml'};
 else
@@ -98,7 +98,7 @@ catch % before 5.17.0
     delete('tempModelForLibSBMLversion.xml');
 end
 
-% Make models folder, no warnings if folder already exists
+% Make the folders, no warnings if they already exist
 if subDirs
     path=fullfile(path,'model');
     filePath=strcat(path,filesep,{'txt','yml','mat','xlsx','xml'});
@@ -107,6 +107,7 @@ if subDirs
         [~,~,~]=mkdir(fullfile(path,formats{i}));
     end
 else
+    [~,~,~]=mkdir(path);
     filePath=cell(1,5); filePath(:)={path};
 end
 
@@ -125,12 +126,12 @@ if ismember('txt', formats)
         eqns=constructEquations(model,model.rxns);
         grRules=model.grRules;
     end
-    fprintf(fid, 'Rxn name\tFormula\tGene-reaction association\tLB\tUB\tObjective\n');
+    fprintf(fid, 'Rxn id\tFormula\tGene-reaction association\tLB\tUB\tObjective\n');
     for i = 1:numel(model.rxns)
         fprintf(fid, '%s\t', model.rxns{i});
-        fprintf(fid, '%s \t', eqns{i});
+        fprintf(fid, '%s\t', strtrim(eqns{i}));
         fprintf(fid, '%s\t', grRules{i});
-        fprintf(fid, '%6.2f\t%6.2f\t%6.2f\n', model.lb(i), model.ub(i), model.c(i));
+        fprintf(fid, '%s\t%s\t%s\n', shortestNumber(model.lb(i)), shortestNumber(model.ub(i)), shortestNumber(model.c(i)));
     end
     fclose(fid);
 end
@@ -173,6 +174,32 @@ end
 fclose(fid);
 end
 
+function s = shortestNumber(x)
+% shortestNumber  The shortest text that reads back as exactly x, so a bound
+% is never rounded on the way out (1/3 is 0.3333333333333333, 1000 is 1000).
+if isinf(x)
+    if x > 0
+        s = 'Inf';
+    else
+        s = '-Inf';
+    end
+    return
+elseif isnan(x)
+    s = 'NaN';
+    return
+end
+if x == floor(x) && abs(x) < 1e15
+    s = sprintf('%d', x);
+    return
+end
+for digits = 1:17
+    s = sprintf(['%.' num2str(digits) 'g'], x);
+    if str2double(s) == x
+        break
+    end
+end
+end
+
 function version = getToolboxVersion(toolbox,fileID,mainBranchFlag)
 % getToolboxVersion  Return the version of RAVEN or GECKO.
 %
@@ -209,7 +236,7 @@ if mainBranchFlag
     currentBranch = strtrim(currentBranch);
     if ~any([strcmp(currentBranch, "main"), strcmp(currentBranch, "master")])
         cd(currentPath);
-        error(['ERROR: ' toolbox ' not in main (or master) branch. Check-out this branch of ' toolbox ' before submitting model for Git.'])
+        error('RAVEN:notMainBranch',['ERROR: ' toolbox ' not in main (or master) branch. Check-out this branch of ' toolbox ' before submitting model for Git.'])
     end
 end
 %Read the version from the toolbox version.txt; report 'unknown' otherwise
@@ -230,5 +257,16 @@ function slashPos = getSlashPos(path)
 slashPos = strfind(path,'\');       %Windows
 if isempty(slashPos)
     slashPos = strfind(path,'/');   %MAC/Linux
+end
+end
+
+function flag = checkFlag(flag, name, default)
+%An empty value gives the default; otherwise a scalar logical or 0/1 is required
+if isempty(flag)
+    flag = default;
+elseif (islogical(flag) || isnumeric(flag)) && isscalar(flag) && isreal(flag) && (flag == 0 || flag == 1)
+    flag = logical(flag);
+else
+    error('RAVEN:badInput', '%s must be a scalar logical or 0/1.', name);
 end
 end
