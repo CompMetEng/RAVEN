@@ -157,7 +157,7 @@ classdef tCuration < RavenTestCase
             model = tCuration.toyModel();
             metsF = tCuration.writeTsv(testCase, { ...
                 '"  metNames"\t" comps "\t formula ', 'newMet\tc\tH2O'});
-            evalc('out = curateModelFromTables(model,''none'',''metsInfo'',metsF);');
+            evalc('out = curateModelFromTables(model,metsF);');
             testCase.verifyNumElements(out.mets, numel(model.mets)+1);
             testCase.verifyEqual(out.metFormulas{end}, 'H2O');
         end
