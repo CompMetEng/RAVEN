@@ -10,6 +10,20 @@ classdef tTasks < RavenTestCase
             testCase.verifyTrue(report.ok == 1);
         end
 
+        function checkTasksReportsTasksWithARepeatedIdOneByOne(testCase)
+            % Ids may repeat (category codes in Human-GEM's task list): the
+            % report has one entry per task, in the order of the task list. checkTasks
+            % already did this; the test pins it.
+            m = testCase.taskTestModel();
+            task = testCase.taskTestStruct();
+            first = task; first.id = 'BS';
+            second = task; second.id = 'BS';
+            second.inputs = {}; second.LBin = []; second.UBin = [];
+            [~, report] = evalc('checkTasks(m, [], true, false, false, [first, second]);');
+            testCase.verifyEqual(double(report.ok(:)'), [1 0]);
+            testCase.verifyEqual(report.id(:)', {'BS','BS'});
+        end
+
         function checkTasksFailsWithoutKeyReaction(testCase)
             m = removeReactions(testCase.taskTestModel(), {'R2'});
             task = testCase.taskTestStruct();
