@@ -58,27 +58,16 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     if true, an empty cell in a row of an existing metabolite, gene or
 %     reaction empties the corresponding field of the model. If false, an
 %     empty cell leaves the existing value unchanged and only the cells with a
-%     value are written (default true). Must be a scalar logical or 0/1. A
-%     cell with only blanks counts as empty in both modes. Empty grRules
-%     cells never overwrite. An empty or NaN lb, ub or rev cell always keeps
-%     the existing value. For the charge and the confidence score, an empty
-%     or NaN cell is treated alike: when overwriteWithEmpty is true and at
-%     least one other row of the column has a value, it becomes 0; a column
-%     in which no row has a value is not written, and the existing values
-%     stay.
-%     The charge, confidence score, lb, ub, rev, rxnIdx and coefficient cells
-%     are read as plain decimal numbers (digits with an optional sign,
-%     decimal point and exponent), Inf, NaN, or 'true'/'false' in any case
-%     (read as 1/0). Any other text, including text with a comma,
-%     hexadecimal numbers and expressions, raises RAVEN:badInput; no
-%     expression is evaluated. A charge must be a finite whole number (or
-%     empty or NaN), a rev must be 0, 1, true or false (or empty or NaN),
-%     a row of the rxnsCoeffs table with any content must have a
-%     coefficient, and a rxnIdx must be a whole number of at least 1 (or
-%     empty or NaN, which ignores the row); otherwise RAVEN:badInput is
-%     raised. The rev column sets
-%     the reversibility of existing reactions only; for new reactions it is
-%     derived from lb and ub.
+%     value are written (default true; [] also means the default). Must be a
+%     scalar logical or 0/1. A cell with only blanks counts as empty in both
+%     modes. Empty grRules cells never overwrite. An empty or NaN lb, ub or
+%     rev cell always keeps the existing value. For the charge and the
+%     confidence score, an empty or NaN cell is treated alike: when
+%     overwriteWithEmpty is true and at least one other row of the column has
+%     a value, it becomes 0; a column in which no row has a value is not
+%     written, and the existing values stay. The same holds for a MIRIAM
+%     column: a column in which no row has a value does not clear the
+%     annotations of existing entities.
 %
 % Returns
 % -------
@@ -95,9 +84,32 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % In all three info tables, any column whose header is not one of the
 % listed core fields is treated as a MIRIAM annotation namespace and
 % stored on the matching entity.
+%
+% Cell values: the charge, confidence score, lb, ub, rev, rxnIdx and
+% coefficient cells are read as plain decimal numbers (digits with an
+% optional sign, decimal point and exponent), Inf or NaN in any case. Only
+% the lb, ub and rev cells also accept true and false in any case (read as
+% 1 and 0). Any other text, including text with a comma, hexadecimal numbers
+% and expressions, raises RAVEN:badInput; no expression is evaluated. A
+% charge must be a finite whole number (or empty or NaN). A rev must be 0, 1,
+% true or false (or empty or NaN). The rev column sets the reversibility of
+% existing reactions only, independently of lb and ub, which are written as
+% given; for new reactions the reversibility is derived from lb and ub.
+%
+% Reaction tables: a row of the rxnsCoeffs table without a rxnIdx, rxnNames,
+% metNames and comps value is ignored; a row with any of them needs a
+% rxnIdx and a coefficient that is a finite number other than 0. A row of
+% the rxnsInfo table without any value is ignored; a row with a value needs
+% a rxnIdx. A rxnIdx is a whole number of at least 1; the indices (and
+% names) of the two reaction tables must match exactly, compared by their
+% numeric value (1, 1.0 and 1e0 are the same index). Otherwise RAVEN:badInput
+% is raised.
 
 p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]; 'overwriteWithEmpty',true});
 overwriteWithEmpty=p.overwriteWithEmpty;
+if isempty(overwriteWithEmpty)
+    overwriteWithEmpty=true;
+end
 if ~((islogical(overwriteWithEmpty) || isnumeric(overwriteWithEmpty)) && isscalar(overwriteWithEmpty) ...
         && isreal(overwriteWithEmpty) && ~isnan(overwriteWithEmpty) && ismember(overwriteWithEmpty,[0 1]))
     error('RAVEN:badInput','overwriteWithEmpty must be a scalar logical or 0/1');
@@ -115,7 +127,7 @@ if isempty(rxnPrefix)
     rxnPrefix = 'R_';
 end
 if xor(strcmp(rxnsCoeffs,'none'), strcmp(rxnsInfo,'none'))
-    error('Provide both a ''rxnsInfo'' and a ''rxnsCoeffs'' file')
+    error('RAVEN:badInput','Provide both a ''rxnsInfo'' and a ''rxnsCoeffs'' file')
 end
 newModel=model;
 
@@ -255,13 +267,19 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         'metNames',    {'metNames','metName'}; ...
         'comps',       {'comps','comp'}; ...
         'coefficient', {'coefficient','coefficients','coeffs','stoichCoeffs'}});
+    % A row without a rxnIdx, rxnNames, metNames and comps value is ignored
+    rowNo = (1:size(data,1))';
+    keyCells = data(:,[col.rxnIdx,col.rxnNames,col.metNames,col.comps]);
+    ignoredRow = all(reshape(emptyCells(keyCells(:)),size(keyCells)),2);
+    data(ignoredRow,:) = [];
+    rowNo(ignoredRow) = [];
     rxnCheck.coeffsIdx = parseIndexCells(data(:,col.rxnIdx),'rxnIdx','rxnsCoeffs');
     rxns.rxnNames   = data(:,col.rxnNames);
     rxns.metNames   = data(:,col.metNames);
     rxns.comps      = data(:,col.comps);
     rxns.coeffs     = parseNumericCells(data(:,col.coefficient),'coefficient','rxnsCoeffs');
-    checkCoefficientsGiven(rxns.coeffs,[data(:,col.rxnIdx),data(:,col.rxnNames),data(:,col.metNames),data(:,col.comps)]);
-    rxnCheck.coeffs = strcat(data(:,col.rxnIdx),'***',rxns.rxnNames);
+    checkCoefficientsGiven(rxnCheck.coeffsIdx,rxns.coeffs,rowNo);
+    rxnCheck.coeffs = indexKeys(rxnCheck.coeffsIdx,rxns.rxnNames);
 
     % ... and then additional reaction-specific data.
     [header,data] = readCurationTable(rxnsInfo);
@@ -277,14 +295,23 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         'rxnNotes',            {'rxnNotes'}; ...
         'rxnReferences',       {'rxnReferences'}; ...
         'rxnConfidenceScores', {'rxnConfidenceScores'}});
+    % A row without any value is ignored; a row with a value needs a rxnIdx
+    rowNo = (1:size(data,1))';
+    ignoredRow = all(reshape(emptyCells(data(:)),size(data)),2);
+    data(ignoredRow,:) = [];
+    rowNo(ignoredRow) = [];
     rxnCheck.rxnsIdx = parseIndexCells(data(:,col.rxnIdx),'rxnIdx','rxnsInfo');
-    rxnCheck.rxns = strcat(data(:,col.rxnIdx),'***',data(:,col.rxnNames));
+    noIdx = find(isnan(rxnCheck.rxnsIdx),1);
+    if ~isempty(noIdx)
+        error('RAVEN:badInput','Data row %d of the rxnsInfo file has values but its rxnIdx is empty or NaN',rowNo(noIdx));
+    end
+    rxnCheck.rxns = indexKeys(rxnCheck.rxnsIdx,data(:,col.rxnNames));
 
     notMatching = setxor(rxnCheck.coeffs,rxnCheck.rxns);
-    if numel(notMatching)>1
-        error(['The following reactions ánd/or their indices are not matched '...
+    if ~isempty(notMatching)
+        error('RAVEN:badInput',['The following reactions and/or their indices are not matched '...
             'between the rxnsInfo and rxnsCoeffs files:\n\t\t%s'],...
-            strjoin(regexprep(notMatching,'^\d+***',''),'\n\t\t'))
+            strjoin(regexprep(notMatching,'^(\d+)\*\*\*(.*)$','index $1 ($2)'),'\n\t\t'))
     end
 
     rxnsToAdd.rxnNames              = data(:,col.rxnNames);
@@ -323,7 +350,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
             try
                 newMetComp = getIndexes(newModel,newMetComp,'metcomps');
             catch
-                error(['Not all metabolites in reaction "%s" are present in the '...
+                error('RAVEN:badInput',['Not all metabolites in reaction "%s" are present in the '...
                     'model or in the provided table with new metabolites.'],rxnsToAdd.rxnNames{i})
             end
             rxnsToAdd.mets{i}(j) = newModel.mets(newMetComp);
@@ -432,12 +459,12 @@ function [header,data] = readCurationTable(fileName)
 % array of text with one column per header field.
 fid = fopen(fileName);
 if fid==-1
-    error('Could not open the file "%s"',fileName);
+    error('RAVEN:badInput','Could not open the file "%s"',fileName);
 end
 headerLine = fgetl(fid);
 if ~ischar(headerLine)
     fclose(fid);
-    error('The file "%s" is empty',fileName);
+    error('RAVEN:badInput','The file "%s" is empty',fileName);
 end
 headerLine = strrep(headerLine,char(65279),''); % byte order mark
 header = strtrim(strsplit(headerLine,'\t'));
@@ -469,7 +496,7 @@ for i=1:size(spec,1)
 end
 missing = setdiff(required,fieldnames(col)','stable');
 if ~isempty(missing)
-    error('The file "%s" has no column with header: %s',fileName,strjoin(missing,', '));
+    error('RAVEN:badInput','The file "%s" has no column with header: %s',fileName,strjoin(missing,', '));
 end
 miriamCols = find(~isCore & ~cellfun(@isempty,header));
 end
@@ -569,14 +596,30 @@ if ~isempty(v) && ~isnan(v) && (~isfinite(v) || v~=round(v))
 end
 end
 
-function checkCoefficientsGiven(coeffs,otherCells)
-% A row of the rxnsCoeffs table that has any content must have a coefficient;
-% a row without any content is ignored.
-hasContent = any(~cellfun(@isempty,otherCells),2);
-missing = find(hasContent & isnan(coeffs),1);
+function checkCoefficientsGiven(idx,coeffs,rowNo)
+% Every row of the rxnsCoeffs table that is kept has a rxnIdx and a
+% coefficient that is a finite number other than 0.
+noIdx = find(isnan(idx),1);
+if ~isempty(noIdx)
+    error('RAVEN:badInput',['Data row %d of the rxnsCoeffs file has values but its rxnIdx is empty or NaN'],rowNo(noIdx));
+end
+missing = find(isnan(coeffs),1);
 if ~isempty(missing)
-    error('RAVEN:badInput',['The coefficient in row %d of the rxnsCoeffs file is empty or NaN; ' ...
-        'every row with a reaction, metabolite or compartment needs a coefficient'],missing);
+    error('RAVEN:badInput',['The coefficient in data row %d of the rxnsCoeffs file is empty or NaN; ' ...
+        'every row with a reaction, metabolite or compartment needs a coefficient'],rowNo(missing));
+end
+bad = find(~isfinite(coeffs) | coeffs==0,1);
+if ~isempty(bad)
+    error('RAVEN:badInput','The coefficient in data row %d of the rxnsCoeffs file must be a finite non-zero number',rowNo(bad));
+end
+end
+
+function keys = indexKeys(idx,names)
+% One key per table row from the numeric reaction index and the name, so that
+% the indices of two tables are compared by value.
+keys = cell(numel(idx),1);
+for i=1:numel(idx)
+    keys{i} = sprintf('%.0f***%s',idx(i),names{i});
 end
 end
 
@@ -590,7 +633,7 @@ end
 
 function v = parseNumberCell(text,field,fileLabel)
 % Real number from a table cell: [] for an empty cell, 1 or 0 for true or
-% false in any case, NaN or +/-Inf for those words in any case, otherwise a
+% false in any case (lb, ub and rev cells only), NaN or +/-Inf for those words in any case, otherwise a
 % plain decimal number (digits with an optional sign, decimal point and
 % exponent). Any other text raises an error; nothing is evaluated.
 text = strtrim(text);
@@ -599,6 +642,9 @@ if isempty(text)
     return
 end
 word = lower(text);
+if any(strcmp(word,{'true','false'})) && ~ismember(field,{'lb','ub','rev'})
+    error('RAVEN:badInput','The %s value "%s" in the %s file is not a number',field,text,fileLabel);
+end
 if strcmp(word,'true')
     v = 1;
 elseif strcmp(word,'false')

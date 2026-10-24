@@ -545,6 +545,155 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(out.grRules, {'g1'});
         end
 
+        function curateModelFromTablesRefusesRowsWithValuesButNoRxnIdx(testCase)
+            % A row of the rxnsInfo or rxnsCoeffs table that has values needs
+            % a rxnIdx; a row without any value is ignored.
+            model = tCuration.toyModel();
+            coeffsGood = tCuration.dupRxnCoeffs(testCase);
+            infoGood = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
+            for idx = {'','NaN'}
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn',[idx{1} '\tskipped']});
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',coeffsGood,'rxnsInfo',infoF);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'rxnIdx');
+                coeffsF = tCuration.writeTsv(testCase, { ...
+                    'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                    '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                    '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', ...
+                    [idx{1} '\tother\tA\tc\t-1']});
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoGood);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'rxnIdx');
+            end
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn','\t'});
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', '\t\t\t\t7'});
+            evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF);');
+            testCase.verifyEqual(numel(out.rxns), 1);
+        end
+
+        function curateModelFromTablesRequiresMatchingReactionTables(testCase)
+            % The reactions of the rxnsInfo and rxnsCoeffs tables match
+            % exactly; every mismatch is reported with RAVEN:badInput.
+            model = tCuration.toyModel();
+            coeffsGood = tCuration.dupRxnCoeffs(testCase);
+            infoGood = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
+            coeffsExtra = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', ...
+                '2\tnewRxn\tA\tc\t-1', '2\tnewRxn\tC\tc\t1'});
+            infoExtra = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn','2\tnewRxn'});
+            infoRenamed = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tother'});
+            cases = {coeffsExtra, infoGood, 'newRxn'; coeffsGood, infoExtra, 'newRxn'; ...
+                coeffsGood, infoRenamed, 'other'};
+            for i = 1:size(cases,1)
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',cases{i,1},'rxnsInfo',cases{i,2});
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,cases{i,3});
+            end
+            evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsExtra,''rxnsInfo'',infoExtra);');
+            testCase.verifyEqual(numel(out.rxns), 2);
+        end
+
+        function curateModelFromTablesMatchesRxnIdxByValue(testCase)
+            % The indices 1, 1.0 and 1e0 of the two reaction tables are the
+            % same index.
+            model = tCuration.toyModel();
+            coeffsF = tCuration.dupRxnCoeffs(testCase);
+            for txt = {'1.0','1e0','01','+1'}
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\tlb',['' txt{1} '\tdupRxn\t5']});
+                evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF);');
+                testCase.verifyEqual(numel(out.rxns), 1);
+                testCase.verifyEqual(out.lb(1), 5);
+            end
+        end
+
+        function curateModelFromTablesAcceptsTrueFalseOnlyInBoundsAndRev(testCase)
+            % The words true and false are numbers in the lb, ub and rev
+            % cells only.
+            model = tCuration.toyModel();
+            coeffsF = tCuration.dupRxnCoeffs(testCase);
+            infoGood = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
+            for txt = {'true','FALSE'}
+                metsF = tCuration.writeTsv(testCase, {'metNames\tcomps\tcharge',['A\tc\t' txt{1}]});
+                testCase.verifyError(@() curateModelFromTables(model,metsF),'RAVEN:badInput');
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\trxnConfidenceScores',['1\tdupRxn\t' txt{1}]});
+                testCase.verifyError(@() curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF),'RAVEN:badInput');
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames',[txt{1} '\tdupRxn']});
+                testCase.verifyError(@() curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF),'RAVEN:badInput');
+                coeffsBad = tCuration.writeTsv(testCase, { ...
+                    'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                    '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                    '1\tdupRxn\tC\tc\t1',  ['1\tdupRxn\tH\tc\t' txt{1}]});
+                testCase.verifyError(@() curateModelFromTables(model,'none','rxnsCoeffs',coeffsBad,'rxnsInfo',infoGood),'RAVEN:badInput');
+            end
+        end
+
+        function curateModelFromTablesRefusesInfiniteAndZeroCoefficient(testCase)
+            % A coefficient is a finite number other than 0.
+            model = tCuration.toyModel();
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
+            for txt = {'Inf','-Inf','0','0.0'}
+                coeffsF = tCuration.writeTsv(testCase, { ...
+                    'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                    '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                    '1\tdupRxn\tC\tc\t1',  ['1\tdupRxn\tH\tc\t' txt{1}]});
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'finite non-zero');
+            end
+        end
+
+        function curateModelFromTablesTreatsEmptyOverwriteWithEmptyAsDefault(testCase)
+            % An empty overwriteWithEmpty means the default, true.
+            model = tCuration.existingFieldsModel();
+            metsF = tCuration.writeTsv(testCase, {'metNames\tcomps\tformula','A\tc\t'});
+            evalc('out = curateModelFromTables(model,metsF,''overwriteWithEmpty'',[]);');
+            testCase.verifyEqual(out.metFormulas{1}, '');
+        end
+
+        function curateModelFromTablesRaisesBadInputForUnreadableFiles(testCase)
+            % Problems with the table files are reported with RAVEN:badInput.
+            model = tCuration.toyModel();
+            testCase.verifyError(@() curateModelFromTables(model,fullfile(tempdir,'does_not_exist_curate.tsv')),'RAVEN:badInput');
+            emptyF = tCuration.writeTsv(testCase, {});
+            testCase.verifyError(@() curateModelFromTables(model,emptyF),'RAVEN:badInput');
+            metsF = tCuration.writeTsv(testCase, {'metNames\tformula', 'A\tC1'});
+            testCase.verifyError(@() curateModelFromTables(model,metsF),'RAVEN:badInput');
+            coeffsF = tCuration.dupRxnCoeffs(testCase);
+            testCase.verifyError(@() curateModelFromTables(model,'none','rxnsCoeffs',coeffsF),'RAVEN:badInput');
+            metsOK = tCuration.writeTsv(testCase, {'metNames\tcomps','A\tc'});
+            missingF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\tmetNames\tcomps','1\tdupRxn\tA\tc'});
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
+            testCase.verifyError(@() curateModelFromTables(model,metsOK,'rxnsCoeffs',missingF,'rxnsInfo',infoF),'RAVEN:badInput');
+            coeffsMetMissing = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient','1\tdupRxn\tNotThere\tc\t-1'});
+            testCase.verifyError(@() curateModelFromTables(model,'none','rxnsCoeffs',coeffsMetMissing,'rxnsInfo',infoF),'RAVEN:badInput');
+        end
+
         function curateModelFromTablesRequiresKeyColumns(testCase)
             model = tCuration.toyModel();
             metsF = tCuration.writeTsv(testCase, {'metNames\tformula', 'A\tC1'});
