@@ -129,6 +129,39 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(sort(out.genes),{'g1';'g2';'g3'});
         end
 
+        function curateModelFromTablesRefusesRepeatedRxnIdx(testCase)
+            % A rxnIdx used by two rows of rxnsInfo raises RAVEN:badInput and
+            % names the index and the rows; 1, 1.0 and 1e0 are one index.
+            model = tCuration.toyModel();
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tnewA\tA\tc\t-1', '1\tnewA\tC\tc\t1', ...
+                '1\tnewB\tA\tc\t-1', '1\tnewB\tC\tc\t1'});
+            for second = {'1','1.0','1e0'}
+                infoF = tCuration.writeTsv(testCase, { ...
+                    'rxnIdx\trxnNames', '1\tnewA', [second{1} '\tnewB']});
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'rxnIdx 1 is used by data rows 1, 2');
+            end
+        end
+
+        function curateModelFromTablesTrimsPaddedQuotedHeaders(testCase)
+            % Spaces inside the quotes of a header cell are ignored, so
+            % " comps " and "  metNames" name the core columns.
+            model = tCuration.toyModel();
+            metsF = tCuration.writeTsv(testCase, { ...
+                '"  metNames"\t" comps "\t formula ', 'newMet\tc\tH2O'});
+            evalc('out = curateModelFromTables(model,''none'',''metsInfo'',metsF);');
+            testCase.verifyNumElements(out.mets, numel(model.mets)+1);
+            testCase.verifyEqual(out.metFormulas{end}, 'H2O');
+        end
+
         function curateModelFromTablesOverwritesExistingWithEmptyCells(testCase)
             % By default an empty cell empties the field of an existing
             % metabolite, gene or reaction; an empty charge becomes 0.

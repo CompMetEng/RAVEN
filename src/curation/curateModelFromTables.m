@@ -13,7 +13,8 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % This function can therefore be used to add new entities in the model, or
 % curate those already existing in the model.
 %
-% Columns are identified by their header (case-insensitive), so their order
+% Columns are identified by their header (case-insensitive, and spaces around
+% a header are ignored, also inside its quotes), so their order
 % does not matter and optional columns can be left out. Every field that a
 % table supplies is written to new and existing entities alike; a field the
 % model does not have yet is created, with its default value for the other
@@ -48,7 +49,8 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     Path to a *.tsv file with reaction information, or 'none'. Columns:
 %     rxnIdx (or index), rxnNames (both required), grRules, lb, ub, rev,
 %     subSystems, eccodes, rxnNotes, rxnReferences, rxnConfidenceScores,
-%     and MIRIAM.
+%     and MIRIAM. Each rxnIdx may be used by one row only (the rxnsCoeffs
+%     file has one row per metabolite of the reaction and repeats it).
 % metPrefix : char
 %     Prefix used to mint fresh metabolite ids (e.g. 's_' for yeast-GEM,
 %     'M_' for the BiGG default) (default 'M_').
@@ -320,6 +322,12 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
     if ~isempty(noIdx)
         error('RAVEN:badInput','Data row %d of the rxnsInfo file has values but its rxnIdx is empty or NaN',rowNo(noIdx));
     end
+    [uniqueIdx,~,idxGroup] = unique(rxnCheck.rxnsIdx);
+    repeated = find(accumarray(idxGroup,1)>1,1);
+    if ~isempty(repeated)
+        error('RAVEN:badInput','The rxnIdx %s is used by data rows %s of the rxnsInfo file; each reaction needs its own index', ...
+            num2str(uniqueIdx(repeated)),strjoin(arrayfun(@num2str,rowNo(idxGroup==repeated)','UniformOutput',false),', '));
+    end
     rxnCheck.rxns = indexKeys(rxnCheck.rxnsIdx,data(:,col.rxnNames));
 
     notMatching = setxor(rxnCheck.coeffs,rxnCheck.rxns);
@@ -486,7 +494,7 @@ if ~ischar(headerLine)
 end
 headerLine = strrep(headerLine,char(65279),''); % byte order mark
 header = strtrim(strsplit(headerLine,'\t'));
-header = regexprep(header,'^"(.*)"$','$1');
+header = strtrim(regexprep(header,'^"(.*)"$','$1'));
 nCols  = numel(header);
 raw    = textscan(fid,repmat('%q',1,nCols),'Delimiter','\t');
 fclose(fid);
