@@ -11,9 +11,10 @@ function taskStruct=parseTaskList(inputFile)
 %     removed; the first row after that is considered the headers; the
 %     header row itself must therefore start with an empty cell):
 %
-%     - ID : the only required header. Each task must have a unique id
-%       (string or numeric). Tasks can span multiple rows, only the first
-%       row in each task should have an id
+%     - ID : the only required header (string or numeric). Ids may repeat,
+%       for example as category codes. A task starts at a row with a
+%       non-empty id and can span multiple rows; only the first row of a task
+%       should have an id
 %     - DESCRIPTION : description of the task
 %     - IN : allowed input(s) for the task. Metabolite names should be on
 %       the form "model.metName[model.comps]". Several inputs can be
