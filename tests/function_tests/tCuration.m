@@ -330,6 +330,44 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(numel(out.rxns), 1);
         end
 
+        function curateModelFromTablesRefusesMalformedGeneRules(testCase)
+            % A malformed grRules cell raises RAVEN:badInput for existing and
+            % new reactions; well-formed rules and empty cells are accepted.
+            model = tCuration.toyModel();
+            model.genes      = {'G1';'G2';'G3'};
+            model.rxnGeneMat = sparse(1,3);
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', ...
+                '2\tnewRxn\tA\tc\t-1', '2\tnewRxn\tC\tc\t1'});
+            malformed = {'G1 and and (','(G1 or G2','G1 G2','and G1','G1 or','()', ...
+                'G1 and (G2 or )','G1)','G1 and or G2','(G1) (G2)','G1 xor G2'};
+            for k = 1:numel(malformed)
+                for row = {['1\tdupRxn\t' malformed{k}],['2\tnewRxn\t' malformed{k}]}
+                    lines = {'rxnIdx\trxnNames\tgrRules','1\tdupRxn\t','2\tnewRxn\t'};
+                    lines{2 + strncmp(row{1},'2',1)} = row{1};
+                    infoF = tCuration.writeTsv(testCase, lines);
+                    err = [];
+                    try
+                        curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF);
+                    catch err
+                    end
+                    testCase.verifyNotEmpty(err, malformed{k});
+                    testCase.verifyEqual(err.identifier,'RAVEN:badInput', malformed{k});
+                    testCase.verifySubstring(err.message,'is not a valid gene rule');
+                    testCase.verifySubstring(err.message,'data row');
+                end
+            end
+            valid = {'G1','(G1 and G2) or G3','G1 AND G2','(G1)','G1 And G2','G1 & G2','G1 && G2', ...
+                'G1 | G2','G1 || G2','G1 and(G2 or G3)','((G1 and G2) or G3)','  G1  ',''};
+            for k = 1:numel(valid)
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\tgrRules',['1\tdupRxn\t' valid{k}],['2\tnewRxn\t' valid{k}]});
+                evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF);');
+                testCase.verifyEqual(numel(out.rxns), 2, valid{k});
+            end
+        end
+
         function curateModelFromTablesRefusesRevOtherThanZeroOrOne(testCase)
             % A rev cell is 0, 1, true or false (any case); empty and NaN
             % are not given. Other values raise an error for existing and

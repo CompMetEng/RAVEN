@@ -96,6 +96,16 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % existing reactions only, independently of lb and ub, which are written as
 % given; for new reactions the reversibility is derived from lb and ub.
 %
+% Gene rules: a grRules cell must be a well-formed gene rule (genes joined by
+% and/or in any case, or by &, &&, | and ||, with balanced parentheses); a
+% rule with an operator that lacks an operand, empty parentheses or two genes
+% without an operator between them raises RAVEN:badInput before the model is
+% changed. Whether the genes exist is checked when the rule is applied.
+%
+% Bounds: a lower bound above the upper bound is written as given. solveLP
+% rejects such a model when it is run ("Invalid set of bounds for
+% reaction(s): ...").
+%
 % Reaction tables: a row of the rxnsCoeffs table without a rxnIdx, rxnNames,
 % metNames and comps value is ignored; a row with any of them needs a
 % rxnIdx and a coefficient that is a finite number other than 0. A row of
@@ -317,6 +327,9 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
     rxnsToAdd.rxnNames              = data(:,col.rxnNames);
     for f = intersect({'grRules','subSystems','eccodes','rxnNotes','rxnReferences'},fieldnames(col)','stable')
         rxnsToAdd.(f{1}) = data(:,col.(f{1}));
+    end
+    if isfield(col,'grRules')
+        checkGrRules(rxnsToAdd.grRules,rxnsToAdd.rxnNames,rowNo);
     end
     for f = intersect({'lb','ub','rev'},fieldnames(col)','stable')
         rxnsToAdd.(f{1}) = parseNumericCells(data(:,col.(f{1})),f{1},'rxnsInfo');
@@ -622,6 +635,25 @@ for i=1:numel(idx)
     keys{i} = sprintf('%.0f***%s',idx(i),names{i});
 end
 end
+
+function checkGrRules(rules,rxnNames,rowNo)
+% Raise RAVEN:badInput for a grRules cell that is not a well-formed gene rule
+% (unbalanced parentheses, an operator without two operands, empty
+% parentheses, two genes without an operator between them). Empty cells are
+% not checked. The grammar is that of parseGrRule.
+for i = find(~emptyCells(rules))'
+    try
+        parseGrRule(rules{i});
+    catch err
+        if strcmp(err.identifier,'RAVEN:badGrRule')
+            error('RAVEN:badInput','The grRules value "%s" of reaction "%s" (data row %d of the rxnsInfo file) is not a valid gene rule: %s',...
+                rules{i},rxnNames{i},rowNo(i),err.message);
+        end
+        rethrow(err);
+    end
+end
+end
+
 
 function checkRevValues(values,cells)
 % A rev cell is 0, 1, true or false; an empty or NaN cell is not given.
