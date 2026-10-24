@@ -73,8 +73,10 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     hexadecimal numbers and expressions, raises RAVEN:badInput; no
 %     expression is evaluated. A charge must be a finite whole number (or
 %     empty or NaN), a rev must be 0, 1, true or false (or empty or NaN),
-%     and a row of the rxnsCoeffs table with any content must have a
-%     coefficient; otherwise RAVEN:badInput is raised. The rev column sets
+%     a row of the rxnsCoeffs table with any content must have a
+%     coefficient, and a rxnIdx must be a whole number of at least 1 (or
+%     empty or NaN, which ignores the row); otherwise RAVEN:badInput is
+%     raised. The rev column sets
 %     the reversibility of existing reactions only; for new reactions it is
 %     derived from lb and ub.
 %
@@ -253,7 +255,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         'metNames',    {'metNames','metName'}; ...
         'comps',       {'comps','comp'}; ...
         'coefficient', {'coefficient','coefficients','coeffs','stoichCoeffs'}});
-    rxnCheck.coeffsIdx = parseNumericCells(data(:,col.rxnIdx),'rxnIdx','rxnsCoeffs');
+    rxnCheck.coeffsIdx = parseIndexCells(data(:,col.rxnIdx),'rxnIdx','rxnsCoeffs');
     rxns.rxnNames   = data(:,col.rxnNames);
     rxns.metNames   = data(:,col.metNames);
     rxns.comps      = data(:,col.comps);
@@ -275,7 +277,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         'rxnNotes',            {'rxnNotes'}; ...
         'rxnReferences',       {'rxnReferences'}; ...
         'rxnConfidenceScores', {'rxnConfidenceScores'}});
-    rxnCheck.rxnsIdx = parseNumericCells(data(:,col.rxnIdx),'rxnIdx','rxnsInfo');
+    rxnCheck.rxnsIdx = parseIndexCells(data(:,col.rxnIdx),'rxnIdx','rxnsInfo');
     rxnCheck.rxns = strcat(data(:,col.rxnIdx),'***',data(:,col.rxnNames));
 
     notMatching = setxor(rxnCheck.coeffs,rxnCheck.rxns);
@@ -534,6 +536,16 @@ function empty = emptyCells(values)
 % Logical column vector that is true for the empty entries of a cell array
 % of text (a cell with only blanks counts as empty) or of a numeric cell.
 empty = cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),values(:));
+end
+
+function values = parseIndexCells(cells,field,fileLabel)
+% Reaction indices from table cells: NaN where the cell is empty or says NaN
+% (the row is ignored), otherwise a finite whole number of at least 1.
+values = parseNumericCells(cells,field,fileLabel);
+bad = find(~isnan(values) & (~isfinite(values) | values~=round(values) | values<1),1);
+if ~isempty(bad)
+    error('RAVEN:badInput','The %s value "%s" in the %s file is not a whole number of at least 1',field,strtrim(cells{bad}),fileLabel);
+end
 end
 
 function values = parseNumericCells(cells,field,fileLabel)

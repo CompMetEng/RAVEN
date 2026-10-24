@@ -362,6 +362,41 @@ classdef tCuration < RavenTestCase
             end
         end
 
+        function curateModelFromTablesRefusesRxnIdxThatIsNotAWholeNumberFromOne(testCase)
+            % A reaction index is a whole number of at least 1; an empty or
+            % NaN cell ignores the row.
+            model = tCuration.toyModel();
+            coeffsGood = tCuration.dupRxnCoeffs(testCase);
+            infoGood = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
+            for txt = {'1.5','Inf','0','-1','-Inf'}
+                coeffsF = tCuration.writeTsv(testCase, { ...
+                    'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                    '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                    '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', ...
+                    [txt{1} '\tother\tA\tc\t-1']});
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoGood);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'whole number of at least 1');
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames',['1\tdupRxn'],[txt{1} '\tother']});
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',coeffsGood,'rxnsInfo',infoF);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'whole number of at least 1');
+            end
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn','NaN\tskipped'});
+            evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsGood,''rxnsInfo'',infoF);');
+            testCase.verifyEqual(numel(out.rxns), 1);
+        end
+
         function curateModelFromTablesRefusesTextInIndexAndCoefficientColumns(testCase)
             % A coefficient or index that is not a number raises
             % RAVEN:badInput.
