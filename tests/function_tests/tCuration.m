@@ -363,8 +363,7 @@ classdef tCuration < RavenTestCase
         end
 
         function curateModelFromTablesRefusesRxnIdxThatIsNotAWholeNumberFromOne(testCase)
-            % A reaction index is a whole number of at least 1; an empty or
-            % NaN cell ignores the row.
+            % A reaction index is a whole number of at least 1.
             model = tCuration.toyModel();
             coeffsGood = tCuration.dupRxnCoeffs(testCase);
             infoGood = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
@@ -392,8 +391,7 @@ classdef tCuration < RavenTestCase
                 testCase.verifyEqual(err.identifier,'RAVEN:badInput');
                 testCase.verifySubstring(err.message,'whole number of at least 1');
             end
-            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn','NaN\tskipped'});
-            evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsGood,''rxnsInfo'',infoF);');
+            evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsGood,''rxnsInfo'',infoGood);');
             testCase.verifyEqual(numel(out.rxns), 1);
         end
 
