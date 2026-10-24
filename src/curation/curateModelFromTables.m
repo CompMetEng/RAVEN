@@ -100,7 +100,8 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % and/or in any case, or by &, &&, | and ||, with balanced parentheses); a
 % rule with an operator that lacks an operand, empty parentheses or two genes
 % without an operator between them raises RAVEN:badInput before the model is
-% changed. Whether the genes exist is checked when the rule is applied.
+% changed. A valid rule is stored in RAVEN's standard format. Whether the
+% genes exist is checked when the rule is applied.
 %
 % Genes: a gene id that the genesInfo table lists more than once raises
 % RAVEN:badInput, whether the model has the gene or not.
@@ -333,7 +334,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         rxnsToAdd.(f{1}) = data(:,col.(f{1}));
     end
     if isfield(col,'grRules')
-        checkGrRules(rxnsToAdd.grRules,rxnsToAdd.rxnNames,rowNo);
+        rxnsToAdd.grRules = standardGrRules(rxnsToAdd.grRules,rxnsToAdd.rxnNames,rowNo);
     end
     for f = intersect({'lb','ub','rev'},fieldnames(col)','stable')
         rxnsToAdd.(f{1}) = parseNumericCells(data(:,col.(f{1})),f{1},'rxnsInfo');
@@ -654,14 +655,16 @@ end
 end
 
 
-function checkGrRules(rules,rxnNames,rowNo)
+function rules = standardGrRules(rules,rxnNames,rowNo)
 % Raise RAVEN:badInput for a grRules cell that is not a well-formed gene rule
 % (unbalanced parentheses, an operator without two operands, empty
-% parentheses, two genes without an operator between them). Empty cells are
-% not checked. The grammar is that of parseGrRule.
+% parentheses, two genes without an operator between them) and write each
+% other rule in RAVEN's standard format (" and " / " or ", parentheses only
+% where needed), so that addRxns and changeGrRules read every spelling that
+% parseGrRule reads. Empty cells are left as they are.
 for i = find(~emptyCells(rules))'
     try
-        parseGrRule(rules{i});
+        rules{i} = grRuleToString(parseGrRule(rules{i}));
     catch err
         if strcmp(err.identifier,'RAVEN:badGrRule')
             error('RAVEN:badInput','The grRules value "%s" of reaction "%s" (data row %d of the rxnsInfo file) is not a valid gene rule: %s',...
