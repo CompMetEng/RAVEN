@@ -250,8 +250,8 @@ classdef tCuration < RavenTestCase
 
         function curateModelFromTablesRefusesCommasHexAndOtherNumberText(testCase)
             % Only plain decimal numbers, Inf, NaN and true/false are read;
-            % a decimal comma, hexadecimal and similar text raise an error
-            % instead of being read as another number.
+            % a decimal comma, hexadecimal and similar text raise
+            % RAVEN:badInput.
             model = tCuration.toyModel();
             coeffsF = tCuration.dupRxnCoeffs(testCase);
             for txt = {'1,5','-0,5','1,000','0x10','1d3','1_0','Infinity','1+2i','1i','--5','abc'}
@@ -278,9 +278,93 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(out.ub(1), -Inf);
         end
 
+        function curateModelFromTablesRefusesFractionalAndInfiniteCharge(testCase)
+            % A charge is a finite whole number; empty and NaN are not given.
+            model = tCuration.toyModel();
+            for txt = {'0.5','2.5','1e-3','Inf','-Inf'}
+                metsF = tCuration.writeTsv(testCase, {'metNames\tcomps\tcharge',['A\tc\t' txt{1}]});
+                err = [];
+                try
+                    curateModelFromTables(model,metsF);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'not a finite whole number');
+            end
+            for txt = {'2','-1','3.0','1e1',' 2 ','0'}
+                metsF = tCuration.writeTsv(testCase, {'metNames\tcomps\tcharge',['Anew\tc\t' txt{1}]});
+                evalc('out = curateModelFromTables(model,metsF);');
+                testCase.verifyEqual(out.metCharges(end), round(str2double(txt{1})));
+            end
+            metsF = tCuration.writeTsv(testCase, {'metNames\tcomps\tcharge','Anew\tc\tNaN','Bnew\tc\t4'});
+            evalc('out = curateModelFromTables(model,metsF);');
+            testCase.verifyEqual(out.metCharges(end-1:end), [0; 4]);
+        end
+
+        function curateModelFromTablesRefusesEmptyCoefficientInRowWithContent(testCase)
+            % A row of the coefficient table that names a reaction or a
+            % metabolite needs a coefficient; a row without any content is
+            % ignored.
+            model = tCuration.toyModel();
+            infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
+            for coefficient = {'','NaN'}
+                coeffsF = tCuration.writeTsv(testCase, { ...
+                    'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                    '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                    '1\tdupRxn\tC\tc\t1',  ['1\tdupRxn\tH\tc\t' coefficient{1}]});
+                err = [];
+                try
+                    curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'coefficient');
+            end
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', '\t\t\t\t'});
+            evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF);');
+            testCase.verifyEqual(numel(out.rxns), 1);
+        end
+
+        function curateModelFromTablesRefusesRevOtherThanZeroOrOne(testCase)
+            % A rev cell is 0, 1, true or false (any case); empty and NaN
+            % are not given. Other values raise an error for existing and
+            % new reactions.
+            model = tCuration.toyModel();
+            coeffsF = tCuration.writeTsv(testCase, { ...
+                'rxnIdx\trxnNames\tmetNames\tcomps\tcoefficient', ...
+                '1\tdupRxn\tA\tc\t-1', '1\tdupRxn\tB\tc\t-1', ...
+                '1\tdupRxn\tC\tc\t1',  '1\tdupRxn\tH\tc\t1', ...
+                '2\tnewRxn\tA\tc\t-1', '2\tnewRxn\tC\tc\t1'});
+            for txt = {'2','0.5','Inf','-1','-Inf'}
+                for row = {['1\tdupRxn\t' txt{1}],['2\tnewRxn\t' txt{1}]}
+                    lines = {'rxnIdx\trxnNames\trev','1\tdupRxn\t','2\tnewRxn\t'};
+                    lines{2 + strncmp(row{1},'2',1)} = row{1};
+                    infoF = tCuration.writeTsv(testCase, lines);
+                    err = [];
+                    try
+                        curateModelFromTables(model,'none','rxnsCoeffs',coeffsF,'rxnsInfo',infoF);
+                    catch err
+                    end
+                    testCase.verifyNotEmpty(err);
+                    testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                    testCase.verifySubstring(err.message,'not 0, 1, true or false');
+                end
+            end
+            for txt = {'0','1','true','FALSE','NaN',''}
+                infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames\trev',['1\tdupRxn\t' txt{1}],['2\tnewRxn\t' txt{1}]});
+                evalc('out = curateModelFromTables(model,''none'',''rxnsCoeffs'',coeffsF,''rxnsInfo'',infoF);');
+                testCase.verifyEqual(numel(out.rxns), 2);
+            end
+        end
+
         function curateModelFromTablesRefusesTextInIndexAndCoefficientColumns(testCase)
-            % A coefficient or index that is not a number raises an error
-            % instead of dropping the metabolite from the reaction.
+            % A coefficient or index that is not a number raises
+            % RAVEN:badInput.
             model = tCuration.toyModel();
             infoF = tCuration.writeTsv(testCase, {'rxnIdx\trxnNames','1\tdupRxn'});
             coeffsF = tCuration.writeTsv(testCase, { ...

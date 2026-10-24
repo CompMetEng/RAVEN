@@ -56,21 +56,27 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     Prefix used to mint fresh reaction ids (default 'R_').
 % overwriteWithEmpty : logical
 %     if true, an empty cell in a row of an existing metabolite, gene or
-%     reaction empties the corresponding field of the model (an empty charge
-%     or confidence score becomes 0). If false, an empty cell leaves the
-%     existing value unchanged and only the cells with a value are written
-%     (default true). Must be a scalar logical or 0/1. A cell with only
-%     blanks counts as empty in both modes. Empty lb, ub and rev cells and
-%     empty grRules cells never overwrite. The charge, confidence score, lb,
-%     ub, rev, rxnIdx and coefficient cells are read as plain decimal numbers
-%     (digits with an optional sign, decimal point and exponent), Inf, NaN, or
-%     'true'/'false' in any case (read as 1/0). Any other text, including
-%     text with a comma, hexadecimal numbers and expressions, raises
-%     RAVEN:badInput; no expression is evaluated. An empty or NaN cell counts
-%     as not given in the charge, confidence score, lb, ub and rev columns (an
-%     empty or NaN charge or confidence score is treated alike). The rev
-%     column sets the reversibility of existing reactions only; for new
-%     reactions it is derived from lb and ub.
+%     reaction empties the corresponding field of the model. If false, an
+%     empty cell leaves the existing value unchanged and only the cells with a
+%     value are written (default true). Must be a scalar logical or 0/1. A
+%     cell with only blanks counts as empty in both modes. Empty grRules
+%     cells never overwrite. An empty or NaN lb, ub or rev cell always keeps
+%     the existing value. For the charge and the confidence score, an empty
+%     or NaN cell is treated alike: when overwriteWithEmpty is true and at
+%     least one other row of the column has a value, it becomes 0; a column
+%     in which no row has a value is not written, and the existing values
+%     stay.
+%     The charge, confidence score, lb, ub, rev, rxnIdx and coefficient cells
+%     are read as plain decimal numbers (digits with an optional sign,
+%     decimal point and exponent), Inf, NaN, or 'true'/'false' in any case
+%     (read as 1/0). Any other text, including text with a comma,
+%     hexadecimal numbers and expressions, raises RAVEN:badInput; no
+%     expression is evaluated. A charge must be a finite whole number (or
+%     empty or NaN), a rev must be 0, 1, true or false (or empty or NaN),
+%     and a row of the rxnsCoeffs table with any content must have a
+%     coefficient; otherwise RAVEN:badInput is raised. The rev column sets
+%     the reversibility of existing reactions only; for new reactions it is
+%     derived from lb and ub.
 %
 % Returns
 % -------
@@ -128,7 +134,7 @@ if ~strcmp(metsInfo,'none')
         metsToAdd.(f{1}) = data(:,col.(f{1}));
     end
     if isfield(col,'metCharges')
-        metsToAdd.metCharges = cellfun(@(x) parseNumberCell(x,'charge','metsInfo'),data(:,col.metCharges),'UniformOutput',false);
+        metsToAdd.metCharges = cellfun(@(x) parseChargeCell(x,'metsInfo'),data(:,col.metCharges),'UniformOutput',false);
         isNanCharge = cellfun(@(x) isscalar(x) && isnan(x),metsToAdd.metCharges);
         metsToAdd.metCharges(isNanCharge) = {[]}; % a NaN charge counts as not given
         emptyEntry = cellfun(@isempty,metsToAdd.metCharges);
@@ -252,6 +258,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
     rxns.metNames   = data(:,col.metNames);
     rxns.comps      = data(:,col.comps);
     rxns.coeffs     = parseNumericCells(data(:,col.coefficient),'coefficient','rxnsCoeffs');
+    checkCoefficientsGiven(rxns.coeffs,[data(:,col.rxnIdx),data(:,col.rxnNames),data(:,col.metNames),data(:,col.comps)]);
     rxnCheck.coeffs = strcat(data(:,col.rxnIdx),'***',rxns.rxnNames);
 
     % ... and then additional reaction-specific data.
@@ -284,6 +291,9 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
     end
     for f = intersect({'lb','ub','rev'},fieldnames(col)','stable')
         rxnsToAdd.(f{1}) = parseNumericCells(data(:,col.(f{1})),f{1},'rxnsInfo');
+    end
+    if isfield(rxnsToAdd,'rev')
+        checkRevValues(rxnsToAdd.rev,data(:,col.rev));
     end
     if isfield(col,'rxnConfidenceScores')
         rxnsToAdd.rxnConfidenceScores   = cellfun(@(x) parseNumberCell(x,'rxnConfidenceScores','rxnsInfo'),data(:,col.rxnConfidenceScores),'UniformOutput',false);
@@ -535,6 +545,34 @@ for i=1:numel(cells)
     if ~isempty(v)
         values(i) = v;
     end
+end
+end
+
+function v = parseChargeCell(text,fileLabel)
+% Charge from a table cell: [] for an empty cell, NaN for NaN, otherwise a
+% finite whole number. A fractional or infinite charge raises an error.
+v = parseNumberCell(text,'charge',fileLabel);
+if ~isempty(v) && ~isnan(v) && (~isfinite(v) || v~=round(v))
+    error('RAVEN:badInput','The charge value "%s" in the %s file is not a finite whole number',strtrim(text),fileLabel);
+end
+end
+
+function checkCoefficientsGiven(coeffs,otherCells)
+% A row of the rxnsCoeffs table that has any content must have a coefficient;
+% a row without any content is ignored.
+hasContent = any(~cellfun(@isempty,otherCells),2);
+missing = find(hasContent & isnan(coeffs),1);
+if ~isempty(missing)
+    error('RAVEN:badInput',['The coefficient in row %d of the rxnsCoeffs file is empty or NaN; ' ...
+        'every row with a reaction, metabolite or compartment needs a coefficient'],missing);
+end
+end
+
+function checkRevValues(values,cells)
+% A rev cell is 0, 1, true or false; an empty or NaN cell is not given.
+bad = find(~isnan(values) & values~=0 & values~=1,1);
+if ~isempty(bad)
+    error('RAVEN:badInput','The rev value "%s" in the rxnsInfo file is not 0, 1, true or false',strtrim(cells{bad}));
 end
 end
 

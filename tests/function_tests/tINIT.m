@@ -58,15 +58,16 @@ classdef tINIT < RavenTestCase
 
         function prepINITModelAcceptsOneEmptyTaskId(testCase)
             % A single empty id is not a repeated id: the id check passes and
-            % the call stops later, on the empty model structure.
-            err = [];
-            try
-                prepINITModel(struct(), struct('id',{'<empty>',''}));
-            catch err
-            end
-            testCase.verifyNotEmpty(err);
-            testCase.verifyNotEqual(err.identifier, 'RAVEN:badInput');
-            testCase.verifyEmpty(strfind(err.message, 'used more than once'));
+            % prepINITModel completes.
+            testCase.assumeMILPSolver();
+            testModel = getTstModel();
+            tasks = getTstModelTasks();
+            extra = tasks(1);
+            extra.id = '';
+            tasks(end+1) = extra;
+            evalc('prepData = prepINITModel(testModel, tasks, {}, false, {}, ''s'');');
+            testCase.verifyTrue(isstruct(prepData));
+            testCase.verifyTrue(isfield(prepData,'taskStruct'));
         end
 
         function getExprForRxnScoreRuns(testCase)
