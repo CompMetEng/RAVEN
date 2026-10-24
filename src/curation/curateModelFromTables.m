@@ -102,6 +102,9 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % without an operator between them raises RAVEN:badInput before the model is
 % changed. Whether the genes exist is checked when the rule is applied.
 %
+% Genes: a gene id that the genesInfo table lists more than once raises
+% RAVEN:badInput, whether the model has the gene or not.
+%
 % Bounds: a lower bound above the upper bound is written as given. solveLP
 % rejects such a model when it is run ("Invalid set of bounds for
 % reaction(s): ...").
@@ -231,6 +234,7 @@ if ~strcmp(genesInfo,'none')
         'genes',          {'genes','gene'}; ...
         'geneShortNames', {'geneShortNames','geneShortName'}});
     genesToAdd.genes            = data(:,col.genes);
+    checkGenesListedOnce(genesToAdd.genes);
     if isfield(col,'geneShortNames')
         genesToAdd.geneShortNames   = data(:,col.geneShortNames);
     end
@@ -635,6 +639,20 @@ for i=1:numel(idx)
     keys{i} = sprintf('%.0f***%s',idx(i),names{i});
 end
 end
+
+function checkGenesListedOnce(genes)
+% Raise RAVEN:badInput for a gene id that the genesInfo table lists more than
+% once, whether the model has the gene or not: two rows for one gene would
+% say two things about it, and the second row would add a second gene with
+% the same id.
+[ids,~,j] = unique(genes);
+repeated = ids(accumarray(j,1) > 1);
+if ~isempty(repeated)
+    error('RAVEN:badInput',['The following genes are listed more than once '...
+        'in the genesInfo file:\n\t\t%s'],strjoin(repeated,'\n\t\t'));
+end
+end
+
 
 function checkGrRules(rules,rxnNames,rowNo)
 % Raise RAVEN:badInput for a grRules cell that is not a well-formed gene rule

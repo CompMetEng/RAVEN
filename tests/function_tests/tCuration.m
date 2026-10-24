@@ -107,6 +107,28 @@ classdef tCuration < RavenTestCase
             testCase.verifyEqual(out.geneMiriams{1}.value, {'P12345'});
         end
 
+        function curateModelFromTablesRefusesGenesListedTwice(testCase)
+            % A gene id listed twice in genesInfo raises RAVEN:badInput, for a
+            % new gene and for a gene the model has; distinct ids are added.
+            model = tCuration.toyModel();
+            model.genes      = {'g1'};
+            model.rxnGeneMat = sparse(1,1);
+            for rows = {{'g2\ta','g2\tb'},{'g1\ta','g1\tb'},{'g2\ta','g3\tb','g2\t'}}
+                genesF = tCuration.writeTsv(testCase, [{'genes\tgeneShortNames'}, rows{1}]);
+                err = [];
+                try
+                    curateModelFromTables(model,'none','genesInfo',genesF);
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier,'RAVEN:badInput');
+                testCase.verifySubstring(err.message,'listed more than once');
+            end
+            genesF = tCuration.writeTsv(testCase, {'genes\tgeneShortNames','g2\ta','g3\tb'});
+            evalc('out = curateModelFromTables(model,''none'',''genesInfo'',genesF);');
+            testCase.verifyEqual(sort(out.genes),{'g1';'g2';'g3'});
+        end
+
         function curateModelFromTablesOverwritesExistingWithEmptyCells(testCase)
             % By default an empty cell empties the field of an existing
             % metabolite, gene or reaction; an empty charge becomes 0.
