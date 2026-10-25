@@ -209,7 +209,9 @@ classdef tIO < RavenTestCase
 
         function readYAMLmodelKeepsSubsystemsAligned(testCase)
             % Reactions without a subsystem sit between, before and after
-            % those with one: each subsystem stays with its own reaction.
+            % those with one: each subsystem stays with its own reaction,
+            % and the result is a column of chars that checkModelStruct
+            % accepts.
             m = testCase.model;
             n = numel(m.rxns);
             m.subSystems = repmat({{''}}, n, 1);
@@ -222,20 +224,58 @@ classdef tIO < RavenTestCase
             testCase.addTeardown(@() delete(f));
             evalc('writeYAMLmodel(m, f);');
             evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyTrue(iscolumn(m2.subSystems));
             testCase.verifyEqual(numel(m2.subSystems), n);
-            read = strings(n,1);
+            testCase.verifyTrue(iscellstr(m2.subSystems));
+            expected = repmat({''}, n, 1);
+            expected(withSubsystem) = names;
+            testCase.verifyEqual(string(m2.subSystems), string(expected));
+            ws = warning('off', 'RAVEN:modelError');
+            testCase.addTeardown(@() warning(ws));
+            try
+                evalc('checkModelStruct(m2, ''throwErrors'', true);');
+            catch err
+                testCase.verifyFail(['checkModelStruct refused the model: ' err.message]);
+            end
+        end
+
+        function readYAMLmodelKeepsNestedSubsystemsAligned(testCase)
+            % Reactions with several subsystems sit next to reactions with
+            % one and with none: every entry is a cell of chars, each stays
+            % with its own reaction, and checkModelStruct accepts the model.
+            m = testCase.model;
+            n = numel(m.rxns);
+            m.subSystems = repmat({{''}}, n, 1);
+            nested = {3, {'Alpha'; 'Delta'}; ...
+                      6, {'Beta'}; ...
+                      n-2, {'Gamma'; 'Epsilon'; 'Zeta'}};
+            for i = 1:size(nested,1)
+                m.subSystems{nested{i,1}} = nested{i,2};
+            end
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyTrue(iscolumn(m2.subSystems));
+            testCase.verifyEqual(numel(m2.subSystems), n);
+            testCase.verifyTrue(all(cellfun(@iscell, m2.subSystems)));
             for i = 1:n
-                entry = m2.subSystems{i};
-                if iscell(entry) && ~isempty(entry)
-                    entry = entry{1};
-                end
-                if ischar(entry)
-                    read(i) = string(entry);
+                row = find([nested{:,1}] == i);
+                if isempty(row)
+                    testCase.verifyTrue(isempty([m2.subSystems{i}{:}]), ...
+                        sprintf('reaction %d has no subsystem', i));
+                else
+                    testCase.verifyEqual(string(m2.subSystems{i}), ...
+                        string(nested{row,2}), sprintf('reaction %d', i));
                 end
             end
-            expected = strings(n,1);
-            expected(withSubsystem) = string(names);
-            testCase.verifyEqual(read, expected);
+            ws = warning('off', 'RAVEN:modelError');
+            testCase.addTeardown(@() warning(ws));
+            try
+                evalc('checkModelStruct(m2, ''throwErrors'', true);');
+            catch err
+                testCase.verifyFail(['checkModelStruct refused the model: ' err.message]);
+            end
         end
 
         function writeYAMLmodelQuotesYAML11Booleans(testCase)
