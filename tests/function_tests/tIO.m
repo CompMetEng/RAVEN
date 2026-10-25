@@ -207,6 +207,37 @@ classdef tIO < RavenTestCase
             testCase.verifyEqual(numel(m2.rxns), numel(testCase.model.rxns));
         end
 
+        function readYAMLmodelKeepsSubsystemsAligned(testCase)
+            % Reactions without a subsystem sit between, before and after
+            % those with one: each subsystem stays with its own reaction.
+            m = testCase.model;
+            n = numel(m.rxns);
+            m.subSystems = repmat({{''}}, n, 1);
+            withSubsystem = [2 5 n-3];
+            names = {'Alpha'; 'Beta'; 'Gamma'};
+            for i = 1:numel(withSubsystem)
+                m.subSystems{withSubsystem(i)} = names(i);
+            end
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyEqual(numel(m2.subSystems), n);
+            read = strings(n,1);
+            for i = 1:n
+                entry = m2.subSystems{i};
+                if iscell(entry) && ~isempty(entry)
+                    entry = entry{1};
+                end
+                if ischar(entry)
+                    read(i) = string(entry);
+                end
+            end
+            expected = strings(n,1);
+            expected(withSubsystem) = string(names);
+            testCase.verifyEqual(read, expected);
+        end
+
         function writeYAMLmodelQuotesYAML11Booleans(testCase)
             % A YAML 1.1 loader such as PyYAML reads a plain y, n, yes, no,
             % on or off in any case as a boolean, so these values are
