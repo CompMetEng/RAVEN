@@ -655,364 +655,366 @@ This function is called by:
 0493         
 0494         <span class="comment">%Remove all the genes that were already found and add the other</span>
 0495         <span class="comment">%ones to allUsedGenes</span>
-0496         models{useOrderIndexes(i)}=removeGenes(models{useOrderIndexes(i)},allGenes{i+1}(genesToDelete),true,true,false);
-0497         allUsedGenes(usedGenes)=true;
-0498         
-0499         <span class="comment">%Remove the deleted genes from finalMappings and allGenes.</span>
-0500         finalMappings{i}(:,genesToDelete)=[];
-0501         allGenes{i+1}(genesToDelete)=[];
-0502     <span class="keyword">end</span>
-0503 <span class="keyword">end</span>
-0504 
-0505 <span class="comment">%Now loop through the models and update the gene associations. Genes not</span>
-0506 <span class="comment">%belonging to the new organism will be renamed as &quot;OLD_MODELID_gene&quot;</span>
-0507 <span class="keyword">for</span> i=1:numel(models)
-0508     <span class="comment">%Find all the new genes that should be used for this model</span>
-0509     [newGenes, oldGenes]=find(finalMappings{i});
-0510     
-0511     <span class="comment">%Create a new gene list with the genes from the new organism and those</span>
-0512     <span class="comment">%genes that could not be removed</span>
-0513     replaceableGenes=allGenes{i+1}(unique(oldGenes));
-0514     nonReplaceableGenes=setdiff(models{useOrderIndexes(i)}.genes,replaceableGenes);
-0515     fullGeneList=[allGenes{1}(unique(newGenes));nonReplaceableGenes];
-0516     
-0517     <span class="comment">%Just to save some indexing later. This is the LAST index of</span>
-0518     <span class="comment">%replaceable ones</span>
-0519     nonRepStartIndex=numel(unique(newGenes));
-0520     
-0521     <span class="comment">%Construct a new rxnGeneMat</span>
-0522     newRxnGeneMat=sparse(numel(models{useOrderIndexes(i)}.rxns),numel(fullGeneList));
-0523     
-0524     <span class="comment">%Now update the rxnGeneMat. This is a little tricky and could</span>
-0525     <span class="comment">%probably be done in a more efficient way, but I just loop through the</span>
-0526     <span class="comment">%reactions and add them one by one</span>
-0527     <span class="keyword">for</span> j=1:numel(models{useOrderIndexes(i)}.rxns)
-0528         <span class="comment">%Get the old genes encoding for this reaction</span>
-0529         [~, oldGeneIds]=find(models{useOrderIndexes(i)}.rxnGeneMat(j,:));
-0530 
-0531         <span class="comment">%Tokenize the grRule once; all gene substitutions operate on the</span>
-0532         <span class="comment">%token list so that no gene ID can partially match another.</span>
-0533         tokens=<a href="#_sub1" class="code" title="subfunction tokens=gprTokenize(rule)">gprTokenize</a>(models{useOrderIndexes(i)}.grRules{j});
-0534 
-0535         <span class="comment">%Update the matrix for each gene. This includes replacing one gene</span>
-0536         <span class="comment">%with several new ones if there were several matches</span>
-0537         <span class="keyword">for</span> k=1:numel(oldGeneIds)
-0538             <span class="comment">%Match the gene to one in the gene list. This is done as a text</span>
-0539             <span class="comment">%match. Could probably be done better, but the indexing is</span>
-0540             <span class="comment">%complex</span>
-0541 
-0542             geneName=models{useOrderIndexes(i)}.genes(oldGeneIds(k));
+0496         <span class="keyword">if</span> ~isempty(genesToDelete)
+0497             models{useOrderIndexes(i)}=removeGenes(models{useOrderIndexes(i)},allGenes{i+1}(genesToDelete),true,true,false);
+0498         <span class="keyword">end</span>
+0499         allUsedGenes(usedGenes)=true;
+0500         
+0501         <span class="comment">%Remove the deleted genes from finalMappings and allGenes.</span>
+0502         finalMappings{i}(:,genesToDelete)=[];
+0503         allGenes{i+1}(genesToDelete)=[];
+0504     <span class="keyword">end</span>
+0505 <span class="keyword">end</span>
+0506 
+0507 <span class="comment">%Now loop through the models and update the gene associations. Genes not</span>
+0508 <span class="comment">%belonging to the new organism will be renamed as &quot;OLD_MODELID_gene&quot;</span>
+0509 <span class="keyword">for</span> i=1:numel(models)
+0510     <span class="comment">%Find all the new genes that should be used for this model</span>
+0511     [newGenes, oldGenes]=find(finalMappings{i});
+0512     
+0513     <span class="comment">%Create a new gene list with the genes from the new organism and those</span>
+0514     <span class="comment">%genes that could not be removed</span>
+0515     replaceableGenes=allGenes{i+1}(unique(oldGenes));
+0516     nonReplaceableGenes=setdiff(models{useOrderIndexes(i)}.genes,replaceableGenes);
+0517     fullGeneList=[allGenes{1}(unique(newGenes));nonReplaceableGenes];
+0518     
+0519     <span class="comment">%Just to save some indexing later. This is the LAST index of</span>
+0520     <span class="comment">%replaceable ones</span>
+0521     nonRepStartIndex=numel(unique(newGenes));
+0522     
+0523     <span class="comment">%Construct a new rxnGeneMat</span>
+0524     newRxnGeneMat=sparse(numel(models{useOrderIndexes(i)}.rxns),numel(fullGeneList));
+0525     
+0526     <span class="comment">%Now update the rxnGeneMat. This is a little tricky and could</span>
+0527     <span class="comment">%probably be done in a more efficient way, but I just loop through the</span>
+0528     <span class="comment">%reactions and add them one by one</span>
+0529     <span class="keyword">for</span> j=1:numel(models{useOrderIndexes(i)}.rxns)
+0530         <span class="comment">%Get the old genes encoding for this reaction</span>
+0531         [~, oldGeneIds]=find(models{useOrderIndexes(i)}.rxnGeneMat(j,:));
+0532 
+0533         <span class="comment">%Tokenize the grRule once; all gene substitutions operate on the</span>
+0534         <span class="comment">%token list so that no gene ID can partially match another.</span>
+0535         tokens=<a href="#_sub1" class="code" title="subfunction tokens=gprTokenize(rule)">gprTokenize</a>(models{useOrderIndexes(i)}.grRules{j});
+0536 
+0537         <span class="comment">%Update the matrix for each gene. This includes replacing one gene</span>
+0538         <span class="comment">%with several new ones if there were several matches</span>
+0539         <span class="keyword">for</span> k=1:numel(oldGeneIds)
+0540             <span class="comment">%Match the gene to one in the gene list. This is done as a text</span>
+0541             <span class="comment">%match. Could probably be done better, but the indexing is</span>
+0542             <span class="comment">%complex</span>
 0543 
-0544             <span class="comment">%First search in the mappable genes</span>
-0545             mapIndex=find(ismember(allGenes{i+1},geneName));
-0546 
-0547             <span class="keyword">if</span> ~isempty(mapIndex)
-0548                 <span class="comment">% add the old genes</span>
-0549                 hitGenes.oldGenes = [hitGenes.oldGenes, {geneName}];
-0550 
-0551                 <span class="comment">%Get the new genes for that gene</span>
-0552                 a=find(finalMappings{i}(:,mapIndex));
-0553 
-0554                 <span class="comment">%Find the positions of these genes in the final gene list</span>
-0555                 [~, b]=ismember(allGenes{1}(a),fullGeneList);
-0556 
-0557                 <span class="comment">%Update the matrix</span>
-0558                 newRxnGeneMat(j,b)=1;
-0559 
-0560                 <span class="comment">%Build repString for hitGenes (display only)</span>
-0561                 repString=fullGeneList{b(1)};
-0562                 <span class="keyword">if</span> numel(b)&gt;1
-0563                     <span class="keyword">for</span> l=2:numel(b)
-0564                         repString=[repString <span class="string">' or '</span> fullGeneList{b(l)}]; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0565                     <span class="keyword">end</span>
-0566                     repString=[<span class="string">'('</span> repString <span class="string">')'</span>];
-0567                 <span class="keyword">end</span>
-0568                 hitGenes.newGenes = [hitGenes.newGenes, {repString}];
-0569 
-0570                 <span class="comment">%Replace the old gene token with the new gene(s)</span>
-0571                 tokens=<a href="#_sub3" class="code" title="subfunction tokens=gprReplaceToken(tokens,oldGene,newGenes)">gprReplaceToken</a>(tokens,geneName{1},fullGeneList(b));
-0572             <span class="keyword">else</span>
-0573                 <span class="comment">%Then search in the non-replaceable genes. There could only</span>
-0574                 <span class="comment">%be one match here</span>
-0575                 index=find(ismember(nonReplaceableGenes,geneName));
-0576 
-0577                 <span class="comment">%Update the matrix</span>
-0578                 newRxnGeneMat(j,nonRepStartIndex+index)=1;
-0579 
-0580                 oldName=strcat(<span class="string">'OLD_'</span>,models{useOrderIndexes(i)}.id,<span class="string">'_'</span>,geneName{1});
-0581                 tokens=<a href="#_sub3" class="code" title="subfunction tokens=gprReplaceToken(tokens,oldGene,newGenes)">gprReplaceToken</a>(tokens,geneName{1},{oldName});
-0582             <span class="keyword">end</span>
-0583         <span class="keyword">end</span>
-0584 
-0585         models{useOrderIndexes(i)}.grRules{j}=<a href="#_sub2" class="code" title="subfunction rule=gprBuildRule(tokens)">gprBuildRule</a>(tokens);
-0586     <span class="keyword">end</span>
-0587     
-0588     <span class="comment">%Add the new list of genes</span>
-0589     models{useOrderIndexes(i)}.rxnGeneMat=newRxnGeneMat;
-0590     <span class="keyword">if</span> ~isempty(nonReplaceableGenes)
-0591         models{useOrderIndexes(i)}.genes=[allGenes{1}(unique(newGenes));strcat(<span class="string">'OLD_'</span>,models{useOrderIndexes(i)}.id,<span class="string">'_'</span>,nonReplaceableGenes)];
-0592     <span class="keyword">else</span>
-0593         models{useOrderIndexes(i)}.genes=allGenes{1}(unique(newGenes));
-0594     <span class="keyword">end</span>
-0595     <span class="keyword">if</span> isfield(models{useOrderIndexes(i)},<span class="string">'geneComps'</span>)
-0596         geneComps=models{useOrderIndexes(i)}.geneComps(1);
-0597         models{useOrderIndexes(i)}.geneComps=zeros(numel(models{useOrderIndexes(i)}.genes),1);
-0598         <span class="comment">%Assume that all genes are in the same compartment, and this</span>
-0599         <span class="comment">%compartment is specified for the first gene</span>
-0600         models{useOrderIndexes(i)}.geneComps(:)=geneComps;
-0601     <span class="keyword">end</span>
-0602 <span class="keyword">end</span>
-0603 
-0604 <span class="comment">%Now merge the models. All information should be correct except for &quot;or&quot;</span>
-0605 <span class="comment">%complexes</span>
-0606 draftModel=mergeModels(models,<span class="string">'metNames'</span>);
-0607 
-0608 <span class="comment">%Remove OLD_ genes that appear only in OR branches (they were added for</span>
-0609 <span class="comment">%AND-complex genes with no orthologs; in OR branches they are redundant).</span>
-0610 <span class="comment">%Uses token-level removal to avoid partial-match hazards.</span>
-0611 <span class="keyword">for</span> oldI=1:numel(draftModel.grRules)
-0612     <span class="keyword">if</span> ~contains(draftModel.grRules{oldI},<span class="string">'OLD_'</span>)
-0613         <span class="keyword">continue</span>
-0614     <span class="keyword">end</span>
-0615     tkns=<a href="#_sub1" class="code" title="subfunction tokens=gprTokenize(rule)">gprTokenize</a>(draftModel.grRules{oldI});
-0616     again=true;
-0617     <span class="keyword">while</span> again
-0618         again=false;
-0619         <span class="keyword">for</span> kk=1:numel(tkns)
-0620             <span class="keyword">if</span> startsWith(tkns{kk},<span class="string">'OLD_'</span>)
-0621                 <span class="keyword">if</span> kk&gt;1 &amp;&amp; strcmp(tkns{kk-1},<span class="string">'or'</span>)
-0622                     tkns(kk-1:kk)=[];
-0623                     again=true; <span class="keyword">break</span>
-0624                 <span class="keyword">elseif</span> kk&lt;numel(tkns) &amp;&amp; strcmp(tkns{kk+1},<span class="string">'or'</span>)
-0625                     tkns(kk:kk+1)=[];
-0626                     again=true; <span class="keyword">break</span>
-0627                 <span class="keyword">end</span>
-0628             <span class="keyword">end</span>
-0629         <span class="keyword">end</span>
-0630     <span class="keyword">end</span>
-0631     draftModel.grRules{oldI}=<a href="#_sub2" class="code" title="subfunction rule=gprBuildRule(tokens)">gprBuildRule</a>(tkns);
-0632 <span class="keyword">end</span>
-0633 
-0634 <span class="comment">%Apply the complex policy to the OLD_ genes left in &quot;and&quot; relations, and</span>
-0635 <span class="comment">%write each grRule without repeated genes or redundant brackets</span>
-0636 toRemove=false(numel(draftModel.rxns),1);
-0637 <span class="keyword">for</span> j=1:numel(draftModel.grRules)
-0638     rule=draftModel.grRules{j};
-0639     <span class="keyword">if</span> isempty(rule)
-0640         <span class="keyword">continue</span>
-0641     <span class="keyword">end</span>
-0642     <span class="keyword">if</span> contains(rule,<span class="string">'OLD_'</span>) &amp;&amp; strcmp(complexPolicy,<span class="string">'drop'</span>)
-0643         toRemove(j)=true;
-0644     <span class="keyword">elseif</span> contains(rule,<span class="string">'OLD_'</span>) &amp;&amp; strcmp(complexPolicy,<span class="string">'keep'</span>)
-0645         draftModel.grRules{j}=<a href="#_sub4" class="code" title="subfunction rule=gprSimplify(rule,removePrefix)">gprSimplify</a>(rule,<span class="string">'OLD_'</span>);
-0646         toRemove(j)=isempty(draftModel.grRules{j});
-0647     <span class="keyword">else</span>
-0648         draftModel.grRules{j}=<a href="#_sub4" class="code" title="subfunction rule=gprSimplify(rule,removePrefix)">gprSimplify</a>(rule,<span class="string">''</span>);
-0649     <span class="keyword">end</span>
-0650 <span class="keyword">end</span>
-0651 <span class="keyword">if</span> any(toRemove)
-0652     draftModel=removeReactions(draftModel,draftModel.rxns(toRemove),true,true,true);
-0653 <span class="keyword">end</span>
-0654 
-0655 <span class="comment">%Change name of the resulting model</span>
-0656 draftModel.id=getModelFor;
-0657 name=<span class="string">'Generated by getModelFromHomology using '</span>;
-0658 <span class="keyword">for</span> i=1:numel(models)
-0659     <span class="keyword">if</span> i&lt;numel(models)
-0660         name=[name models{i}.id <span class="string">', '</span>];
-0661     <span class="keyword">else</span>
-0662         name=[name models{i}.id];
-0663     <span class="keyword">end</span>
-0664 <span class="keyword">end</span>
-0665 draftModel.name=name;
-0666 <span class="comment">%The draft is a new model: the templates' version, date and description are</span>
-0667 <span class="comment">%not its own</span>
-0668 draftModel=rmfield(draftModel,intersect({<span class="string">'version'</span>,<span class="string">'date'</span>,<span class="string">'description'</span>},fieldnames(draftModel)));
-0669 <span class="keyword">if</span> isfield(draftModel,<span class="string">'annotation'</span>)
-0670     descriptive={<span class="string">'taxonomy'</span>,<span class="string">'sourceUrl'</span>,<span class="string">'note'</span>,<span class="string">'givenName'</span>,<span class="string">'familyName'</span>,<span class="string">'authors'</span>,<span class="string">'email'</span>,<span class="string">'organization'</span>};
-0671     draftModel.annotation=rmfield(draftModel.annotation,intersect(descriptive,fieldnames(draftModel.annotation)));
-0672 <span class="keyword">end</span>
-0673 <span class="keyword">if</span> ~preserveNotes || ~isfield(draftModel,<span class="string">'rxnNotes'</span>)
-0674     draftModel.rxnNotes=cell(length(draftModel.rxns),1);
-0675     draftModel.rxnNotes(:)={<span class="string">'Included by getModelFromHomology'</span>};
-0676 <span class="keyword">end</span>
-0677 <span class="keyword">if</span> ~preserveNotes || ~isfield(draftModel,<span class="string">'rxnConfidenceScores'</span>)
-0678     draftModel.rxnConfidenceScores=NaN(length(draftModel.rxns),1);
-0679     draftModel.rxnConfidenceScores(:)=2;
-0680 <span class="keyword">end</span>
-0681 draftModel=deleteUnusedGenes(draftModel,0);
-0682 <span class="comment">%Standardize grRules and notify if problematic grRules are found</span>
-0683 [draftModel.grRules,draftModel.rxnGeneMat]=standardizeGrRules(draftModel,false);
-0684 draftModel=deleteUnusedGenes(draftModel,false);
-0685 <span class="keyword">end</span>
-0686 
-0687 
-0688 <a name="_sub1" href="#_subfunctions" class="code">function tokens=gprTokenize(rule)</a>
-0689 <span class="comment">% Split a GPR rule into tokens: gene IDs, &quot;and&quot;, &quot;or&quot;, &quot;(&quot;, &quot;)&quot;.</span>
-0690 <span class="comment">% Brackets are separated from adjacent text by whitespace before splitting.</span>
-0691 <span class="keyword">if</span> isempty(rule)
-0692     tokens={};
-0693     <span class="keyword">return</span>
-0694 <span class="keyword">end</span>
-0695 r=regexprep(rule,<span class="string">'([\(\)])'</span>,<span class="string">' $1 '</span>);
-0696 r=regexprep(r,<span class="string">'\s+'</span>,<span class="string">' '</span>);
-0697 tokens=strsplit(strtrim(r),<span class="string">' '</span>);
-0698 tokens=tokens(~cellfun(@isempty,tokens));
-0699 <span class="keyword">end</span>
-0700 
-0701 
-0702 <a name="_sub2" href="#_subfunctions" class="code">function rule=gprBuildRule(tokens)</a>
-0703 <span class="comment">% Reconstruct a GPR rule string from a token list.</span>
-0704 <span class="keyword">if</span> isempty(tokens)
-0705     rule=<span class="string">''</span>;
-0706     <span class="keyword">return</span>
-0707 <span class="keyword">end</span>
-0708 rule=strjoin(tokens,<span class="string">' '</span>);
-0709 rule=strrep(rule,<span class="string">'( '</span>,<span class="string">'('</span>);
-0710 rule=strrep(rule,<span class="string">' )'</span>,<span class="string">')'</span>);
-0711 <span class="keyword">end</span>
-0712 
-0713 
-0714 <a name="_sub3" href="#_subfunctions" class="code">function tokens=gprReplaceToken(tokens,oldGene,newGenes)</a>
-0715 <span class="comment">% Replace each occurrence of token oldGene with the gene(s) in newGenes.</span>
-0716 <span class="comment">% newGenes is a cell array; multiple genes are wrapped in parentheses and</span>
-0717 <span class="comment">% joined with &quot; or &quot;.</span>
-0718 k=1;
-0719 <span class="keyword">while</span> k&lt;=numel(tokens)
-0720     <span class="keyword">if</span> strcmp(tokens{k},oldGene)
-0721         <span class="keyword">if</span> numel(newGenes)==1
-0722             tokens{k}=newGenes{1};
-0723             k=k+1;
-0724         <span class="keyword">else</span>
-0725             seq={<span class="string">'('</span>};
-0726             <span class="keyword">for</span> g=1:numel(newGenes)
-0727                 seq{end+1}=newGenes{g}; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0728                 <span class="keyword">if</span> g&lt;numel(newGenes)
-0729                     seq{end+1}=<span class="string">'or'</span>; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0730                 <span class="keyword">end</span>
-0731             <span class="keyword">end</span>
-0732             seq{end+1}=<span class="string">')'</span>;
-0733             tokens=[tokens(1:k-1),seq,tokens(k+1:end)];
-0734             k=k+numel(seq);
-0735         <span class="keyword">end</span>
-0736     <span class="keyword">else</span>
-0737         k=k+1;
-0738     <span class="keyword">end</span>
-0739 <span class="keyword">end</span>
-0740 <span class="keyword">end</span>
-0741 
-0742 
-0743 <a name="_sub4" href="#_subfunctions" class="code">function rule=gprSimplify(rule,removePrefix)</a>
-0744 <span class="comment">% Rewrite a grRule as a tree: genes starting with removePrefix (if any) are</span>
-0745 <span class="comment">% dropped from their group, groups of the same operator are flattened,</span>
-0746 <span class="comment">% repeated genes or groups are removed, and brackets appear only around a</span>
-0747 <span class="comment">% group of the other operator. A rule with no gene left becomes ''.</span>
-0748 tokens=<a href="#_sub1" class="code" title="subfunction tokens=gprTokenize(rule)">gprTokenize</a>(rule);
-0749 <span class="keyword">if</span> isempty(tokens)
-0750     rule=<span class="string">''</span>;
-0751     <span class="keyword">return</span>
-0752 <span class="keyword">end</span>
-0753 [node,~]=<a href="#_sub5" class="code" title="subfunction [node,pos]=gprParseOr(tokens,pos)">gprParseOr</a>(tokens,1);
-0754 node=<a href="#_sub8" class="code" title="subfunction node=gprPrune(node,removePrefix)">gprPrune</a>(node,removePrefix);
-0755 <span class="keyword">if</span> isempty(node)
-0756     rule=<span class="string">''</span>;
-0757 <span class="keyword">else</span>
-0758     rule=<a href="#_sub9" class="code" title="subfunction rule=gprRender(node,parentOp)">gprRender</a>(node,<span class="string">''</span>);
-0759 <span class="keyword">end</span>
-0760 <span class="keyword">end</span>
-0761 
-0762 
-0763 <a name="_sub5" href="#_subfunctions" class="code">function [node,pos]=gprParseOr(tokens,pos)</a>
-0764 [node,pos]=<a href="#_sub6" class="code" title="subfunction [node,pos]=gprParseAnd(tokens,pos)">gprParseAnd</a>(tokens,pos);
-0765 kids={node};
-0766 <span class="keyword">while</span> pos&lt;=numel(tokens) &amp;&amp; strcmpi(tokens{pos},<span class="string">'or'</span>)
-0767     [node,pos]=<a href="#_sub6" class="code" title="subfunction [node,pos]=gprParseAnd(tokens,pos)">gprParseAnd</a>(tokens,pos+1);
-0768     kids{end+1}=node; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0769 <span class="keyword">end</span>
-0770 <span class="keyword">if</span> numel(kids)&gt;1
-0771     node=struct(<span class="string">'op'</span>,<span class="string">'or'</span>,<span class="string">'gene'</span>,<span class="string">''</span>,<span class="string">'kids'</span>,{kids});
-0772 <span class="keyword">end</span>
-0773 <span class="keyword">end</span>
-0774 
-0775 
-0776 <a name="_sub6" href="#_subfunctions" class="code">function [node,pos]=gprParseAnd(tokens,pos)</a>
-0777 [node,pos]=<a href="#_sub7" class="code" title="subfunction [node,pos]=gprParseAtom(tokens,pos)">gprParseAtom</a>(tokens,pos);
-0778 kids={node};
-0779 <span class="keyword">while</span> pos&lt;=numel(tokens) &amp;&amp; strcmpi(tokens{pos},<span class="string">'and'</span>)
-0780     [node,pos]=<a href="#_sub7" class="code" title="subfunction [node,pos]=gprParseAtom(tokens,pos)">gprParseAtom</a>(tokens,pos+1);
-0781     kids{end+1}=node; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0782 <span class="keyword">end</span>
-0783 <span class="keyword">if</span> numel(kids)&gt;1
-0784     node=struct(<span class="string">'op'</span>,<span class="string">'and'</span>,<span class="string">'gene'</span>,<span class="string">''</span>,<span class="string">'kids'</span>,{kids});
-0785 <span class="keyword">end</span>
-0786 <span class="keyword">end</span>
-0787 
-0788 
-0789 <a name="_sub7" href="#_subfunctions" class="code">function [node,pos]=gprParseAtom(tokens,pos)</a>
-0790 <span class="keyword">if</span> pos&gt;numel(tokens)
-0791     error(<span class="string">'Malformed grRule: it ends with an operator'</span>);
-0792 <span class="keyword">end</span>
-0793 <span class="keyword">if</span> strcmp(tokens{pos},<span class="string">'('</span>)
-0794     [node,pos]=<a href="#_sub5" class="code" title="subfunction [node,pos]=gprParseOr(tokens,pos)">gprParseOr</a>(tokens,pos+1);
-0795     <span class="keyword">if</span> pos&gt;numel(tokens) || ~strcmp(tokens{pos},<span class="string">')'</span>)
-0796         error(<span class="string">'Malformed grRule: unbalanced brackets'</span>);
-0797     <span class="keyword">end</span>
-0798     pos=pos+1;
-0799 <span class="keyword">else</span>
-0800     node=struct(<span class="string">'op'</span>,<span class="string">'gene'</span>,<span class="string">'gene'</span>,tokens{pos},<span class="string">'kids'</span>,{{}});
-0801     pos=pos+1;
-0802 <span class="keyword">end</span>
-0803 <span class="keyword">end</span>
-0804 
-0805 
-0806 <a name="_sub8" href="#_subfunctions" class="code">function node=gprPrune(node,removePrefix)</a>
-0807 <span class="keyword">if</span> strcmp(node.op,<span class="string">'gene'</span>)
-0808     <span class="keyword">if</span> ~isempty(removePrefix) &amp;&amp; startsWith(node.gene,removePrefix)
-0809         node=[];
-0810     <span class="keyword">end</span>
-0811     <span class="keyword">return</span>
-0812 <span class="keyword">end</span>
-0813 kids={};
-0814 seen={};
-0815 <span class="keyword">for</span> k=1:numel(node.kids)
-0816     kid=<a href="#_sub8" class="code" title="subfunction node=gprPrune(node,removePrefix)">gprPrune</a>(node.kids{k},removePrefix);
-0817     <span class="keyword">if</span> isempty(kid)
-0818         <span class="keyword">continue</span>
-0819     <span class="keyword">end</span>
-0820     <span class="keyword">if</span> strcmp(kid.op,node.op)
-0821         parts=kid.kids;
-0822     <span class="keyword">else</span>
-0823         parts={kid};
-0824     <span class="keyword">end</span>
-0825     <span class="keyword">for</span> m=1:numel(parts)
-0826         key=<a href="#_sub9" class="code" title="subfunction rule=gprRender(node,parentOp)">gprRender</a>(parts{m},node.op);
-0827         <span class="keyword">if</span> ~ismember(key,seen)
-0828             seen{end+1}=key; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0829             kids{end+1}=parts{m}; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0830         <span class="keyword">end</span>
-0831     <span class="keyword">end</span>
-0832 <span class="keyword">end</span>
-0833 <span class="keyword">if</span> isempty(kids)
-0834     node=[];
-0835 <span class="keyword">elseif</span> numel(kids)==1
-0836     node=kids{1};
-0837 <span class="keyword">else</span>
-0838     node.kids=kids;
-0839 <span class="keyword">end</span>
-0840 <span class="keyword">end</span>
-0841 
-0842 
-0843 <a name="_sub9" href="#_subfunctions" class="code">function rule=gprRender(node,parentOp)</a>
-0844 <span class="keyword">if</span> strcmp(node.op,<span class="string">'gene'</span>)
-0845     rule=node.gene;
-0846     <span class="keyword">return</span>
-0847 <span class="keyword">end</span>
-0848 parts=cellfun(@(k) <a href="#_sub9" class="code" title="subfunction rule=gprRender(node,parentOp)">gprRender</a>(k,node.op),node.kids,<span class="string">'UniformOutput'</span>,false);
-0849 rule=strjoin(parts,[<span class="string">' '</span> node.op <span class="string">' '</span>]);
-0850 <span class="keyword">if</span> ~isempty(parentOp) &amp;&amp; ~strcmp(parentOp,node.op)
-0851     rule=[<span class="string">'('</span> rule <span class="string">')'</span>];
-0852 <span class="keyword">end</span>
-0853 <span class="keyword">end</span></pre></div>
+0544             geneName=models{useOrderIndexes(i)}.genes(oldGeneIds(k));
+0545 
+0546             <span class="comment">%First search in the mappable genes</span>
+0547             mapIndex=find(ismember(allGenes{i+1},geneName));
+0548 
+0549             <span class="keyword">if</span> ~isempty(mapIndex)
+0550                 <span class="comment">% add the old genes</span>
+0551                 hitGenes.oldGenes = [hitGenes.oldGenes, {geneName}];
+0552 
+0553                 <span class="comment">%Get the new genes for that gene</span>
+0554                 a=find(finalMappings{i}(:,mapIndex));
+0555 
+0556                 <span class="comment">%Find the positions of these genes in the final gene list</span>
+0557                 [~, b]=ismember(allGenes{1}(a),fullGeneList);
+0558 
+0559                 <span class="comment">%Update the matrix</span>
+0560                 newRxnGeneMat(j,b)=1;
+0561 
+0562                 <span class="comment">%Build repString for hitGenes (display only)</span>
+0563                 repString=fullGeneList{b(1)};
+0564                 <span class="keyword">if</span> numel(b)&gt;1
+0565                     <span class="keyword">for</span> l=2:numel(b)
+0566                         repString=[repString <span class="string">' or '</span> fullGeneList{b(l)}]; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0567                     <span class="keyword">end</span>
+0568                     repString=[<span class="string">'('</span> repString <span class="string">')'</span>];
+0569                 <span class="keyword">end</span>
+0570                 hitGenes.newGenes = [hitGenes.newGenes, {repString}];
+0571 
+0572                 <span class="comment">%Replace the old gene token with the new gene(s)</span>
+0573                 tokens=<a href="#_sub3" class="code" title="subfunction tokens=gprReplaceToken(tokens,oldGene,newGenes)">gprReplaceToken</a>(tokens,geneName{1},fullGeneList(b));
+0574             <span class="keyword">else</span>
+0575                 <span class="comment">%Then search in the non-replaceable genes. There could only</span>
+0576                 <span class="comment">%be one match here</span>
+0577                 index=find(ismember(nonReplaceableGenes,geneName));
+0578 
+0579                 <span class="comment">%Update the matrix</span>
+0580                 newRxnGeneMat(j,nonRepStartIndex+index)=1;
+0581 
+0582                 oldName=strcat(<span class="string">'OLD_'</span>,models{useOrderIndexes(i)}.id,<span class="string">'_'</span>,geneName{1});
+0583                 tokens=<a href="#_sub3" class="code" title="subfunction tokens=gprReplaceToken(tokens,oldGene,newGenes)">gprReplaceToken</a>(tokens,geneName{1},{oldName});
+0584             <span class="keyword">end</span>
+0585         <span class="keyword">end</span>
+0586 
+0587         models{useOrderIndexes(i)}.grRules{j}=<a href="#_sub2" class="code" title="subfunction rule=gprBuildRule(tokens)">gprBuildRule</a>(tokens);
+0588     <span class="keyword">end</span>
+0589     
+0590     <span class="comment">%Add the new list of genes</span>
+0591     models{useOrderIndexes(i)}.rxnGeneMat=newRxnGeneMat;
+0592     <span class="keyword">if</span> ~isempty(nonReplaceableGenes)
+0593         models{useOrderIndexes(i)}.genes=[allGenes{1}(unique(newGenes));strcat(<span class="string">'OLD_'</span>,models{useOrderIndexes(i)}.id,<span class="string">'_'</span>,nonReplaceableGenes)];
+0594     <span class="keyword">else</span>
+0595         models{useOrderIndexes(i)}.genes=allGenes{1}(unique(newGenes));
+0596     <span class="keyword">end</span>
+0597     <span class="keyword">if</span> isfield(models{useOrderIndexes(i)},<span class="string">'geneComps'</span>)
+0598         geneComps=models{useOrderIndexes(i)}.geneComps(1);
+0599         models{useOrderIndexes(i)}.geneComps=zeros(numel(models{useOrderIndexes(i)}.genes),1);
+0600         <span class="comment">%Assume that all genes are in the same compartment, and this</span>
+0601         <span class="comment">%compartment is specified for the first gene</span>
+0602         models{useOrderIndexes(i)}.geneComps(:)=geneComps;
+0603     <span class="keyword">end</span>
+0604 <span class="keyword">end</span>
+0605 
+0606 <span class="comment">%Now merge the models. All information should be correct except for &quot;or&quot;</span>
+0607 <span class="comment">%complexes</span>
+0608 draftModel=mergeModels(models,<span class="string">'metNames'</span>);
+0609 
+0610 <span class="comment">%Remove OLD_ genes that appear only in OR branches (they were added for</span>
+0611 <span class="comment">%AND-complex genes with no orthologs; in OR branches they are redundant).</span>
+0612 <span class="comment">%Uses token-level removal to avoid partial-match hazards.</span>
+0613 <span class="keyword">for</span> oldI=1:numel(draftModel.grRules)
+0614     <span class="keyword">if</span> ~contains(draftModel.grRules{oldI},<span class="string">'OLD_'</span>)
+0615         <span class="keyword">continue</span>
+0616     <span class="keyword">end</span>
+0617     tkns=<a href="#_sub1" class="code" title="subfunction tokens=gprTokenize(rule)">gprTokenize</a>(draftModel.grRules{oldI});
+0618     again=true;
+0619     <span class="keyword">while</span> again
+0620         again=false;
+0621         <span class="keyword">for</span> kk=1:numel(tkns)
+0622             <span class="keyword">if</span> startsWith(tkns{kk},<span class="string">'OLD_'</span>)
+0623                 <span class="keyword">if</span> kk&gt;1 &amp;&amp; strcmp(tkns{kk-1},<span class="string">'or'</span>)
+0624                     tkns(kk-1:kk)=[];
+0625                     again=true; <span class="keyword">break</span>
+0626                 <span class="keyword">elseif</span> kk&lt;numel(tkns) &amp;&amp; strcmp(tkns{kk+1},<span class="string">'or'</span>)
+0627                     tkns(kk:kk+1)=[];
+0628                     again=true; <span class="keyword">break</span>
+0629                 <span class="keyword">end</span>
+0630             <span class="keyword">end</span>
+0631         <span class="keyword">end</span>
+0632     <span class="keyword">end</span>
+0633     draftModel.grRules{oldI}=<a href="#_sub2" class="code" title="subfunction rule=gprBuildRule(tokens)">gprBuildRule</a>(tkns);
+0634 <span class="keyword">end</span>
+0635 
+0636 <span class="comment">%Apply the complex policy to the OLD_ genes left in &quot;and&quot; relations, and</span>
+0637 <span class="comment">%write each grRule without repeated genes or redundant brackets</span>
+0638 toRemove=false(numel(draftModel.rxns),1);
+0639 <span class="keyword">for</span> j=1:numel(draftModel.grRules)
+0640     rule=draftModel.grRules{j};
+0641     <span class="keyword">if</span> isempty(rule)
+0642         <span class="keyword">continue</span>
+0643     <span class="keyword">end</span>
+0644     <span class="keyword">if</span> contains(rule,<span class="string">'OLD_'</span>) &amp;&amp; strcmp(complexPolicy,<span class="string">'drop'</span>)
+0645         toRemove(j)=true;
+0646     <span class="keyword">elseif</span> contains(rule,<span class="string">'OLD_'</span>) &amp;&amp; strcmp(complexPolicy,<span class="string">'keep'</span>)
+0647         draftModel.grRules{j}=<a href="#_sub4" class="code" title="subfunction rule=gprSimplify(rule,removePrefix)">gprSimplify</a>(rule,<span class="string">'OLD_'</span>);
+0648         toRemove(j)=isempty(draftModel.grRules{j});
+0649     <span class="keyword">else</span>
+0650         draftModel.grRules{j}=<a href="#_sub4" class="code" title="subfunction rule=gprSimplify(rule,removePrefix)">gprSimplify</a>(rule,<span class="string">''</span>);
+0651     <span class="keyword">end</span>
+0652 <span class="keyword">end</span>
+0653 <span class="keyword">if</span> any(toRemove)
+0654     draftModel=removeReactions(draftModel,draftModel.rxns(toRemove),true,true,true);
+0655 <span class="keyword">end</span>
+0656 
+0657 <span class="comment">%Change name of the resulting model</span>
+0658 draftModel.id=getModelFor;
+0659 name=<span class="string">'Generated by getModelFromHomology using '</span>;
+0660 <span class="keyword">for</span> i=1:numel(models)
+0661     <span class="keyword">if</span> i&lt;numel(models)
+0662         name=[name models{i}.id <span class="string">', '</span>];
+0663     <span class="keyword">else</span>
+0664         name=[name models{i}.id];
+0665     <span class="keyword">end</span>
+0666 <span class="keyword">end</span>
+0667 draftModel.name=name;
+0668 <span class="comment">%The draft is a new model: the templates' version, date and description are</span>
+0669 <span class="comment">%not its own</span>
+0670 draftModel=rmfield(draftModel,intersect({<span class="string">'version'</span>,<span class="string">'date'</span>,<span class="string">'description'</span>},fieldnames(draftModel)));
+0671 <span class="keyword">if</span> isfield(draftModel,<span class="string">'annotation'</span>)
+0672     descriptive={<span class="string">'taxonomy'</span>,<span class="string">'sourceUrl'</span>,<span class="string">'note'</span>,<span class="string">'givenName'</span>,<span class="string">'familyName'</span>,<span class="string">'authors'</span>,<span class="string">'email'</span>,<span class="string">'organization'</span>};
+0673     draftModel.annotation=rmfield(draftModel.annotation,intersect(descriptive,fieldnames(draftModel.annotation)));
+0674 <span class="keyword">end</span>
+0675 <span class="keyword">if</span> ~preserveNotes || ~isfield(draftModel,<span class="string">'rxnNotes'</span>)
+0676     draftModel.rxnNotes=cell(length(draftModel.rxns),1);
+0677     draftModel.rxnNotes(:)={<span class="string">'Included by getModelFromHomology'</span>};
+0678 <span class="keyword">end</span>
+0679 <span class="keyword">if</span> ~preserveNotes || ~isfield(draftModel,<span class="string">'rxnConfidenceScores'</span>)
+0680     draftModel.rxnConfidenceScores=NaN(length(draftModel.rxns),1);
+0681     draftModel.rxnConfidenceScores(:)=2;
+0682 <span class="keyword">end</span>
+0683 draftModel=deleteUnusedGenes(draftModel,0);
+0684 <span class="comment">%Standardize grRules and notify if problematic grRules are found</span>
+0685 [draftModel.grRules,draftModel.rxnGeneMat]=standardizeGrRules(draftModel,false);
+0686 draftModel=deleteUnusedGenes(draftModel,false);
+0687 <span class="keyword">end</span>
+0688 
+0689 
+0690 <a name="_sub1" href="#_subfunctions" class="code">function tokens=gprTokenize(rule)</a>
+0691 <span class="comment">% Split a GPR rule into tokens: gene IDs, &quot;and&quot;, &quot;or&quot;, &quot;(&quot;, &quot;)&quot;.</span>
+0692 <span class="comment">% Brackets are separated from adjacent text by whitespace before splitting.</span>
+0693 <span class="keyword">if</span> isempty(rule)
+0694     tokens={};
+0695     <span class="keyword">return</span>
+0696 <span class="keyword">end</span>
+0697 r=regexprep(rule,<span class="string">'([\(\)])'</span>,<span class="string">' $1 '</span>);
+0698 r=regexprep(r,<span class="string">'\s+'</span>,<span class="string">' '</span>);
+0699 tokens=strsplit(strtrim(r),<span class="string">' '</span>);
+0700 tokens=tokens(~cellfun(@isempty,tokens));
+0701 <span class="keyword">end</span>
+0702 
+0703 
+0704 <a name="_sub2" href="#_subfunctions" class="code">function rule=gprBuildRule(tokens)</a>
+0705 <span class="comment">% Reconstruct a GPR rule string from a token list.</span>
+0706 <span class="keyword">if</span> isempty(tokens)
+0707     rule=<span class="string">''</span>;
+0708     <span class="keyword">return</span>
+0709 <span class="keyword">end</span>
+0710 rule=strjoin(tokens,<span class="string">' '</span>);
+0711 rule=strrep(rule,<span class="string">'( '</span>,<span class="string">'('</span>);
+0712 rule=strrep(rule,<span class="string">' )'</span>,<span class="string">')'</span>);
+0713 <span class="keyword">end</span>
+0714 
+0715 
+0716 <a name="_sub3" href="#_subfunctions" class="code">function tokens=gprReplaceToken(tokens,oldGene,newGenes)</a>
+0717 <span class="comment">% Replace each occurrence of token oldGene with the gene(s) in newGenes.</span>
+0718 <span class="comment">% newGenes is a cell array; multiple genes are wrapped in parentheses and</span>
+0719 <span class="comment">% joined with &quot; or &quot;.</span>
+0720 k=1;
+0721 <span class="keyword">while</span> k&lt;=numel(tokens)
+0722     <span class="keyword">if</span> strcmp(tokens{k},oldGene)
+0723         <span class="keyword">if</span> numel(newGenes)==1
+0724             tokens{k}=newGenes{1};
+0725             k=k+1;
+0726         <span class="keyword">else</span>
+0727             seq={<span class="string">'('</span>};
+0728             <span class="keyword">for</span> g=1:numel(newGenes)
+0729                 seq{end+1}=newGenes{g}; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0730                 <span class="keyword">if</span> g&lt;numel(newGenes)
+0731                     seq{end+1}=<span class="string">'or'</span>; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0732                 <span class="keyword">end</span>
+0733             <span class="keyword">end</span>
+0734             seq{end+1}=<span class="string">')'</span>;
+0735             tokens=[tokens(1:k-1),seq,tokens(k+1:end)];
+0736             k=k+numel(seq);
+0737         <span class="keyword">end</span>
+0738     <span class="keyword">else</span>
+0739         k=k+1;
+0740     <span class="keyword">end</span>
+0741 <span class="keyword">end</span>
+0742 <span class="keyword">end</span>
+0743 
+0744 
+0745 <a name="_sub4" href="#_subfunctions" class="code">function rule=gprSimplify(rule,removePrefix)</a>
+0746 <span class="comment">% Rewrite a grRule as a tree: genes starting with removePrefix (if any) are</span>
+0747 <span class="comment">% dropped from their group, groups of the same operator are flattened,</span>
+0748 <span class="comment">% repeated genes or groups are removed, and brackets appear only around a</span>
+0749 <span class="comment">% group of the other operator. A rule with no gene left becomes ''.</span>
+0750 tokens=<a href="#_sub1" class="code" title="subfunction tokens=gprTokenize(rule)">gprTokenize</a>(rule);
+0751 <span class="keyword">if</span> isempty(tokens)
+0752     rule=<span class="string">''</span>;
+0753     <span class="keyword">return</span>
+0754 <span class="keyword">end</span>
+0755 [node,~]=<a href="#_sub5" class="code" title="subfunction [node,pos]=gprParseOr(tokens,pos)">gprParseOr</a>(tokens,1);
+0756 node=<a href="#_sub8" class="code" title="subfunction node=gprPrune(node,removePrefix)">gprPrune</a>(node,removePrefix);
+0757 <span class="keyword">if</span> isempty(node)
+0758     rule=<span class="string">''</span>;
+0759 <span class="keyword">else</span>
+0760     rule=<a href="#_sub9" class="code" title="subfunction rule=gprRender(node,parentOp)">gprRender</a>(node,<span class="string">''</span>);
+0761 <span class="keyword">end</span>
+0762 <span class="keyword">end</span>
+0763 
+0764 
+0765 <a name="_sub5" href="#_subfunctions" class="code">function [node,pos]=gprParseOr(tokens,pos)</a>
+0766 [node,pos]=<a href="#_sub6" class="code" title="subfunction [node,pos]=gprParseAnd(tokens,pos)">gprParseAnd</a>(tokens,pos);
+0767 kids={node};
+0768 <span class="keyword">while</span> pos&lt;=numel(tokens) &amp;&amp; strcmpi(tokens{pos},<span class="string">'or'</span>)
+0769     [node,pos]=<a href="#_sub6" class="code" title="subfunction [node,pos]=gprParseAnd(tokens,pos)">gprParseAnd</a>(tokens,pos+1);
+0770     kids{end+1}=node; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0771 <span class="keyword">end</span>
+0772 <span class="keyword">if</span> numel(kids)&gt;1
+0773     node=struct(<span class="string">'op'</span>,<span class="string">'or'</span>,<span class="string">'gene'</span>,<span class="string">''</span>,<span class="string">'kids'</span>,{kids});
+0774 <span class="keyword">end</span>
+0775 <span class="keyword">end</span>
+0776 
+0777 
+0778 <a name="_sub6" href="#_subfunctions" class="code">function [node,pos]=gprParseAnd(tokens,pos)</a>
+0779 [node,pos]=<a href="#_sub7" class="code" title="subfunction [node,pos]=gprParseAtom(tokens,pos)">gprParseAtom</a>(tokens,pos);
+0780 kids={node};
+0781 <span class="keyword">while</span> pos&lt;=numel(tokens) &amp;&amp; strcmpi(tokens{pos},<span class="string">'and'</span>)
+0782     [node,pos]=<a href="#_sub7" class="code" title="subfunction [node,pos]=gprParseAtom(tokens,pos)">gprParseAtom</a>(tokens,pos+1);
+0783     kids{end+1}=node; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0784 <span class="keyword">end</span>
+0785 <span class="keyword">if</span> numel(kids)&gt;1
+0786     node=struct(<span class="string">'op'</span>,<span class="string">'and'</span>,<span class="string">'gene'</span>,<span class="string">''</span>,<span class="string">'kids'</span>,{kids});
+0787 <span class="keyword">end</span>
+0788 <span class="keyword">end</span>
+0789 
+0790 
+0791 <a name="_sub7" href="#_subfunctions" class="code">function [node,pos]=gprParseAtom(tokens,pos)</a>
+0792 <span class="keyword">if</span> pos&gt;numel(tokens)
+0793     error(<span class="string">'Malformed grRule: it ends with an operator'</span>);
+0794 <span class="keyword">end</span>
+0795 <span class="keyword">if</span> strcmp(tokens{pos},<span class="string">'('</span>)
+0796     [node,pos]=<a href="#_sub5" class="code" title="subfunction [node,pos]=gprParseOr(tokens,pos)">gprParseOr</a>(tokens,pos+1);
+0797     <span class="keyword">if</span> pos&gt;numel(tokens) || ~strcmp(tokens{pos},<span class="string">')'</span>)
+0798         error(<span class="string">'Malformed grRule: unbalanced brackets'</span>);
+0799     <span class="keyword">end</span>
+0800     pos=pos+1;
+0801 <span class="keyword">else</span>
+0802     node=struct(<span class="string">'op'</span>,<span class="string">'gene'</span>,<span class="string">'gene'</span>,tokens{pos},<span class="string">'kids'</span>,{{}});
+0803     pos=pos+1;
+0804 <span class="keyword">end</span>
+0805 <span class="keyword">end</span>
+0806 
+0807 
+0808 <a name="_sub8" href="#_subfunctions" class="code">function node=gprPrune(node,removePrefix)</a>
+0809 <span class="keyword">if</span> strcmp(node.op,<span class="string">'gene'</span>)
+0810     <span class="keyword">if</span> ~isempty(removePrefix) &amp;&amp; startsWith(node.gene,removePrefix)
+0811         node=[];
+0812     <span class="keyword">end</span>
+0813     <span class="keyword">return</span>
+0814 <span class="keyword">end</span>
+0815 kids={};
+0816 seen={};
+0817 <span class="keyword">for</span> k=1:numel(node.kids)
+0818     kid=<a href="#_sub8" class="code" title="subfunction node=gprPrune(node,removePrefix)">gprPrune</a>(node.kids{k},removePrefix);
+0819     <span class="keyword">if</span> isempty(kid)
+0820         <span class="keyword">continue</span>
+0821     <span class="keyword">end</span>
+0822     <span class="keyword">if</span> strcmp(kid.op,node.op)
+0823         parts=kid.kids;
+0824     <span class="keyword">else</span>
+0825         parts={kid};
+0826     <span class="keyword">end</span>
+0827     <span class="keyword">for</span> m=1:numel(parts)
+0828         key=<a href="#_sub9" class="code" title="subfunction rule=gprRender(node,parentOp)">gprRender</a>(parts{m},node.op);
+0829         <span class="keyword">if</span> ~ismember(key,seen)
+0830             seen{end+1}=key; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0831             kids{end+1}=parts{m}; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0832         <span class="keyword">end</span>
+0833     <span class="keyword">end</span>
+0834 <span class="keyword">end</span>
+0835 <span class="keyword">if</span> isempty(kids)
+0836     node=[];
+0837 <span class="keyword">elseif</span> numel(kids)==1
+0838     node=kids{1};
+0839 <span class="keyword">else</span>
+0840     node.kids=kids;
+0841 <span class="keyword">end</span>
+0842 <span class="keyword">end</span>
+0843 
+0844 
+0845 <a name="_sub9" href="#_subfunctions" class="code">function rule=gprRender(node,parentOp)</a>
+0846 <span class="keyword">if</span> strcmp(node.op,<span class="string">'gene'</span>)
+0847     rule=node.gene;
+0848     <span class="keyword">return</span>
+0849 <span class="keyword">end</span>
+0850 parts=cellfun(@(k) <a href="#_sub9" class="code" title="subfunction rule=gprRender(node,parentOp)">gprRender</a>(k,node.op),node.kids,<span class="string">'UniformOutput'</span>,false);
+0851 rule=strjoin(parts,[<span class="string">' '</span> node.op <span class="string">' '</span>]);
+0852 <span class="keyword">if</span> ~isempty(parentOp) &amp;&amp; ~strcmp(parentOp,node.op)
+0853     rule=[<span class="string">'('</span> rule <span class="string">')'</span>];
+0854 <span class="keyword">end</span>
+0855 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

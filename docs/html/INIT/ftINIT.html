@@ -494,7 +494,7 @@ This function is called by:
 0448 <span class="comment">%be performed also without manipulating the b vector in the model (which is what is done in the gap-filling).</span>
 0449 exchRxns = getExchangeRxns(prepData.refModel);
 0450 deletedRxnsInINIT = setdiff(prepData.refModel.rxns,union(union(initModel.rxns, addedRxnsForTasks), exchRxns));
-0451 outModel = removeReactions(prepData.refModel, deletedRxnsInINIT, true); <span class="comment">%we skip removing the genes for now, I'm not sure it is desirable</span>
+0451 outModel = removeReactions(prepData.refModel, deletedRxnsInINIT, true, true);
 0452 
 0453 <span class="comment">% If requested, attempt to remove negative-score genes from the model,</span>
 0454 <span class="comment">% depending on their role (isozyme or complex subunit) in each grRule.</span>

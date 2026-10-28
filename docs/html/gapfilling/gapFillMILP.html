@@ -55,8 +55,8 @@
      minimum objective value to achieve. If empty, runs FBA on the merged
      model and uses 10% of the maximum as the floor.
  'bigM' (default 1000)
-     Big-M constant for coupling constraints. Must be larger than any
-     expected flux magnitude.
+     Big-M constant for the coupling constraints of universal reactions
+     with an infinite bound. A finite bound is used as it is.
  'params' (default [])
      solver parameter struct passed to optimizeProb. Fields such as
      params.TimeLimit and params.intTol can be used to tune the MILP.
@@ -124,8 +124,8 @@ This function is called by:
 0027 <span class="comment">%     minimum objective value to achieve. If empty, runs FBA on the merged</span>
 0028 <span class="comment">%     model and uses 10% of the maximum as the floor.</span>
 0029 <span class="comment">% 'bigM' (default 1000)</span>
-0030 <span class="comment">%     Big-M constant for coupling constraints. Must be larger than any</span>
-0031 <span class="comment">%     expected flux magnitude.</span>
+0030 <span class="comment">%     Big-M constant for the coupling constraints of universal reactions</span>
+0031 <span class="comment">%     with an infinite bound. A finite bound is used as it is.</span>
 0032 <span class="comment">% 'params' (default [])</span>
 0033 <span class="comment">%     solver parameter struct passed to optimizeProb. Fields such as</span>
 0034 <span class="comment">%     params.TimeLimit and params.intTol can be used to tune the MILP.</span>
@@ -257,96 +257,98 @@ This function is called by:
 0160 
 0161 <span class="comment">% (3) Universal upper coupling: v_k - ub_k * y_db_k &lt;= 0   [nUniv rows, 'L']</span>
 0162 <span class="comment">%     (forces v_k &lt;= 0 when y_db_k = 0)</span>
-0163 <span class="comment">% Coupling coefficients are capped at the Big-M constant: an unbounded</span>
-0164 <span class="comment">% universal reaction (ub = Inf, RAVEN's own default when no upper-bound</span>
-0165 <span class="comment">% annotation is set) would otherwise put an Inf coefficient into the</span>
-0166 <span class="comment">% constraint matrix, and Inf*0 (y_db_k = 0) is NaN, not 0.</span>
+0163 <span class="comment">% Coupling coefficients are the reaction bounds. An infinite bound is replaced</span>
+0164 <span class="comment">% by the Big-M constant: an unbounded universal reaction (ub = Inf, RAVEN's own</span>
+0165 <span class="comment">% default when no upper-bound annotation is set) would otherwise put an Inf</span>
+0166 <span class="comment">% coefficient into the constraint matrix, and Inf*0 (y_db_k = 0) is NaN, not 0.</span>
 0167 yDbCols = nMergedRxns + (1:nUniv);
-0168 uniUb = min(mergedModel.ub(univIdx), M);
-0169 uniLb = max(mergedModel.lb(univIdx), -M);
-0170 A_uniUp = sparse(<span class="keyword">...</span>
-0171     [1:nUniv, 1:nUniv], <span class="keyword">...</span>
-0172     [univIdx(:)', yDbCols], <span class="keyword">...</span>
-0173     [ones(1, nUniv), -uniUb'], <span class="keyword">...</span>
-0174     nUniv, nVar);
-0175 
-0176 <span class="comment">% (4) Universal lower coupling: v_k - lb_k * y_db_k &gt;= 0   [nUniv rows, 'G']</span>
-0177 <span class="comment">%     (forces v_k &gt;= 0 when y_db_k = 0; together with (3): v_k = 0 when y_db_k = 0)</span>
-0178 A_uniLo = sparse(<span class="keyword">...</span>
-0179     [1:nUniv, 1:nUniv], <span class="keyword">...</span>
-0180     [univIdx(:)', yDbCols], <span class="keyword">...</span>
-0181     [ones(1, nUniv), -uniLb'], <span class="keyword">...</span>
-0182     nUniv, nVar);
-0183 
-0184 <span class="comment">% --- Assemble ---</span>
-0185 prob.A = [A_SS; A_growth; A_uniUp; A_uniLo];
-0186 prob.a = prob.A;
-0187 prob.b = [zeros(nMergedMets, 1); minGrowth; zeros(2 * nUniv, 1)];
-0188 prob.csense = [repmat(<span class="string">'E'</span>, 1, nMergedMets), <span class="string">'G'</span>, <span class="keyword">...</span>
-0189                repmat(<span class="string">'L'</span>, 1, nUniv), <span class="keyword">...</span>
-0190                repmat(<span class="string">'G'</span>, 1, nUniv)];
-0191 prob.c      = c;
-0192 prob.osense = 1;   <span class="comment">% minimise the number of added reactions</span>
-0193 prob.lb     = lb;
-0194 prob.ub     = ub;
-0195 prob.vartype = repmat(<span class="string">'C'</span>, 1, nVar);
-0196 prob.vartype(nMergedRxns + 1 : end) = <span class="string">'B'</span>;   <span class="comment">% y_db is binary</span>
-0197 
-0198 <span class="keyword">if</span> isempty(params)
-0199     params.intTol   = 1e-9;
-0200     params.TimeLimit = 600;
-0201 <span class="keyword">end</span>
-0202 
-0203 <span class="comment">% ---- Solve ----</span>
-0204 <span class="keyword">if</span> verbose
-0205     fprintf(<span class="string">'gapFillMILP: solving MILP (%d vars, %d binary, %d constraints)...\n'</span>, <span class="keyword">...</span>
-0206         nVar, nUniv, size(prob.A, 1));
-0207 <span class="keyword">end</span>
-0208 sol = optimizeProb(prob, params, verbose);
-0209 
-0210 <span class="keyword">if</span> ~checkSolution(sol)
-0211     <span class="keyword">if</span> verbose
-0212         fprintf(<span class="string">'gapFillMILP: MILP infeasible or timed out.\n'</span>);
-0213     <span class="keyword">end</span>
-0214     exitFlag = -1;
-0215     <span class="keyword">return</span>;
-0216 <span class="keyword">end</span>
-0217 
-0218 <span class="comment">% ---- Extract solution ----</span>
-0219 binThreshold = 1e-3;
-0220 yDb = sol.full(nMergedRxns + 1 : end);
-0221 dbSelected = univIdx(yDb &gt; binThreshold);
-0222 
-0223 <span class="comment">% Map back to original IDs. dbSelected is already restricted to universal</span>
-0224 <span class="comment">% reactions via univIdx/isDraft above (an id-membership test against</span>
-0225 <span class="comment">% model.rxns, not a name it could have been renamed away from), so no</span>
-0226 <span class="comment">% further filtering against universalModel.rxns is needed here -- doing so</span>
-0227 <span class="comment">% would silently drop a universal reaction that mergeModels renamed</span>
-0228 <span class="comment">% because its id collided with one already in the draft model.</span>
-0229 addedRxns = mergedModel.rxns(dbSelected);
-0230 
-0231 <span class="keyword">if</span> verbose
-0232     fprintf(<span class="string">'gapFillMILP: added %d universal reaction(s).\n'</span>, numel(addedRxns));
-0233 <span class="keyword">end</span>
-0234 
-0235 <span class="comment">% ---- Build new model ----</span>
-0236 newModel = model;
-0237 
-0238 <span class="comment">% Add universal reactions. Extracted from mergedModel by the dbSelected</span>
-0239 <span class="comment">% indices directly, not by looking addedRxns' names back up in</span>
-0240 <span class="comment">% universalModel: that lookup fails whenever mergeModels renamed one of</span>
-0241 <span class="comment">% them because its id collided with one already in the draft model, in</span>
-0242 <span class="comment">% which case setdiff would keep the (unrenamed) original in universalModel</span>
-0243 <span class="comment">% marked for removal, silently dropping the very reaction just selected.</span>
-0244 <span class="keyword">if</span> ~isempty(dbSelected)
-0245     toRemove = true(nMergedRxns, 1);
-0246     toRemove(dbSelected) = false;
-0247     trimmedUniv = removeReactions(mergedModel, toRemove);
-0248     newModel = mergeModels({newModel; trimmedUniv});
-0249 <span class="keyword">end</span>
-0250 
-0251 exitFlag = 1;
-0252 <span class="keyword">end</span></pre></div>
+0168 uniUb = mergedModel.ub(univIdx);
+0169 uniUb(isinf(uniUb)) = M;
+0170 uniLb = mergedModel.lb(univIdx);
+0171 uniLb(isinf(uniLb)) = -M;
+0172 A_uniUp = sparse(<span class="keyword">...</span>
+0173     [1:nUniv, 1:nUniv], <span class="keyword">...</span>
+0174     [univIdx(:)', yDbCols], <span class="keyword">...</span>
+0175     [ones(1, nUniv), -uniUb'], <span class="keyword">...</span>
+0176     nUniv, nVar);
+0177 
+0178 <span class="comment">% (4) Universal lower coupling: v_k - lb_k * y_db_k &gt;= 0   [nUniv rows, 'G']</span>
+0179 <span class="comment">%     (forces v_k &gt;= 0 when y_db_k = 0; together with (3): v_k = 0 when y_db_k = 0)</span>
+0180 A_uniLo = sparse(<span class="keyword">...</span>
+0181     [1:nUniv, 1:nUniv], <span class="keyword">...</span>
+0182     [univIdx(:)', yDbCols], <span class="keyword">...</span>
+0183     [ones(1, nUniv), -uniLb'], <span class="keyword">...</span>
+0184     nUniv, nVar);
+0185 
+0186 <span class="comment">% --- Assemble ---</span>
+0187 prob.A = [A_SS; A_growth; A_uniUp; A_uniLo];
+0188 prob.a = prob.A;
+0189 prob.b = [zeros(nMergedMets, 1); minGrowth; zeros(2 * nUniv, 1)];
+0190 prob.csense = [repmat(<span class="string">'E'</span>, 1, nMergedMets), <span class="string">'G'</span>, <span class="keyword">...</span>
+0191                repmat(<span class="string">'L'</span>, 1, nUniv), <span class="keyword">...</span>
+0192                repmat(<span class="string">'G'</span>, 1, nUniv)];
+0193 prob.c      = c;
+0194 prob.osense = 1;   <span class="comment">% minimise the number of added reactions</span>
+0195 prob.lb     = lb;
+0196 prob.ub     = ub;
+0197 prob.vartype = repmat(<span class="string">'C'</span>, 1, nVar);
+0198 prob.vartype(nMergedRxns + 1 : end) = <span class="string">'B'</span>;   <span class="comment">% y_db is binary</span>
+0199 
+0200 <span class="keyword">if</span> isempty(params)
+0201     params.intTol   = 1e-9;
+0202     params.TimeLimit = 600;
+0203 <span class="keyword">end</span>
+0204 
+0205 <span class="comment">% ---- Solve ----</span>
+0206 <span class="keyword">if</span> verbose
+0207     fprintf(<span class="string">'gapFillMILP: solving MILP (%d vars, %d binary, %d constraints)...\n'</span>, <span class="keyword">...</span>
+0208         nVar, nUniv, size(prob.A, 1));
+0209 <span class="keyword">end</span>
+0210 sol = optimizeProb(prob, params, verbose);
+0211 
+0212 <span class="keyword">if</span> ~checkSolution(sol)
+0213     <span class="keyword">if</span> verbose
+0214         fprintf(<span class="string">'gapFillMILP: MILP infeasible or timed out.\n'</span>);
+0215     <span class="keyword">end</span>
+0216     exitFlag = -1;
+0217     <span class="keyword">return</span>;
+0218 <span class="keyword">end</span>
+0219 
+0220 <span class="comment">% ---- Extract solution ----</span>
+0221 binThreshold = 1e-3;
+0222 yDb = sol.full(nMergedRxns + 1 : end);
+0223 dbSelected = univIdx(yDb &gt; binThreshold);
+0224 
+0225 <span class="comment">% Map back to original IDs. dbSelected is already restricted to universal</span>
+0226 <span class="comment">% reactions via univIdx/isDraft above (an id-membership test against</span>
+0227 <span class="comment">% model.rxns, not a name it could have been renamed away from), so no</span>
+0228 <span class="comment">% further filtering against universalModel.rxns is needed here -- doing so</span>
+0229 <span class="comment">% would silently drop a universal reaction that mergeModels renamed</span>
+0230 <span class="comment">% because its id collided with one already in the draft model.</span>
+0231 addedRxns = mergedModel.rxns(dbSelected);
+0232 
+0233 <span class="keyword">if</span> verbose
+0234     fprintf(<span class="string">'gapFillMILP: added %d universal reaction(s).\n'</span>, numel(addedRxns));
+0235 <span class="keyword">end</span>
+0236 
+0237 <span class="comment">% ---- Build new model ----</span>
+0238 newModel = model;
+0239 
+0240 <span class="comment">% Add universal reactions. Extracted from mergedModel by the dbSelected</span>
+0241 <span class="comment">% indices directly, not by looking addedRxns' names back up in</span>
+0242 <span class="comment">% universalModel: that lookup fails whenever mergeModels renamed one of</span>
+0243 <span class="comment">% them because its id collided with one already in the draft model, in</span>
+0244 <span class="comment">% which case setdiff would keep the (unrenamed) original in universalModel</span>
+0245 <span class="comment">% marked for removal, silently dropping the very reaction just selected.</span>
+0246 <span class="keyword">if</span> ~isempty(dbSelected)
+0247     toRemove = true(nMergedRxns, 1);
+0248     toRemove(dbSelected) = false;
+0249     trimmedUniv = removeReactions(mergedModel, toRemove);
+0250     newModel = mergeModels({newModel; trimmedUniv});
+0251 <span class="keyword">end</span>
+0252 
+0253 exitFlag = 1;
+0254 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

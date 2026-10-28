@@ -76,7 +76,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>	removeReactions  Delete a set of reactions from a model.</li><li><a href="sortModel.html" class="code" title="function model=sortModel(model,varargin)">sortModel</a>	sortModel  Standardize a model's internal ordering: by default orients</li><li><a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>	standardizeGrRules  Standardize gene-reaction rules in a model.</li></ul>
+<li><a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>	removeReactions  Delete a set of reactions from a model.</li><li><a href="sortModel.html" class="code" title="function model=sortModel(model,varargin)">sortModel</a>	sortModel  Standardize a model's internal ordering: can orient</li><li><a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>	standardizeGrRules  Standardize gene-reaction rules in a model.</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
 <li><a href="mergeCompartments.html" class="code" title="function [model, deletedRxns, duplicateRxns]=mergeCompartments(model,varargin)">mergeCompartments</a>	mergeCompartments  Merge all compartments in a model.</li><li><a href="replaceMets.html" class="code" title="function [model, removedRxns, idxDuplRxns]=replaceMets(model,metabolite,replacement,varargin)">replaceMets</a>	replaceMets  Replace a metabolite with another already in the model.</li><li><a href="simplifyModel.html" class="code" title="function [reducedModel, deletedReactions, deletedMetabolites]=simplifyModel(model,varargin)">simplifyModel</a>	simplifyModel  Simplify a model by deleting reactions and metabolites.</li></ul>
@@ -139,7 +139,7 @@ This function is called by:
 0050 
 0051 <span class="comment">%First sort the model so that reversible reactions are in the same</span>
 0052 <span class="comment">%direction</span>
-0053 modelS=<a href="sortModel.html" class="code" title="function model=sortModel(model,varargin)">sortModel</a>(model);
+0053 modelS=<a href="sortModel.html" class="code" title="function model=sortModel(model,varargin)">sortModel</a>(model,true);
 0054 
 0055 <span class="comment">%Get a list of duplicate reactions</span>
 0056 <span class="keyword">if</span> distReverse
