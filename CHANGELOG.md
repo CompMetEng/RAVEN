@@ -7,6 +7,7 @@
 * `mergeCompartments`: a merged metabolite is the copy already in compartment `s`, if any,
   otherwise the copy whose id sorts first, with every field of that copy (was: the first copy
   in model order), so `ACCOA_c` and `ACCOA_m` become `ACCOA_c` whatever their order.
+* `removeGenes`: the help states that genes no remaining reaction uses are removed as well.
 
 ### Gap-filling
 
