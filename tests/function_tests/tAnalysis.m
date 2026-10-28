@@ -311,6 +311,161 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyEqual(rm.metPValues(strcmp(rm.mets,'A')), 0.5*erfc(expectedA/sqrt(2)), 'AbsTol', 1e-12);
         end
 
+        function reporterMetabolitesGivesZeroScoreWhenBackgroundStdIsZero(testCase)
+            % All scored genes have the same Z-score, so the background
+            % standard deviation is 0 and no metabolite stands out.
+            m = struct();
+            m.mets       = {'A';'B'};
+            m.metNames   = {'A';'B'};
+            m.genes      = {'g1';'g2';'g3'};
+            m.S          = sparse([1 0; 0 1]);
+            m.rxnGeneMat = sparse([1 1 0; 0 0 1]);
+            rm = reporterMetabolites(m, m.genes, [0.2; 0.2; 0.2]);
+            testCase.verifyEqual(rm.metZScores, zeros(2,1));
+            testCase.verifyEqual(rm.metPValues, 0.5*ones(2,1));
+        end
+
+        function reporterMetabolitesGivesZeroScoreForRoundedIdenticalZScores(testCase)
+            % The mean of identical Z-scores can differ from them by
+            % rounding, which must not read as a background spread. These
+            % gene counts leave a rounding residual.
+            for n = [7 8 15 20000]
+                m = struct();
+                m.mets       = {'A'};
+                m.metNames   = {'A'};
+                m.genes      = arrayfun(@(i) sprintf('g%d',i), 1:n, 'UniformOutput', false)';
+                m.S          = sparse(1);
+                m.rxnGeneMat = sparse(ones(1, n));
+                for pv = [0.2 0.37]
+                    rm = reporterMetabolites(m, m.genes, pv*ones(n,1));
+                    testCase.verifyEqual(rm.metZScores, 0);
+                    testCase.verifyEqual(rm.metPValues, 0.5);
+                end
+            end
+        end
+
+        function reporterMetabolitesKeepsTinyRealSpreadOfZScores(testCase)
+            % A spread far above rounding is a background: three genes
+            % whose Z-scores differ by 1e-10 are scored against it.
+            m = struct();
+            m.mets       = {'A'};
+            m.metNames   = {'A'};
+            m.genes      = {'g1';'g2';'g3'};
+            m.S          = sparse(1);
+            m.rxnGeneMat = sparse([1 1 0]);
+            z = 1e-10*[1;2;3];
+            pvals = 0.5*erfc(z/sqrt(2));
+            rm = reporterMetabolites(m, m.genes, pvals);
+            zz = sqrt(2)*erfcinv(2*pvals);
+            expected = ((zz(1)+zz(2))/sqrt(2) - sqrt(2)*mean(zz)) / std(zz,1);
+            testCase.verifyEqual(rm.metZScores, expected, 'RelTol', 1e-6);
+        end
+
+        function reporterMetabolitesKeepsPrecisionOfCloseZScores(testCase)
+            % 20000 genes with the same p-value except one that is 1000
+            % ulps lower: the Z-scores differ by about 1e-13, so the scores
+            % need the shifted moments. A has 10 of the identical genes,
+            % B has the shifted gene.
+            n = 20000;
+            pv = 0.37*ones(n,1);
+            pv(n) = 0.37 - 1000*eps(0.37);
+            z = sqrt(2)*erfcinv(2*pv);
+            m = struct();
+            m.mets       = {'A';'B'};
+            m.metNames   = {'A';'B'};
+            m.genes      = arrayfun(@(i) sprintf('g%d',i), 1:n, 'UniformOutput', false)';
+            m.S          = sparse([1 0; 0 1]);
+            G = zeros(2,n); G(1,1:10) = 1; G(2,n) = 1;
+            m.rxnGeneMat = sparse(G);
+            rm = reporterMetabolites(m, m.genes, pv);
+            [~,ia] = ismember({'A','B'}, rm.mets);
+            sgn = sign(z(n)-z(1));
+            testCase.verifyEqual(rm.metZScores(ia(1)), -sgn*sqrt(10/(n-1)), 'RelTol', 1e-3);
+            expectedB = sgn*sqrt(n-1);
+            testCase.verifyEqual(rm.metZScores(ia(2)), expectedB, 'RelTol', 1e-3);
+        end
+
+        function reporterMetabolitesKeepsPrecisionWithOutlierFirst(testCase)
+            % The first gene has a Z-score of about 37 and the other 19999
+            % genes differ from each other by about 1e-13 (the last one has a
+            % p-value 1000 ulps lower). Moments taken relative to the first
+            % gene's Z-score are off by about 5e-10 (relative); moments
+            % relative to the mean are within 1e-13. The reference shifts by
+            % the second gene's Z-score.
+            n = 20000;
+            pv = 0.37*ones(n,1);
+            pv(1) = 1e-300;
+            pv(n) = 0.37 - 1000*eps(0.37);
+            z = sqrt(2)*erfcinv(2*pv);
+            m = struct();
+            m.mets       = {'A';'B'};
+            m.metNames   = {'A';'B'};
+            m.genes      = arrayfun(@(i) sprintf('g%d',i), 1:n, 'UniformOutput', false)';
+            m.S          = sparse([1 0; 0 1]);
+            G = zeros(2,n); G(1,2:11) = 1; G(2,n) = 1;
+            m.rxnGeneMat = sparse(G);
+            rm = reporterMetabolites(m, m.genes, pv);
+            [~,ia] = ismember({'A','B'}, rm.mets);
+            zr = z - z(2);
+            mu = mean(zr);
+            sigma = std(zr,1);
+            expectedA = (sum(zr(2:11))/sqrt(10) - sqrt(10)*mu)/sigma;
+            expectedB = (zr(n) - mu)/sigma;
+            testCase.verifyEqual(rm.metZScores(ia(1)), expectedA, 'RelTol', 1e-11);
+            testCase.verifyEqual(rm.metZScores(ia(2)), expectedB, 'RelTol', 1e-11);
+        end
+
+        function reporterMetabolitesRefusesPValuesOutsideZeroOne(testCase)
+            % Three metabolites around the gene sets {1,2}, {3,4} and {5,6}.
+            m = struct();
+            m.mets       = {'A';'B';'C'};
+            m.metNames   = {'A';'B';'C'};
+            m.genes      = {'g1';'g2';'g3';'g4';'g5';'g6'};
+            m.S          = sparse(eye(3));
+            m.rxnGeneMat = sparse([1 1 0 0 0 0; 0 0 1 1 0 0; 0 0 0 0 1 1]);
+            bad = {[0.2 0.4 0.7 0.3 0.1 1+eps], ...
+                   [Inf 0.2 0.4 0.7 -Inf 0.1], ...
+                   [0.2 0.4 0.7 0.3 0.1 -eps], ...
+                   [0.2 0.4 0.7 0.3 0.1 -Inf]};
+            for i = 1:numel(bad)
+                testCase.verifyError(@() reporterMetabolites(m, m.genes, bad{i}'), 'RAVEN:badInput');
+            end
+            % The message gives the number of values and the first one.
+            try
+                reporterMetabolites(m, m.genes, [0.2 1.5 0.7 0.3 -0.1 0.1]');
+                testCase.verifyFail('No error for P-values outside [0,1]');
+            catch ME
+                testCase.verifyEqual(ME.identifier, 'RAVEN:badInput');
+                testCase.verifySubstring(ME.message, '2 of them');
+                testCase.verifySubstring(ME.message, '1.5 (gene g2)');
+            end
+            % A value that is outside the range is refused also for a gene
+            % that is not in the model.
+            testCase.verifyError(@() reporterMetabolites(m, [m.genes; {'gX'}], [0.2 0.4 0.7 0.3 0.1 0.5 2]'), 'RAVEN:badInput');
+            % 0 and 1 are valid, NaN is ignored
+            rm = reporterMetabolites(m, m.genes, [0 0.4 0.7 0.3 NaN 1]');
+            testCase.verifyEqual(numel(rm.mets), 3);
+            testCase.verifyEqual(rm.metNGenes(strcmp(rm.mets,'C')), 1);
+        end
+
+        function reporterMetabolitesFieldsStayAlignedWithoutScoredGenes(testCase)
+            % Metabolite C has no scored gene. All result fields drop it
+            % together, so that they stay aligned with the metabolites.
+            m = struct();
+            m.mets       = {'A';'B';'C'};
+            m.metNames   = {'A';'B';'C'};
+            m.genes      = {'g1';'g2';'g3';'g4'};
+            m.S          = sparse(eye(3));
+            m.rxnGeneMat = sparse([1 1 0 0; 0 0 1 0; 0 0 0 0]);
+            rm = reporterMetabolites(m, m.genes, [0.01; 0.2; 0.5; 0.9]);
+            testCase.verifyEqual(sort(rm.mets), {'A';'B'});
+            for f = {'metNames','metZScores','metPValues','metNGenes','meanZ','stdZ'}
+                testCase.verifyEqual(numel(rm.(f{1})), 2, f{1});
+            end
+            testCase.verifyEqual(rm.metNGenes(strcmp(rm.mets,'A')), 2);
+            testCase.verifyEqual(rm.metNGenes(strcmp(rm.mets,'B')), 1);
+        end
+
         function FSEOFRuns(testCase)
             biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
             [~, exchIdx] = getExchangeRxns(testCase.model);

@@ -45,6 +45,12 @@ if isempty(rxnPos)
         'No reaction named %s in model.', comp.pseudoreaction_name);
 end
 
+Hc = find(strcmp(model.mets, biomassConfig.proton_met));
+if isempty(Hc)
+    error('scaleBiomassPseudoreaction:missingProton', ...
+        'Proton metabolite %s not found in model.', biomassConfig.proton_met);
+end
+
 for i = 1:length(model.mets)
     S_ir = model.S(i, rxnPos);
     isProd = strcmp(model.metNames{i}, componentName);
@@ -54,7 +60,6 @@ for i = 1:length(model.mets)
 end
 
 % Rebalance H+ to keep charge neutrality.
-Hc = find(strcmp(model.mets, biomassConfig.proton_met));
 model.S(Hc, rxnPos) = 0;
 model.S(Hc, rxnPos) = -chargeResidual(model, rxnPos);
 end

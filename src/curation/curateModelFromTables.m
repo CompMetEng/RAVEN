@@ -7,17 +7,22 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % If the *.tsv files contain metabolites, reactions and/or genes that are
 % already present in the model, then information in the model will be
 % overwritten. Note that this includes empty annotations in the *.tsv
-% files! Metabolites are matched by metaboliteName[comp]; reactions by the
-% stoichiometry of its reactants and products; genes by their gene name.
+% files, unless 'overwriteWithEmpty' is false! Metabolites are matched by
+% metaboliteName[comp]; reactions by the stoichiometry of its reactants and
+% products; genes by their gene name.
 % This function can therefore be used to add new entities in the model, or
 % curate those already existing in the model.
 %
-% Columns are identified by their header (case-insensitive), so their order
+% Columns are identified by their header (case-insensitive, and spaces around
+% a header are ignored, also inside its quotes), so their order
 % does not matter and optional columns can be left out. Every field that a
 % table supplies is written to new and existing entities alike; a field the
 % model does not have yet is created, with its default value for the other
 % entities, unless all supplied values for it are empty. An empty grRules
-% cell leaves the rule of an existing reaction unchanged.
+% cell leaves the rule of an existing reaction unchanged, and so does an
+% empty lb, ub or rev cell: an empty bound means that no bound is given.
+% A new reaction without a lb gets a lower bound of -Inf, and one without an
+% ub gets model.annotation.defaultUB (Inf if the model has none).
 %
 % Parameters
 % ----------
@@ -44,12 +49,27 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     Path to a *.tsv file with reaction information, or 'none'. Columns:
 %     rxnIdx (or index), rxnNames (both required), grRules, lb, ub, rev,
 %     subSystems, eccodes, rxnNotes, rxnReferences, rxnConfidenceScores,
-%     and MIRIAM.
+%     and MIRIAM. Each rxnIdx may be used by one row only (the rxnsCoeffs
+%     file has one row per metabolite of the reaction and repeats it).
 % metPrefix : char
 %     Prefix used to mint fresh metabolite ids (e.g. 's_' for yeast-GEM,
 %     'M_' for the BiGG default) (default 'M_').
 % rxnPrefix : char
 %     Prefix used to mint fresh reaction ids (default 'R_').
+% overwriteWithEmpty : logical
+%     if true, an empty cell in a row of an existing metabolite, gene or
+%     reaction empties the corresponding field of the model. If false, an
+%     empty cell leaves the existing value unchanged and only the cells with a
+%     value are written (default true; [] also means the default). Must be a
+%     scalar logical or 0/1. A cell with only blanks counts as empty in both
+%     modes. Empty grRules cells never overwrite. An empty or NaN lb, ub or
+%     rev cell always keeps the existing value. For the charge and the
+%     confidence score, an empty or NaN cell is treated alike: when
+%     overwriteWithEmpty is true and at least one other row of the column has
+%     a value, it becomes 0; a column in which no row has a value is not
+%     written, and the existing values stay. The same holds for a MIRIAM
+%     column: a column in which no row has a value does not clear the
+%     annotations of existing entities.
 %
 % Returns
 % -------
@@ -66,8 +86,51 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % In all three info tables, any column whose header is not one of the
 % listed core fields is treated as a MIRIAM annotation namespace and
 % stored on the matching entity.
+%
+% Cell values: the charge, confidence score, lb, ub, rev, rxnIdx and
+% coefficient cells are read as plain decimal numbers (digits with an
+% optional sign, decimal point and exponent), Inf or NaN in any case. Only
+% the lb, ub and rev cells also accept true and false in any case (read as
+% 1 and 0). Any other text, including text with a comma, hexadecimal numbers
+% and expressions, raises RAVEN:badInput; no expression is evaluated. A
+% charge must be a finite whole number (or empty or NaN). A rev must be 0, 1,
+% true or false (or empty or NaN). The rev column sets the reversibility of
+% existing reactions only, independently of lb and ub, which are written as
+% given; for new reactions the reversibility is derived from lb and ub.
+%
+% Gene rules: a grRules cell must be a well-formed gene rule (genes joined by
+% and/or in any case, or by &, &&, | and ||, with balanced parentheses); a
+% rule with an operator that lacks an operand, empty parentheses or two genes
+% without an operator between them raises RAVEN:badInput before the model is
+% changed. A valid rule is stored in RAVEN's standard format. Whether the
+% genes exist is checked when the rule is applied.
+%
+% Genes: a gene id that the genesInfo table lists more than once raises
+% RAVEN:badInput, whether the model has the gene or not.
+%
+% Bounds: a lower bound above the upper bound is written as given. solveLP
+% rejects such a model when it is run ("Invalid set of bounds for
+% reaction(s): ...").
+%
+% Reaction tables: a row of the rxnsCoeffs table without a rxnIdx, rxnNames,
+% metNames and comps value is ignored; a row with any of them needs a
+% rxnIdx and a coefficient that is a finite number other than 0. A row of
+% the rxnsInfo table without any value is ignored; a row with a value needs
+% a rxnIdx. A rxnIdx is a whole number of at least 1; the indices (and
+% names) of the two reaction tables must match exactly, compared by their
+% numeric value (1, 1.0 and 1e0 are the same index). Otherwise RAVEN:badInput
+% is raised.
 
-p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]});
+p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]; 'overwriteWithEmpty',true});
+overwriteWithEmpty=p.overwriteWithEmpty;
+if isempty(overwriteWithEmpty)
+    overwriteWithEmpty=true;
+end
+if ~((islogical(overwriteWithEmpty) || isnumeric(overwriteWithEmpty)) && isscalar(overwriteWithEmpty) ...
+        && isreal(overwriteWithEmpty) && ~isnan(overwriteWithEmpty) && ismember(overwriteWithEmpty,[0 1]))
+    error('RAVEN:badInput','overwriteWithEmpty must be a scalar logical or 0/1');
+end
+overwriteWithEmpty=logical(overwriteWithEmpty);
 genesInfo=p.genesInfo;
 rxnsCoeffs=p.rxnsCoeffs;
 rxnsInfo=p.rxnsInfo;
@@ -80,7 +143,7 @@ if isempty(rxnPrefix)
     rxnPrefix = 'R_';
 end
 if xor(strcmp(rxnsCoeffs,'none'), strcmp(rxnsInfo,'none'))
-    error('Provide both a ''rxnsInfo'' and a ''rxnsCoeffs'' file')
+    error('RAVEN:badInput','Provide both a ''rxnsInfo'' and a ''rxnsCoeffs'' file')
 end
 newModel=model;
 
@@ -101,8 +164,11 @@ if ~strcmp(metsInfo,'none')
         metsToAdd.(f{1}) = data(:,col.(f{1}));
     end
     if isfield(col,'metCharges')
-        metsToAdd.metCharges = cellfun(@str2num,data(:,col.metCharges),'UniformOutput',false);
+        metsToAdd.metCharges = cellfun(@(x) parseChargeCell(x,'metsInfo'),data(:,col.metCharges),'UniformOutput',false);
+        isNanCharge = cellfun(@(x) isscalar(x) && isnan(x),metsToAdd.metCharges);
+        metsToAdd.metCharges(isNanCharge) = {[]}; % a NaN charge counts as not given
         emptyEntry = cellfun(@isempty,metsToAdd.metCharges);
+        emptyCharge = emptyEntry;
         if all(emptyEntry)
             metsToAdd       = rmfield(metsToAdd,'metCharges');
         else % If some charges are given, assume 0 for those without charges specified
@@ -130,9 +196,17 @@ if ~strcmp(metsInfo,'none')
     % Overwrite annotation of existing entries
     if any(existingMets)
         for f = optFields
-            newModel = writeExistingField(newModel,f{1},existingMetsIdx,metsToAdd.(f{1})(existingMets));
+            skip = [];
+            if ~overwriteWithEmpty
+                if strcmp(f{1},'metCharges')
+                    skip = emptyCharge(existingMets);
+                else
+                    skip = emptyCells(metsToAdd.(f{1})(existingMets));
+                end
+            end
+            newModel = writeExistingField(newModel,f{1},existingMetsIdx,metsToAdd.(f{1})(existingMets),skip);
         end
-        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),existingMets,existingMetsIdx,'met');
+        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),existingMets,existingMetsIdx,'met',~overwriteWithEmpty);
         warning(['The following metabolites are already present in the model, '...
             'their annotation will be overwritten to match the metsInfo file. '...
             'If you do not particularly want to curate their annotations, it '...
@@ -163,6 +237,7 @@ if ~strcmp(genesInfo,'none')
         'genes',          {'genes','gene'}; ...
         'geneShortNames', {'geneShortNames','geneShortName'}});
     genesToAdd.genes            = data(:,col.genes);
+    checkGenesListedOnce(genesToAdd.genes);
     if isfield(col,'geneShortNames')
         genesToAdd.geneShortNames   = data(:,col.geneShortNames);
     end
@@ -173,9 +248,13 @@ if ~strcmp(genesInfo,'none')
             'will be overwritten to match the genesInfo file: \n\t\t%s'],...
             strjoin(genesToAdd.genes(notNewGene),'\n\t\t'));
         if isfield(genesToAdd,'geneShortNames')
-            newModel = writeExistingField(newModel,'geneShortNames',existingGene,genesToAdd.geneShortNames(notNewGene));
+            skip = [];
+            if ~overwriteWithEmpty
+                skip = emptyCells(genesToAdd.geneShortNames(notNewGene));
+            end
+            newModel = writeExistingField(newModel,'geneShortNames',existingGene,genesToAdd.geneShortNames(notNewGene),skip);
         end
-        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewGene,existingGene,'gene');
+        newModel = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewGene,existingGene,'gene',~overwriteWithEmpty);
     end
 
     % Continue with new genes
@@ -205,12 +284,19 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         'metNames',    {'metNames','metName'}; ...
         'comps',       {'comps','comp'}; ...
         'coefficient', {'coefficient','coefficients','coeffs','stoichCoeffs'}});
-    rxnCheck.coeffsIdx = str2double(data(:,col.rxnIdx));
+    % A row without a rxnIdx, rxnNames, metNames and comps value is ignored
+    rowNo = (1:size(data,1))';
+    keyCells = data(:,[col.rxnIdx,col.rxnNames,col.metNames,col.comps]);
+    ignoredRow = all(reshape(emptyCells(keyCells(:)),size(keyCells)),2);
+    data(ignoredRow,:) = [];
+    rowNo(ignoredRow) = [];
+    rxnCheck.coeffsIdx = parseIndexCells(data(:,col.rxnIdx),'rxnIdx','rxnsCoeffs');
     rxns.rxnNames   = data(:,col.rxnNames);
     rxns.metNames   = data(:,col.metNames);
     rxns.comps      = data(:,col.comps);
-    rxns.coeffs     = str2double(data(:,col.coefficient));
-    rxnCheck.coeffs = strcat(data(:,col.rxnIdx),'***',rxns.rxnNames);
+    rxns.coeffs     = parseNumericCells(data(:,col.coefficient),'coefficient','rxnsCoeffs');
+    checkCoefficientsGiven(rxnCheck.coeffsIdx,rxns.coeffs,rowNo);
+    rxnCheck.coeffs = indexKeys(rxnCheck.coeffsIdx,rxns.rxnNames);
 
     % ... and then additional reaction-specific data.
     [header,data] = readCurationTable(rxnsInfo);
@@ -226,26 +312,50 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         'rxnNotes',            {'rxnNotes'}; ...
         'rxnReferences',       {'rxnReferences'}; ...
         'rxnConfidenceScores', {'rxnConfidenceScores'}});
-    rxnCheck.rxnsIdx = str2double(data(:,col.rxnIdx));
-    rxnCheck.rxns = strcat(data(:,col.rxnIdx),'***',data(:,col.rxnNames));
+    % A row without any value is ignored; a row with a value needs a rxnIdx
+    rowNo = (1:size(data,1))';
+    ignoredRow = all(reshape(emptyCells(data(:)),size(data)),2);
+    data(ignoredRow,:) = [];
+    rowNo(ignoredRow) = [];
+    rxnCheck.rxnsIdx = parseIndexCells(data(:,col.rxnIdx),'rxnIdx','rxnsInfo');
+    noIdx = find(isnan(rxnCheck.rxnsIdx),1);
+    if ~isempty(noIdx)
+        error('RAVEN:badInput','Data row %d of the rxnsInfo file has values but its rxnIdx is empty or NaN',rowNo(noIdx));
+    end
+    [uniqueIdx,~,idxGroup] = unique(rxnCheck.rxnsIdx);
+    repeated = find(accumarray(idxGroup,1)>1,1);
+    if ~isempty(repeated)
+        error('RAVEN:badInput','The rxnIdx %s is used by data rows %s of the rxnsInfo file; each reaction needs its own index', ...
+            num2str(uniqueIdx(repeated)),strjoin(arrayfun(@num2str,rowNo(idxGroup==repeated)','UniformOutput',false),', '));
+    end
+    rxnCheck.rxns = indexKeys(rxnCheck.rxnsIdx,data(:,col.rxnNames));
 
     notMatching = setxor(rxnCheck.coeffs,rxnCheck.rxns);
-    if numel(notMatching)>1
-        error(['The following reactions ánd/or their indices are not matched '...
+    if ~isempty(notMatching)
+        error('RAVEN:badInput',['The following reactions and/or their indices are not matched '...
             'between the rxnsInfo and rxnsCoeffs files:\n\t\t%s'],...
-            strjoin(regexprep(notMatching,'^\d+***',''),'\n\t\t'))
+            strjoin(regexprep(notMatching,'^(\d+)\*\*\*(.*)$','index $1 ($2)'),'\n\t\t'))
     end
 
     rxnsToAdd.rxnNames              = data(:,col.rxnNames);
     for f = intersect({'grRules','subSystems','eccodes','rxnNotes','rxnReferences'},fieldnames(col)','stable')
         rxnsToAdd.(f{1}) = data(:,col.(f{1}));
     end
+    if isfield(col,'grRules')
+        rxnsToAdd.grRules = standardGrRules(rxnsToAdd.grRules,rxnsToAdd.rxnNames,rowNo);
+    end
     for f = intersect({'lb','ub','rev'},fieldnames(col)','stable')
-        rxnsToAdd.(f{1}) = cellfun(@str2num,data(:,col.(f{1})));
+        rxnsToAdd.(f{1}) = parseNumericCells(data(:,col.(f{1})),f{1},'rxnsInfo');
+    end
+    if isfield(rxnsToAdd,'rev')
+        checkRevValues(rxnsToAdd.rev,data(:,col.rev));
     end
     if isfield(col,'rxnConfidenceScores')
-        rxnsToAdd.rxnConfidenceScores   = cellfun(@str2num,data(:,col.rxnConfidenceScores),'UniformOutput',false);
+        rxnsToAdd.rxnConfidenceScores   = cellfun(@(x) parseNumberCell(x,'rxnConfidenceScores','rxnsInfo'),data(:,col.rxnConfidenceScores),'UniformOutput',false);
+        isNanScore = cellfun(@(x) isscalar(x) && isnan(x),rxnsToAdd.rxnConfidenceScores);
+        rxnsToAdd.rxnConfidenceScores(isNanScore) = {[]}; % a NaN score counts as not given
         emptyEntry = cellfun(@isempty,rxnsToAdd.rxnConfidenceScores);
+        emptyScore = emptyEntry;
         if all(emptyEntry)
             rxnsToAdd           = rmfield(rxnsToAdd,'rxnConfidenceScores');
         else % If some rxnConfidenceScores are given, assume 0 for those without rxnConfidenceScores specified
@@ -266,7 +376,7 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
             try
                 newMetComp = getIndexes(newModel,newMetComp,'metcomps');
             catch
-                error(['Not all metabolites in reaction "%s" are present in the '...
+                error('RAVEN:badInput',['Not all metabolites in reaction "%s" are present in the '...
                     'model or in the provided table with new metabolites.'],rxnsToAdd.rxnNames{i})
             end
             rxnsToAdd.mets{i}(j) = newModel.mets(newMetComp);
@@ -298,25 +408,41 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
             'reactions, their annotation will be overwritten to match the '...
             'rxnCoeffs file: \n\t\t(Existing reaction ID): New reaction name\n\t\t%s'],...
             strjoin(strcat('(',newModel.rxns(existingRxn),{'): '},rxnsToAdd.rxnNames(notNewRxn)),'\n\t\t'));
-        newModel.rxnNames(existingRxn) = rxnsToAdd.rxnNames(notNewRxn);
+        nameValues = rxnsToAdd.rxnNames(notNewRxn);
+        nameIdx    = existingRxn;
+        if ~overwriteWithEmpty
+            nameIdx    = nameIdx(~emptyCells(nameValues));
+            nameValues = nameValues(~emptyCells(nameValues));
+        end
+        newModel.rxnNames(nameIdx) = nameValues;
         for f = intersect({'lb','ub','rev'},fieldnames(rxnsToAdd)','stable')
-            newModel.(f{1})(existingRxn) = rxnsToAdd.(f{1})(notNewRxn);
+            values = rxnsToAdd.(f{1})(notNewRxn);
+            given  = ~isnan(values);
+            newModel.(f{1})(existingRxn(given)) = values(given);
         end
         for f = optFields
             values = rxnsToAdd.(f{1})(notNewRxn);
+            skip = [];
+            if ~overwriteWithEmpty
+                if strcmp(f{1},'rxnConfidenceScores')
+                    skip = emptyScore(notNewRxn);
+                else
+                    skip = emptyCells(values);
+                end
+            end
             if strcmp(f{1},'subSystems') && isfield(newModel,'subSystems') ...
                     && any(cellfun(@iscell,newModel.subSystems))
                 values = cellfun(@(x) {x}, values, 'UniformOutput', false);
             end
-            newModel = writeExistingField(newModel,f{1},existingRxn,values);
+            newModel = writeExistingField(newModel,f{1},existingRxn,values,skip);
         end
         if isfield(rxnsToAdd,'grRules')
-            emptyEntries = cellfun(@isempty,rxnsToAdd.grRules(notNewRxn));
+            emptyEntries = emptyCells(rxnsToAdd.grRules(notNewRxn));
             if ~all(emptyEntries)
                 newModel    = changeGrRules(newModel,newModel.rxns(existingRxn(~emptyEntries)),rxnsToAdd.grRules(notNewRxn(~emptyEntries)),true);
             end
         end
-        newModel    = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewRxn,existingRxn,'rxn');
+        newModel    = extractAndAddMiriam(newModel,header(miriamCols),data(:,miriamCols),notNewRxn,existingRxn,'rxn',~overwriteWithEmpty);
     end
 
     % Continue with new reactions
@@ -326,6 +452,16 @@ if ~any(strcmp({rxnsCoeffs,rxnsInfo},'none'))
         rxnsToAdd.rxnNames      = rxnsToAdd.rxnNames(toAdd);
         for f = intersect({'lb','ub','rev','grRules'},fieldnames(rxnsToAdd)','stable')
             rxnsToAdd.(f{1}) = rxnsToAdd.(f{1})(toAdd);
+        end
+        if isfield(rxnsToAdd,'lb')
+            rxnsToAdd.lb(isnan(rxnsToAdd.lb)) = -inf;
+        end
+        if isfield(rxnsToAdd,'ub')
+            defaultUB = inf;
+            if isfield(newModel,'annotation') && isfield(newModel.annotation,'defaultUB')
+                defaultUB = newModel.annotation.defaultUB;
+            end
+            rxnsToAdd.ub(isnan(rxnsToAdd.ub)) = defaultUB;
         end
         for f = optFields
             rxnsToAdd.(f{1}) = rxnsToAdd.(f{1})(toAdd);
@@ -349,16 +485,16 @@ function [header,data] = readCurationTable(fileName)
 % array of text with one column per header field.
 fid = fopen(fileName);
 if fid==-1
-    error('Could not open the file "%s"',fileName);
+    error('RAVEN:badInput','Could not open the file "%s"',fileName);
 end
 headerLine = fgetl(fid);
 if ~ischar(headerLine)
     fclose(fid);
-    error('The file "%s" is empty',fileName);
+    error('RAVEN:badInput','The file "%s" is empty',fileName);
 end
 headerLine = strrep(headerLine,char(65279),''); % byte order mark
 header = strtrim(strsplit(headerLine,'\t'));
-header = regexprep(header,'^"(.*)"$','$1');
+header = strtrim(regexprep(header,'^"(.*)"$','$1'));
 nCols  = numel(header);
 raw    = textscan(fid,repmat('%q',1,nCols),'Delimiter','\t');
 fclose(fid);
@@ -367,6 +503,8 @@ data   = repmat({''},nRows,nCols);
 for i=1:nCols
     data(1:numel(raw{i}),i) = raw{i};
 end
+blank = cellfun(@(x) ischar(x) && isempty(strtrim(x)),data);
+data(blank) = {''};
 end
 
 function [col,miriamCols] = matchColumns(header,fileName,required,spec)
@@ -384,15 +522,23 @@ for i=1:size(spec,1)
 end
 missing = setdiff(required,fieldnames(col)','stable');
 if ~isempty(missing)
-    error('The file "%s" has no column with header: %s',fileName,strjoin(missing,', '));
+    error('RAVEN:badInput','The file "%s" has no column with header: %s',fileName,strjoin(missing,', '));
 end
 miriamCols = find(~isCore & ~cellfun(@isempty,header));
 end
 
-function model = writeExistingField(model,field,modelIdx,values)
+function model = writeExistingField(model,field,modelIdx,values,skip)
 % Write the values of an optional field onto existing entities. A field
 % the model does not have is created from its ravenModelFields default,
-% unless all supplied values are empty.
+% unless all supplied values are empty. Entries flagged in the logical
+% vector skip are not written.
+if nargin>4 && ~isempty(skip)
+    modelIdx = modelIdx(~skip(:)');
+    values   = values(~skip(:));
+    if isempty(modelIdx)
+        return
+    end
+end
 if ~isfield(model,field)
     if iscell(values) && all(cellfun(@isempty,values))
         return
@@ -409,9 +555,25 @@ end
 model.(field)(modelIdx) = values;
 end
 
-function newModel = extractAndAddMiriam(model,miriamName,miriamData,inputIndex,modelIndex,type)
+function newModel = extractAndAddMiriam(model,miriamName,miriamData,inputIndex,modelIndex,type,skipEmpty)
+% Replace the MIRIAM annotations of the entities in modelIndex with the
+% values of the table rows in inputIndex. With skipEmpty, an empty cell
+% leaves the annotation of that entity unchanged.
 newModel=model;
 miriamValues    = miriamData(inputIndex,:);
+if nargin>6 && skipEmpty
+    for i=1:numel(miriamName)
+        given = ~emptyCells(miriamValues(:,i));
+        if any(given)
+            if ~isfield(newModel,[type 'Miriams'])
+                newModel.([type 'Miriams'])=cell(numel(newModel.([type 's'])),1);
+            end
+            idx = modelIndex(:);
+            newModel = editMiriam(newModel,type,idx(given),miriamName{i},miriamValues(given,i),'replace');
+        end
+    end
+    return
+end
 emptyMiriam     = all(cellfun(@isempty,miriamValues),1);
 miriamName(emptyMiriam)     = [];
 miriamValues(:,emptyMiriam) = [];
@@ -420,5 +582,144 @@ if ~isfield(newModel,[type 'Miriams'])
 end
 for i=1:numel(miriamName)
     newModel = editMiriam(newModel,type,modelIndex,miriamName{i},miriamValues(:,i),'replace');
+end
+end
+
+function empty = emptyCells(values)
+% Logical column vector that is true for the empty entries of a cell array
+% of text (a cell with only blanks counts as empty) or of a numeric cell.
+empty = cellfun(@(x) isempty(x) || (ischar(x) && isempty(strtrim(x))),values(:));
+end
+
+function values = parseIndexCells(cells,field,fileLabel)
+% Reaction indices from table cells: NaN where the cell is empty or says NaN
+% (the row is ignored), otherwise a finite whole number of at least 1.
+values = parseNumericCells(cells,field,fileLabel);
+bad = find(~isnan(values) & (~isfinite(values) | values~=round(values) | values<1),1);
+if ~isempty(bad)
+    error('RAVEN:badInput','The %s value "%s" in the %s file is not a whole number of at least 1',field,strtrim(cells{bad}),fileLabel);
+end
+end
+
+function values = parseNumericCells(cells,field,fileLabel)
+% Numbers from table cells, NaN where the cell is empty or says NaN. A cell
+% that is not a number (or true/false) raises an error.
+values = nan(numel(cells),1);
+for i=1:numel(cells)
+    v = parseNumberCell(cells{i},field,fileLabel);
+    if ~isempty(v)
+        values(i) = v;
+    end
+end
+end
+
+function v = parseChargeCell(text,fileLabel)
+% Charge from a table cell: [] for an empty cell, NaN for NaN, otherwise a
+% finite whole number. A fractional or infinite charge raises an error.
+v = parseNumberCell(text,'charge',fileLabel);
+if ~isempty(v) && ~isnan(v) && (~isfinite(v) || v~=round(v))
+    error('RAVEN:badInput','The charge value "%s" in the %s file is not a finite whole number',strtrim(text),fileLabel);
+end
+end
+
+function checkCoefficientsGiven(idx,coeffs,rowNo)
+% Every row of the rxnsCoeffs table that is kept has a rxnIdx and a
+% coefficient that is a finite number other than 0.
+noIdx = find(isnan(idx),1);
+if ~isempty(noIdx)
+    error('RAVEN:badInput',['Data row %d of the rxnsCoeffs file has values but its rxnIdx is empty or NaN'],rowNo(noIdx));
+end
+missing = find(isnan(coeffs),1);
+if ~isempty(missing)
+    error('RAVEN:badInput',['The coefficient in data row %d of the rxnsCoeffs file is empty or NaN; ' ...
+        'every row with a reaction, metabolite or compartment needs a coefficient'],rowNo(missing));
+end
+bad = find(~isfinite(coeffs) | coeffs==0,1);
+if ~isempty(bad)
+    error('RAVEN:badInput','The coefficient in data row %d of the rxnsCoeffs file must be a finite non-zero number',rowNo(bad));
+end
+end
+
+function keys = indexKeys(idx,names)
+% One key per table row from the numeric reaction index and the name, so that
+% the indices of two tables are compared by value.
+keys = cell(numel(idx),1);
+for i=1:numel(idx)
+    keys{i} = sprintf('%.0f***%s',idx(i),names{i});
+end
+end
+
+function checkGenesListedOnce(genes)
+% Raise RAVEN:badInput for a gene id that the genesInfo table lists more than
+% once, whether the model has the gene or not: two rows for one gene would
+% say two things about it, and the second row would add a second gene with
+% the same id.
+[ids,~,j] = unique(genes);
+repeated = ids(accumarray(j,1) > 1);
+if ~isempty(repeated)
+    error('RAVEN:badInput',['The following genes are listed more than once '...
+        'in the genesInfo file:\n\t\t%s'],strjoin(repeated,'\n\t\t'));
+end
+end
+
+
+function rules = standardGrRules(rules,rxnNames,rowNo)
+% Raise RAVEN:badInput for a grRules cell that is not a well-formed gene rule
+% (unbalanced parentheses, an operator without two operands, empty
+% parentheses, two genes without an operator between them) and write each
+% other rule in RAVEN's standard format (" and " / " or ", parentheses only
+% where needed), so that addRxns and changeGrRules read every spelling that
+% parseGrRule reads. Empty cells are left as they are.
+for i = find(~emptyCells(rules))'
+    try
+        rules{i} = grRuleToString(parseGrRule(rules{i}));
+    catch err
+        if strcmp(err.identifier,'RAVEN:badGrRule')
+            error('RAVEN:badInput','The grRules value "%s" of reaction "%s" (data row %d of the rxnsInfo file) is not a valid gene rule: %s',...
+                rules{i},rxnNames{i},rowNo(i),err.message);
+        end
+        rethrow(err);
+    end
+end
+end
+
+
+function checkRevValues(values,cells)
+% A rev cell is 0, 1, true or false; an empty or NaN cell is not given.
+bad = find(~isnan(values) & values~=0 & values~=1,1);
+if ~isempty(bad)
+    error('RAVEN:badInput','The rev value "%s" in the rxnsInfo file is not 0, 1, true or false',strtrim(cells{bad}));
+end
+end
+
+function v = parseNumberCell(text,field,fileLabel)
+% Real number from a table cell: [] for an empty cell, 1 or 0 for true or
+% false in any case (lb, ub and rev cells only), NaN or +/-Inf for those words in any case, otherwise a
+% plain decimal number (digits with an optional sign, decimal point and
+% exponent). Any other text raises an error; nothing is evaluated.
+text = strtrim(text);
+if isempty(text)
+    v = [];
+    return
+end
+word = lower(text);
+if any(strcmp(word,{'true','false'})) && ~ismember(field,{'lb','ub','rev'})
+    error('RAVEN:badInput','The %s value "%s" in the %s file is not a number',field,text,fileLabel);
+end
+if strcmp(word,'true')
+    v = 1;
+elseif strcmp(word,'false')
+    v = 0;
+elseif ~isempty(regexp(word,'^[+-]?nan$','once'))
+    v = NaN;
+elseif ~isempty(regexp(word,'^[+-]?inf$','once'))
+    v = Inf;
+    if word(1)=='-'
+        v = -Inf;
+    end
+elseif ~isempty(regexp(text,'^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?$','once'))
+    v = str2double(text);
+else
+    error('RAVEN:badInput','The %s value "%s" in the %s file is not a number',field,text,fileLabel);
 end
 end

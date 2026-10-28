@@ -12,6 +12,10 @@ function prepData = prepINITModel(origRefModel, taskStruct, varargin)
 % taskStruct : struct
 %     the essential tasks. Can be loaded with for example
 %     taskStruct = parseTaskList('../data/metabolicTasks_Essential.txt').
+%     The task ids must be character vectors: a non-text id or a missing id
+%     field raises RAVEN:badInput. Ids may repeat (for example as category
+%     codes) and may be empty; each task is one row group of the task list,
+%     and a task that cannot be performed is removed by its position.
 %
 % Name-Value Arguments
 % --------------------
@@ -58,6 +62,17 @@ customRxnsToIgnore=p.customRxnsToIgnore;
 extComp=p.extComp;
 skipScaling=p.skipScaling;
 runParallel=p.runParallel;
+
+if ~isempty(taskStruct)
+    if ~isfield(taskStruct,'id')
+        error('RAVEN:badInput','The task structure must have an id field');
+    end
+    taskIds = {taskStruct.id};
+    if ~all(cellfun(@(x) ischar(x) && (isrow(x) || isempty(x)),taskIds))
+        error('RAVEN:badInput','The task ids must be character vectors');
+    end
+end
+
 disp('Step 1: Gene rules')
 [origRefModel.grRules, origRefModel.rxnGeneMat] = standardizeGrRules(origRefModel, true);
 

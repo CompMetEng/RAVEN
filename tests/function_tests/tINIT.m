@@ -19,6 +19,54 @@ classdef tINIT < RavenTestCase
             testCase.verifyNotEmpty(steps);
         end
 
+        function prepINITModelRefusesTaskIdsThatAreNotText(testCase)
+            % Non-text ids and a missing id field are reported as RAVEN:badInput.
+            bad = {struct('id',{"a","a"}), struct('id',{1,1}), struct('name',{'a','b'})};
+            for i = 1:numel(bad)
+                err = [];
+                try
+                    prepINITModel(struct(), bad{i});
+                catch err
+                end
+                testCase.verifyNotEmpty(err);
+                testCase.verifyEqual(err.identifier, 'RAVEN:badInput');
+            end
+        end
+
+        function prepINITModelAcceptsRepeatedAndEmptyTaskIds(testCase)
+            % Ids may repeat and may be empty: a task is one row group of the
+            % task list. A task that cannot be performed is removed by its
+            % position, so the task with the same id that can be performed stays.
+            testCase.assumeMILPSolver();
+            testModel = getTstModel();
+            base = getTstModelTasks();
+            second = base;  second.id = 'ER';  second.description = 'second';
+            first = base;   first.id = 'BS';   first.description = 'first';
+            failing = base; failing.id = 'BS'; failing.description = 'cannot be performed';
+            failing.inputs = {}; failing.LBin = []; failing.UBin = [];
+            third = base;   third.id = '';     third.description = 'empty id';
+            fourth = base;  fourth.id = '';    fourth.description = 'empty id again';
+            tasks = [first, second, failing, third, fourth];
+            evalc('prepData = prepINITModel(testModel, tasks, {}, false, {}, ''s'');');
+            testCase.verifyEqual({prepData.taskStruct.description}, ...
+                {'first','second','empty id','empty id again'});
+            testCase.verifyEqual({prepData.taskStruct.id}, {'BS','ER','',''});
+        end
+
+        function prepINITModelKeepsTasksOfARepeatedIdListLikeHumanGEM(testCase)
+            % A task list in Human-GEM's layout: category codes as ids, several
+            % tasks per code, comment rows above the header.
+            testCase.assumeMILPSolver();
+            taskFile = fullfile(fileparts(mfilename('fullpath')), ...
+                'test_data','test_tasks_repeated_ids.txt');
+            tasks = parseTaskList(taskFile);
+            testCase.verifyEqual({tasks.id}, {'ER','BS','ER','BS'});
+            evalc('prepData = prepINITModel(getTstModel(), tasks, {}, false, {}, ''s'');');
+            testCase.verifyEqual({prepData.taskStruct.description}, ...
+                {'Produce e from a','Produce e from a, second','Produce e from a, third'});
+            testCase.verifyEqual({prepData.taskStruct.id}, {'ER','BS','BS'});
+        end
+
         function getExprForRxnScoreRuns(testCase)
             expr = getExprForRxnScore(rand(10, 1), 1);
             testCase.verifyNotEmpty(expr);
@@ -274,6 +322,22 @@ classdef tINIT < RavenTestCase
             % the model now takes the "correct" path (incl. R2), skipping R9/R10
             testCase.verifyTrue(all(strcmp(resModel.rxns, ...
                 {'R1';'R2';'R4';'R6';'R7';'R8'})));
+        end
+
+        function ftINITWithoutRemoveGenesDropsGenesOfRemovedReactions(testCase)
+            % Genes that no remaining reaction uses are not in the output,
+            % also when removeGenes is false.
+            testCase.assumeMILPSolver();
+            testModel = getTstModel();
+            evalc('prepData = prepINITModel(testModel, {}, {}, false, {}, ''s'');');
+            arrayData.genes     = testModel.genes;
+            arrayData.tissues   = {'a'};
+            arrayData.levels    = getExprForRxnScore(getTstModelRxnScores());
+            arrayData.threshold = 1;
+            evalc(['resModel = ftINIT(prepData,arrayData.tissues{1},[],[],' ...
+                'arrayData,[],getINITSteps(),false,true,struct(),false);']);
+            testCase.verifyLessThan(numel(resModel.genes), numel(testModel.genes));
+            testCase.verifyTrue(all(full(any(resModel.rxnGeneMat,1))));
         end
 
         function ftINITResolveTiesAndProveAbsGapStillRunCorrectly(testCase)

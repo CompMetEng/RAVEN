@@ -11,7 +11,8 @@ function repMets=reporterMetabolites(model,genes,genePValues,varargin)
 % genes : cell
 %     a cell array of gene names (should match with model.genes).
 % genePValues : double
-%     P-values for differential expression of the genes.
+%     P-values for differential expression of the genes. Values must lie in
+%     [0, 1]; NaN values are ignored, any other value raises an error.
 %
 % Name-Value Arguments
 % --------------------
@@ -78,6 +79,15 @@ if ~isfield(model,'rxnGeneMat')
     error('RAVEN:badInput', '%s', EM);
 end
 
+%All P-values that are given must lie in [0,1]; NaN means that no P-value
+%is available and is removed below
+badP=~isnan(genePValues) & (genePValues<0 | genePValues>1);
+if any(badP)
+    firstBad=find(badP,1);
+    EM=sprintf('The P-values must lie between 0 and 1, but %d of them do not. The first is %g (gene %s)',nnz(badP),genePValues(firstBad),genes{firstBad});
+    error('RAVEN:badInput', '%s', EM);
+end
+
 %Remove the genes which are not in the model
 genePValues(~ismember(genes,model.genes))=[];
 if any(geneFoldChanges)
@@ -103,6 +113,14 @@ geneZScores(geneZScores==inf)=15;
 %For each metabolite, calculate the aggregate Z-score and keep track of the
 %number of neighbouring genes
 metZScores=nan(numel(model.mets),1);
+%Sums are taken on Z-scores relative to their mean (found in two passes, the
+%second relative to the first gene's Z-score), which keeps the rounding error
+%proportional to the spread of the Z-scores instead of to their size
+metZShifted=nan(numel(model.mets),1);
+zCentre=0;
+if ~isempty(geneZScores)
+    zCentre=geneZScores(1)+mean(geneZScores-geneZScores(1));
+end
 metNGenes=nan(numel(model.mets),1);
 meanZ=nan(numel(model.mets),1);
 stdZ=nan(numel(model.mets),1);
@@ -124,28 +142,43 @@ for i=1:numel(model.mets)
     %Calculate the aggregated Z-score for the metabolite
     if any(K)
         metZScores(i)=sum(geneZScores(K))/sqrt(numel(K));
+        metZShifted(i)=sum(geneZScores(K)-zCentre)/sqrt(numel(K));
         meanZ(i)=mean(geneZScores(K));
         stdZ(i)=std(geneZScores(K));
         metNGenes(i)=numel(K);
     end
 end
 
-%Remove the metabolites which have no Z-scores
-mets=model.mets(~isnan(metZScores));
-metNames=model.metNames(~isnan(metZScores));
-metZScores(isnan(metZScores))=[];
-metNGenes(isnan(metNGenes))=[];
-meanZ(isnan(meanZ))=[];
-stdZ(isnan(stdZ))=[];
+%Remove the metabolites which have no Z-scores, from all fields alike
+noScore=isnan(metZScores);
+mets=model.mets(~noScore);
+metNames=model.metNames(~noScore);
+metZShifted(noScore)=[];
+metZScores(noScore)=[];
+metNGenes(noScore)=[];
+meanZ(noScore)=[];
+stdZ(noScore)=[];
 
 %Correct for background using the closed-form moments of the sampling
 %distribution. For n genes drawn with replacement from the scored-gene pool
 %(mean mu, population std sigma), the aggregate Z = sum(z)/sqrt(n) has:
 %  E[Z] = sqrt(n)*mu  and  Std[Z] = sigma  (independent of n)
-%so the corrected score is (metZ - sqrt(n)*mu) / sigma.
-mu = mean(geneZScores);
-sigma = std(geneZScores,1);
-metZScores = (metZScores - sqrt(metNGenes) .* mu) ./ sigma;
+%so the corrected score is (metZ - sqrt(n)*mu) / sigma. When sigma is 0 (all
+%scored genes have the same Z-score) no metabolite stands out from the
+%background, and the corrected score is 0 (P-value 0.5). The moments are
+%taken on Z-scores shifted by their mean, so that mu and the numerator keep
+%their precision when the Z-scores are close to each other or the first one is
+%an outlier. Identical Z-scores then give exactly 0 for the numerator, and the
+%test of the spread of the Z-scores (0 up to 100*eps(max(abs(Z)))) only
+%prevents a division of 0 by 0.
+zShifted = geneZScores - zCentre;
+muShifted = mean(zShifted);
+sigma = std(zShifted,1);
+if max(geneZScores)-min(geneZScores) > 100*eps(max(abs(geneZScores)))
+    metZScores = (metZShifted - sqrt(metNGenes) .* muShifted) ./ sigma;
+else
+    metZScores = zeros(size(metZScores));
+end
 
 %Calculate the P-values (upper-tail of the standard normal). Uses the base
 %MATLAB erfc so this does not depend on the Statistics Toolbox normcdf:

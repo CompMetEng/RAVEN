@@ -440,6 +440,47 @@ classdef tManipulation < RavenTestCase
             testCase.verifyEqual(ids{1}, 'p.002');
         end
 
+        function generateNewIdsFollowsNumericallyLargestId(testCase)
+            % 'R_9' sorts after 'R_10' as text; the next id comes from 10.
+            m.rxns = {'R_9'; 'R_10'};
+            ids = generateNewIds(m, 'rxns', 'R_', 'quantity', 2);
+            testCase.verifyEqual(ids, {'R_11'; 'R_12'});
+        end
+
+        function generateNewIdsKeepsPaddingOfLargestId(testCase)
+            m.rxns = {'R_0009'; 'R_0010'};
+            ids = generateNewIds(m, 'rxns', 'R_');
+            testCase.verifyEqual(ids, {'R_0011'});
+        end
+
+        function generateNewIdsIgnoresSuffixesThatAreNotIntegers(testCase)
+            % Inf, fractions and overflowing numbers are not counted as
+            % numbers; the next id follows the other suffixes.
+            m.rxns = {'r_inf'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_001'});
+            m.rxns = {'r_9.5'; 'r_3'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_4'});
+            m.rxns = {'r_1e400'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_1d2'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_2.5'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_001'});
+        end
+
+        function generateNewIdsIgnoresSuffixesBeyondDoublePrecision(testCase)
+            % Numbers of 2^52 or more cannot be told from fractions and
+            % cannot be incremented exactly.
+            m.rxns = {'r_1e300'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_9007199254740992'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_4503599627370496.5'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_0004'});
+            m.rxns = {'r_4503599627370495'; 'r_0003'};
+            testCase.verifyEqual(generateNewIds(m, 'rxns', 'r_'), {'r_4503599627370496'});
+        end
+
         function mergeCompartmentsSingleComp(testCase)
             evalc('m2 = mergeCompartments(testCase.model);');
             testCase.verifyNumElements(m2.comps, 1);
@@ -736,6 +777,21 @@ classdef tManipulation < RavenTestCase
             m2 = sortModel(testCase.model);
             testCase.verifyEqual(numel(m2.rxns), numel(testCase.model.rxns));
             testCase.verifyEqual(numel(m2.mets), numel(testCase.model.mets));
+        end
+
+        function sortModelKeepsDirectionByDefault(testCase)
+            % Only sortReversible=true reorients a reversible reaction; the
+            % default leaves the stoichiometry as given.
+            m = struct();
+            m.id = 'toy'; m.rxns = {'R1'}; m.mets = {'A[c]';'B[c]'};
+            m.metNames = {'A';'B'}; m.comps = {'c'}; m.metComps = [1;1];
+            m.S = sparse([1;-1]); m.lb = -1000; m.ub = 1000; m.rev = 1;
+            m.c = 0; m.b = [0;0]; m.genes = cell(0,1);
+            m.rxnGeneMat = sparse(1,0); m.grRules = {''};
+            m2 = sortModel(m);
+            testCase.verifyEqual(full(m2.S), [1;-1]);
+            m3 = sortModel(m, 'sortReversible', true);
+            testCase.verifyEqual(full(m3.S), [-1;1]);
         end
 
         function sortReactionOrderSeedIsReproducible(testCase)

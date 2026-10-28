@@ -76,6 +76,51 @@ classdef tBiomass < RavenTestCase
             testCase.verifyEqual(full(out.S(strcmp(out.mets,'h_c'), 1)), -1, 'AbsTol', 1e-9);
         end
 
+        function scaleBiomassPseudoreactionRefusesMissingProton(testCase)
+            [m, cfg] = tBiomass.protonToyModel();
+            cfg.proton_met = 'nohydrogen_c';
+            testCase.verifyError(@() scaleBiomassPseudoreaction(m, cfg, 'protein', 0.5), ...
+                'scaleBiomassPseudoreaction:missingProton');
+        end
+
+        function setGAMRefusesMissingNgamRxn(testCase)
+            % The model is not changed when the NGAM reaction is not found.
+            biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
+            testCase.verifyError(@() setGAM(testCase.model, 50, biomassRxn, ...
+                {'ATP','ADP','H2O','H+','Phosphate'}, 'ngamRxn', 'noSuchRxn', 'ngamValue', 1), ...
+                'setGAM:missingNgamRxn');
+        end
+
+        function setGAMRefusesMissingNgamRxnWithoutValue(testCase)
+            % The reaction is checked whenever it is given.
+            biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
+            testCase.verifyError(@() setGAM(testCase.model, 50, biomassRxn, ...
+                {'ATP','ADP','H2O','H+','Phosphate'}, 'ngamRxn', 'noSuchRxn'), ...
+                'setGAM:missingNgamRxn');
+        end
+
+        function setGAMTreatsEmptyNgamRxnAsNotGiven(testCase)
+            % An empty id sets no NGAM and is no missing reaction.
+            biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
+            cof = {'ATP','ADP','H2O','H+','Phosphate'};
+            ref = setGAM(testCase.model, 50, biomassRxn, cof);
+            for empty = {'', {''}, "", {'';''}}
+                m = setGAM(testCase.model, 50, biomassRxn, cof, 'ngamRxn', empty{1});
+                testCase.verifyEqual(m.S, ref.S);
+                testCase.verifyEqual(m.lb, ref.lb);
+                testCase.verifyEqual(m.ub, ref.ub);
+            end
+        end
+
+        function setGAMRefusesNgamValueWithoutNgamRxn(testCase)
+            % A value needs a reaction to be set on; an empty id is no reaction.
+            biomassRxn = testCase.model.rxns{find(testCase.model.c == 1, 1)};
+            cof = {'ATP','ADP','H2O','H+','Phosphate'};
+            testCase.verifyError(@() setGAM(testCase.model, 50, biomassRxn, cof, 'ngamValue', 2), 'RAVEN:badInput');
+            testCase.verifyError(@() setGAM(testCase.model, 50, biomassRxn, cof, 'ngamRxn', '', 'ngamValue', 2), 'RAVEN:badInput');
+            testCase.verifyError(@() setGAM(testCase.model, 50, biomassRxn, cof, 'ngamRxn', {''}, 'ngamValue', 2), 'RAVEN:badInput');
+        end
+
         function scaleBiomassPseudoreactionRefusesUnknownCharge(testCase)
             % An unset charge on a participating metabolite leaves the charge
             % balance unknown. Treating it as neutral would silently write the

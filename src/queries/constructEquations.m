@@ -61,7 +61,7 @@ useRevField=p.useRevField;
 
 %Sort reversible equations
 if sortRevRxns==true
-    model=sortModel(model);
+    model=sortModel(model,true);
 end
 
 %Sort metabolite names, including compartment

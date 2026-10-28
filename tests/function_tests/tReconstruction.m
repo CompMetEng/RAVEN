@@ -85,6 +85,66 @@ classdef tReconstruction < RavenTestCase
             testCase.verifyEqual(flag.rxnNotes{1}, 'Included by getModelFromHomology');
         end
 
+        function getModelFromHomologyComplexPolicyOnNestedRules(testCase)
+            % An isozyme group whose members all lack an ortholog leaves one flagged
+            % subunit; "drop" removes every reaction that keeps a flagged gene.
+            % Columns: rule, mapped template genes, policy, genes in the rule ({} = reaction removed).
+            cases = {'(A or B) and C', {'C'}, 'flag', {'OLD_T_B', 'nC'}; ...
+                     '(A or B) and C', {'C'}, 'keep', {'nC'}; ...
+                     '(A or B) and C', {'C'}, 'drop', {}; ...
+                     'A or (B and C)', {'A', 'C'}, 'drop', {}; ...
+                     '(A and B) or C', {'C'}, 'drop', {}};
+            for k = 1:size(cases, 1)
+                t = tReconstruction.homologyTemplate('T', {'R1'}, cases(k, 1));
+                pairs = cell(numel(cases{k, 2}), 2);
+                for q = 1:numel(cases{k, 2})
+                    pairs(q, :) = {cases{k, 2}{q}, ['n' cases{k, 2}{q}]};
+                end
+                draft = tReconstruction.homologyDraft({t}, {pairs}, cases{k, 3}, {});
+                if isempty(cases{k, 4})
+                    testCase.verifyFalse(ismember('R1', draft.rxns), cases{k, 1});
+                else
+                    testCase.verifyEqual(sort(draft.genes), sort(cases{k, 4}(:)), cases{k, 1});
+                    testCase.verifyFalse(contains(draft.grRules{strcmp(draft.rxns, 'R1')}, ' or '), cases{k, 1});
+                end
+            end
+            % the flagged subunit stays next to its isozyme in the other branch
+            t = tReconstruction.homologyTemplate('T', {'R1'}, {'A or (B and C)'});
+            draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'C', 'nC'}}, 'flag', {});
+            testCase.verifyTrue(contains(draft.grRules{1}, 'OLD_T_B'));
+            testCase.verifyTrue(contains(draft.grRules{1}, 'nA'));
+            draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'C', 'nC'}}, 'keep', {});
+            testCase.verifyTrue(contains(draft.grRules{1}, 'nA'));
+            testCase.verifyTrue(contains(draft.grRules{1}, 'nC'));
+            testCase.verifyFalse(contains(draft.grRules{1}, 'OLD_'));
+        end
+
+        function getModelFromHomologyPreferredOrderDropsSharedGenes(testCase)
+            % A template gene that maps to a gene already taken by an earlier model is
+            % removed from the later model altogether, including its other mappings.
+            t1 = tReconstruction.homologyTemplate('T1', {'R_T1'}, {'Y'});
+            t2 = tReconstruction.homologyTemplate('T2', {'R_T2'}, {'X'});
+            pairs = {{'Y', 'N1'}, {'X', 'N1'; 'X', 'N2'}};
+            draft = tReconstruction.homologyDraft({t1, t2}, pairs, 'flag', {'T1', 'T2'});
+            testCase.verifyEqual(draft.rxns, {'R_T1'});
+            draft = tReconstruction.homologyDraft({t1, t2}, pairs, 'flag', {'T2', 'T1'});
+            testCase.verifyEqual(draft.rxns, {'R_T2'});
+            testCase.verifyEqual(sort(draft.genes), {'N1'; 'N2'});
+        end
+
+        function getModelFromHomologyPreferredOrderWithoutSharedGenes(testCase)
+            % Templates with the same reaction id and no shared gene: the order does not
+            % change the result, and no empty gene list reaches removeGenes.
+            t1 = tReconstruction.homologyTemplate('T1', {'R1'}, {'Y'});
+            t2 = tReconstruction.homologyTemplate('T2', {'R1'}, {'X'});
+            pairs = {{'Y', 'N1'}, {'X', 'N2'}};
+            none = tReconstruction.homologyDraft({t1, t2}, pairs, 'flag', {});
+            ordered = tReconstruction.homologyDraft({t1, t2}, pairs, 'flag', {'T2', 'T1'});
+            testCase.verifyEqual(sort(ordered.rxns), sort(none.rxns));
+            testCase.verifyEqual(numel(ordered.rxns), 2);
+            testCase.verifyEqual(ordered.grRules{strcmp(ordered.rxns, 'R1')}, 'N1');
+        end
+
         function getModelFromHomologyRejectsGeneIdsThatSplit(testCase)
             src = testCase.model; src.id = 'srcModel';
             newGenes = cellstr(strcat('sp|P', string(1:10)', '|X_BUG'));
@@ -265,6 +325,50 @@ classdef tReconstruction < RavenTestCase
     end
 
     methods (Static)
+
+        function t = homologyTemplate(id, rxns, rules)
+            % One-reaction-per-rule template converting a_c to b_c; genes come from the rules.
+            n = numel(rxns);
+            tokens = cellfun(@(r) regexp(r, '[A-Za-z0-9_]+', 'match'), rules, 'UniformOutput', false);
+            genes = unique(setdiff([tokens{:}], {'and', 'or'}), 'stable')';
+            t = struct();
+            t.id = id; t.name = id;
+            t.mets = {'a_c'; 'b_c'}; t.metNames = {'a'; 'b'};
+            t.comps = {'c'}; t.compNames = {'cytosol'}; t.metComps = [1; 1];
+            t.rxns = rxns(:); t.rxnNames = rxns(:);
+            t.S = sparse(repmat([-1; 1], 1, n));
+            t.lb = zeros(n, 1); t.ub = 1000*ones(n, 1); t.c = zeros(n, 1);
+            t.b = zeros(2, 1); t.rev = zeros(n, 1);
+            t.grRules = rules(:);
+            t.genes = genes;
+            t.rxnGeneMat = sparse(n, numel(genes));
+            for i = 1:n
+                t.rxnGeneMat(i, ismember(genes, tokens{i})) = 1;
+            end
+        end
+
+        function draft = homologyDraft(templates, pairsPerTemplate, policy, order)
+            % Draft for organism "N" from fixed ortholog pairs, one list per template.
+            blast = [];
+            for k = 1:numel(templates)
+                list = pairsPerTemplate{k};
+                % makeFakeBlastStructure wants at least 10 pairs; the padding genes are in no template
+                for pad = size(list, 1)+1:10
+                    list(pad, :) = {sprintf('pad_%s_%d', templates{k}.id, pad), sprintf('npad_%s_%d', templates{k}.id, pad)};
+                end
+                fake = makeFakeBlastStructure(list, templates{k}.id, 'N');
+                if isempty(blast)
+                    blast = fake;
+                else
+                    blast = [blast, fake]; %#ok<AGROW>
+                end
+            end
+            args = {'complexPolicy', policy, 'minLen', 0, 'minIde', 0};
+            if ~isempty(order)
+                args = [args, {'preferredOrder', order}];
+            end
+            evalc('draft = getModelFromHomology(templates, blast, ''N'', args{:});');
+        end
         function file = suppOrthTable(rows)
             % SuppOrth table with input order templateGEM, bug, other
             if nargin < 1

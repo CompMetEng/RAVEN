@@ -27,8 +27,8 @@ function [addedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, va
 %     minimum objective value to achieve. If empty, runs FBA on the merged
 %     model and uses 10% of the maximum as the floor.
 % 'bigM' (default 1000)
-%     Big-M constant for coupling constraints. Must be larger than any
-%     expected flux magnitude.
+%     Big-M constant for the coupling constraints of universal reactions
+%     with an infinite bound. A finite bound is used as it is.
 % 'params' (default [])
 %     solver parameter struct passed to optimizeProb. Fields such as
 %     params.TimeLimit and params.intTol can be used to tune the MILP.
@@ -160,13 +160,15 @@ A_growth = [sparse(mergedModel.c'), sparse(1, nUniv)];
 
 % (3) Universal upper coupling: v_k - ub_k * y_db_k <= 0   [nUniv rows, 'L']
 %     (forces v_k <= 0 when y_db_k = 0)
-% Coupling coefficients are capped at the Big-M constant: an unbounded
-% universal reaction (ub = Inf, RAVEN's own default when no upper-bound
-% annotation is set) would otherwise put an Inf coefficient into the
-% constraint matrix, and Inf*0 (y_db_k = 0) is NaN, not 0.
+% Coupling coefficients are the reaction bounds. An infinite bound is replaced
+% by the Big-M constant: an unbounded universal reaction (ub = Inf, RAVEN's own
+% default when no upper-bound annotation is set) would otherwise put an Inf
+% coefficient into the constraint matrix, and Inf*0 (y_db_k = 0) is NaN, not 0.
 yDbCols = nMergedRxns + (1:nUniv);
-uniUb = min(mergedModel.ub(univIdx), M);
-uniLb = max(mergedModel.lb(univIdx), -M);
+uniUb = mergedModel.ub(univIdx);
+uniUb(isinf(uniUb)) = M;
+uniLb = mergedModel.lb(univIdx);
+uniLb(isinf(uniLb)) = -M;
 A_uniUp = sparse(...
     [1:nUniv, 1:nUniv], ...
     [univIdx(:)', yDbCols], ...
