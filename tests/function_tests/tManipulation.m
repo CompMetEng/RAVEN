@@ -510,6 +510,23 @@ classdef tManipulation < RavenTestCase
             end
         end
 
+        function mergeCompartmentsKeepsFirstSortedId(testCase)
+            % The merged metabolite keeps the id that sorts first, not the
+            % id of the copy that comes first in the model.
+            m = tManipulation.mergeToyModel({'ACCOA_m';'ACCOA_c';'X_c'}, {'c';'m'}, [2;1;1]);
+            evalc('m2 = mergeCompartments(m);');
+            testCase.verifyEqual(sort(m2.mets), {'ACCOA_c';'X_c'});
+            testCase.verifyEqual(m2.comps, {'s'});
+        end
+
+        function mergeCompartmentsPrefersCopyInMergedComp(testCase)
+            % A copy that is already in compartment s keeps its id, even when
+            % another copy has an id that sorts before it.
+            m = tManipulation.mergeToyModel({'ACCOA_c';'ACCOA_z';'X_c'}, {'c';'s'}, [1;2;1]);
+            evalc('m2 = mergeCompartments(m);');
+            testCase.verifyEqual(sort(m2.mets), {'ACCOA_z';'X_c'});
+        end
+
         function mergeModelsReturnsStruct(testCase)
             modelB = removeReactions(testCase.model, testCase.model.rxns(1:5), true, true, true);
             evalc('merged = mergeModels({testCase.model; modelB});');
@@ -985,6 +1002,23 @@ classdef tManipulation < RavenTestCase
     end
 
     methods (Static, Access = private)
+
+        function m = mergeToyModel(mets, comps, metComps)
+            % Two copies of acetyl-CoA (mets 1 and 2) and X (met 3):
+            % R1 X => copy 1, R2 copy 2 => X.
+            m = struct();
+            m.id        = 'merge';
+            m.rxns      = {'R1';'R2'};
+            m.rxnNames  = m.rxns;
+            m.mets      = mets;
+            m.metNames  = {'acetyl-CoA';'acetyl-CoA';'X'};
+            m.metComps  = metComps;
+            m.comps     = comps;
+            m.compNames = comps;
+            m.S         = sparse([1 0; 0 -1; -1 1]);
+            m.lb = [0;0]; m.ub = [1000;1000]; m.rev = [0;0]; m.c = [0;0]; m.b = zeros(3,1);
+            m.genes = {}; m.grRules = {'';''}; m.rxnGeneMat = sparse(2,0);
+        end
 
         function m = duplicateModel()
             % a and b are named oxygen and o2; r1 (a => x) and r2 (b => x) become
