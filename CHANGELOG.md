@@ -8,6 +8,12 @@
   otherwise the copy whose id sorts first, with every field of that copy (was: the first copy
   in model order), so `ACCOA_c` and `ACCOA_m` become `ACCOA_c` whatever their order.
 
+### Gap-filling
+
+* `gapFillTopological`: without `targets` and without an objective reaction it raises
+  `RAVEN:badInput` (was: an error without identifier). Help states the default seeds and
+  targets.
+
 ### Context-specific models (ftINIT / tINIT)
 
 * `ftINIT` with `resolveTies`: each main-extraction step takes its fluxes from the
@@ -21,6 +27,12 @@
   its group, so they no longer depend on which member names it.
 * `mergeLinear`: groups are numbered 1, 2, ... in the order of the first reaction of each
   group in `origRxnIds` (was: the order in which the reactions were merged).
+
+### Utilities
+
+* `grRuleToDNF`: help states the grammar it reads, that of `parseGrRule` (`and`/`or` in any
+  case, `&`, `&&`, `|`, `||`, operators as whole words, so `G1&G2` is one gene id), and that a
+  malformed rule raises `RAVEN:badGrRule`.
 
 ## 3.0.0b1 — 2026-09-07
 
