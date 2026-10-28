@@ -214,10 +214,13 @@ function [model1,reversedRxns1] = flipRxn(model1, rxnInd, groupIds1, reversedRxn
     
     %now take care of the reversedRxns - if this is a group, reverse all of the
     %reactions in the group in the reversedRxns index - they will all be reversed at the
-    %same time since they are the same rxn.
-    rxnIndices = rxnInd;
-    if groupIds1(rxnInd) > 0
-        rxnIndices = find(groupIds1 == groupIds1(rxnInd));
+    %same time since they are the same rxn. rxnInd indexes model1, which loses
+    %reactions after each pass, while groupIds1 and reversedRxns1 follow
+    %origRxnIds, so the reaction is looked up by its id.
+    origInd = origRxnIdMap(model1.rxns{rxnInd});
+    rxnIndices = origInd;
+    if groupIds1(origInd) > 0
+        rxnIndices = find(groupIds1 == groupIds1(origInd));
     end
     reversedRxns1(rxnIndices) = ~reversedRxns1(rxnIndices);
 end

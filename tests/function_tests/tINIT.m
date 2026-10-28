@@ -212,6 +212,42 @@ classdef tINIT < RavenTestCase
             testCase.verifyEqual(sort(reducedModel.rxns), {'R1';'R5'});
         end
 
+        function mergeLinearFlipsRxnInLaterPass(testCase)
+            % R1 and R2 merge through A in the first pass and R2 is removed,
+            % so R4 sits at index 3 of the reduced model. The second pass
+            % merges R1 and R4 through Y and flips R4, which must be the
+            % reaction marked as reversed (not R3, the third original one).
+            model = struct();
+            model.id = 'lateflip';
+            model.rxns = {'R1';'R2';'R3';'R4';'R5';'R6'};
+            model.rxnNames = model.rxns;
+            model.mets = {'A';'Y';'Q';'W'};
+            model.metNames = model.mets;
+            model.comps = {'c'};
+            model.compNames = {'c'};
+            model.metComps = ones(4,1);
+            S = zeros(4,6);
+            S([1 2],1) = [1;1];   % R1: -> A + Y
+            S([1 2],2) = [-1;1];  % R2: A -> Y
+            S(3,3) = -1;          % R3: Q ->
+            S([4 2],4) = [-1;1];  % R4: W <=> Y
+            S(4,5) = 1;           % R5: -> W
+            S(4,6) = -1;          % R6: W ->
+            model.S = sparse(S);
+            model.lb = [0;0;0;-1000;0;0];
+            model.ub = 1000*ones(6,1);
+            model.rev = double(model.lb < 0);
+            model.c = zeros(6,1);
+            model.b = zeros(4,1);
+            model.genes = cell(0,1);
+            model.grRules = repmat({''},6,1);
+            model.rxnGeneMat = sparse(6,0);
+            evalc('[reducedModel,origRxnIds,groupIds,reversedRxns] = mergeLinear(model, {});');
+            testCase.verifyEqual(groupIds(:), [1;1;0;1;0;0]);
+            testCase.verifyEqual(origRxnIds(reversedRxns), {'R4'});
+            testCase.verifyEqual(sort(reducedModel.rxns), {'R1';'R3';'R5';'R6'});
+        end
+
         function scoreModelRuns(testCase)
             arrayData.genes   = testCase.model.genes;
             arrayData.tissues = {'t1'};

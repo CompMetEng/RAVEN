@@ -27,6 +27,8 @@
   its group, so they no longer depend on which member names it.
 * `mergeLinear`: groups are numbered 1, 2, ... in the order of the first reaction of each
   group in `origRxnIds` (was: the order in which the reactions were merged).
+* `mergeLinear`: a reaction flipped after the first merge pass is the one marked in
+  `reversedRxns` (was: the reaction at the same index of the original model).
 
 ### Utilities
 
