@@ -37,6 +37,8 @@ function result = gapFillTopological(model, universalModel, varargin)
 %     Metabolite IDs (cell array) that should be produced. Default: every
 %     metabolite of the objective (biomass) reaction, substrates and
 %     products; the first one when there are several objective reactions.
+%     Without targets and without an objective reaction the function raises
+%     RAVEN:badInput.
 % 'verbose' (default true)
 %     print a summary of the results.
 %
@@ -103,7 +105,7 @@ if isempty(targets)
     % Default: every metabolite of the objective (biomass) reaction
     objRxns = find(model.c ~= 0);
     if isempty(objRxns)
-        error(['gapFillTopological: no objective function defined. ' ...
+        error('RAVEN:badInput', ['gapFillTopological: no objective function defined. ' ...
             'Provide targets manually via the ''targets'' option.']);
     end
     biomassIdx = objRxns(1);

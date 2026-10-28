@@ -362,7 +362,7 @@ classdef tGapfilling < RavenTestCase
             m = testCase.chainModel();
             m.c = [0;0];
             testCase.verifyError(@() gapFillTopological(m, m, 'seeds', {'A'}, ...
-                'verbose', false), ?MException);
+                'verbose', false), 'RAVEN:badInput');
         end
 
         function gapFillMILPRepairsGrowth(testCase)
