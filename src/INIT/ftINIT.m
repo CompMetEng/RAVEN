@@ -71,8 +71,11 @@
 %     if true, pin each step's degenerate MILP to a canonical answer instead
 %     of relying on the solver Seed alone: hold the score objective at its
 %     optimum, then minimise the count of removable ("on") reactions, then,
-%     among the sparsest, minimise their summed reaction-id rank. Applies to
-%     every main-extraction step (ftINITInternalAlg) and to the final
+%     among the sparsest, minimise their summed reaction-id rank; in each
+%     main-extraction step (ftINITInternalAlg) the fluxes, which set the
+%     direction and magnitude a reaction is forced at in the next step, then
+%     come from the least-total-flux solution for that on/off state. Applies
+%     to every main-extraction step and to the final
 %     gap-filling step (fitTasks' resolveTies) -- see raven-gecko-parity#104
 %     and raven-toolbox's resolve_ties (default false).
 % proveAbsGap : double

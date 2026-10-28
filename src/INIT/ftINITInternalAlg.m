@@ -44,8 +44,11 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 %                   rank. Positive-score reactions carry a continuous, not a
 %                   free binary, on/off variable (pinned near 1 by the score
 %                   objective), so only the negative-score ones are a genuine
-%                   tie to resolve -- matches raven-toolbox's resolve_ties /
-%                   _resolve_ties (raven-gecko-parity#104) (optional, default
+%                   tie to resolve. The fluxes are then taken from the
+%                   least-total-flux solution for that on/off state, so the
+%                   directions and forced magnitudes the next ftINIT step
+%                   reads from them are pinned too -- matches raven-toolbox's
+%                   resolve_ties (raven-gecko-parity#104) (optional, default
 %                   false)
 %
 %   deletedRxns     reactions which were deleted by the algorithm (only
@@ -522,6 +525,58 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
         if isFeasible2b
             %Adopt the tie-resolved solution for the on/off read-out below.
             res = res2b;
+
+            %Phase 2c: the least total absolute flux for this on/off state.
+            %The next step forces each turned-on reaction in the direction
+            %of its flux, at min(0.99*|flux|,0.1), so the flux read-out
+            %comes from a minimal-flux solution instead of an arbitrary
+            %vertex. A binary on/off variable is fixed at its value; a
+            %continuous one that is on keeps at least its value, one that
+            %is off at most its value. Directions of reversible scored
+            %reactions stay free, so this is still a MILP.
+            nCols = numel(prob.c);
+            minProb = tieProb2b;
+            if isfield(minProb,'start')
+                minProb = rmfield(minProb,'start');
+            end
+            x = res2b.full;
+            negVal = round(x(negCols));
+            minProb.lb(negCols) = negVal;
+            minProb.ub(negCols) = negVal;
+            posCols = [onoffPosIrrev, onoffPosRev];
+            posVal = min(max(x(posCols),0),1);
+            posOn = posVal >= 0.5;
+            minProb.lb(posCols(posOn)) = posVal(posOn);
+            minProb.ub(posCols(~posOn)) = posVal(~posOn);
+            %|v| is v for a forward-only flux, -v for a backward-only one,
+            %and an added t >= v, t >= -v otherwise.
+            fwdOnly = minProb.lb(1:nRxns) >= 0;
+            bwdOnly = ~fwdOnly & minProb.ub(1:nRxns) <= 0;
+            tRxns = find(~fwdOnly & ~bwdOnly);
+            nT = numel(tRxns);
+            selV = sparse(1:nT, tRxns, 1, nT, nCols);
+            minProb.A = [minProb.A sparse(size(minProb.A,1),nT); -selV speye(nT); selV speye(nT)];
+            minProb.a = minProb.A;
+            minProb.b = [minProb.b; zeros(2*nT,1)];
+            minProb.csense = [minProb.csense repmat('G',1,2*nT)];
+            minProb.lb = [minProb.lb; zeros(nT,1)];
+            minProb.ub = [minProb.ub; inf(nT,1)];
+            minProb.vartype = [minProb.vartype repmat('C',1,nT)];
+            minProb.c = [zeros(nCols,1); ones(nT,1)];
+            minProb.c(fwdOnly) = 1;
+            minProb.c(bwdOnly) = -1;
+            minParams = params;
+            minParams.MIPGap = 0;
+            minParams.MIPGapAbs = 1e-6;
+            res2c = optimizeProb(minProb,minParams,verbose);
+            [isFeasible2c, isOptimal2c] = checkSolution(res2c);
+            if ~isOptimal2c
+                unproven{end+1} = 'phase2c-minflux';
+            end
+            if isFeasible2c
+                %Only the fluxes change; the status stays that of phase 2b.
+                res.full = res2c.full(1:nCols);
+            end
         end
     end
     if ~isempty(unproven)

@@ -384,6 +384,37 @@ classdef tINIT < RavenTestCase
             testCase.verifyTrue(all(strcmp(resBoth.rxns, expected)));
         end
 
+        function ftINITInternalAlgResolveTiesGivesMinimalFluxes(testCase)
+            % With resolveTies the fluxes come from the least-total-flux
+            % solution for the tie-broken on/off state. The positive
+            % reversible R3 (m <=> q) can be on in either direction: backward
+            % (import q, feed the essential E) carries 0.4 in total, forward
+            % (a via the free R1 into R3 and E) 0.8. The free loop L1/L2
+            % carries nothing and the negative-score dead end R2 stays off.
+            testCase.assumeMILPSolver();
+            m.rxns = {'R1';'R2';'R3';'E';'L1';'L2';'EX_a';'EX_p';'EX_q'};
+            m.mets = {'a';'m';'p';'q';'n';'z'};
+            %         R1 R2 R3  E L1 L2 EXa EXp EXq
+            m.S = sparse([-1 -1  0  0  0  0 -1   0   0;  % a
+                           1  0 -1 -1 -1  1  0   0   0;  % m
+                           0  0  0  1  0  0  0  -1   0;  % p
+                           0  0  1  0  0  0  0   0  -1;  % q
+                           0  0  0  0  1 -1  0   0   0;  % n
+                           0  1  0  0  0  0  0   0   0]); % z
+            m.lb = [0;0;-1000;0;0;0;-1000;-1000;-1000];
+            m.ub = 1000*ones(9,1);
+            m.rev = double(m.lb < 0);
+            scores = [0;-1;1;0;0;0;0;0;0];
+            fluxIn = 0.1*ones(9,1);
+            [deleted,~,~,turnedOn,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
+                [],false,false,struct(),[],fluxIn,false,0.1,true);
+            testCase.verifyTrue(turnedOn(3));
+            testCase.verifyTrue(deleted(2));
+            % E is forced at min(0.99*0.1,0.1) and needs the 0.1 of R3.
+            expected = [0;0;-0.1;0.1;0;0;0;0.1;-0.1];
+            testCase.verifyEqual(fluxes, expected, 'AbsTol', 1e-6);
+        end
+
         function ftINITWithTaskRuns(testCase)
             % A task requiring e[s] from a[s] forces R2 and R7 to be essential.
             testCase.assumeMILPSolver();

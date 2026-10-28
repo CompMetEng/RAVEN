@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+* `ftINIT` with `resolveTies`: each main-extraction step takes its fluxes from the
+  least-total-flux solution for the tie-broken on/off state, so the direction and magnitude
+  at which the next step forces a reaction no longer depend on the solver's vertex.
+
 ## 3.0.0b1 — 2026-09-07
 
 First beta toward 3.0. Changes below are relative to RAVEN 2.9.3, the last 2.x release:
