@@ -181,6 +181,21 @@ classdef tUtils < RavenTestCase
             testCase.verifyEqual(numel(grRuleToDNF('(g1 or g2) and (g3 or g4)')), 4);
         end
 
+        function grRuleToDNFTakesTheParseGrRuleGrammar(testCase)
+            % Doubled symbols and operators in any case are operators; an
+            % operator glued to a gene id is part of that id.
+            testCase.verifyEqual(grRuleToDNF('G1 && (G2 || G3)'), {{'G1','G2'},{'G1','G3'}});
+            testCase.verifyEqual(grRuleToDNF('G1 Or G2 aNd G3'), {{'G1'},{'G2','G3'}});
+            testCase.verifyEqual(grRuleToDNF('G1&G2 or G3'), {{'G1&G2'},{'G3'}});
+        end
+
+        function grRuleToDNFRejectsMalformed(testCase)
+            rules = {'G1 and', '(G1 or G2', 'G1 G2', '()', 'G1 or or G2', 'G1 xor G2'};
+            for k = 1:numel(rules)
+                testCase.verifyError(@() grRuleToDNF(rules{k}), 'RAVEN:badGrRule', rules{k});
+            end
+        end
+
         function grRuleToDNFSimpleCases(testCase)
             testCase.verifyEqual(grRuleToDNF(''), {});
             testCase.verifyEqual(grRuleToDNF('G1'), {{'G1'}});

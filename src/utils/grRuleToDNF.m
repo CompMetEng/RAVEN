@@ -8,7 +8,10 @@ function clauses=grRuleToDNF(rule)
 % Parameters
 % ----------
 % rule : char or string or struct
-%     a grRule, or a tree from parseGrRule.
+%     a grRule, or a tree from parseGrRule. A grRule is read by parseGrRule:
+%     genes joined by "and"/"or" in any case or by "&", "&&", "|", "||",
+%     each operator separated from the gene ids by whitespace or a bracket,
+%     with AND binding tighter than OR.
 %
 % Returns
 % -------
@@ -18,6 +21,10 @@ function clauses=grRuleToDNF(rule)
 %
 % Notes
 % -----
+% A malformed rule (an operator without an operand, unbalanced or empty
+% parentheses, two genes without an operator between them) raises
+% RAVEN:badGrRule.
+%
 % Gene order within a clause follows the order the genes appear in the rule.
 % Duplicates are not removed: "G1 and G1" stays a two-element clause, since
 % collapsing it would silently rewrite the user's rule.
