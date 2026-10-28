@@ -534,6 +534,8 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
             %continuous one that is on keeps at least its value, one that
             %is off at most its value. Directions of reversible scored
             %reactions stay free, so this is still a MILP.
+            %It stops at a relative or absolute gap of 1e-6, as raven-toolbox's
+            %phase 2c.
             nCols = numel(prob.c);
             minProb = tieProb2b;
             if isfield(minProb,'start')
@@ -566,7 +568,7 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
             minProb.c(fwdOnly) = 1;
             minProb.c(bwdOnly) = -1;
             minParams = params;
-            minParams.MIPGap = 0;
+            minParams.MIPGap = 1e-6;
             minParams.MIPGapAbs = 1e-6;
             res2c = optimizeProb(minProb,minParams,verbose);
             [isFeasible2c, isOptimal2c] = checkSolution(res2c);
