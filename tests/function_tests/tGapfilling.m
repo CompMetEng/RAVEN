@@ -350,6 +350,21 @@ classdef tGapfilling < RavenTestCase
             testCase.verifyNumElements(result.blockedMets, 3);
         end
 
+        function gapFillTopologicalDefaultTargetsAreObjectiveMets(testCase)
+            % Objective R2 (B -> C): the default targets are its substrate B
+            % and its product C. Without an exchange both are blocked.
+            m = testCase.chainModel();
+            evalc('result = gapFillTopological(m, m, ''verbose'', false);');
+            testCase.verifyEqual(sort(result.blockedMets(:)), {'B';'C'});
+        end
+
+        function gapFillTopologicalDefaultTargetsNeedObjective(testCase)
+            m = testCase.chainModel();
+            m.c = [0;0];
+            testCase.verifyError(@() gapFillTopological(m, m, 'seeds', {'A'}, ...
+                'verbose', false), ?MException);
+        end
+
         function gapFillMILPRepairsGrowth(testCase)
             testCase.assumeMILPSolver();
             modelDB = testCase.model; modelDB.id = 'DB';
