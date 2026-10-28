@@ -415,6 +415,36 @@ classdef tINIT < RavenTestCase
             testCase.verifyEqual(fluxes, expected, 'AbsTol', 1e-6);
         end
 
+        function ftINITInternalAlgResolveTiesFixesEqualFluxDirections(testCase)
+            % The essential E consumes y, which the reversible R1 (y <=> x)
+            % or R2 (y <=> z) can supply when run backward from the imports
+            % IN_x or IN_z. Both routes carry the same total flux; with
+            % resolveTies the higher-ranked reaction carries the backward
+            % flux: R2 when ranked by id, R1 when rankKeys rank it last. N is
+            % a negative-score dead end.
+            testCase.assumeMILPSolver();
+            m.rxns = {'IN_x';'IN_z';'R1';'R2';'E';'OUT_p';'N'};
+            m.mets = {'x';'y';'z';'p';'d'};
+            %        INx INz R1 R2  E OUTp  N
+            m.S = sparse([1   0  1  0  0   0 -1;  % x
+                          0   0 -1 -1 -1   0  0;  % y
+                          0   1  0  1  0   0  0;  % z
+                          0   0  0  0  1  -1  0;  % p
+                          0   0  0  0  0   0  1]); % d
+            m.lb = [0;0;-1000;-1000;0;0;0];
+            m.ub = 1000*ones(7,1);
+            m.rev = double(m.lb < 0);
+            scores = [0;0;0;0;0;0;-1];
+            fluxIn = ones(7,1);
+            [~,~,~,~,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
+                [],false,false,struct(),[],fluxIn,false,0.1,true);
+            testCase.verifyEqual(fluxes(3:4), [0;-0.1], 'AbsTol', 1e-6);
+            keys = {'IN_x';'IN_z';'R9';'R2';'E';'OUT_p';'N'};
+            [~,~,~,~,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
+                [],false,false,struct(),[],fluxIn,false,0.1,true,keys);
+            testCase.verifyEqual(fluxes(3:4), [-0.1;0], 'AbsTol', 1e-6);
+        end
+
         function ftINITWithTaskRuns(testCase)
             % A task requiring e[s] from a[s] forces R2 and R7 to be essential.
             testCase.assumeMILPSolver();

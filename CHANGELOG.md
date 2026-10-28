@@ -6,6 +6,11 @@
   least-total-flux solution for the tie-broken on/off state, so the direction and magnitude
   at which the next step forces a reaction no longer depend on the solver's vertex.
   That phase stops at a relative or absolute gap of 1e-6.
+* `ftINIT` with `resolveTies`: among the least-total-flux solutions, each main-extraction
+  step takes its fluxes from the one with the least id-rank-weighted backward flux, so the
+  direction of a flux that carries the same total either way no longer depends on the
+  solver. The id-rank phases rank a merged reaction by the smallest original reaction id in
+  its group, so they no longer depend on which member names it.
 
 ## 3.0.0b1 — 2026-09-07
 

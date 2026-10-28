@@ -1,4 +1,4 @@
-function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies)
+function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,rankKeys)
 % ftINITInternalAlg
 %	This function runs the MILP for a step in ftINIT.
 %
@@ -45,11 +45,17 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 %                   free binary, on/off variable (pinned near 1 by the score
 %                   objective), so only the negative-score ones are a genuine
 %                   tie to resolve. The fluxes are then taken from the
-%                   least-total-flux solution for that on/off state, so the
-%                   directions and forced magnitudes the next ftINIT step
-%                   reads from them are pinned too -- matches raven-toolbox's
-%                   resolve_ties (raven-gecko-parity#104) (optional, default
-%                   false)
+%                   least-total-flux solution for that on/off state and,
+%                   among those, from the one with the least id-rank-weighted
+%                   backward flux, so the directions and forced magnitudes
+%                   the next ftINIT step reads from them are pinned too --
+%                   matches raven-toolbox's resolve_ties
+%                   (raven-gecko-parity#104) (optional, default false)
+%   rankKeys        cell array with, for each reaction in model.rxns, the key
+%                   that the id-rank phases of resolveTies sort it by
+%                   (optional, default model.rxns). ftINIT passes the smallest
+%                   original reaction id of each merge group, so the order
+%                   does not depend on which member names the merged reaction
 %
 %   deletedRxns     reactions which were deleted by the algorithm (only
 %                   rxns included in the problem)
@@ -72,6 +78,9 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 
 if nargin < 12 || isempty(forceOn)
     forceOn = 0.1;
+end
+if nargin < 14 || isempty(rankKeys)
+    rankKeys = model.rxns;
 end
 if nargin < 13 || isempty(resolveTies)
     resolveTies = false;
@@ -511,7 +520,7 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
         tieProb2b.b = [tieProb.b; kmin+0.5];
         tieProb2b.csense = [tieProb.csense 'L'];
 
-        [~, sortOrder] = sort(model.rxns(negRxnIdx));
+        [~, sortOrder] = sort(rankKeys(negRxnIdx));
         ranks = zeros(numel(negRxnIdx),1);
         ranks(sortOrder) = (1:numel(negRxnIdx))';
         idObj = zeros(size(prob.c));
@@ -578,6 +587,43 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
             if isFeasible2c
                 %Only the fluxes change; the status stays that of phase 2b.
                 res.full = res2c.full(1:nCols);
+
+                %Phase 2d: the least total flux can leave a direction open
+                %when two directions carry the same total flux, for example
+                %a pair of reversible reactions closing a loop either way.
+                %Keep the on/off state of phase 2c, hold the total absolute
+                %flux at most at its phase-2c value plus
+                %max(1e-7*total, 1e-6), and minimise the backward flux
+                %max(0,-v) of the reactions whose flux can take either sign,
+                %weighted by id rank from the end: sorted by rankKeys, the
+                %first of n reactions gets weight n and the last 1, so a
+                %reaction with a lower id prefers its forward direction.
+                if nT > 0
+                    total = minProb.c' * res2c.full;
+                    dirProb = minProb;
+                    nCols2c = numel(minProb.c);
+                    [~, ord] = sort(rankKeys(tRxns));
+                    w = zeros(nT,1);
+                    w(ord) = (nT:-1:1)';
+                    dirProb.A = [minProb.A sparse(size(minProb.A,1),nT); ...
+                                 minProb.c' sparse(1,nT); ...
+                                 selV sparse(nT,nT) speye(nT)];
+                    dirProb.a = dirProb.A;
+                    dirProb.b = [minProb.b; total + max(abs(total)*1e-7, 1e-6); zeros(nT,1)];
+                    dirProb.csense = [minProb.csense 'L' repmat('G',1,nT)];
+                    dirProb.lb = [minProb.lb; zeros(nT,1)];
+                    dirProb.ub = [minProb.ub; inf(nT,1)];
+                    dirProb.vartype = [minProb.vartype repmat('C',1,nT)];
+                    dirProb.c = [zeros(nCols2c,1); w];
+                    res2d = optimizeProb(dirProb,minParams,verbose);
+                    [isFeasible2d, isOptimal2d] = checkSolution(res2d);
+                    if ~isOptimal2d
+                        unproven{end+1} = 'phase2d-direction';
+                    end
+                    if isFeasible2d
+                        res.full = res2d.full(1:nCols);
+                    end
+                end
             end
         end
     end
