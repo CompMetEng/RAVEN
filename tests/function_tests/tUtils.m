@@ -189,6 +189,17 @@ classdef tUtils < RavenTestCase
             testCase.verifyEqual(grRuleToDNF('G1&G2 or G3'), {{'G1&G2'},{'G3'}});
         end
 
+        function grRuleToDNFWhitespaceIsIsspace(testCase)
+            % isspace is true for char(28) and char(8195) and false for
+            % the no-break space char(160) and char(8239), which are then
+            % part of a word.
+            testCase.verifyEqual(grRuleToDNF(['G1' char(28) 'or' char(8195) 'G2']), {{'G1'},{'G2'}});
+            for c = [133 160 8199 8239]
+                testCase.verifyError(@() grRuleToDNF(['G1' char(c) 'and G2']), 'RAVEN:badGrRule');
+                testCase.verifyEqual(grRuleToDNF(['G1' char(c) 'G2']), {{['G1' char(c) 'G2']}});
+            end
+        end
+
         function grRuleToDNFRejectsMalformed(testCase)
             rules = {'G1 and', '(G1 or G2', 'G1 G2', '()', 'G1 or or G2', 'G1 xor G2'};
             for k = 1:numel(rules)
