@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Manipulation
+
+* `mergeCompartments`: a merged metabolite is the copy already in compartment `s`, if any,
+  otherwise the copy whose id sorts first, with every field of that copy (was: the first copy
+  in model order), so `ACCOA_c` and `ACCOA_m` become `ACCOA_c` whatever their order.
+
+### Context-specific models (ftINIT / tINIT)
+
 * `ftINIT` with `resolveTies`: each main-extraction step takes its fluxes from the
   least-total-flux solution for the tie-broken on/off state, so the direction and magnitude
   at which the next step forces a reaction no longer depend on the solver's vertex.
@@ -11,6 +19,8 @@
   direction of a flux that carries the same total either way no longer depends on the
   solver. The id-rank phases rank a merged reaction by the smallest original reaction id in
   its group, so they no longer depend on which member names it.
+* `mergeLinear`: groups are numbered 1, 2, ... in the order of the first reaction of each
+  group in `origRxnIds` (was: the order in which the reactions were merged).
 
 ## 3.0.0b1 — 2026-09-07
 
