@@ -179,6 +179,39 @@ classdef tINIT < RavenTestCase
             testCase.verifyTrue(all(find(reversedRxns) == [6;9]));
         end
 
+        function mergeLinearNumbersGroupsByFirstRxn(testCase)
+            % Group numbers follow the first reaction of each group in
+            % model.rxns, not the merge order. The metabolites are visited
+            % in model.mets order, so c (R5, R6) merges first.
+            model = struct();
+            model.id = 'numbering';
+            model.rxns = {'R1';'R2';'R3';'R4';'R5';'R6'};
+            model.rxnNames = model.rxns;
+            model.mets = {'z';'c';'w';'x';'a';'m';'b';'y'};
+            model.metNames = model.mets;
+            model.comps = {'c'};
+            model.compNames = {'c'};
+            model.metComps = ones(8,1);
+            subs = {'x';'a';'m';'b';'z';'c'};
+            prods = {'a';'m';'b';'y';'c';'w'};
+            model.S = sparse(8,6);
+            for i = 1:6
+                model.S(strcmp(model.mets,subs{i}),i) = -1;
+                model.S(strcmp(model.mets,prods{i}),i) = 1;
+            end
+            model.lb = zeros(6,1);
+            model.ub = 1000*ones(6,1);
+            model.rev = zeros(6,1);
+            model.c = zeros(6,1);
+            model.b = zeros(8,1);
+            model.genes = cell(0,1);
+            model.grRules = repmat({''},6,1);
+            model.rxnGeneMat = sparse(6,0);
+            evalc('[reducedModel,~,groupIds] = mergeLinear(model, {});');
+            testCase.verifyEqual(groupIds(:), [1;1;1;1;2;2]);
+            testCase.verifyEqual(sort(reducedModel.rxns), {'R1';'R5'});
+        end
+
         function scoreModelRuns(testCase)
             arrayData.genes   = testCase.model.genes;
             arrayData.tissues = {'t1'};

@@ -13,7 +13,8 @@ function [reducedModel,origRxnIds,groupIds,reversedRxns]=mergeLinear(model, noMe
 %   reducedModel          an updated model structure
 %   origRxnIds            Cell array: original rxn ids, used together with the groupIds variable
 %   groupIds              Vector of ids: merged rxns have the same id, same length as origRxnIds
-%                         0 means a reaction was not merged.
+%                         0 means a reaction was not merged. The groups are numbered 1, 2, ...
+%                         in the order of their first reaction in origRxnIds.
 %   reversedRxns          Vector of booleans, saying for each rxn if it is reversed in the combined rxns.
 %
 % Usage: [reducedModel,origRxnIds,groupIds]=mergeLinear(model,noMergeRxns)
@@ -196,7 +197,12 @@ while 1
     notInUse=sum(reducedModel.S~=0,2)==0;
     reducedModel=removeMets(reducedModel,notInUse);
 end
-    
+
+%Number the groups in the order of their first reaction in origRxnIds, so
+%the numbers do not depend on the order in which the reactions were merged
+merged=groupIds~=0;
+[~,~,groupIds(merged)]=unique(groupIds(merged),'stable');
+
 function [model1,reversedRxns1] = flipRxn(model1, rxnInd, groupIds1, reversedRxns1)
     model1.S(:,rxnInd) = model1.S(:,rxnInd)*-1;
     %swap the bounds
