@@ -813,9 +813,12 @@ end
 % end
 
 if isfield(model,'subSystems')
+% A reaction without subsystem holds [] or '' here: give it an empty entry,
+% so every reaction keeps its place when the entries are flattened
+    model.subSystems(cellfun(@isempty, model.subSystems)) = {{''}};
 % If all entries are 1x1, then flatten
     if all(cellfun(@(x) numel(x) <= 1, model.subSystems))
-        model.subSystems = transpose([model.subSystems{:}]);
+        model.subSystems = cellfun(@(x) x{1}, model.subSystems, 'UniformOutput', false);
     end
 end
 
