@@ -615,6 +615,10 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
                     dirProb.ub = [minProb.ub; inf(nT,1)];
                     dirProb.vartype = [minProb.vartype repmat('C',1,nT)];
                     dirProb.c = [zeros(nCols2c,1); w];
+                    %The phase-2c solution is the MIP start: the tight cap on
+                    %the total flux leaves the solver's heuristics little room
+                    %to find a first solution.
+                    dirProb.start = [res2c.full; max(0, -res2c.full(tRxns))];
                     res2d = optimizeProb(dirProb,minParams,verbose);
                     [isFeasible2d, isOptimal2d] = checkSolution(res2d);
                     if ~isOptimal2d
