@@ -23,11 +23,15 @@ function reducedModel = removeGenes(model,genesToRemove,varargin)
 % Returns
 % -------
 % reducedModel : struct
-%     an updated model structure. Besides genesToRemove, every gene that no
-%     remaining reaction used before the removal is deleted as well, also
-%     when it was not requested (for example a gene that no reaction uses).
-%     A gene whose only reaction is kept but blocked (removeBlockedRxns
-%     false), such as the other subunit of a complex that lost one, stays.
+%     an updated model structure. Genes in genesToRemove that are not in the
+%     model are ignored. When none of them is in the model, no gene, reaction
+%     or bound changes (with standardizeRules true the gene rules are still
+%     written in the standard format). Otherwise, besides genesToRemove, every
+%     gene that no remaining reaction used before the removal is deleted as
+%     well, also when it was not requested (for example a gene that no
+%     reaction uses). A gene whose only reaction is kept but blocked
+%     (removeBlockedRxns false), such as the other subunit of a complex that
+%     lost one, stays.
 %
 % Examples
 % --------
