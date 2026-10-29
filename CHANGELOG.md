@@ -7,6 +7,11 @@
 * `mergeCompartments`: a merged metabolite is the copy already in compartment `s`, if any,
   otherwise the copy whose id sorts first, with every field of that copy (was: the first copy
   in model order), so `ACCOA_c` and `ACCOA_m` become `ACCOA_c` whatever their order.
+* `simplifyModel` with `constrainReversible`: on a model without a reversible reaction this step
+  changes nothing (was: an error "logical indices ... outside of the array bounds", as
+  `getAllowedBounds` took the empty reaction list for all reactions). `prepINITModel` therefore
+  runs on a model whose reactions are all irreversible after the first simplification, with the
+  result of raven-toolbox's `prep_init_model`.
 * `removeGenes`: the help states that, when at least one of the requested genes is in the model,
   genes no remaining reaction uses are removed as well; when none is, no gene, reaction or bound
   changes.
