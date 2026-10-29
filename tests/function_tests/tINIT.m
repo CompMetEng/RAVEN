@@ -549,7 +549,7 @@ classdef tINIT < RavenTestCase
 
         function ftINITInternalAlgResolveTiesWithoutPinFluxesSkipsFluxPhases(testCase)
             % With pinFluxes false, resolveTies runs the primary solve and
-            % phases 2a and 2b only, and still keeps the lower-id R1.
+            % phases 2a and 2b, not 2c and 2d, and still keeps the lower-id R1.
             testCase.assumeMILPSolver();
             installOptimizeProbCounter(testCase, false);
             global TINIT_OPTIMIZEPROB_CALLS

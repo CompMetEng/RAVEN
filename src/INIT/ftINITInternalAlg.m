@@ -71,7 +71,7 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 %                   the member with the smallest original id runs reversed,
 %                   so the preferred direction does not depend on which member
 %                   names the merged reaction
-%   pinFluxes       if false, resolveTies runs phases 2a and 2b only and the
+%   pinFluxes       if false, resolveTies skips phases 2c and 2d and the
 %                   fluxes are those of phase 2b (optional, default true).
 %                   ftINIT passes false in its last step, whose fluxes no
 %                   later step reads
@@ -568,8 +568,9 @@ if resolveTies && (nNegIrrev + nNegRev) > 0 && ~res.hitTimeLimit
             %Adopt the tie-resolved solution for the on/off read-out below.
             res = res2b;
 
-            %Phases 2c and 2d set the fluxes only, which the next ftINIT step
-            %reads; pinFluxes is false when no step follows.
+            %Phases 2c and 2d change the fluxes, not the on/off state; the next
+            %ftINIT step reads the fluxes, and pinFluxes is false when no step
+            %follows.
             if pinFluxes
                 %Phase 2c: the least total absolute flux for this on/off state.
                 %The next step forces each turned-on reaction in the direction
