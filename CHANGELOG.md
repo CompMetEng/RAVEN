@@ -28,6 +28,10 @@
   direction of a flux that carries the same total either way no longer depends on the
   solver. The id-rank phases rank a merged reaction by the smallest original reaction id in
   its group, so they no longer depend on which member names it.
+* `ftINITInternalAlg` with `resolveTies`: when the primary solve stops at the time limit, the
+  tie-break phases are skipped and the primary solution is kept, as in raven-toolbox (was: the
+  phases ran on the unproven incumbent). The count and id-rank phases get half of
+  `params.TimeLimit` each, rounded down and at least 1 s (was: the full limit).
 * `mergeLinear`: groups are numbered 1, 2, ... in the order of the first reaction of each
   group in `origRxnIds` (was: the order in which the reactions were merged).
 * `mergeLinear`: a reaction flipped after the first merge pass is the one marked in

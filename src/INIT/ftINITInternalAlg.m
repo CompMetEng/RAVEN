@@ -50,7 +50,14 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 %                   backward flux, so the directions and forced magnitudes
 %                   the next ftINIT step reads from them are pinned too --
 %                   matches raven-toolbox's resolve_ties
-%                   (raven-gecko-parity#104) (optional, default false)
+%                   (raven-gecko-parity#104). The phases are skipped when
+%                   the primary solve stops at params.TimeLimit, and the
+%                   primary solution is kept. Phases 2a and 2b get half of
+%                   params.TimeLimit each (rounded down, at least 1 s), the
+%                   flux phases the full limit. A warning names each phase
+%                   that does not prove optimal or finds no solution; when a
+%                   flux phase finds none, the fluxes of the phase before it
+%                   are kept (optional, default false)
 %   rankKeys        cell array with, for each reaction in model.rxns, the key
 %                   that the id-rank phases of resolveTies sort it by
 %                   (optional, default model.rxns). ftINIT passes the smallest
@@ -465,7 +472,10 @@ if ~checkSolution(res)
     error('RAVEN:badInput', '%s', EM);
 end
 
-if resolveTies && (nNegIrrev + nNegRev) > 0
+if resolveTies && (nNegIrrev + nNegRev) > 0 && ~res.hitTimeLimit
+    %Skipped when the primary solve stopped at the time limit: the floor
+    %constraint would pin an unproven incumbent, so the phases cannot select
+    %among true optima.
     %This MILP is highly degenerate: many reaction subsets reach the same
     %score optimum, and the solver returns an arbitrary one -- reproducible
     %for a fixed solver build + Seed, but fragile to a solver version bump
@@ -495,6 +505,10 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
     tieParams = params;
     tieParams.MIPGap = 0;
     tieParams.MIPGapAbs = 0.4;
+    %Phases 2a and 2b get half of the time limit each, as in raven-toolbox.
+    if isfield(tieParams,'TimeLimit')
+        tieParams.TimeLimit = max(1,floor(tieParams.TimeLimit*0.5));
+    end
 
     unproven = {};
 

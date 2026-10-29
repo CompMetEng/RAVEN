@@ -79,7 +79,11 @@
 %     flux (a merged reaction ranked by the smallest original id in its
 %     group). Applies to every main-extraction step and to the final
 %     gap-filling step (fitTasks' resolveTies) -- see raven-gecko-parity#104
-%     and raven-toolbox's resolve_ties (default false).
+%     and raven-toolbox's resolve_ties. A step whose primary solve stops at
+%     the time limit keeps its primary solution without these phases; the
+%     count and id-rank phases get half of the step's TimeLimit each, and a warning
+%     names each phase that does not prove optimal or finds no solution
+%     (default false).
 % proveAbsGap : double
 %     if set, prove each step to this fixed *absolute* MILP gap in a single
 %     solve, instead of the relative-gap escalation below (stp.MILPParams).
