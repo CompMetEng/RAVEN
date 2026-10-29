@@ -41,6 +41,11 @@
   no step reads its fluxes (new `ftINITInternalAlg` argument `pinFluxes`). The reaction set
   does not change; the fluxes and `metProduction` of the last step are those of the id-rank
   phase.
+* `ftINITInternalAlg`: new optional positional arguments `rankKeys` (14th, the key each
+  reaction is sorted by in the id-rank phases, default `model.rxns`) and `pinFluxes` (15th,
+  default `true`). The "tie resolution did not converge" warning of `resolveTies` also names
+  `phase2c-minflux` and `phase2d-direction` when the minimal-flux or direction phase does not
+  prove optimal.
 * `mergeLinear`: groups are numbered 1, 2, ... in the order of the first reaction of each
   group in `origRxnIds` (was: the order in which the reactions were merged).
 * `mergeLinear`: a reaction flipped after the first merge pass is the one marked in
