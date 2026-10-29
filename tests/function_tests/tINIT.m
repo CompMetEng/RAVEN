@@ -520,18 +520,7 @@ classdef tINIT < RavenTestCase
             % flux: R2 when ranked by id, R1 when rankKeys rank it last. N is
             % a negative-score dead end.
             testCase.assumeMILPSolver();
-            m.rxns = {'IN_x';'IN_z';'R1';'R2';'E';'OUT_p';'N'};
-            m.mets = {'x';'y';'z';'p';'d'};
-            %        INx INz R1 R2  E OUTp  N
-            m.S = sparse([1   0  1  0  0   0 -1;  % x
-                          0   0 -1 -1 -1   0  0;  % y
-                          0   1  0  1  0   0  0;  % z
-                          0   0  0  0  1  -1  0;  % p
-                          0   0  0  0  0   0  1]); % d
-            m.lb = [0;0;-1000;-1000;0;0;0];
-            m.ub = 1000*ones(7,1);
-            m.rev = double(m.lb < 0);
-            scores = [0;0;0;0;0;0;-1];
+            [m, scores] = getTstModelTwoRoutes();
             fluxIn = ones(7,1);
             [~,~,~,~,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
                 [],false,false,struct(),[],fluxIn,false,0.1,true);
@@ -545,40 +534,59 @@ classdef tINIT < RavenTestCase
         function ftINITInternalAlgResolveTiesSkippedAfterTimeLimit(testCase)
             % When the primary solve stops at the time limit, resolveTies
             % keeps the primary solution and runs no tie-break phase. A
-            % wrapper of optimizeProb earlier on the path counts the solves
-            % and reports each as stopped at the time limit.
+            % wrapper of optimizeProb counts the solves and reports each as
+            % stopped at the time limit.
             testCase.assumeMILPSolver();
-            global TINIT_OPTIMIZEPROB TINIT_OPTIMIZEPROB_CALLS
-            TINIT_OPTIMIZEPROB = @optimizeProb;
-            TINIT_OPTIMIZEPROB_CALLS = 0;
-            d = tempname; mkdir(d);
-            fid = fopen(fullfile(d,'optimizeProb.m'),'w');
-            fprintf(fid,'%s\n', ...
-                'function res = optimizeProb(varargin)', ...
-                'global TINIT_OPTIMIZEPROB TINIT_OPTIMIZEPROB_CALLS', ...
-                'res = TINIT_OPTIMIZEPROB(varargin{:});', ...
-                'TINIT_OPTIMIZEPROB_CALLS = TINIT_OPTIMIZEPROB_CALLS + 1;', ...
-                'res.hitTimeLimit = true;', ...
-                'end');
-            fclose(fid);
-            testCase.addTeardown(@() rmdir(d,'s'));
-            addpath(d,'-begin');
-            testCase.addTeardown(@() rmpath(d));
-            testCase.addTeardown(@() clear('global','TINIT_OPTIMIZEPROB','TINIT_OPTIMIZEPROB_CALLS'));
-            % R1 and R2 can each feed the essential E: a tie for resolveTies.
-            m.rxns = {'R1';'R2';'E';'EX_a';'EX_p'};
-            m.mets = {'a';'m';'p'};
-            m.S = sparse([-1 -1  0 -1  0;
-                           1  1 -1  0  0;
-                           0  0  1  0 -1]);
-            m.lb = [0;0;0;-1000;-1000];
-            m.ub = 1000*ones(5,1);
-            m.rev = double(m.lb < 0);
+            installOptimizeProbCounter(testCase, true);
+            global TINIT_OPTIMIZEPROB_CALLS
+            m = getTstModelTwoSources();
             [~,~,res,turnedOn] = ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
                 [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true);
             testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 1);
             testCase.verifyTrue(res.hitTimeLimit);
             testCase.verifyEqual(nnz(turnedOn(1:2)), 1);
+        end
+
+        function ftINITInternalAlgResolveTiesWithoutPinFluxesSkipsFluxPhases(testCase)
+            % With pinFluxes false, resolveTies runs the primary solve and
+            % phases 2a and 2b only, and still keeps the lower-id R1.
+            testCase.assumeMILPSolver();
+            installOptimizeProbCounter(testCase, false);
+            global TINIT_OPTIMIZEPROB_CALLS
+            m = getTstModelTwoSources();
+            [~,~,~,turnedOn] = ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
+                [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true,[],[],false);
+            testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 3);
+            testCase.verifyEqual(turnedOn(1:2), [true false]);
+            TINIT_OPTIMIZEPROB_CALLS = 0;
+            ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
+                [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true);
+            testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 5);
+        end
+
+        function ftINITInternalAlgResolveTiesFollowsRxnOrientation(testCase)
+            % The two-route model of
+            % ftINITInternalAlgResolveTiesFixesEqualFluxDirections: R1 ranks
+            % first, so by default R2 carries the backward flux. With
+            % rxnOrientation -1 for R1, its backward flux in that orientation
+            % is a forward flux, so R1 runs backward instead.
+            testCase.assumeMILPSolver();
+            [m, scores] = getTstModelTwoRoutes();
+            orient = [1;1;-1;1;1;1;1];
+            [~,~,~,~,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
+                [],false,false,struct(),[],ones(7,1),false,0.1,true,[],orient);
+            testCase.verifyEqual(fluxes(3:4), [-0.1;0], 'AbsTol', 1e-6);
+        end
+
+        function prepINITModelReturnsReversedRxnsOfTheMerge(testCase)
+            % Rz (h[c] => y[c]) and Ra (g[c] => y[c]) both produce y[c], so
+            % the merge runs Ra reversed in the merged reaction Rz; Rp and
+            % Rq form a second route between h[c] and g[c].
+            testModel = getTstModelFlippedMember();
+            evalc('prepData = prepINITModel(testModel, [], {}, false, {}, ''s'');');
+            testCase.verifyClass(prepData.reversedRxns, 'logical');
+            testCase.verifyEqual(prepData.refModel.rxns(prepData.reversedRxns), {'Ra'});
+            testCase.verifyTrue(ismember('Rz', prepData.minModel.rxns));
         end
 
         function ftINITWithTaskRuns(testCase)
@@ -1011,6 +1019,97 @@ testModel.ub = repmat(1000,10,1);
 testModel.lb = [0;-1000;-1000;-1000;0;0;0;0;-1000;-1000];
 testModel.rxnNames = testModel.rxns;
 testModel.b = repmat(0,8,1);
+end
+
+function installOptimizeProbCounter(testCase, fakeTimeLimit)
+%Put a wrapper of optimizeProb first on the path for the rest of the test. It
+%counts the solves in the global TINIT_OPTIMIZEPROB_CALLS and, if
+%fakeTimeLimit, reports each solve as stopped at the time limit.
+global TINIT_OPTIMIZEPROB TINIT_OPTIMIZEPROB_CALLS TINIT_OPTIMIZEPROB_FAKETL
+TINIT_OPTIMIZEPROB = @optimizeProb;
+TINIT_OPTIMIZEPROB_CALLS = 0;
+TINIT_OPTIMIZEPROB_FAKETL = fakeTimeLimit;
+d = tempname; mkdir(d);
+fid = fopen(fullfile(d,'optimizeProb.m'),'w');
+fprintf(fid,'%s\n', ...
+    'function res = optimizeProb(varargin)', ...
+    'global TINIT_OPTIMIZEPROB TINIT_OPTIMIZEPROB_CALLS TINIT_OPTIMIZEPROB_FAKETL', ...
+    'res = TINIT_OPTIMIZEPROB(varargin{:});', ...
+    'TINIT_OPTIMIZEPROB_CALLS = TINIT_OPTIMIZEPROB_CALLS + 1;', ...
+    'if TINIT_OPTIMIZEPROB_FAKETL, res.hitTimeLimit = true; end', ...
+    'end');
+fclose(fid);
+testCase.addTeardown(@() rmdir(d,'s'));
+addpath(d,'-begin');
+testCase.addTeardown(@() rmpath(d));
+testCase.addTeardown(@() clear('global','TINIT_OPTIMIZEPROB','TINIT_OPTIMIZEPROB_CALLS','TINIT_OPTIMIZEPROB_FAKETL'));
+end
+
+function m = getTstModelTwoSources()
+%R1 and R2 (a => m) can each feed the essential E (m => p): a tie for
+%resolveTies.
+m.rxns = {'R1';'R2';'E';'EX_a';'EX_p'};
+m.mets = {'a';'m';'p'};
+m.S = sparse([-1 -1  0 -1  0;
+               1  1 -1  0  0;
+               0  0  1  0 -1]);
+m.lb = [0;0;0;-1000;-1000];
+m.ub = 1000*ones(5,1);
+m.rev = double(m.lb < 0);
+end
+
+function [m, scores] = getTstModelTwoRoutes()
+%The essential E consumes y, which the reversible R1 (y <=> x) or R2
+%(y <=> z) can supply when run backward from the imports IN_x or IN_z. N is a
+%negative-score dead end.
+m.rxns = {'IN_x';'IN_z';'R1';'R2';'E';'OUT_p';'N'};
+m.mets = {'x';'y';'z';'p';'d'};
+%        INx INz R1 R2  E OUTp  N
+m.S = sparse([1   0  1  0  0   0 -1;  % x
+              0   0 -1 -1 -1   0  0;  % y
+              0   1  0  1  0   0  0;  % z
+              0   0  0  0  1  -1  0;  % p
+              0   0  0  0  0   0  1]); % d
+m.lb = [0;0;-1000;-1000;0;0;0];
+m.ub = 1000*ones(7,1);
+m.rev = double(m.lb < 0);
+scores = [0;0;0;0;0;0;-1];
+end
+
+function testModel = getTstModelFlippedMember()
+%h[s] and g[s] are exchanged; h[c] reaches g[c] through y[c] (Rz, Ra) or
+%through y2[c] (Rp, Rq). Rz and Ra are both written as producers of y[c].
+testModel = struct();
+testModel.id = 'flippedMember';
+testModel.rxns = {};
+testModel.S = [];
+testModel.rev = [];
+testModel.mets = {'hs';'hc';'gc';'y1';'y2';'gs'};
+testModel.metNames = {'h';'h';'g';'y';'y2';'g'};
+testModel.comps = {'s';'c'};
+testModel.compNames = testModel.comps;
+testModel.metComps = [1;2;2;2;2;1];
+testModel.genes = {'Gz';'Ga';'Gp';'Gq'};
+testModel.grRules = {};
+testModel.rxnGeneMat = [];
+
+rxnsToAdd = struct();
+rxnsToAdd.rxns = {'EX_h';'Th';'Rz';'Ra';'Rp';'Rq';'Tg';'EX_g'};
+rxnsToAdd.equations = {'<=> h[s]';...
+    'h[s] <=> h[c]';...
+    'h[c] <=> y[c]';...
+    'g[c] <=> y[c]';...
+    'h[c] <=> y2[c]';...
+    'y2[c] <=> g[c]';...
+    'g[c] <=> g[s]';...
+    'g[s] <=>'};
+rxnsToAdd.grRules = {'';'';'Gz';'Ga';'Gp';'Gq';'';''};
+evalc('testModel = addRxns(testModel,rxnsToAdd, 3);');
+testModel.c = [0;0;0;0;0;0;0;1];
+testModel.ub = repmat(1000,8,1);
+testModel.lb = repmat(-1000,8,1);
+testModel.rxnNames = testModel.rxns;
+testModel.b = zeros(6,1);
 end
 
 function testModel = getTstModelTwoPaths()
