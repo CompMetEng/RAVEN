@@ -578,6 +578,17 @@ classdef tINIT < RavenTestCase
             testCase.verifyEqual(fluxes(3:4), [-0.1;0], 'AbsTol', 1e-6);
         end
 
+        function prepINITModelHandlesModelWithoutReversibleRxns(testCase)
+            % Every reaction is irreversible, so the second simplification
+            % has no reversible reaction to constrain. The merge gives the
+            % same reactions and groups as raven-toolbox's prep_init_model.
+            testModel = getTstModelIrreversible();
+            evalc('prepData = prepINITModel(testModel, [], {}, false, {}, ''s'');');
+            testCase.verifyEqual(prepData.minModel.rxns, {'EX_a';'R1';'R2';'T2'});
+            testCase.verifyEqual(prepData.groupIds, [1;1;0;2;2;3;3]);
+            testCase.verifyEqual(prepData.refModel.rxns, testModel.rxns);
+        end
+
         function prepINITModelReturnsReversedRxnsOfTheMerge(testCase)
             % Rz (h[c] => y[c]) and Ra (g[c] => y[c]) both produce y[c], so
             % the merge runs Ra reversed in the merged reaction Rz; Rp and
@@ -1076,6 +1087,41 @@ m.rev = double(m.lb < 0);
 scores = [0;0;0;0;0;0;-1];
 end
 
+function testModel = getTstModelIrreversible()
+%a[s] is imported and reaches b[c] by R1 or by R2, R3; b[c] is exported.
+%Every reaction is irreversible.
+testModel = struct();
+testModel.id = 'irreversible';
+testModel.rxns = {};
+testModel.S = [];
+testModel.rev = [];
+testModel.mets = {'as';'ac';'bc';'cc';'bs'};
+testModel.metNames = {'a';'a';'b';'c';'b'};
+testModel.comps = {'s';'c'};
+testModel.compNames = testModel.comps;
+testModel.metComps = [1;2;2;2;1];
+testModel.genes = {'G1';'G2';'G3'};
+testModel.grRules = {};
+testModel.rxnGeneMat = [];
+
+rxnsToAdd = struct();
+rxnsToAdd.rxns = {'EX_a';'T1';'R1';'R2';'R3';'T2';'EX_b'};
+rxnsToAdd.equations = {'=> a[s]';...
+    'a[s] => a[c]';...
+    'a[c] => b[c]';...
+    'a[c] => c[c]';...
+    'c[c] => b[c]';...
+    'b[c] => b[s]';...
+    'b[s] =>'};
+rxnsToAdd.grRules = {'';'';'G1';'G2';'G3';'';''};
+evalc('testModel = addRxns(testModel,rxnsToAdd, 3);');
+testModel.c = [0;0;0;0;0;0;1];
+testModel.ub = repmat(1000,7,1);
+testModel.lb = zeros(7,1);
+testModel.rxnNames = testModel.rxns;
+testModel.b = zeros(5,1);
+end
+
 function testModel = getTstModelFlippedMember()
 %h[s] and g[s] are exchanged; h[c] reaches g[c] through y[c] (Rz, Ra) or
 %through y2[c] (Rp, Rq). Rz and Ra are both written as producers of y[c].
@@ -1114,8 +1160,7 @@ end
 
 function testModel = getTstModelTwoPaths()
 %a[c] reaches m[c] by Rm, Rc or by Rn, Rb; E, R7 and R8 export e[s]. The
-%paths are reversible: simplifyModel in prepINITModel fails on a model
-%without a reversible reaction after the first simplification.
+%paths are reversible.
 testModel = struct();
 testModel.id = 'twoPaths';
 testModel.rxns = {};
