@@ -481,6 +481,43 @@ classdef tINIT < RavenTestCase
             testCase.verifyFalse(any(ismember({'Rm';'Rc'}, resModel.rxns)));
         end
 
+        function ftINITPinsFluxesInEveryStepButTheLast(testCase)
+            % ftINIT passes pinFluxes true to ftINITInternalAlg in each step
+            % whose fluxes a later step reads and false in the last step. A
+            % wrapper of ftINITInternalAlg earlier on the path records the
+            % argument.
+            testCase.assumeMILPSolver();
+            global TINIT_INTERNALALG TINIT_PINFLUXES
+            TINIT_INTERNALALG = @ftINITInternalAlg;
+            TINIT_PINFLUXES = false(1,0);
+            d = tempname; mkdir(d);
+            fid = fopen(fullfile(d,'ftINITInternalAlg.m'),'w');
+            fprintf(fid,'%s\n', ...
+                'function varargout = ftINITInternalAlg(varargin)', ...
+                'global TINIT_INTERNALALG TINIT_PINFLUXES', ...
+                'TINIT_PINFLUXES(end+1) = varargin{15};', ...
+                '[varargout{1:nargout}] = TINIT_INTERNALALG(varargin{:});', ...
+                'end');
+            fclose(fid);
+            testCase.addTeardown(@() rmdir(d,'s'));
+            addpath(d,'-begin');
+            testCase.addTeardown(@() rmpath(d));
+            testCase.addTeardown(@() clear('global','TINIT_INTERNALALG','TINIT_PINFLUXES'));
+
+            testModel = getTstModelTwoPaths();
+            evalc('prepData = prepINITModel(testModel, getTstModelTasks(), {}, false, {}, ''s'');');
+            arrayData.genes     = testModel.genes;
+            arrayData.tissues   = {'a'};
+            arrayData.levels    = getExprForRxnScore([-1;-1;-1;-1;5;5]);
+            arrayData.threshold = 1;
+            steps = getINITSteps();
+            evalc(['resModel = ftINIT(prepData,arrayData.tissues{1},[],[],' ...
+                'arrayData,[],steps,true,true,struct(),false,' ...
+                '''resolveTies'',true);']);
+            testCase.verifyEqual(TINIT_PINFLUXES, [true(1,numel(steps)-1) false]);
+            testCase.verifyTrue(all(ismember({'Rn';'Rb'}, resModel.rxns)));
+        end
+
         function ftINITInternalAlgResolveTiesGivesMinimalFluxes(testCase)
             % With resolveTies the fluxes come from the least-total-flux
             % solution for the tie-broken on/off state. The positive
@@ -555,27 +592,13 @@ classdef tINIT < RavenTestCase
             global TINIT_OPTIMIZEPROB_CALLS
             m = getTstModelTwoSources();
             [~,~,~,turnedOn] = ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
-                [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true,[],[],false);
+                [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true,[],false);
             testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 3);
             testCase.verifyEqual(turnedOn(1:2), [true false]);
             TINIT_OPTIMIZEPROB_CALLS = 0;
             ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
                 [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true);
             testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 5);
-        end
-
-        function ftINITInternalAlgResolveTiesFollowsRxnOrientation(testCase)
-            % The two-route model of
-            % ftINITInternalAlgResolveTiesFixesEqualFluxDirections: R1 ranks
-            % first, so by default R2 carries the backward flux. With
-            % rxnOrientation -1 for R1, its backward flux in that orientation
-            % is a forward flux, so R1 runs backward instead.
-            testCase.assumeMILPSolver();
-            [m, scores] = getTstModelTwoRoutes();
-            orient = [1;1;-1;1;1;1;1];
-            [~,~,~,~,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
-                [],false,false,struct(),[],ones(7,1),false,0.1,true,[],orient);
-            testCase.verifyEqual(fluxes(3:4), [-0.1;0], 'AbsTol', 1e-6);
         end
 
         function prepINITModelHandlesModelWithoutReversibleRxns(testCase)
@@ -587,17 +610,6 @@ classdef tINIT < RavenTestCase
             testCase.verifyEqual(prepData.minModel.rxns, {'EX_a';'R1';'R2';'T2'});
             testCase.verifyEqual(prepData.groupIds, [1;1;0;2;2;3;3]);
             testCase.verifyEqual(prepData.refModel.rxns, testModel.rxns);
-        end
-
-        function prepINITModelReturnsReversedRxnsOfTheMerge(testCase)
-            % Rz (h[c] => y[c]) and Ra (g[c] => y[c]) both produce y[c], so
-            % the merge runs Ra reversed in the merged reaction Rz; Rp and
-            % Rq form a second route between h[c] and g[c].
-            testModel = getTstModelFlippedMember();
-            evalc('prepData = prepINITModel(testModel, [], {}, false, {}, ''s'');');
-            testCase.verifyClass(prepData.reversedRxns, 'logical');
-            testCase.verifyEqual(prepData.refModel.rxns(prepData.reversedRxns), {'Ra'});
-            testCase.verifyTrue(ismember('Rz', prepData.minModel.rxns));
         end
 
         function ftINITWithTaskRuns(testCase)
@@ -1120,42 +1132,6 @@ testModel.ub = repmat(1000,7,1);
 testModel.lb = zeros(7,1);
 testModel.rxnNames = testModel.rxns;
 testModel.b = zeros(5,1);
-end
-
-function testModel = getTstModelFlippedMember()
-%h[s] and g[s] are exchanged; h[c] reaches g[c] through y[c] (Rz, Ra) or
-%through y2[c] (Rp, Rq). Rz and Ra are both written as producers of y[c].
-testModel = struct();
-testModel.id = 'flippedMember';
-testModel.rxns = {};
-testModel.S = [];
-testModel.rev = [];
-testModel.mets = {'hs';'hc';'gc';'y1';'y2';'gs'};
-testModel.metNames = {'h';'h';'g';'y';'y2';'g'};
-testModel.comps = {'s';'c'};
-testModel.compNames = testModel.comps;
-testModel.metComps = [1;2;2;2;2;1];
-testModel.genes = {'Gz';'Ga';'Gp';'Gq'};
-testModel.grRules = {};
-testModel.rxnGeneMat = [];
-
-rxnsToAdd = struct();
-rxnsToAdd.rxns = {'EX_h';'Th';'Rz';'Ra';'Rp';'Rq';'Tg';'EX_g'};
-rxnsToAdd.equations = {'<=> h[s]';...
-    'h[s] <=> h[c]';...
-    'h[c] <=> y[c]';...
-    'g[c] <=> y[c]';...
-    'h[c] <=> y2[c]';...
-    'y2[c] <=> g[c]';...
-    'g[c] <=> g[s]';...
-    'g[s] <=>'};
-rxnsToAdd.grRules = {'';'';'Gz';'Ga';'Gp';'Gq';'';''};
-evalc('testModel = addRxns(testModel,rxnsToAdd, 3);');
-testModel.c = [0;0;0;0;0;0;0;1];
-testModel.ub = repmat(1000,8,1);
-testModel.lb = repmat(-1000,8,1);
-testModel.rxnNames = testModel.rxns;
-testModel.b = zeros(6,1);
 end
 
 function testModel = getTstModelTwoPaths()

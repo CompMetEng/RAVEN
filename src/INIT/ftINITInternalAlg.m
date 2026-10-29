@@ -1,4 +1,4 @@
-function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,rankKeys,rxnOrientation,pinFluxes)
+function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,rankKeys,pinFluxes)
 % ftINITInternalAlg
 %	This function runs the MILP for a step in ftINIT.
 %
@@ -63,16 +63,9 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 %                   (optional, default model.rxns). ftINIT passes the smallest
 %                   original reaction id of each merge group, so the order
 %                   does not depend on which member names the merged reaction
-%   rxnOrientation  vector with, for each reaction in model.rxns, 1 or -1:
-%                   the sign that turns its flux into the direction of its
-%                   reference orientation. Phase 2d of resolveTies minimises
-%                   the backward flux in that orientation (optional, default
-%                   all 1). ftINIT passes -1 for a merged reaction in which
-%                   the member with the smallest original id runs reversed,
-%                   so the preferred direction does not depend on which member
-%                   names the merged reaction
 %   pinFluxes       if false, resolveTies skips phases 2c and 2d and the
-%                   fluxes are those of phase 2b (optional, default true).
+%                   fluxes and metProduction are those of phase 2b
+%                   (optional, default true).
 %                   ftINIT passes false in its last step, whose fluxes no
 %                   later step reads
 %
@@ -104,11 +97,7 @@ end
 if nargin < 13 || isempty(resolveTies)
     resolveTies = false;
 end
-if nargin < 15 || isempty(rxnOrientation)
-    rxnOrientation = ones(numel(model.rxns),1);
-end
-rxnOrientation = rxnOrientation(:);
-if nargin < 16 || isempty(pinFluxes)
+if nargin < 15 || isempty(pinFluxes)
     pinFluxes = true;
 end
 if isempty(essentialRxns)
@@ -631,11 +620,10 @@ if resolveTies && (nNegIrrev + nNegRev) > 0 && ~res.hitTimeLimit
                     %Keep the on/off state of phase 2c, hold the total absolute
                     %flux at most at its phase-2c value plus
                     %max(1e-7*total, 1e-6), and minimise the backward flux
-                    %max(0,-o*v) of the reactions whose flux can take either
-                    %sign, with o their rxnOrientation, weighted by id rank
-                    %from the end: sorted by rankKeys, the first of n
-                    %reactions gets weight n and the last 1, so a reaction
-                    %with a lower id prefers its forward direction.
+                    %max(0,-v) of the reactions whose flux can take either sign,
+                    %weighted by id rank from the end: sorted by rankKeys, the
+                    %first of n reactions gets weight n and the last 1, so a
+                    %reaction with a lower id prefers its forward direction.
                     if nT > 0
                         total = minProb.c' * res2c.full;
                         dirProb = minProb;
@@ -643,11 +631,9 @@ if resolveTies && (nNegIrrev + nNegRev) > 0 && ~res.hitTimeLimit
                         [~, ord] = sort(rankKeys(tRxns));
                         w = zeros(nT,1);
                         w(ord) = (nT:-1:1)';
-                        o = rxnOrientation(tRxns);
-                        selO = sparse(1:nT, tRxns, o, nT, nCols2c);
                         dirProb.A = [minProb.A sparse(size(minProb.A,1),nT); ...
                                      minProb.c' sparse(1,nT); ...
-                                     selO speye(nT)];
+                                     selV sparse(nT,nT) speye(nT)];
                         dirProb.a = dirProb.A;
                         dirProb.b = [minProb.b; total + max(abs(total)*1e-7, 1e-6); zeros(nT,1)];
                         dirProb.csense = [minProb.csense 'L' repmat('G',1,nT)];
@@ -658,7 +644,7 @@ if resolveTies && (nNegIrrev + nNegRev) > 0 && ~res.hitTimeLimit
                         %The phase-2c solution is the MIP start: the tight cap on
                         %the total flux leaves the solver's heuristics little room
                         %to find a first solution.
-                        dirProb.start = [res2c.full; max(0, -o.*res2c.full(tRxns))];
+                        dirProb.start = [res2c.full; max(0, -res2c.full(tRxns))];
                         res2d = optimizeProb(dirProb,minParams,verbose);
                         [isFeasible2d, isOptimal2d] = checkSolution(res2d);
                         if ~isOptimal2d

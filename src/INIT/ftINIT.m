@@ -79,11 +79,11 @@
 %     magnitude a reaction is forced at in the next step, then come from the
 %     least-total-flux solution for that on/off state and, among those, from
 %     the one with the least id-rank-weighted backward flux (a merged
-%     reaction ranked by the smallest original id in its group and oriented
-%     as that member). The last step skips these flux phases, as no step
-%     reads its fluxes. A step whose primary solve stops at the time limit
-%     keeps its primary solution without any of these phases; the count and
-%     id-rank phases get half of the step's TimeLimit each, and a warning
+%     reaction ranked by the smallest original id in its group). The last
+%     step skips these flux phases, as no step reads its fluxes. A step
+%     whose primary solve stops at the time limit keeps its primary
+%     solution without any of these phases; the count and id-rank phases
+%     get half of the step's TimeLimit each, and a warning
 %     names each phase that does not prove optimal or finds no solution
 %     (default false).
 % proveAbsGap : double
@@ -203,23 +203,14 @@ rxnsToIgnoreLastStep = [1;1;1;1;1;1;1;1];
 fluxes = ones(length(prepData.minModel.rxns), 1).*0.1;
 
 %resolveTies ranks a merged reaction by its group's smallest original id,
-%which does not depend on which member names the merged reaction. The
-%reference orientation of a merged reaction is that of the same member:
-%-1 when that member runs reversed in the merged reaction. A prepData
-%without reversedRxns gives every reaction orientation 1.
+%which does not depend on which member names the merged reaction.
 rankKeys = prepData.minModel.rxns;
-rxnOrientation = ones(numel(prepData.minModel.rxns),1);
-hasReversed = isfield(prepData,'reversedRxns');
 [inRef, refInd] = ismember(rankKeys, prepData.refModel.rxns);
 for i = find(inRef)'
     g = prepData.groupIds(refInd(i));
     if g ~= 0
-        memberInd = find(prepData.groupIds == g);
-        [members, ord] = sort(prepData.refModel.rxns(memberInd));
+        members = sort(prepData.refModel.rxns(prepData.groupIds == g));
         rankKeys{i} = members{1};
-        if hasReversed && prepData.reversedRxns(memberInd(ord(1)))
-            rxnOrientation(i) = -1;
-        end
     end
 end
 
@@ -263,9 +254,8 @@ for initStep = 1:length(INITSteps)
         %in the direction that they were previously carrying flux
         
         %first reverse the reactions that need to be reversed
-        %A zero flux takes the reference orientation of the reaction.
         rev = mm.rev == 1;
-        toRev = rxnsTurnedOn & rev & (fluxes < 0 | (fluxes == 0 & rxnOrientation < 0));
+        toRev = rxnsTurnedOn & rev & fluxes < 0;
         mm = reverseRxns(mm, mm.rxns(toRev));
         
         %Then make them irreversible
@@ -292,7 +282,7 @@ for initStep = 1:length(INITSteps)
         params.MIPGap = 0;
         params.MIPGapAbs = proveAbsGap;
         try
-            [deletedRxnsInINIT1, metProduction,fullMipRes,rxnsTurnedOn1,fluxes1] = ftINITInternalAlg(mm,rxnScores,metData,essentialRxns,5,stp.AllowMetSecr,stp.PosRevOff,params, [], fluxes, verbose, 0.1, resolveTies, rankKeys, rxnOrientation, pinFluxes);
+            [deletedRxnsInINIT1, metProduction,fullMipRes,rxnsTurnedOn1,fluxes1] = ftINITInternalAlg(mm,rxnScores,metData,essentialRxns,5,stp.AllowMetSecr,stp.PosRevOff,params, [], fluxes, verbose, 0.1, resolveTies, rankKeys, pinFluxes);
             fluxes1(toRev) = -fluxes1(toRev);
             success = true;
             if fullMipRes.stat ~= 1
@@ -346,7 +336,7 @@ for initStep = 1:length(INITSteps)
                 if ~isempty(fullMipRes)
                     startVals = fullMipRes.full;
                 end
-                [deletedRxnsInINIT1, metProduction,fullMipRes,rxnsTurnedOn1,fluxes1] = ftINITInternalAlg(mm,rxnScores,metData,essentialRxns,5,stp.AllowMetSecr,stp.PosRevOff,params, startVals, fluxes, verbose, 0.1, resolveTies, rankKeys, rxnOrientation, pinFluxes);
+                [deletedRxnsInINIT1, metProduction,fullMipRes,rxnsTurnedOn1,fluxes1] = ftINITInternalAlg(mm,rxnScores,metData,essentialRxns,5,stp.AllowMetSecr,stp.PosRevOff,params, startVals, fluxes, verbose, 0.1, resolveTies, rankKeys, pinFluxes);
                 %This is a bit tricky - since we reversed some reactions, those fluxes also need to be reversed
                 fluxes1(toRev) = -fluxes1(toRev);
 

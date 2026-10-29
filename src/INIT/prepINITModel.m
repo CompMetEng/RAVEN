@@ -194,7 +194,7 @@ disp('Step 5: Final work')
 
 %Now, merge all linear dependent rxns - this reduces the size of the model a lot.
 %Size goes from 11888 rxns to 7922 rxns for human-GEM, so this is an important step
-[minModel3,origRxnIds,groupIds,reversedRxns]=mergeLinear(minModel2, {});
+[minModel3,origRxnIds,groupIds]=mergeLinear(minModel2, {});
 
 %we now need to figure out what happened to the essential rxns in the merge step above.
 %Note that it would be ideal to run checkTasks on the result from mergeLinear, but that doesn't work.
@@ -339,7 +339,6 @@ prepData.refModel = cModel;
 prepData.minModel = scaledMinModel;
 prepData.refModelWithBM = closeModel(cModel); %do this here so we don't have to do this for each sample
 prepData.groupIds = groupIds;
-prepData.reversedRxns = reversedRxns; %true for a reaction that runs reversed in its merged reaction
 prepData.essentialMetsForTasks = essentialMetsForTasks;
 
 prepData.toIgnoreExch = toIgnoreExch;
