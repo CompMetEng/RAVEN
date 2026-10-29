@@ -542,6 +542,45 @@ classdef tINIT < RavenTestCase
             testCase.verifyEqual(fluxes(3:4), [-0.1;0], 'AbsTol', 1e-6);
         end
 
+        function ftINITInternalAlgResolveTiesSkippedAfterTimeLimit(testCase)
+            % When the primary solve stops at the time limit, resolveTies
+            % keeps the primary solution and runs no tie-break phase. A
+            % wrapper of optimizeProb earlier on the path counts the solves
+            % and reports each as stopped at the time limit.
+            testCase.assumeMILPSolver();
+            global TINIT_OPTIMIZEPROB TINIT_OPTIMIZEPROB_CALLS
+            TINIT_OPTIMIZEPROB = @optimizeProb;
+            TINIT_OPTIMIZEPROB_CALLS = 0;
+            d = tempname; mkdir(d);
+            fid = fopen(fullfile(d,'optimizeProb.m'),'w');
+            fprintf(fid,'%s\n', ...
+                'function res = optimizeProb(varargin)', ...
+                'global TINIT_OPTIMIZEPROB TINIT_OPTIMIZEPROB_CALLS', ...
+                'res = TINIT_OPTIMIZEPROB(varargin{:});', ...
+                'TINIT_OPTIMIZEPROB_CALLS = TINIT_OPTIMIZEPROB_CALLS + 1;', ...
+                'res.hitTimeLimit = true;', ...
+                'end');
+            fclose(fid);
+            testCase.addTeardown(@() rmdir(d,'s'));
+            addpath(d,'-begin');
+            testCase.addTeardown(@() rmpath(d));
+            testCase.addTeardown(@() clear('global','TINIT_OPTIMIZEPROB','TINIT_OPTIMIZEPROB_CALLS'));
+            % R1 and R2 can each feed the essential E: a tie for resolveTies.
+            m.rxns = {'R1';'R2';'E';'EX_a';'EX_p'};
+            m.mets = {'a';'m';'p'};
+            m.S = sparse([-1 -1  0 -1  0;
+                           1  1 -1  0  0;
+                           0  0  1  0 -1]);
+            m.lb = [0;0;0;-1000;-1000];
+            m.ub = 1000*ones(5,1);
+            m.rev = double(m.lb < 0);
+            [~,~,res,turnedOn] = ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
+                [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true);
+            testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 1);
+            testCase.verifyTrue(res.hitTimeLimit);
+            testCase.verifyEqual(nnz(turnedOn(1:2)), 1);
+        end
+
         function ftINITWithTaskRuns(testCase)
             % A task requiring e[s] from a[s] forces R2 and R7 to be essential.
             testCase.assumeMILPSolver();
