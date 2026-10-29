@@ -453,6 +453,34 @@ classdef tINIT < RavenTestCase
             testCase.verifyTrue(all(strcmp(resBoth.rxns, expected)));
         end
 
+        function ftINITResolveTiesRanksMergedRxnBySmallestOriginalId(testCase)
+            % a[c] reaches m[c] by path P (Rm, Rc) or path Q (Rn, Rb), each
+            % path one linear merge group with equal negative scores. Model
+            % order and group numbers put P first, and the merged reactions
+            % are named by their first members Rm and Rn, but the smallest
+            % original id of Q (Rb) sorts before that of P (Rc). resolveTies
+            % keeps Q; ranking by the merged id, the model order or the group
+            % number would keep P.
+            testCase.assumeMILPSolver();
+            testModel = getTstModelTwoPaths();
+            evalc('prepData = prepINITModel(testModel, getTstModelTasks(), {}, false, {}, ''s'');');
+            g = @(r) prepData.groupIds(strcmp(prepData.refModel.rxns, r));
+            testCase.verifyEqual(g('Rm'), g('Rc'));
+            testCase.verifyEqual(g('Rn'), g('Rb'));
+            testCase.verifyLessThan(g('Rm'), g('Rn'));
+            testCase.verifyTrue(all(ismember({'Rm';'Rn'}, prepData.minModel.rxns)));
+
+            arrayData.genes     = testModel.genes;
+            arrayData.tissues   = {'a'};
+            arrayData.levels    = getExprForRxnScore([-1;-1;-1;-1;5;5]);
+            arrayData.threshold = 1;
+            evalc(['resModel = ftINIT(prepData,arrayData.tissues{1},[],[],' ...
+                'arrayData,[],getINITSteps(),true,true,struct(),false,' ...
+                '''resolveTies'',true);']);
+            testCase.verifyTrue(all(ismember({'Rn';'Rb'}, resModel.rxns)));
+            testCase.verifyFalse(any(ismember({'Rm';'Rc'}, resModel.rxns)));
+        end
+
         function ftINITInternalAlgResolveTiesGivesMinimalFluxes(testCase)
             % With resolveTies the fluxes come from the least-total-flux
             % solution for the tie-broken on/off state. The positive
@@ -944,6 +972,42 @@ testModel.ub = repmat(1000,10,1);
 testModel.lb = [0;-1000;-1000;-1000;0;0;0;0;-1000;-1000];
 testModel.rxnNames = testModel.rxns;
 testModel.b = repmat(0,8,1);
+end
+
+function testModel = getTstModelTwoPaths()
+%a[c] reaches m[c] by Rm, Rc or by Rn, Rb; E, R7 and R8 export e[s].
+testModel = struct();
+testModel.id = 'twoPaths';
+testModel.rxns = {};
+testModel.S = [];
+testModel.rev = [];
+testModel.mets = {'as';'ac';'xc';'yc';'mc';'ec';'es'};
+testModel.metNames = {'a';'a';'x';'y';'m';'e';'e'};
+testModel.comps = {'s';'c'};
+testModel.compNames = testModel.comps;
+testModel.metComps = [1;2;2;2;2;2;1];
+testModel.genes = {'Gm';'Gc';'Gn';'Gb';'GE';'G7'};
+testModel.grRules = {};
+testModel.rxnGeneMat = [];
+
+rxnsToAdd = struct();
+rxnsToAdd.rxns = {'R1';'R2';'Rm';'Rc';'Rn';'Rb';'E';'R7';'R8'};
+rxnsToAdd.equations = {'=> a[s]';...
+    'a[s] <=> a[c]';...
+    'a[c] => x[c]';...
+    'x[c] => m[c]';...
+    'a[c] => y[c]';...
+    'y[c] => m[c]';...
+    'm[c] => e[c]';...
+    'e[c] => e[s]';...
+    'e[s] =>'};
+rxnsToAdd.grRules = {'';'';'Gm';'Gc';'Gn';'Gb';'GE';'G7';''};
+evalc('testModel = addRxns(testModel,rxnsToAdd, 3);');
+testModel.c = [0;0;0;0;0;0;0;0;1];
+testModel.ub = repmat(1000,9,1);
+testModel.lb = [0;-1000;0;0;0;0;0;0;0];
+testModel.rxnNames = testModel.rxns;
+testModel.b = zeros(7,1);
 end
 
 function testModelRxnScores = getTstModelRxnScores()
