@@ -32,6 +32,15 @@
   tie-break phases are skipped and the primary solution is kept, as in raven-toolbox (was: the
   phases ran on the unproven incumbent). The count and id-rank phases get half of
   `params.TimeLimit` each, rounded down and at least 1 s (was: the full limit).
+* `ftINIT` with `resolveTies`: the direction phase minimises the backward flux of a merged
+  reaction in the orientation of its member with the smallest original id, and a turned-on
+  reaction with zero flux is forced in that orientation, so neither depends on which member
+  names the merged reaction. `prepINITModel` returns `reversedRxns` of `mergeLinear` in
+  `prepData`; with a `prepData` without it, every reaction keeps its own orientation.
+  `ftINITInternalAlg` takes the orientation as the new argument `rxnOrientation`.
+* `ftINIT` with `resolveTies`: the last step skips the minimal-flux and direction phases, as
+  no step reads its fluxes (new `ftINITInternalAlg` argument `pinFluxes`). The reaction set
+  does not change.
 * `mergeLinear`: groups are numbered 1, 2, ... in the order of the first reaction of each
   group in `origRxnIds` (was: the order in which the reactions were merged).
 * `mergeLinear`: a reaction flipped after the first merge pass is the one marked in
