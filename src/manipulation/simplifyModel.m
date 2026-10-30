@@ -185,30 +185,33 @@ end
 
 if constrainReversible==true
     revs=find(reducedModel.rev);
-    [I,J]=getAllowedBounds(reducedModel,revs);
+    %getAllowedBounds treats an empty reaction list as all reactions
+    if ~isempty(revs)
+        [I,J]=getAllowedBounds(reducedModel,revs);
     
-    I=abs(I);
-    J=abs(J);
+        I=abs(I);
+        J=abs(J);
     
-    %Get the "small" values
-    K=I<10^-10;
-    L=J<10^-10;
+        %Get the "small" values
+        K=I<10^-10;
+        L=J<10^-10;
     
-    %Keep the values where only one direction is zero (small)
-    I(K==L)=[];
-    J(K==L)=[];
-    revs(K==L)=[];
+        %Keep the values where only one direction is zero (small)
+        I(K==L)=[];
+        J(K==L)=[];
+        revs(K==L)=[];
     
-    %Change the reversibility of the remaining reactions
-    reducedModel.rev(revs(J>10^-10))=0; %Ignore reverse direction
-    reducedModel.lb(revs(J>10^-10))=0;
+        %Change the reversibility of the remaining reactions
+        reducedModel.rev(revs(J>10^-10))=0; %Ignore reverse direction
+        reducedModel.lb(revs(J>10^-10))=0;
     
-    toSwitch=revs(I>10^-10);
-    reducedModel.rev(toSwitch)=0; %Change directionality
-    reducedModel.ub(toSwitch)=reducedModel.lb(toSwitch)*-1;
-    reducedModel.lb(toSwitch)=0;
-    reducedModel.S(:,toSwitch)=reducedModel.S(:,toSwitch).*-1;
-    reducedModel.c(toSwitch)=reducedModel.c(toSwitch)*-1;
+        toSwitch=revs(I>10^-10);
+        reducedModel.rev(toSwitch)=0; %Change directionality
+        reducedModel.ub(toSwitch)=reducedModel.lb(toSwitch)*-1;
+        reducedModel.lb(toSwitch)=0;
+        reducedModel.S(:,toSwitch)=reducedModel.S(:,toSwitch).*-1;
+        reducedModel.c(toSwitch)=reducedModel.c(toSwitch)*-1;
+    end
 end
 if groupLinear==true
     if  suppressWarnings==false

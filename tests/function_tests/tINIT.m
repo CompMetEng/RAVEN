@@ -179,6 +179,75 @@ classdef tINIT < RavenTestCase
             testCase.verifyTrue(all(find(reversedRxns) == [6;9]));
         end
 
+        function mergeLinearNumbersGroupsByFirstRxn(testCase)
+            % Group numbers follow the first reaction of each group in
+            % model.rxns, not the merge order. The metabolites are visited
+            % in model.mets order, so c (R5, R6) merges first.
+            model = struct();
+            model.id = 'numbering';
+            model.rxns = {'R1';'R2';'R3';'R4';'R5';'R6'};
+            model.rxnNames = model.rxns;
+            model.mets = {'z';'c';'w';'x';'a';'m';'b';'y'};
+            model.metNames = model.mets;
+            model.comps = {'c'};
+            model.compNames = {'c'};
+            model.metComps = ones(8,1);
+            subs = {'x';'a';'m';'b';'z';'c'};
+            prods = {'a';'m';'b';'y';'c';'w'};
+            model.S = sparse(8,6);
+            for i = 1:6
+                model.S(strcmp(model.mets,subs{i}),i) = -1;
+                model.S(strcmp(model.mets,prods{i}),i) = 1;
+            end
+            model.lb = zeros(6,1);
+            model.ub = 1000*ones(6,1);
+            model.rev = zeros(6,1);
+            model.c = zeros(6,1);
+            model.b = zeros(8,1);
+            model.genes = cell(0,1);
+            model.grRules = repmat({''},6,1);
+            model.rxnGeneMat = sparse(6,0);
+            evalc('[reducedModel,~,groupIds] = mergeLinear(model, {});');
+            testCase.verifyEqual(groupIds(:), [1;1;1;1;2;2]);
+            testCase.verifyEqual(sort(reducedModel.rxns), {'R1';'R5'});
+        end
+
+        function mergeLinearFlipsRxnInLaterPass(testCase)
+            % R1 and R2 merge through A in the first pass and R2 is removed,
+            % so R4 sits at index 3 of the reduced model. The second pass
+            % merges R1 and R4 through Y and flips R4, which must be the
+            % reaction marked as reversed (not R3, the third original one).
+            model = struct();
+            model.id = 'lateflip';
+            model.rxns = {'R1';'R2';'R3';'R4';'R5';'R6'};
+            model.rxnNames = model.rxns;
+            model.mets = {'A';'Y';'Q';'W'};
+            model.metNames = model.mets;
+            model.comps = {'c'};
+            model.compNames = {'c'};
+            model.metComps = ones(4,1);
+            S = zeros(4,6);
+            S([1 2],1) = [1;1];   % R1: -> A + Y
+            S([1 2],2) = [-1;1];  % R2: A -> Y
+            S(3,3) = -1;          % R3: Q ->
+            S([4 2],4) = [-1;1];  % R4: W <=> Y
+            S(4,5) = 1;           % R5: -> W
+            S(4,6) = -1;          % R6: W ->
+            model.S = sparse(S);
+            model.lb = [0;0;0;-1000;0;0];
+            model.ub = 1000*ones(6,1);
+            model.rev = double(model.lb < 0);
+            model.c = zeros(6,1);
+            model.b = zeros(4,1);
+            model.genes = cell(0,1);
+            model.grRules = repmat({''},6,1);
+            model.rxnGeneMat = sparse(6,0);
+            evalc('[reducedModel,origRxnIds,groupIds,reversedRxns] = mergeLinear(model, {});');
+            testCase.verifyEqual(groupIds(:), [1;1;0;1;0;0]);
+            testCase.verifyEqual(origRxnIds(reversedRxns), {'R4'});
+            testCase.verifyEqual(sort(reducedModel.rxns), {'R1';'R3';'R5';'R6'});
+        end
+
         function scoreModelRuns(testCase)
             arrayData.genes   = testCase.model.genes;
             arrayData.tissues = {'t1'};
@@ -382,6 +451,165 @@ classdef tINIT < RavenTestCase
                 'arrayData,[],getINITSteps(),true,true,testParams,false,' ...
                 '''resolveTies'',true,''proveAbsGap'',0.05);']);
             testCase.verifyTrue(all(strcmp(resBoth.rxns, expected)));
+        end
+
+        function ftINITResolveTiesRanksMergedRxnBySmallestOriginalId(testCase)
+            % a[c] reaches m[c] by path P (Rm, Rc) or path Q (Rn, Rb), each
+            % path one linear merge group with equal negative scores. Model
+            % order and group numbers put P first, and the merged reactions
+            % are named by their first members Rm and Rn, but the smallest
+            % original id of Q (Rb) sorts before that of P (Rc). resolveTies
+            % keeps Q; ranking by the merged id, the model order or the group
+            % number would keep P.
+            testCase.assumeMILPSolver();
+            testModel = getTstModelTwoPaths();
+            evalc('prepData = prepINITModel(testModel, getTstModelTasks(), {}, false, {}, ''s'');');
+            g = @(r) prepData.groupIds(strcmp(prepData.refModel.rxns, r));
+            testCase.verifyEqual(g('Rm'), g('Rc'));
+            testCase.verifyEqual(g('Rn'), g('Rb'));
+            testCase.verifyLessThan(g('Rm'), g('Rn'));
+            testCase.verifyTrue(all(ismember({'Rm';'Rn'}, prepData.minModel.rxns)));
+
+            arrayData.genes     = testModel.genes;
+            arrayData.tissues   = {'a'};
+            arrayData.levels    = getExprForRxnScore([-1;-1;-1;-1;5;5]);
+            arrayData.threshold = 1;
+            evalc(['resModel = ftINIT(prepData,arrayData.tissues{1},[],[],' ...
+                'arrayData,[],getINITSteps(),true,true,struct(),false,' ...
+                '''resolveTies'',true);']);
+            testCase.verifyTrue(all(ismember({'Rn';'Rb'}, resModel.rxns)));
+            testCase.verifyFalse(any(ismember({'Rm';'Rc'}, resModel.rxns)));
+        end
+
+        function ftINITPinsFluxesInEveryStepButTheLast(testCase)
+            % ftINIT passes pinFluxes true to ftINITInternalAlg in each step
+            % whose fluxes a later step reads and false in the last step. A
+            % wrapper of ftINITInternalAlg earlier on the path records the
+            % argument.
+            testCase.assumeMILPSolver();
+            global TINIT_INTERNALALG TINIT_PINFLUXES
+            TINIT_INTERNALALG = @ftINITInternalAlg;
+            TINIT_PINFLUXES = false(1,0);
+            d = tempname; mkdir(d);
+            fid = fopen(fullfile(d,'ftINITInternalAlg.m'),'w');
+            fprintf(fid,'%s\n', ...
+                'function varargout = ftINITInternalAlg(varargin)', ...
+                'global TINIT_INTERNALALG TINIT_PINFLUXES', ...
+                'TINIT_PINFLUXES(end+1) = varargin{15};', ...
+                '[varargout{1:nargout}] = TINIT_INTERNALALG(varargin{:});', ...
+                'end');
+            fclose(fid);
+            testCase.addTeardown(@() rmdir(d,'s'));
+            addpath(d,'-begin');
+            testCase.addTeardown(@() rmpath(d));
+            testCase.addTeardown(@() clear('global','TINIT_INTERNALALG','TINIT_PINFLUXES'));
+
+            testModel = getTstModelTwoPaths();
+            evalc('prepData = prepINITModel(testModel, getTstModelTasks(), {}, false, {}, ''s'');');
+            arrayData.genes     = testModel.genes;
+            arrayData.tissues   = {'a'};
+            arrayData.levels    = getExprForRxnScore([-1;-1;-1;-1;5;5]);
+            arrayData.threshold = 1;
+            steps = getINITSteps();
+            evalc(['resModel = ftINIT(prepData,arrayData.tissues{1},[],[],' ...
+                'arrayData,[],steps,true,true,struct(),false,' ...
+                '''resolveTies'',true);']);
+            testCase.verifyEqual(TINIT_PINFLUXES, [true(1,numel(steps)-1) false]);
+            testCase.verifyTrue(all(ismember({'Rn';'Rb'}, resModel.rxns)));
+        end
+
+        function ftINITInternalAlgResolveTiesGivesMinimalFluxes(testCase)
+            % With resolveTies the fluxes come from the least-total-flux
+            % solution for the tie-broken on/off state. The positive
+            % reversible R3 (m <=> q) can be on in either direction: backward
+            % (import q, feed the essential E) carries 0.4 in total, forward
+            % (a via the free R1 into R3 and E) 0.8. The free loop L1/L2
+            % carries nothing and the negative-score dead end R2 stays off.
+            testCase.assumeMILPSolver();
+            m.rxns = {'R1';'R2';'R3';'E';'L1';'L2';'EX_a';'EX_p';'EX_q'};
+            m.mets = {'a';'m';'p';'q';'n';'z'};
+            %         R1 R2 R3  E L1 L2 EXa EXp EXq
+            m.S = sparse([-1 -1  0  0  0  0 -1   0   0;  % a
+                           1  0 -1 -1 -1  1  0   0   0;  % m
+                           0  0  0  1  0  0  0  -1   0;  % p
+                           0  0  1  0  0  0  0   0  -1;  % q
+                           0  0  0  0  1 -1  0   0   0;  % n
+                           0  1  0  0  0  0  0   0   0]); % z
+            m.lb = [0;0;-1000;0;0;0;-1000;-1000;-1000];
+            m.ub = 1000*ones(9,1);
+            m.rev = double(m.lb < 0);
+            scores = [0;-1;1;0;0;0;0;0;0];
+            fluxIn = 0.1*ones(9,1);
+            [deleted,~,~,turnedOn,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
+                [],false,false,struct(),[],fluxIn,false,0.1,true);
+            testCase.verifyTrue(turnedOn(3));
+            testCase.verifyTrue(deleted(2));
+            % E is forced at min(0.99*0.1,0.1) and needs the 0.1 of R3.
+            expected = [0;0;-0.1;0.1;0;0;0;0.1;-0.1];
+            testCase.verifyEqual(fluxes, expected, 'AbsTol', 1e-6);
+        end
+
+        function ftINITInternalAlgResolveTiesFixesEqualFluxDirections(testCase)
+            % The essential E consumes y, which the reversible R1 (y <=> x)
+            % or R2 (y <=> z) can supply when run backward from the imports
+            % IN_x or IN_z. Both routes carry the same total flux; with
+            % resolveTies the higher-ranked reaction carries the backward
+            % flux: R2 when ranked by id, R1 when rankKeys rank it last. N is
+            % a negative-score dead end.
+            testCase.assumeMILPSolver();
+            [m, scores] = getTstModelTwoRoutes();
+            fluxIn = ones(7,1);
+            [~,~,~,~,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
+                [],false,false,struct(),[],fluxIn,false,0.1,true);
+            testCase.verifyEqual(fluxes(3:4), [0;-0.1], 'AbsTol', 1e-6);
+            keys = {'IN_x';'IN_z';'R9';'R2';'E';'OUT_p';'N'};
+            [~,~,~,~,fluxes] = ftINITInternalAlg(m,scores,[],{'E'}, ...
+                [],false,false,struct(),[],fluxIn,false,0.1,true,keys);
+            testCase.verifyEqual(fluxes(3:4), [-0.1;0], 'AbsTol', 1e-6);
+        end
+
+        function ftINITInternalAlgResolveTiesSkippedAfterTimeLimit(testCase)
+            % When the primary solve stops at the time limit, resolveTies
+            % keeps the primary solution and runs no tie-break phase. A
+            % wrapper of optimizeProb counts the solves and reports each as
+            % stopped at the time limit.
+            testCase.assumeMILPSolver();
+            installOptimizeProbCounter(testCase, true);
+            global TINIT_OPTIMIZEPROB_CALLS
+            m = getTstModelTwoSources();
+            [~,~,res,turnedOn] = ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
+                [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true);
+            testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 1);
+            testCase.verifyTrue(res.hitTimeLimit);
+            testCase.verifyEqual(nnz(turnedOn(1:2)), 1);
+        end
+
+        function ftINITInternalAlgResolveTiesWithoutPinFluxesSkipsFluxPhases(testCase)
+            % With pinFluxes false, resolveTies runs the primary solve and
+            % phases 2a and 2b, not 2c and 2d, and still keeps the lower-id R1.
+            testCase.assumeMILPSolver();
+            installOptimizeProbCounter(testCase, false);
+            global TINIT_OPTIMIZEPROB_CALLS
+            m = getTstModelTwoSources();
+            [~,~,~,turnedOn] = ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
+                [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true,[],false);
+            testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 3);
+            testCase.verifyEqual(turnedOn(1:2), [true false]);
+            TINIT_OPTIMIZEPROB_CALLS = 0;
+            ftINITInternalAlg(m,[-1;-1;0;0;0],[],{'E'}, ...
+                [],false,false,struct(),[],0.1*ones(5,1),false,0.1,true);
+            testCase.verifyEqual(TINIT_OPTIMIZEPROB_CALLS, 5);
+        end
+
+        function prepINITModelHandlesModelWithoutReversibleRxns(testCase)
+            % Every reaction is irreversible, so the second simplification
+            % has no reversible reaction to constrain. The merge gives the
+            % same reactions and groups as raven-toolbox's prep_init_model.
+            testModel = getTstModelIrreversible();
+            evalc('prepData = prepINITModel(testModel, [], {}, false, {}, ''s'');');
+            testCase.verifyEqual(prepData.minModel.rxns, {'EX_a';'R1';'R2';'T2'});
+            testCase.verifyEqual(prepData.groupIds, [1;1;0;2;2;3;3]);
+            testCase.verifyEqual(prepData.refModel.rxns, testModel.rxns);
         end
 
         function ftINITWithTaskRuns(testCase)
@@ -814,6 +1042,133 @@ testModel.ub = repmat(1000,10,1);
 testModel.lb = [0;-1000;-1000;-1000;0;0;0;0;-1000;-1000];
 testModel.rxnNames = testModel.rxns;
 testModel.b = repmat(0,8,1);
+end
+
+function installOptimizeProbCounter(testCase, fakeTimeLimit)
+%Put a wrapper of optimizeProb first on the path for the rest of the test. It
+%counts the solves in the global TINIT_OPTIMIZEPROB_CALLS and, if
+%fakeTimeLimit, reports each solve as stopped at the time limit.
+global TINIT_OPTIMIZEPROB TINIT_OPTIMIZEPROB_CALLS TINIT_OPTIMIZEPROB_FAKETL
+TINIT_OPTIMIZEPROB = @optimizeProb;
+TINIT_OPTIMIZEPROB_CALLS = 0;
+TINIT_OPTIMIZEPROB_FAKETL = fakeTimeLimit;
+d = tempname; mkdir(d);
+fid = fopen(fullfile(d,'optimizeProb.m'),'w');
+fprintf(fid,'%s\n', ...
+    'function res = optimizeProb(varargin)', ...
+    'global TINIT_OPTIMIZEPROB TINIT_OPTIMIZEPROB_CALLS TINIT_OPTIMIZEPROB_FAKETL', ...
+    'res = TINIT_OPTIMIZEPROB(varargin{:});', ...
+    'TINIT_OPTIMIZEPROB_CALLS = TINIT_OPTIMIZEPROB_CALLS + 1;', ...
+    'if TINIT_OPTIMIZEPROB_FAKETL, res.hitTimeLimit = true; end', ...
+    'end');
+fclose(fid);
+testCase.addTeardown(@() rmdir(d,'s'));
+addpath(d,'-begin');
+testCase.addTeardown(@() rmpath(d));
+testCase.addTeardown(@() clear('global','TINIT_OPTIMIZEPROB','TINIT_OPTIMIZEPROB_CALLS','TINIT_OPTIMIZEPROB_FAKETL'));
+end
+
+function m = getTstModelTwoSources()
+%R1 and R2 (a => m) can each feed the essential E (m => p): a tie for
+%resolveTies.
+m.rxns = {'R1';'R2';'E';'EX_a';'EX_p'};
+m.mets = {'a';'m';'p'};
+m.S = sparse([-1 -1  0 -1  0;
+               1  1 -1  0  0;
+               0  0  1  0 -1]);
+m.lb = [0;0;0;-1000;-1000];
+m.ub = 1000*ones(5,1);
+m.rev = double(m.lb < 0);
+end
+
+function [m, scores] = getTstModelTwoRoutes()
+%The essential E consumes y, which the reversible R1 (y <=> x) or R2
+%(y <=> z) can supply when run backward from the imports IN_x or IN_z. N is a
+%negative-score dead end.
+m.rxns = {'IN_x';'IN_z';'R1';'R2';'E';'OUT_p';'N'};
+m.mets = {'x';'y';'z';'p';'d'};
+%        INx INz R1 R2  E OUTp  N
+m.S = sparse([1   0  1  0  0   0 -1;  % x
+              0   0 -1 -1 -1   0  0;  % y
+              0   1  0  1  0   0  0;  % z
+              0   0  0  0  1  -1  0;  % p
+              0   0  0  0  0   0  1]); % d
+m.lb = [0;0;-1000;-1000;0;0;0];
+m.ub = 1000*ones(7,1);
+m.rev = double(m.lb < 0);
+scores = [0;0;0;0;0;0;-1];
+end
+
+function testModel = getTstModelIrreversible()
+%a[s] is imported and reaches b[c] by R1 or by R2, R3; b[c] is exported.
+%Every reaction is irreversible.
+testModel = struct();
+testModel.id = 'irreversible';
+testModel.rxns = {};
+testModel.S = [];
+testModel.rev = [];
+testModel.mets = {'as';'ac';'bc';'cc';'bs'};
+testModel.metNames = {'a';'a';'b';'c';'b'};
+testModel.comps = {'s';'c'};
+testModel.compNames = testModel.comps;
+testModel.metComps = [1;2;2;2;1];
+testModel.genes = {'G1';'G2';'G3'};
+testModel.grRules = {};
+testModel.rxnGeneMat = [];
+
+rxnsToAdd = struct();
+rxnsToAdd.rxns = {'EX_a';'T1';'R1';'R2';'R3';'T2';'EX_b'};
+rxnsToAdd.equations = {'=> a[s]';...
+    'a[s] => a[c]';...
+    'a[c] => b[c]';...
+    'a[c] => c[c]';...
+    'c[c] => b[c]';...
+    'b[c] => b[s]';...
+    'b[s] =>'};
+rxnsToAdd.grRules = {'';'';'G1';'G2';'G3';'';''};
+evalc('testModel = addRxns(testModel,rxnsToAdd, 3);');
+testModel.c = [0;0;0;0;0;0;1];
+testModel.ub = repmat(1000,7,1);
+testModel.lb = zeros(7,1);
+testModel.rxnNames = testModel.rxns;
+testModel.b = zeros(5,1);
+end
+
+function testModel = getTstModelTwoPaths()
+%a[c] reaches m[c] by Rm, Rc or by Rn, Rb; E, R7 and R8 export e[s]. The
+%paths are reversible.
+testModel = struct();
+testModel.id = 'twoPaths';
+testModel.rxns = {};
+testModel.S = [];
+testModel.rev = [];
+testModel.mets = {'as';'ac';'xc';'yc';'mc';'ec';'es'};
+testModel.metNames = {'a';'a';'x';'y';'m';'e';'e'};
+testModel.comps = {'s';'c'};
+testModel.compNames = testModel.comps;
+testModel.metComps = [1;2;2;2;2;2;1];
+testModel.genes = {'Gm';'Gc';'Gn';'Gb';'GE';'G7'};
+testModel.grRules = {};
+testModel.rxnGeneMat = [];
+
+rxnsToAdd = struct();
+rxnsToAdd.rxns = {'R1';'R2';'Rm';'Rc';'Rn';'Rb';'E';'R7';'R8'};
+rxnsToAdd.equations = {'=> a[s]';...
+    'a[s] <=> a[c]';...
+    'a[c] <=> x[c]';...
+    'x[c] <=> m[c]';...
+    'a[c] <=> y[c]';...
+    'y[c] <=> m[c]';...
+    'm[c] => e[c]';...
+    'e[c] => e[s]';...
+    'e[s] =>'};
+rxnsToAdd.grRules = {'';'';'Gm';'Gc';'Gn';'Gb';'GE';'G7';''};
+evalc('testModel = addRxns(testModel,rxnsToAdd, 3);');
+testModel.c = [0;0;0;0;0;0;0;0;1];
+testModel.ub = repmat(1000,9,1);
+testModel.lb = [0;-1000;-1000;-1000;-1000;-1000;0;0;0];
+testModel.rxnNames = testModel.rxns;
+testModel.b = zeros(7,1);
 end
 
 function testModelRxnScores = getTstModelRxnScores()

@@ -71,10 +71,21 @@
 %     if true, pin each step's degenerate MILP to a canonical answer instead
 %     of relying on the solver Seed alone: hold the score objective at its
 %     optimum, then minimise the count of removable ("on") reactions, then,
-%     among the sparsest, minimise their summed reaction-id rank. Applies to
-%     every main-extraction step (ftINITInternalAlg) and to the final
-%     gap-filling step (fitTasks' resolveTies) -- see raven-gecko-parity#104
-%     and raven-toolbox's resolve_ties (default false).
+%     among the sparsest, minimise their summed reaction-id rank. This
+%     applies to every main-extraction step and to the final gap-filling
+%     step (fitTasks' resolveTies) -- see raven-gecko-parity#104 and
+%     raven-toolbox's resolve_ties. In each main-extraction step but the
+%     last (ftINITInternalAlg) the fluxes, which set the direction and
+%     magnitude a reaction is forced at in the next step, then come from the
+%     least-total-flux solution for that on/off state and, among those, from
+%     the one with the least id-rank-weighted backward flux (a merged
+%     reaction ranked by the smallest original id in its group). The last
+%     step skips these flux phases, as no step reads its fluxes. A step
+%     whose primary solve stops at the time limit keeps its primary
+%     solution without any of these phases; the count and id-rank phases
+%     get half of the step's TimeLimit each, and a warning
+%     names each phase that does not prove optimal or finds no solution
+%     (default false).
 % proveAbsGap : double
 %     if set, prove each step to this fixed *absolute* MILP gap in a single
 %     solve, instead of the relative-gap escalation below (stp.MILPParams).
@@ -191,6 +202,18 @@ rxnsToIgnoreLastStep = [1;1;1;1;1;1;1;1];
 %essential rxn.
 fluxes = ones(length(prepData.minModel.rxns), 1).*0.1;
 
+%resolveTies ranks a merged reaction by its group's smallest original id,
+%which does not depend on which member names the merged reaction.
+rankKeys = prepData.minModel.rxns;
+[inRef, refInd] = ismember(rankKeys, prepData.refModel.rxns);
+for i = find(inRef)'
+    g = prepData.groupIds(refInd(i));
+    if g ~= 0
+        members = sort(prepData.refModel.rxns(prepData.groupIds == g));
+        rankKeys{i} = members{1};
+    end
+end
+
 for initStep = 1:length(INITSteps)
     disp(['ftINIT: Running step ' num2str(initStep)])
     stp = INITSteps{initStep};
@@ -199,6 +222,9 @@ for initStep = 1:length(INITSteps)
         error('RAVEN:badInput', '%s', 'RxnsToIgnoreMask may not cover rxns not covered in previous steps, but the other way around is fine.');
     end
     rxnsToIgnoreLastStep = stp.RxnsToIgnoreMask;
+    %The fluxes of a step set the forced directions of the next one, so the
+    %last step skips the flux phases of resolveTies.
+    pinFluxes = initStep < numel(INITSteps);
     
     mm = prepData.minModel;
     
@@ -256,7 +282,7 @@ for initStep = 1:length(INITSteps)
         params.MIPGap = 0;
         params.MIPGapAbs = proveAbsGap;
         try
-            [deletedRxnsInINIT1, metProduction,fullMipRes,rxnsTurnedOn1,fluxes1] = ftINITInternalAlg(mm,rxnScores,metData,essentialRxns,5,stp.AllowMetSecr,stp.PosRevOff,params, [], fluxes, verbose, 0.1, resolveTies);
+            [deletedRxnsInINIT1, metProduction,fullMipRes,rxnsTurnedOn1,fluxes1] = ftINITInternalAlg(mm,rxnScores,metData,essentialRxns,5,stp.AllowMetSecr,stp.PosRevOff,params, [], fluxes, verbose, 0.1, resolveTies, rankKeys, pinFluxes);
             fluxes1(toRev) = -fluxes1(toRev);
             success = true;
             if fullMipRes.stat ~= 1
@@ -310,7 +336,7 @@ for initStep = 1:length(INITSteps)
                 if ~isempty(fullMipRes)
                     startVals = fullMipRes.full;
                 end
-                [deletedRxnsInINIT1, metProduction,fullMipRes,rxnsTurnedOn1,fluxes1] = ftINITInternalAlg(mm,rxnScores,metData,essentialRxns,5,stp.AllowMetSecr,stp.PosRevOff,params, startVals, fluxes, verbose, 0.1, resolveTies);
+                [deletedRxnsInINIT1, metProduction,fullMipRes,rxnsTurnedOn1,fluxes1] = ftINITInternalAlg(mm,rxnScores,metData,essentialRxns,5,stp.AllowMetSecr,stp.PosRevOff,params, startVals, fluxes, verbose, 0.1, resolveTies, rankKeys, pinFluxes);
                 %This is a bit tricky - since we reversed some reactions, those fluxes also need to be reversed
                 fluxes1(toRev) = -fluxes1(toRev);
 

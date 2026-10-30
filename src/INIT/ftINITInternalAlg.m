@@ -1,4 +1,4 @@
-function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies)
+function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,rankKeys,pinFluxes)
 % ftINITInternalAlg
 %	This function runs the MILP for a step in ftINIT.
 %
@@ -44,9 +44,30 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 %                   rank. Positive-score reactions carry a continuous, not a
 %                   free binary, on/off variable (pinned near 1 by the score
 %                   objective), so only the negative-score ones are a genuine
-%                   tie to resolve -- matches raven-toolbox's resolve_ties /
-%                   _resolve_ties (raven-gecko-parity#104) (optional, default
-%                   false)
+%                   tie to resolve. The fluxes are then taken from the
+%                   least-total-flux solution for that on/off state and,
+%                   among those, from the one with the least id-rank-weighted
+%                   backward flux, so the directions and forced magnitudes
+%                   the next ftINIT step reads from them are pinned too --
+%                   matches raven-toolbox's resolve_ties
+%                   (raven-gecko-parity#104). The phases are skipped when
+%                   the primary solve stops at params.TimeLimit, and the
+%                   primary solution is kept. Phases 2a and 2b get half of
+%                   params.TimeLimit each (rounded down, at least 1 s), the
+%                   flux phases the full limit. A warning names each phase
+%                   that does not prove optimal or finds no solution; when a
+%                   flux phase finds none, the fluxes of the phase before it
+%                   are kept (optional, default false)
+%   rankKeys        cell array with, for each reaction in model.rxns, the key
+%                   that the id-rank phases of resolveTies sort it by
+%                   (optional, default model.rxns). ftINIT passes the smallest
+%                   original reaction id of each merge group, so the order
+%                   does not depend on which member names the merged reaction
+%   pinFluxes       if false, resolveTies skips phases 2c and 2d and the
+%                   fluxes and metProduction are those of phase 2b
+%                   (optional, default true).
+%                   ftINIT passes false in its last step, whose fluxes no
+%                   later step reads
 %
 %   deletedRxns     reactions which were deleted by the algorithm (only
 %                   rxns included in the problem)
@@ -70,8 +91,14 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 if nargin < 12 || isempty(forceOn)
     forceOn = 0.1;
 end
+if nargin < 14 || isempty(rankKeys)
+    rankKeys = model.rxns;
+end
 if nargin < 13 || isempty(resolveTies)
     resolveTies = false;
+end
+if nargin < 15 || isempty(pinFluxes)
+    pinFluxes = true;
 end
 if isempty(essentialRxns)
     essentialRxns={};
@@ -453,7 +480,10 @@ if ~checkSolution(res)
     error('RAVEN:badInput', '%s', EM);
 end
 
-if resolveTies && (nNegIrrev + nNegRev) > 0
+if resolveTies && (nNegIrrev + nNegRev) > 0 && ~res.hitTimeLimit
+    %Skipped when the primary solve stopped at the time limit: the floor
+    %constraint would pin an unproven incumbent, so the phases cannot select
+    %among true optima.
     %This MILP is highly degenerate: many reaction subsets reach the same
     %score optimum, and the solver returns an arbitrary one -- reproducible
     %for a fixed solver build + Seed, but fragile to a solver version bump
@@ -483,6 +513,10 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
     tieParams = params;
     tieParams.MIPGap = 0;
     tieParams.MIPGapAbs = 0.4;
+    %Phases 2a and 2b get half of the time limit each, as in raven-toolbox.
+    if isfield(tieParams,'TimeLimit')
+        tieParams.TimeLimit = max(1,floor(tieParams.TimeLimit*0.5));
+    end
 
     unproven = {};
 
@@ -508,7 +542,7 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
         tieProb2b.b = [tieProb.b; kmin+0.5];
         tieProb2b.csense = [tieProb.csense 'L'];
 
-        [~, sortOrder] = sort(model.rxns(negRxnIdx));
+        [~, sortOrder] = sort(rankKeys(negRxnIdx));
         ranks = zeros(numel(negRxnIdx),1);
         ranks(sortOrder) = (1:numel(negRxnIdx))';
         idObj = zeros(size(prob.c));
@@ -522,6 +556,106 @@ if resolveTies && (nNegIrrev + nNegRev) > 0
         if isFeasible2b
             %Adopt the tie-resolved solution for the on/off read-out below.
             res = res2b;
+
+            %Phases 2c and 2d change the fluxes, not the on/off state; the next
+            %ftINIT step reads the fluxes, and pinFluxes is false when no step
+            %follows.
+            if pinFluxes
+                %Phase 2c: the least total absolute flux for this on/off state.
+                %The next step forces each turned-on reaction in the direction
+                %of its flux, at min(0.99*|flux|,0.1), so the flux read-out
+                %comes from a minimal-flux solution instead of an arbitrary
+                %vertex. A binary on/off variable is fixed at its value; a
+                %continuous one that is on keeps at least its value, one that
+                %is off at most its value. Directions of reversible scored
+                %reactions stay free, so this is still a MILP.
+                %It stops at a relative or absolute gap of 1e-6, as raven-toolbox's
+                %phase 2c.
+                nCols = numel(prob.c);
+                minProb = tieProb2b;
+                if isfield(minProb,'start')
+                    minProb = rmfield(minProb,'start');
+                end
+                x = res2b.full;
+                negVal = round(x(negCols));
+                minProb.lb(negCols) = negVal;
+                minProb.ub(negCols) = negVal;
+                posCols = [onoffPosIrrev, onoffPosRev];
+                posVal = min(max(x(posCols),0),1);
+                posOn = posVal >= 0.5;
+                minProb.lb(posCols(posOn)) = posVal(posOn);
+                minProb.ub(posCols(~posOn)) = posVal(~posOn);
+                %|v| is v for a forward-only flux, -v for a backward-only one,
+                %and an added t >= v, t >= -v otherwise.
+                fwdOnly = minProb.lb(1:nRxns) >= 0;
+                bwdOnly = ~fwdOnly & minProb.ub(1:nRxns) <= 0;
+                tRxns = find(~fwdOnly & ~bwdOnly);
+                nT = numel(tRxns);
+                selV = sparse(1:nT, tRxns, 1, nT, nCols);
+                minProb.A = [minProb.A sparse(size(minProb.A,1),nT); -selV speye(nT); selV speye(nT)];
+                minProb.a = minProb.A;
+                minProb.b = [minProb.b; zeros(2*nT,1)];
+                minProb.csense = [minProb.csense repmat('G',1,2*nT)];
+                minProb.lb = [minProb.lb; zeros(nT,1)];
+                minProb.ub = [minProb.ub; inf(nT,1)];
+                minProb.vartype = [minProb.vartype repmat('C',1,nT)];
+                minProb.c = [zeros(nCols,1); ones(nT,1)];
+                minProb.c(fwdOnly) = 1;
+                minProb.c(bwdOnly) = -1;
+                minParams = params;
+                minParams.MIPGap = 1e-6;
+                minParams.MIPGapAbs = 1e-6;
+                res2c = optimizeProb(minProb,minParams,verbose);
+                [isFeasible2c, isOptimal2c] = checkSolution(res2c);
+                if ~isOptimal2c
+                    unproven{end+1} = 'phase2c-minflux';
+                end
+                if isFeasible2c
+                    %Only the fluxes change; the status stays that of phase 2b.
+                    res.full = res2c.full(1:nCols);
+
+                    %Phase 2d: the least total flux can leave a direction open
+                    %when two directions carry the same total flux, for example
+                    %a pair of reversible reactions closing a loop either way.
+                    %Keep the on/off state of phase 2c, hold the total absolute
+                    %flux at most at its phase-2c value plus
+                    %max(1e-7*total, 1e-6), and minimise the backward flux
+                    %max(0,-v) of the reactions whose flux can take either sign,
+                    %weighted by id rank from the end: sorted by rankKeys, the
+                    %first of n reactions gets weight n and the last 1, so a
+                    %reaction with a lower id prefers its forward direction.
+                    if nT > 0
+                        total = minProb.c' * res2c.full;
+                        dirProb = minProb;
+                        nCols2c = numel(minProb.c);
+                        [~, ord] = sort(rankKeys(tRxns));
+                        w = zeros(nT,1);
+                        w(ord) = (nT:-1:1)';
+                        dirProb.A = [minProb.A sparse(size(minProb.A,1),nT); ...
+                                     minProb.c' sparse(1,nT); ...
+                                     selV sparse(nT,nT) speye(nT)];
+                        dirProb.a = dirProb.A;
+                        dirProb.b = [minProb.b; total + max(abs(total)*1e-7, 1e-6); zeros(nT,1)];
+                        dirProb.csense = [minProb.csense 'L' repmat('G',1,nT)];
+                        dirProb.lb = [minProb.lb; zeros(nT,1)];
+                        dirProb.ub = [minProb.ub; inf(nT,1)];
+                        dirProb.vartype = [minProb.vartype repmat('C',1,nT)];
+                        dirProb.c = [zeros(nCols2c,1); w];
+                        %The phase-2c solution is the MIP start: the tight cap on
+                        %the total flux leaves the solver's heuristics little room
+                        %to find a first solution.
+                        dirProb.start = [res2c.full; max(0, -res2c.full(tRxns))];
+                        res2d = optimizeProb(dirProb,minParams,verbose);
+                        [isFeasible2d, isOptimal2d] = checkSolution(res2d);
+                        if ~isOptimal2d
+                            unproven{end+1} = 'phase2d-direction';
+                        end
+                        if isFeasible2d
+                            res.full = res2d.full(1:nCols);
+                        end
+                    end
+                end
+            end
         end
     end
     if ~isempty(unproven)

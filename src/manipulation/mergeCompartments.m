@@ -42,8 +42,13 @@ function [model, deletedRxns, duplicateRxns]=mergeCompartments(model,varargin)
 % be useful for example to ensure that there are metabolic capabilities to
 % synthesize all metabolites.
 %
-% If the metabolite IDs reflect the compartment that they are in the IDs may
-% no longer be representative.
+% Metabolites with the same name are merged into one. The merged metabolite
+% keeps the id and the other fields of one of the copies: the copy that is
+% already in compartment "s" if there is one, otherwise the copy whose id
+% comes first in character code order (for example ACCOA_c before ACCOA_m).
+% With keepUnconstrained only the copies that are not unconstrained are
+% candidates. If the metabolite IDs reflect the compartment that they are in
+% the IDs may no longer be representative.
 
 p=parseRAVENargs(varargin, {'keepUnconstrained',false; 'deleteRxnsWithOneMet',false; 'distReverse',true});
 keepUnconstrained=p.keepUnconstrained;
@@ -66,9 +71,8 @@ if deleteRxnsWithOneMet==true
     end
 end
 
-%Loop through each metabolite, and if it is not unconstrained then change
-%the S matrix to use the metabolite with the lowest index in model.comps
-%instead
+%Loop through each metabolite name, and if a copy is not unconstrained then
+%change the S matrix to use the copy chosen as described in the Notes
 %Group metabolite indices by name once, rather than re-scanning all of
 %model.metNames (via ismember) for every unique name, which is quadratic
 %in a genome-scale model's (unique names x mets) count.
@@ -79,19 +83,26 @@ for i=1:numel(uNames)
     I=false(numel(model.metNames),1);
     I(sameNameIdx{i})=true;
 
-    %Find the first of those that is not unconstrained. This is the one
-    %that the other "un-unconstrained" should be changed to.
+    %Choose the copy that the other "un-unconstrained" copies are merged
+    %into: one already in compartment "s" if there is one, otherwise the
+    %one whose id sorts first.
     if keepUnconstrained==true
-        mergeTo=find(I & model.unconstrained==false,1);
+        candidates=find(I & model.unconstrained==false);
         
         %This could happen if there is only one metabolite and it is
         %unconstrained
-        if isempty(mergeTo)
+        if isempty(candidates)
             continue;
         end
     else
-        mergeTo=find(I,1);
+        candidates=find(I);
     end
+    inMerged=candidates(strcmp(model.comps(model.metComps(candidates)),'s'));
+    if ~isempty(inMerged)
+        candidates=inMerged;
+    end
+    [~,first]=sort(model.mets(candidates));
+    mergeTo=candidates(first(1));
     I(mergeTo)=false; %Do not do anything for itself
     I=find(I);
     

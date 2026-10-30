@@ -1,5 +1,62 @@
 # Changelog
 
+## Unreleased
+
+### Manipulation
+
+* `mergeCompartments`: a merged metabolite is the copy already in compartment `s`, if any,
+  otherwise the copy whose id sorts first, with every field of that copy (was: the first copy
+  in model order), so `ACCOA_c` and `ACCOA_m` become `ACCOA_c` whatever their order.
+* `simplifyModel` with `constrainReversible`: on a model without a reversible reaction this step
+  changes nothing (was: an error "logical indices ... outside of the array bounds", as
+  `getAllowedBounds` took the empty reaction list for all reactions). `prepINITModel` therefore
+  runs on a model whose reactions are all irreversible after the first simplification, with the
+  result of raven-toolbox's `prep_init_model`.
+* `removeGenes`: the help states that, when at least one of the requested genes is in the model,
+  genes no remaining reaction uses are removed as well; when none is, no gene, reaction or bound
+  changes.
+
+### Gap-filling
+
+* `gapFillTopological`: without `targets` and without an objective reaction it raises
+  `RAVEN:badInput` (was: an error without identifier). Help states the default seeds and
+  targets.
+
+### Context-specific models (ftINIT / tINIT)
+
+* `ftINIT` with `resolveTies`: each main-extraction step takes its fluxes from the
+  least-total-flux solution for the tie-broken on/off state, so the direction and magnitude
+  at which the next step forces a reaction no longer depend on the solver's vertex.
+  That phase stops at a relative or absolute gap of 1e-6.
+* `ftINIT` with `resolveTies`: among the least-total-flux solutions, each main-extraction
+  step takes its fluxes from the one with the least id-rank-weighted backward flux, so the
+  direction of a flux that carries the same total either way no longer depends on the
+  solver. The id-rank phases rank a merged reaction by the smallest original reaction id in
+  its group, so they no longer depend on which member names it.
+* `ftINITInternalAlg` with `resolveTies`: when the primary solve stops at the time limit, the
+  tie-break phases are skipped and the primary solution is kept, as in raven-toolbox (was: the
+  phases ran on the unproven incumbent). The count and id-rank phases get half of
+  `params.TimeLimit` each, rounded down and at least 1 s (was: the full limit).
+* `ftINIT` with `resolveTies`: the last step skips the minimal-flux and direction phases, as
+  no step reads its fluxes (new `ftINITInternalAlg` argument `pinFluxes`). The reaction set
+  does not change; the fluxes and `metProduction` of the last step are those of the id-rank
+  phase.
+* `ftINITInternalAlg`: new optional positional arguments `rankKeys` (14th, the key each
+  reaction is sorted by in the id-rank phases, default `model.rxns`) and `pinFluxes` (15th,
+  default `true`). The "tie resolution did not converge" warning of `resolveTies` also names
+  `phase2c-minflux` and `phase2d-direction` when the minimal-flux or direction phase does not
+  prove optimal.
+* `mergeLinear`: groups are numbered 1, 2, ... in the order of the first reaction of each
+  group in `origRxnIds` (was: the order in which the reactions were merged).
+* `mergeLinear`: a reaction flipped after the first merge pass is the one marked in
+  `reversedRxns` (was: the reaction at the same index of the original model).
+
+### Utilities
+
+* `grRuleToDNF`: help states the grammar it reads, that of `parseGrRule` (`and`/`or` in any
+  case, `&`, `&&`, `|`, `||`, operators as whole words, so `G1&G2` is one gene id), and that a
+  malformed rule raises `RAVEN:badGrRule`.
+
 ## 3.0.0b1 — 2026-09-07
 
 First beta toward 3.0. Changes below are relative to RAVEN 2.9.3, the last 2.x release:
