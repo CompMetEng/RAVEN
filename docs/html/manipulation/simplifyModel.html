@@ -283,150 +283,153 @@ This function is called by:
 0185 
 0186 <span class="keyword">if</span> constrainReversible==true
 0187     revs=find(reducedModel.rev);
-0188     [I,J]=getAllowedBounds(reducedModel,revs);
-0189     
-0190     I=abs(I);
-0191     J=abs(J);
-0192     
-0193     <span class="comment">%Get the &quot;small&quot; values</span>
-0194     K=I&lt;10^-10;
-0195     L=J&lt;10^-10;
-0196     
-0197     <span class="comment">%Keep the values where only one direction is zero (small)</span>
-0198     I(K==L)=[];
-0199     J(K==L)=[];
-0200     revs(K==L)=[];
-0201     
-0202     <span class="comment">%Change the reversibility of the remaining reactions</span>
-0203     reducedModel.rev(revs(J&gt;10^-10))=0; <span class="comment">%Ignore reverse direction</span>
-0204     reducedModel.lb(revs(J&gt;10^-10))=0;
-0205     
-0206     toSwitch=revs(I&gt;10^-10);
-0207     reducedModel.rev(toSwitch)=0; <span class="comment">%Change directionality</span>
-0208     reducedModel.ub(toSwitch)=reducedModel.lb(toSwitch)*-1;
-0209     reducedModel.lb(toSwitch)=0;
-0210     reducedModel.S(:,toSwitch)=reducedModel.S(:,toSwitch).*-1;
-0211     reducedModel.c(toSwitch)=reducedModel.c(toSwitch)*-1;
-0212 <span class="keyword">end</span>
-0213 <span class="keyword">if</span> groupLinear==true
-0214     <span class="keyword">if</span>  suppressWarnings==false
-0215         fprintf(<span class="string">'NOTE: You have chosen to group linear reactions. This option does not keep track of gene/reaction associations when reactions are merged. Deleting all gene information\n'</span>);
-0216     <span class="keyword">end</span>
-0217     
-0218     reducedModel.genes={};
-0219     reducedModel.rxnGeneMat=sparse(numel(reducedModel.rxns),0);
-0220     reducedModel.grRules(:)={<span class="string">''</span>};
-0221     
-0222     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneShortNames'</span>)
-0223         reducedModel.geneShortNames={};
-0224     <span class="keyword">end</span>
-0225     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'proteins'</span>)
-0226         reducedModel.proteins={};
+0188     <span class="comment">%getAllowedBounds treats an empty reaction list as all reactions</span>
+0189     <span class="keyword">if</span> ~isempty(revs)
+0190         [I,J]=getAllowedBounds(reducedModel,revs);
+0191     
+0192         I=abs(I);
+0193         J=abs(J);
+0194     
+0195         <span class="comment">%Get the &quot;small&quot; values</span>
+0196         K=I&lt;10^-10;
+0197         L=J&lt;10^-10;
+0198     
+0199         <span class="comment">%Keep the values where only one direction is zero (small)</span>
+0200         I(K==L)=[];
+0201         J(K==L)=[];
+0202         revs(K==L)=[];
+0203     
+0204         <span class="comment">%Change the reversibility of the remaining reactions</span>
+0205         reducedModel.rev(revs(J&gt;10^-10))=0; <span class="comment">%Ignore reverse direction</span>
+0206         reducedModel.lb(revs(J&gt;10^-10))=0;
+0207     
+0208         toSwitch=revs(I&gt;10^-10);
+0209         reducedModel.rev(toSwitch)=0; <span class="comment">%Change directionality</span>
+0210         reducedModel.ub(toSwitch)=reducedModel.lb(toSwitch)*-1;
+0211         reducedModel.lb(toSwitch)=0;
+0212         reducedModel.S(:,toSwitch)=reducedModel.S(:,toSwitch).*-1;
+0213         reducedModel.c(toSwitch)=reducedModel.c(toSwitch)*-1;
+0214     <span class="keyword">end</span>
+0215 <span class="keyword">end</span>
+0216 <span class="keyword">if</span> groupLinear==true
+0217     <span class="keyword">if</span>  suppressWarnings==false
+0218         fprintf(<span class="string">'NOTE: You have chosen to group linear reactions. This option does not keep track of gene/reaction associations when reactions are merged. Deleting all gene information\n'</span>);
+0219     <span class="keyword">end</span>
+0220     
+0221     reducedModel.genes={};
+0222     reducedModel.rxnGeneMat=sparse(numel(reducedModel.rxns),0);
+0223     reducedModel.grRules(:)={<span class="string">''</span>};
+0224     
+0225     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneShortNames'</span>)
+0226         reducedModel.geneShortNames={};
 0227     <span class="keyword">end</span>
-0228     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneMiriams'</span>)
-0229         reducedModel.geneMiriams={};
+0228     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'proteins'</span>)
+0229         reducedModel.proteins={};
 0230     <span class="keyword">end</span>
-0231     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneComps'</span>)
-0232         reducedModel.geneComps=[];
+0231     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneMiriams'</span>)
+0232         reducedModel.geneMiriams={};
 0233     <span class="keyword">end</span>
-0234     
-0235     <span class="comment">%Convert the model to irreversible</span>
-0236     irrevModel=<a href="convertToIrrev.html" class="code" title="function [irrevModel,matchRev,rev2irrev,irrev2rev]=convertToIrrev(model,varargin)">convertToIrrev</a>(reducedModel);
+0234     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneComps'</span>)
+0235         reducedModel.geneComps=[];
+0236     <span class="keyword">end</span>
 0237     
-0238     <span class="comment">%Loop through and iteratively group linear reactions</span>
-0239     <span class="keyword">while</span> 1
-0240         <span class="comment">%Get the banned reaction indexes. Note that the indexes will change</span>
-0241         <span class="comment">%in each iteration, but the names will not as they will not be merged</span>
-0242         <span class="comment">%with any other reaction</span>
-0243         bannedIndexes=getIndexes(irrevModel,reservedRxns,<span class="string">'rxns'</span>);
-0244         
-0245         <span class="comment">%Select all metabolites that are only present as reactants/products</span>
-0246         <span class="comment">%in one reaction</span>
-0247         singleNegative=find(sum(irrevModel.S'&lt;0)==1);
-0248         singlePositive=find(sum(irrevModel.S'&gt;0)==1);
-0249         
-0250         <span class="comment">%Retrieve the common metabolites</span>
-0251         common=intersect(singleNegative,singlePositive);
+0238     <span class="comment">%Convert the model to irreversible</span>
+0239     irrevModel=<a href="convertToIrrev.html" class="code" title="function [irrevModel,matchRev,rev2irrev,irrev2rev]=convertToIrrev(model,varargin)">convertToIrrev</a>(reducedModel);
+0240     
+0241     <span class="comment">%Loop through and iteratively group linear reactions</span>
+0242     <span class="keyword">while</span> 1
+0243         <span class="comment">%Get the banned reaction indexes. Note that the indexes will change</span>
+0244         <span class="comment">%in each iteration, but the names will not as they will not be merged</span>
+0245         <span class="comment">%with any other reaction</span>
+0246         bannedIndexes=getIndexes(irrevModel,reservedRxns,<span class="string">'rxns'</span>);
+0247         
+0248         <span class="comment">%Select all metabolites that are only present as reactants/products</span>
+0249         <span class="comment">%in one reaction</span>
+0250         singleNegative=find(sum(irrevModel.S'&lt;0)==1);
+0251         singlePositive=find(sum(irrevModel.S'&gt;0)==1);
 0252         
-0253         mergedSome=false;
-0254         
-0255         <span class="comment">%Loop through each of them and see if the reactions should be</span>
-0256         <span class="comment">%merged</span>
-0257         <span class="keyword">for</span> i=1:numel(common)
-0258             involvedRxns=find(irrevModel.S(common(i),:));
-0259             
-0260             <span class="comment">%Check so that one or both of the reactions have not been merged</span>
-0261             <span class="comment">%already</span>
-0262             <span class="keyword">if</span> numel(involvedRxns)==2 &amp;&amp; isempty(intersect(bannedIndexes,involvedRxns))
-0263                 <span class="comment">%Calculate how many times the second reaction has to be</span>
-0264                 <span class="comment">%multiplied before being merged with the first</span>
-0265                 stoichRatio=abs(irrevModel.S(common(i),involvedRxns(1))/irrevModel.S(common(i),involvedRxns(2)));
-0266                 
-0267                 <span class="comment">%Add the second to the first</span>
-0268                 irrevModel.S(:,involvedRxns(1))=irrevModel.S(:,involvedRxns(1))+irrevModel.S(:,involvedRxns(2))*stoichRatio;
+0253         <span class="comment">%Retrieve the common metabolites</span>
+0254         common=intersect(singleNegative,singlePositive);
+0255         
+0256         mergedSome=false;
+0257         
+0258         <span class="comment">%Loop through each of them and see if the reactions should be</span>
+0259         <span class="comment">%merged</span>
+0260         <span class="keyword">for</span> i=1:numel(common)
+0261             involvedRxns=find(irrevModel.S(common(i),:));
+0262             
+0263             <span class="comment">%Check so that one or both of the reactions have not been merged</span>
+0264             <span class="comment">%already</span>
+0265             <span class="keyword">if</span> numel(involvedRxns)==2 &amp;&amp; isempty(intersect(bannedIndexes,involvedRxns))
+0266                 <span class="comment">%Calculate how many times the second reaction has to be</span>
+0267                 <span class="comment">%multiplied before being merged with the first</span>
+0268                 stoichRatio=abs(irrevModel.S(common(i),involvedRxns(1))/irrevModel.S(common(i),involvedRxns(2)));
 0269                 
-0270                 <span class="comment">%Clear the second reaction</span>
-0271                 irrevModel.S(:,involvedRxns(2))=0;
+0270                 <span class="comment">%Add the second to the first</span>
+0271                 irrevModel.S(:,involvedRxns(1))=irrevModel.S(:,involvedRxns(1))+irrevModel.S(:,involvedRxns(2))*stoichRatio;
 0272                 
-0273                 <span class="comment">%This is to prevent numerical issues. It should be 0</span>
-0274                 <span class="comment">%already</span>
-0275                 irrevModel.S(common(i),involvedRxns(1))=0;
-0276                 
-0277                 <span class="comment">%At this point the second reaction is certain to be deleted</span>
-0278                 <span class="comment">%in a later step and can therefore be ignored</span>
+0273                 <span class="comment">%Clear the second reaction</span>
+0274                 irrevModel.S(:,involvedRxns(2))=0;
+0275                 
+0276                 <span class="comment">%This is to prevent numerical issues. It should be 0</span>
+0277                 <span class="comment">%already</span>
+0278                 irrevModel.S(common(i),involvedRxns(1))=0;
 0279                 
-0280                 <span class="comment">%Recalculate the bounds for the new reaction. This can be</span>
-0281                 <span class="comment">%problematic since the scale of the bounds may change</span>
-0282                 <span class="comment">%dramatically. Let the most constraining reaction determine</span>
-0283                 <span class="comment">%the new bound</span>
-0284                 lb1=irrevModel.lb(involvedRxns(1));
-0285                 lb2=irrevModel.lb(involvedRxns(2));
-0286                 ub1=irrevModel.ub(involvedRxns(1));
-0287                 ub2=irrevModel.ub(involvedRxns(2));
-0288                 
-0289                 <span class="keyword">if</span> lb2~=-inf
-0290                     irrevModel.lb(involvedRxns(1))=max(lb1,lb2/stoichRatio);
-0291                 <span class="keyword">end</span>
-0292                 <span class="keyword">if</span> ub2~=inf
-0293                     irrevModel.ub(involvedRxns(1))=min(ub1,ub2/stoichRatio);
+0280                 <span class="comment">%At this point the second reaction is certain to be deleted</span>
+0281                 <span class="comment">%in a later step and can therefore be ignored</span>
+0282                 
+0283                 <span class="comment">%Recalculate the bounds for the new reaction. This can be</span>
+0284                 <span class="comment">%problematic since the scale of the bounds may change</span>
+0285                 <span class="comment">%dramatically. Let the most constraining reaction determine</span>
+0286                 <span class="comment">%the new bound</span>
+0287                 lb1=irrevModel.lb(involvedRxns(1));
+0288                 lb2=irrevModel.lb(involvedRxns(2));
+0289                 ub1=irrevModel.ub(involvedRxns(1));
+0290                 ub2=irrevModel.ub(involvedRxns(2));
+0291                 
+0292                 <span class="keyword">if</span> lb2~=-inf
+0293                     irrevModel.lb(involvedRxns(1))=max(lb1,lb2/stoichRatio);
 0294                 <span class="keyword">end</span>
-0295                 
-0296                 <span class="comment">%Then recalculate the objective coefficient. The resulting</span>
-0297                 <span class="comment">%coefficient is the weighted sum of the previous</span>
-0298                 irrevModel.c(involvedRxns(1))=irrevModel.c(involvedRxns(1))+irrevModel.c(involvedRxns(2))*stoichRatio;
-0299                 
-0300                 <span class="comment">%Iterate again</span>
-0301                 mergedSome=true;
-0302             <span class="keyword">end</span>
-0303         <span class="keyword">end</span>
-0304         
-0305         <span class="comment">%All possible reactions merged</span>
-0306         <span class="keyword">if</span> mergedSome==false
-0307             <span class="keyword">break</span>;
-0308         <span class="keyword">end</span>
-0309         
-0310         <span class="comment">%Now delete all reactions that involve no metabolites</span>
-0311         I=find(sum(irrevModel.S~=0)==0);
+0295                 <span class="keyword">if</span> ub2~=inf
+0296                     irrevModel.ub(involvedRxns(1))=min(ub1,ub2/stoichRatio);
+0297                 <span class="keyword">end</span>
+0298                 
+0299                 <span class="comment">%Then recalculate the objective coefficient. The resulting</span>
+0300                 <span class="comment">%coefficient is the weighted sum of the previous</span>
+0301                 irrevModel.c(involvedRxns(1))=irrevModel.c(involvedRxns(1))+irrevModel.c(involvedRxns(2))*stoichRatio;
+0302                 
+0303                 <span class="comment">%Iterate again</span>
+0304                 mergedSome=true;
+0305             <span class="keyword">end</span>
+0306         <span class="keyword">end</span>
+0307         
+0308         <span class="comment">%All possible reactions merged</span>
+0309         <span class="keyword">if</span> mergedSome==false
+0310             <span class="keyword">break</span>;
+0311         <span class="keyword">end</span>
 0312         
-0313         <span class="comment">%Remove reactions</span>
-0314         irrevModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(irrevModel,I);
+0313         <span class="comment">%Now delete all reactions that involve no metabolites</span>
+0314         I=find(sum(irrevModel.S~=0)==0);
 0315         
-0316         <span class="comment">%Remove metabolites</span>
-0317         notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(irrevModel);
-0318         irrevModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(irrevModel,notInUse);
-0319     <span class="keyword">end</span>
-0320     
-0321     reducedModel=irrevModel;
-0322 <span class="keyword">end</span>
-0323 <span class="keyword">end</span>
-0324 
-0325 <a name="_sub1" href="#_subfunctions" class="code">function I=orphanedMets(model)</a>
-0326 <span class="comment">%Metabolites that take part in no reaction, and can therefore be removed</span>
-0327 <span class="comment">%without changing what the model can do. Metabolites with a non-zero</span>
-0328 <span class="comment">%model.b are kept: b is a boundary condition on the metabolite, so removing</span>
-0329 <span class="comment">%the row would drop that constraint along with it.</span>
-0330 I=sum(model.S~=0,2)==0 &amp; ~any(model.b~=0,2);
-0331 <span class="keyword">end</span></pre></div>
+0316         <span class="comment">%Remove reactions</span>
+0317         irrevModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(irrevModel,I);
+0318         
+0319         <span class="comment">%Remove metabolites</span>
+0320         notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(irrevModel);
+0321         irrevModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(irrevModel,notInUse);
+0322     <span class="keyword">end</span>
+0323     
+0324     reducedModel=irrevModel;
+0325 <span class="keyword">end</span>
+0326 <span class="keyword">end</span>
+0327 
+0328 <a name="_sub1" href="#_subfunctions" class="code">function I=orphanedMets(model)</a>
+0329 <span class="comment">%Metabolites that take part in no reaction, and can therefore be removed</span>
+0330 <span class="comment">%without changing what the model can do. Metabolites with a non-zero</span>
+0331 <span class="comment">%model.b are kept: b is a boundary condition on the metabolite, so removing</span>
+0332 <span class="comment">%the row would drop that constraint along with it.</span>
+0333 I=sum(model.S~=0,2)==0 &amp; ~any(model.b~=0,2);
+0334 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>
