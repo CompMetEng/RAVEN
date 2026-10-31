@@ -257,7 +257,7 @@ else
         downloadRavenBinaries({'blast+','diamond','hmmer'});
     catch ME
         printOrange(['    Could not download binaries from toolbox-assets: ' ME.message '\n' ...
-            '    (offline? fetch the "*-binaries" RAVEN release for an offline install)\n']);
+            '    (offline? install from the RAVEN-<tag>-full.zip bundle attached to each RAVEN release)\n']);
     end
     % Run each bundled binary with a version/help flag to confirm it
     % executes on this system, rather than running the full test cases.

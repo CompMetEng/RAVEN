@@ -25,7 +25,8 @@ function indexes=getIndexes(model, objects, type, varargin)
 % --------------------
 % returnLogical : logical
 %     sets whether to return a logical array or an array with the indexes
-%     (default false).
+%     (default false). It cannot be true for type 'metnames', which raises
+%     the error RAVEN:badInput.
 %
 % Returns
 % -------
@@ -61,6 +62,12 @@ switch type
     case 'genes'
         searchIn=model.genes;
     case 'metnames'
+        if returnLogical==true
+            error('RAVEN:badInput', ['The combination of type ''metnames'' and ' ...
+                'returnLogical true is not supported, because each name can ' ...
+                'match several metabolites. Use type ''mets'' or ''metcomps'' ' ...
+                'for a logical vector.']);
+        end
         searchIn=model.metNames;
     case 'metcomps'
         % If provided as metaboliteName[comp], then index search is quite

@@ -200,10 +200,8 @@ end
 
 % check for any metabolites that are exchanged in more than one reaction.
 % metInd holds one entry per (metabolite,reaction) pair, so a metabolite
-% involved in more than one exchange reaction is a repeated *value* in
-% metInd, not a position past numel(unique(metInd)) -- comparing those two
-% index spaces directly (as a previous version of this check did) compares
-% positions in the unique list against indices into metInd itself.
+% involved in more than one exchange reaction is a value that occurs more
+% than once in metInd. The occurrences are counted per unique value.
 [uniqueMetInd,~,ic] = unique(metInd);
 counts = accumarray(ic,1);
 multiMetInd = exchMetInd(uniqueMetInd(counts>1));

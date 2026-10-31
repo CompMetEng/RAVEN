@@ -36,15 +36,9 @@ for i=1:numel(closedModel.rxns)
     col=closedModel.S(:,i);
     %A boundary/exchange/sink/demand reaction has metabolites on only one
     %side, same definition as getExchangeRxns: no substrates or no
-    %products. The previous coefficient-magnitude rule (all nonzero
-    %coefficients summing to 1 in absolute value) missed a scaled
-    %single-metabolite sink such as "2 A =>" (sum 2) outright, and only
-    %matched a multi-metabolite one-sided reaction such as
-    %"0.5 A + 0.5 B =>" by coincidence, when its magnitudes summed to
-    %exactly 1 --- and even then mishandled it below, since find() on such
-    %a reaction returns more than one index and only the first metabolite
-    %was ever used to build the boundary metabolite, silently dropping the
-    %rest.
+    %products. The coefficient magnitudes do not matter, so a scaled sink
+    %such as "2 A =>" and a multi-metabolite one-sided reaction such as
+    %"0.5 A + 0.5 B =>" are both boundary reactions.
     if any(col>0) && any(col<0)
         continue
     end
@@ -53,7 +47,7 @@ for i=1:numel(closedModel.rxns)
         continue
     end
     %A single metabolite names and inherits properties from that
-    %metabolite, as before. Several metabolites on the one populated side
+    %metabolite. Several metabolites on the one populated side
     %have no single metabolite to name the boundary after or copy
     %properties from, so it is named after the reaction instead and left
     %without those properties.

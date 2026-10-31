@@ -26,6 +26,28 @@ classdef tGapfilling < RavenTestCase
             testCase.verifyClass(notProduced, 'double');
         end
 
+        function checkProductionReturnsExcretionReactionsOnly(testCase)
+            % Neither a nor c has a source, so b and d, and a and c, cannot be
+            % produced. The returned model holds an excretion reaction for
+            % each metabolite, with or without checkNeededForProduction.
+            m = struct();
+            m.id = 'toy'; m.name = 'toy';
+            m.rxns = {'R1'; 'R2'}; m.rxnNames = m.rxns;
+            m.mets = {'a'; 'b'; 'c'; 'd'}; m.metNames = m.mets; m.metComps = ones(4,1);
+            m.comps = {'c'}; m.compNames = {'c'};
+            m.S = sparse([-1 0; 1 0; 0 -1; 0 1]);
+            m.lb = [0; 0]; m.ub = [1000; 1000]; m.rev = [0; 0]; m.c = [0; 0];
+            m.b = zeros(4,1);
+            m.genes = {}; m.grRules = {''; ''}; m.rxnGeneMat = sparse(2,0);
+
+            [~, ~, ~, ~, plain] = checkProduction(m, 'printDetails', false);
+            [notProduced, ~, ~, ~, checked] = checkProduction(m, ...
+                'checkNeededForProduction', true, 'printDetails', false);
+            testCase.verifyEqual(notProduced, (1:4)');
+            testCase.verifyEqual(full(checked.S), full(plain.S));
+            testCase.verifyTrue(all(full(sum(checked.S(:, 3:end), 1)) < 0));
+        end
+
         function findLeakMetaboliteProduceReturnsSolution(testCase)
             evalc('[sol, metabolite] = findLeakMetabolite(testCase.model, ''produce'');');
             testCase.verifyNotEmpty(sol);
