@@ -1,16 +1,17 @@
 function [gffFile, faaFile] = downloadGenomeData(accession, varargin)
 % downloadGenomeData  Download genome annotation files from NCBI.
 %
-% Retrieves the GFF3 annotation and protein FASTA (.faa) files for a given
-% NCBI genome assembly accession using the NCBI Datasets v2 API, which
-% returns both files in a single archive. The files are saved locally and
-% can be used directly by getGeneData to build a gene-mapping table.
+% Downloads the GFF3 annotation and protein FASTA (.faa) files for an NCBI
+% genome assembly accession using the NCBI Datasets v2 API, which returns
+% both files in a single archive. The files are saved as
+% <accession>_genomic.gff and <accession>_protein.faa in outputDir. They
+% are input files for getGeneData.
 %
 % Parameters
 % ----------
 % accession : char
-%     NCBI genome assembly accession, e.g. 'GCF_000002595.2'.
-%     Both RefSeq (GCF_) and GenBank (GCA_) prefixes are accepted.
+%     NCBI genome assembly accession, for example 'GCF_000002595.2'. The
+%     prefix is 'GCF_' (RefSeq) or 'GCA_' (GenBank).
 %
 % Name-Value Arguments
 % --------------------
@@ -40,8 +41,10 @@ function [gffFile, faaFile] = downloadGenomeData(accession, varargin)
 %
 % Notes
 % -----
-% Requires an active internet connection. Files already present in
-% outputDir are not re-fetched; delete them manually to force a refresh.
+% An internet connection is required. When both files are already present
+% in outputDir, no download takes place; deleting them forces a new
+% download. An error is raised when NCBI Datasets does not return both a
+% GFF3 file and a protein FASTA file for the accession.
 
     if nargin < 1 || isempty(accession)
     error('downloadGenomeData:missingInput', ...

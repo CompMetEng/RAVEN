@@ -1,29 +1,29 @@
 function [addedRxns, newModel, exitFlag]=ftINITFillGaps(tModel, origModel, tRefModel,allowNetProduction,supressWarnings,rxnScores,params,verbose,resolveTies)
 % ftINITFillGaps
-%   Variant of fillGaps specially adapted to speed up generation of ftINIT models.
+%   Variant of fillGaps adapted to speed up the generation of ftINIT models.
 %
 %   tModel              model that contains the task-specific rxns.
 %   origModel           model without task-specific rxns.         
-%   tRefModel           reference tModel - the full tModel, containing all rxns
+%   tRefModel           reference tModel: the full tModel, containing all rxns
 %                       used for gap-filling of tModel + the task-specific rxns
 %   allowNetProduction  true if net production of all metabolites is
 %                       allowed. A reaction can be unable to carry flux because one of
 %                       the reactants is unavailable or because one of the
-%                       products can't be further processed. If this
-%                       parameter is true, only the first type of
-%                       unconnectivity is considered (optional, default false)
+%                       products cannot be processed further. If this
+%                       parameter is true, only the first cause of blocked
+%                       flux is considered (optional, default false)
 %   supressWarnings     false if warnings should be displayed (optional, default
 %                       false)
 %   rxnScores           scores for each of the reactions in the
-%                       reference tModel. 
-%                       The solver will try to maximize the sum of the
-%                       scores for the included reactions
-%   params              *obsolete option*
-%   verbose             if true, the MILP progression will be shown.
-%   resolveTies         if true, pin the gap-fill MILP's degenerate optimum to a
-%                       canonical answer instead of relying on the solver Seed
-%                       alone -- see getMinNrFluxes' resolveTies (optional,
-%                       default false)
+%                       reference tModel. The solver maximises the sum of
+%                       the scores of the included reactions (optional,
+%                       default -1 for all reactions)
+%   params              solver parameters, passed to getMinNrFluxes (optional)
+%   verbose             true to show the MILP progression.
+%   resolveTies         true to fix the degenerate optimum of the gap-fill MILP
+%                       to a canonical answer, which otherwise depends on the
+%                       solver Seed. See resolveTies of getMinNrFluxes
+%                       (optional, default false)
 %
 %   addedRxns           the rxns added
 %   newModel            the tModel with reactions added to fill gaps
@@ -35,16 +35,18 @@ function [addedRxns, newModel, exitFlag]=ftINITFillGaps(tModel, origModel, tRefM
 %                          because the solver stopped before reaching
 %                          optimality
 %
-%   This method works by merging the tModel to the reference model and
-%   checking which reactions can carry flux. All reactions that can't
-%   carry flux are removed. It then solves the MILP problem of including
-%   as few additional reactions as possible from the reference model so
-%   that the constraints already set on tModel (e.g. a required biomass
-%   flux, or exchange bounds) can be satisfied.
+%   This method works on the reference model, which already contains the
+%   tModel reactions. Reactions constrained to zero flux are removed
+%   (simplifyModel(tRefModel,false,false,true), deleteZeroInterval). It then
+%   solves the MILP problem of including as few additional reactions as
+%   possible from the reference model so that the constraints already set
+%   on tModel (for example a required biomass flux, or exchange bounds) can
+%   be satisfied.
 %
-%   See also: fillGaps, the tINIT-side counterpart, which merges a
-%   reference model with the model being gap-filled on every call instead
-%   of expecting them pre-merged.
+%   fillGaps merges the reference model with the model on every call, so it
+%   does not need a pre-merged reference model.
+%
+%   See also: fillGaps
 %
 % Usage: [addedRxns, newModel, exitFlag]=...
 %           ftINITFillGaps(tModel,origModel,tRefModel,allowNetProduction,...

@@ -9,11 +9,11 @@ function exportToExcelFormat(model,varargin)
 % Name-Value Arguments
 % --------------------
 % fileName : char
-%     file name of the Excel file. Only xlsx format is supported. A dialog
-%     window will open if fileName is empty.
+%     file name of the Excel file. Only the xlsx format is supported. A
+%     dialog window opens if fileName is empty.
 % sortIds : logical
-%     whether metabolites, reactions and genes should be sorted
-%     alphabetically by their identifiers (default false).
+%     true to sort metabolites, reactions and genes alphabetically by their
+%     identifiers (default false).
 %
 % Examples
 % --------

@@ -1,16 +1,15 @@
 function tree=parseGrRule(rule)
 % parseGrRule  Parse a grRule into a syntax tree.
 %
-% Parses a gene-protein-reaction rule into a tree of AND/OR/gene nodes, so
-% that callers can reason about its structure instead of searching the raw
-% string. Gene IDs are matched as whole tokens, so IDs that contain "and" or
-% "or" as a substring (RAND1), or that are prefixes of one another (10 and
-% 100), are never confused with operators or with each other.
+% Parses a gene-protein-reaction rule into a tree of AND, OR and gene nodes.
+% Gene IDs are matched as whole tokens, so IDs that contain "and" or "or" as a
+% substring (RAND1), or that are prefixes of one another (10 and 100), are
+% distinct from operators and from each other.
 %
 % Parameters
 % ----------
 % rule : char or string
-%     a grRule, e.g. "(G1 and G2) or G3". Both the word forms ("and", "or",
+%     a grRule, for example "(G1 and G2) or G3". Both the word forms ("and", "or",
 %     any case) and the symbol forms ("&", "&&", "|", "||") are accepted.
 %     An empty rule yields an empty tree.
 %
@@ -19,23 +18,22 @@ function tree=parseGrRule(rule)
 % tree : struct
 %     a scalar struct with fields:
 %
-%     - type     : char — 'gene', 'and' or 'or'.
-%     - id       : char — the gene ID; '' for 'and'/'or' nodes.
-%     - children : cell — child nodes; {} for 'gene' nodes.
+%     - type     : char, 'gene', 'and' or 'or'.
+%     - id       : char, the gene ID; '' for 'and' and 'or' nodes.
+%     - children : cell, the child nodes; {} for 'gene' nodes.
 %
 %     An empty rule returns a 0x0 struct array, for which isempty is true.
 %
 % Notes
 % -----
-% The grammar is the usual precedence, with AND binding tighter than OR:
+% AND binds tighter than OR. The grammar is:
 %
 %     expr   := term ( OR term )*
 %     term   := factor ( AND factor )*
 %     factor := gene | '(' expr ')'
 %
-% Malformed rules raise RAVEN:badGrRule rather than being silently
-% misparsed. Callers that lint user input (findPotentialErrors) catch this
-% and report it instead of failing.
+% Malformed rules raise the error RAVEN:badGrRule. findPotentialErrors catches
+% this error and reports the rule.
 %
 % Examples
 % --------

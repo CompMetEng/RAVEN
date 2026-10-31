@@ -9,7 +9,7 @@ function metabolites=parseRxnEqu(equations)
 % Returns
 % -------
 % metabolites : cell
-%     a cell array with the involved metabolites.
+%     a unique, sorted cell array with the involved metabolites.
 %
 % Examples
 % --------
@@ -17,12 +17,13 @@ function metabolites=parseRxnEqu(equations)
 %
 % Notes
 % -----
-% The equations should be written like:
+% The equations are written like:
 %
-%     1 A + 3 B (=> or <=>) 5C + 2 D
+%     1 A + 3 B (=> or <=>) 5 C + 2 D
 %
-% If the equation is expressed as for example '... + (n-1) starch' then
-% '(n-1) starch' will be interpreted as one metabolite.
+% with a space around each arrow and plus sign and between a coefficient and
+% its metabolite name. If the equation is expressed as for example
+% '... + (n-1) starch', '(n-1) starch' is interpreted as one metabolite.
 
 if ~iscell(equations)
     equations={equations};

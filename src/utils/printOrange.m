@@ -1,14 +1,16 @@
 function orangeString = printOrange(stringToPrint)
 % printOrange  Print an orange-coloured string to the MATLAB Command Window.
 %
-% Prints stringToPrint in orange colour to the MATLAB Command Window. Only
-% works if MATLAB is open with a GUI; it does not work with command-line
-% MATLAB.
+% Prints stringToPrint in orange colour to the MATLAB Command Window. The
+% colour requires the MATLAB desktop; in command-line MATLAB the text is
+% printed without colour. When called without an output argument, the text is
+% wrapped to the width of the Command Window and printed. With an output
+% argument, nothing is printed.
 %
 % Parameters
 % ----------
 % stringToPrint : char
-%     string that should be printed in orange colour. "\n" marks a line
+%     string to print in orange colour. "\n" marks a line
 %     break, as in fprintf; no other escape sequence or format directive
 %     is interpreted, so text containing "%" prints as-is.
 %

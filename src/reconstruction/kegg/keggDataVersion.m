@@ -1,16 +1,15 @@
 function version=keggDataVersion()
 % keggDataVersion  The toolbox-assets release tag for KEGG artefacts.
 %
-% Reads reconstruction/kegg/KEGG_VERSION.md --- the single place this
-% version is recorded --- so every function that downloads a KEGG
-% artefact (getModelFromKEGG, getKEGGModelForOrganism) stays in sync
-% when toolbox-assets publishes a new KEGG release. The version is the
-% file's first line.
+% Reads the first line of src/reconstruction/kegg/KEGG_VERSION.md. The file is
+% the single place where the version is recorded, so that every function that
+% downloads a KEGG artefact (getModelFromKEGG, getKEGGModelForOrganism) uses
+% the same release.
 %
 % Returns
 % -------
 % version : char
-%     the toolbox-assets release tag, e.g. 'kegg118'.
+%     the toolbox-assets release tag, for example 'kegg118'.
 
 ravenPath=findRAVENroot();
 versionFile=fullfile(ravenPath,'src','reconstruction','kegg','KEGG_VERSION.md');

@@ -1,8 +1,7 @@
 function newModel=addGenesRaven(model,genesToAdd)
 % addGenesRaven  Add genes to a model.
 %
-% This function does not make extensive checks about MIRIAM formats,
-% forbidden characters or such.
+% The function checks neither MIRIAM formats nor forbidden characters in gene ids.
 %
 % Parameters
 % ----------
@@ -11,15 +10,15 @@ function newModel=addGenesRaven(model,genesToAdd)
 % genesToAdd : struct
 %     the genes to add, which can have the following fields:
 %
-%     - genes : cell array with unique strings that identifies each gene.
-%       Only characters which are allowed in SBML ids are allowed (mainly
-%       a-z, 0-9 and "_"). However, there is no check for this performed,
-%       as it only matters if the model should be exported to SBML
+%     - genes : cell array with unique strings that identify each gene.
+%       The characters allowed in SBML ids (mainly a-z, 0-9 and "_") are the
+%       valid ones, but the function does not check them; they matter only for
+%       export to SBML
 %     - geneShortNames : cell array of gene abbreviations (optional,
 %       default "")
 %     - geneMiriams : cell array with MIRIAM structures (optional,
 %       default [])
-%     - proteins : cell array of protein names associated to each gene
+%     - proteins : cell array of the protein names associated with each gene
 %       (optional, default "")
 %
 % Returns

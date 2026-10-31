@@ -1,35 +1,36 @@
 classdef progressReport < handle
 % progressReport  Universal progress reporting for RAVEN functions.
 %
-% A single progress-reporting API used across RAVEN. The rendering backend
-% is selected automatically so that the same call works on an interactive
-% desktop, a plain command-line session and a headless server, and is
-% silenced during unit tests:
+% Progress-reporting class used by RAVEN functions. The rendering backend is
+% selected automatically. The same calls work on an interactive desktop, in a
+% command-line session and on a headless server. During unit tests no output
+% is produced. The backends are:
 %
 %   - 'gui'  : MATLAB waitbar (interactive desktop).
 %   - 'cli'  : animated command-line bar (interactive terminal).
-%   - 'log'  : plain milestone lines, e.g. "Running BLAST: 30%". Contains no
-%              control characters, so it stays readable in redirected logs
-%              and on headless / -batch servers.
+%   - 'log'  : plain milestone lines, for example "Running BLAST: 30%", printed
+%              every 10%. The lines contain no control characters, so they
+%              are readable in redirected logs and on headless and -batch
+%              servers.
 %   - 'none' : no output (during tests, or when disabled).
 %
-% The backend can be forced with setRavenProgress, e.g. setRavenProgress('log')
-% on a compute cluster, or setRavenProgress('off') to silence all progress
-% reporting.
+% setRavenProgress sets the backend: setRavenProgress('log') selects plain
+% lines, for example on a compute cluster, and setRavenProgress('off')
+% disables all progress reporting.
 %
 % Usage
 % -----
-% For loops with one cheap-to-expensive iteration each, count one per pass:
+% To register each iteration, call count once per pass:
 %
 %     PB = progressReport(N, 'Task name');   % before the loop
 %     for i = 1:N
 %         ...                                % loop body
 %         PB.count;                          % or count(PB), also in parfor
 %     end
-%     PB.done;                               % optional; cleans up on early exit
+%     PB.done;                               % optional; finalises the bar on early exit
 %
-% For very long loops over cheap iterations, set the absolute position at
-% intervals to avoid per-iteration overhead:
+% To avoid the per-iteration overhead in long loops of short iterations, set
+% the absolute position at intervals:
 %
 %     PB = progressReport(N, 'Task name');
 %     for i = 1:N
@@ -43,7 +44,8 @@ classdef progressReport < handle
 % Parameters
 % ----------
 % N : double
-%     number of iterations the loop will perform (a positive integer).
+%     number of iterations the loop performs (a positive integer). For any other
+%     value, no progress is shown.
 % taskName : char, optional
 %     label shown alongside the progress (default '').
 %

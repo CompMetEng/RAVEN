@@ -1,20 +1,17 @@
 function report = diffModels(modelA, modelB, varargin)
 % diffModels  Report the semantic differences between two models.
 %
-% Compares two models entry by entry, keyed by identifier, and returns a report listing
-% every difference found. Reactions, metabolites and genes are matched by
-% id; for the ids present in both models the reaction stoichiometry, bounds,
-% objective coefficient, grRule, EC codes, and the metabolite formula,
-% charge and compartment are compared. This is the structured
-% added/removed/changed diff that compareMultipleModels (which reports
-% overlap counts, similarity and clustering across N models) does not
-% provide.
+% Compares two models entry by entry, keyed by identifier, and returns a
+% report listing every difference found. Reactions, metabolites and genes
+% are matched by id and reported when present in only one model. For the
+% ids present in both models, the reaction stoichiometry, bounds,
+% objective coefficient, grRule and EC codes, and the metabolite formula,
+% charge and compartment are compared.
 %
-% grRules are compared for logical equality rather than as strings: each
-% rule is expanded to disjunctive normal form and the genes within each
-% isozyme, and the isozymes themselves, are sorted before comparison, so
-% "a and b" equals "b and a" and "(a or b)" equals "(b or a)". This is
-% stronger than a case/whitespace string match.
+% grRules are compared by logical content: each rule is expanded to
+% disjunctive normal form, and the genes within each isozyme and the
+% isozymes themselves are sorted before comparison, so "a and b" equals
+% "b and a" and "(a or b)" equals "(b or a)".
 %
 % Parameters
 % ----------
@@ -29,10 +26,11 @@ function report = diffModels(modelA, modelB, varargin)
 %     absolute tolerance for stoichiometric coefficient differences
 %     (default 1e-9).
 % maxPerCategory : double
-%     the maximum number of differences reported per category before the
-%     rest are truncated with a single summary line (default 50).
+%     maximum number of entries in report.differences per category. Further
+%     differences of that category are replaced by a single summary line
+%     (default 50).
 % printResults : logical
-%     print the report to the command window (default false).
+%     true to print the report to the command window (default false).
 %
 % Returns
 % -------
@@ -41,19 +39,18 @@ function report = diffModels(modelA, modelB, varargin)
 %
 %     - equal : true if no differences were found.
 %     - differences : cell array of human-readable difference strings, each
-%       naming the category and the entity affected.
-%     - rxnsOnlyInA / rxnsOnlyInB : reaction ids present in only one model.
-%     - metsOnlyInA / metsOnlyInB : metabolite ids present in only one model.
-%     - genesOnlyInA / genesOnlyInB : gene ids present in only one model.
-%
-% Usage: report = diffModels(modelA, modelB, ...)
+%       naming the entity affected.
+%     - rxnsOnlyInA and rxnsOnlyInB : reaction ids present in only one
+%       model.
+%     - metsOnlyInA and metsOnlyInB : metabolite ids present in only one
+%       model.
+%     - genesOnlyInA and genesOnlyInB : gene ids present in only one model.
+%       Both are empty when either model lacks the genes field.
 %
 % See also
 % --------
-% compareMultipleModels : N models, set membership across seven identity
-%     notions (ids, EC codes, metabolite names, equations), similarity
-%     matrix, clustering and an optional task-based functional comparison --
-%     no values.
+% compareMultipleModels : overlap counts, similarity and clustering across
+%     two or more models.
 
 p = parseRAVENargs(varargin, {'stoichTol', 1e-9; 'maxPerCategory', 50; ...
     'printResults', false});

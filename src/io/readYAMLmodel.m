@@ -1,16 +1,16 @@
 function model=readYAMLmodel(varargin)
 % readYAMLmodel  Read a model structure from a YAML file.
 %
-% Reads a yaml file matching (roughly) the standard cobra-format model
-% yaml structure.
+% Reads a yaml file in the cobra-format model yaml structure that
+% writeYAMLmodel writes.
 %
 % Name-Value Arguments
 % --------------------
 % fileName : char
-%     a model file in yaml file format. A dialog window will open if no
-%     file name is specified.
+%     a model file in yaml file format. A dialog window opens if no file
+%     name is specified.
 % verbose : logical
-%     set as true to monitor progress (default false).
+%     true to print the progress (default false).
 %
 % Returns
 % -------

@@ -1,13 +1,13 @@
 function [model, hasChanged]=addIdentifierPrefix(model,varargin)
 % addIdentifierPrefix  Add identifier prefixes required by SBML.
 %
-% If reaction, metabolite, compartment, gene or model identifiers do not
-% start with a letter or _, which conflicts with SBML specifications,
-% prefixes are added for all identifiers in the respective model field.
+% If any reaction, metabolite, compartment, gene or model identifier does
+% not start with a letter or _, which conflicts with SBML specifications,
+% a prefix is added to all identifiers in the respective model field.
 % The prefixes are:
 %
 %     "R_" for model.rxns,
-%     "M_" for model.mets,
+%     "M_" for model.mets and model.id,
 %     "C_" for model.comps;
 %     "G_" for model.genes (and also represented in model.grRules)
 %
@@ -19,16 +19,17 @@ function [model, hasChanged]=addIdentifierPrefix(model,varargin)
 % Name-Value Arguments
 % --------------------
 % fields : cell
-%     cell array with model field names that should be checked if prefixes
-%     should be added, possible values: 'rxns', 'mets', 'comps', 'genes',
-%     'id' (default all listed model fields will be checked).
+%     cell array with the names of the model fields to check for the need
+%     of a prefix, possible values: 'rxns', 'mets', 'comps', 'genes', 'id'
+%     (default all of these fields).
 %
 % Returns
 % -------
 % model : struct
 %     modified model.
 % hasChanged : cell
-%     cell array with fields and prefixes that are added.
+%     cell array of char with one entry per field that received a prefix,
+%     for example 'model.rxns (R_ prefix)'.
 %
 % Examples
 % --------

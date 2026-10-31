@@ -1,35 +1,34 @@
 function [currVer, installType] = checkRaven(developMode, checkBinaries)
-% checkRaven
-%   Checks that all necessary functions are installed and working. It also
-%   checks whether there are any functions
-%   with overlapping names between RAVEN and other toolboxes or
-%   user-defined functions, which are accessible from MATLAB pathlist
+% checkRaven  Check the RAVEN installation and set up the MATLAB path.
 %
-%   NOTE: this function is run before RAVEN has been added to the MATLAB
-%   path, so it must not call any other RAVEN functions until it has added
-%   RAVEN to the path itself. Its arguments are therefore parsed directly
-%   rather than via parseRAVENargs.
+%   Reports the installation type and RAVEN version, adds RAVEN to the
+%   MATLAB path, tests model import and export, the LP solvers and the
+%   binary executables, and checks for functions with overlapping names
+%   between RAVEN and other toolboxes or user-defined functions on the
+%   MATLAB path.
+%
+%   This function runs before RAVEN is on the MATLAB path. It therefore
+%   calls no other RAVEN function until it has added RAVEN to the path, and
+%   it parses its arguments without parseRAVENargs.
 %
 % Parameters
 % ----------
-%   developMode     logical indicating development mode, which includes
-%                   testing of binaries that are required to update KEGG
-%                   HMMs (default false). If 'versionOnly' is
-%                   specified, only the version is reported as currVer, no
-%                   further installation or tests are performed.
-%   checkBinaries   logical whether non-developMode binaries should be
-%                   checked for functionality. If false, it overwrites
-%                   developMode. Default true.
+%   developMode     'versionOnly' to return the version in currVer without
+%                   any further installation check or test. Any other
+%                   value runs all checks. Default false.
+%   checkBinaries   logical, true to test that the BLAST+, DIAMOND and
+%                   HMMER binaries execute. If false, the binary check is
+%                   skipped. Default true.
 %
 % Output:
 %   currVer         current RAVEN version
 %   installType     how RAVEN is installed
-%                   0:  via git (as .git folder is found)
+%                   0:  via git (a .git folder is found)
 %                   1:  as MATLAB Add-On
-%                   2:  neither of the above, direct download of ZIP file
-%                   This matches the installations mentioned in the wiki:
+%                   2:  direct download of a ZIP file
+%                   The values correspond to the installation types
+%                   Advanced (0), Easy (1) and Medium (2) described at
 %                   https://raven-docs.readthedocs.io/en/latest/installation/raven.html
-%                   0 = advanced / 1 = easy / 2 = medium
 %
 % Usage: [currVer, installType] = checkRaven(developMode)
 

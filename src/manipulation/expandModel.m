@@ -1,8 +1,8 @@
 function [newModel, rxnToCheck]=expandModel(model)
 % expandModel  Expand reactions that use several gene associations.
 %
-% Each reaction that uses several gene associations is split into several
-% reactions, each under the control of only one gene.
+% Each reaction with several gene associations (isozymes) is split into one reaction per
+% association.
 %
 % Parameters
 % ----------
@@ -12,12 +12,12 @@ function [newModel, rxnToCheck]=expandModel(model)
 % Returns
 % -------
 % newModel : struct
-%     model structure with separate reactions for iso-enzymes, where the
-%     reaction ids are renamed as id_EXP_1, id_EXP_2, etc.
+%     model structure with separate reactions for isozymes. The ids of split reactions
+%     are id_EXP_1, id_EXP_2 and so on, numbered per isozyme.
 % rxnToCheck : cell
-%     cell array with original reaction identifiers for those whose grRule
-%     was not in disjunctive normal form, and so had to be expanded by
-%     distributivity, plus any whose grRule could not be parsed.
+%     cell array with the original ids of the reactions whose grRule is not in
+%     disjunctive normal form and was expanded by distributivity, and of the reactions
+%     whose grRule cannot be parsed and is left unchanged.
 %
 % Examples
 % --------
@@ -26,11 +26,11 @@ function [newModel, rxnToCheck]=expandModel(model)
 % Notes
 % -----
 % The isozymes are the AND-clauses of the grRule in disjunctive normal form,
-% so nested expressions are expanded correctly: "g1 and (g2 or g3)" yields
-% "g1 and g2" and "g1 and g3". Reactions listed in rxnToCheck are expanded
-% correctly too; they are reported only because a rule needing
-% distributivity is often a sign that the GPR was not what its author
-% intended. Use standardizeGrRules/findPotentialErrors to inspect them.
+% so nested expressions are expanded: "g1 and (g2 or g3)" yields "g1 and g2" and
+% "g1 and g3". Reactions listed in rxnToCheck because of distributivity are expanded in
+% the same way; they are listed because a rule that needs distributivity can indicate
+% that the GPR differs from what its author intended. standardizeGrRules and
+% findPotentialErrors inspect them.
 
 %Work out the isozymes of every reaction up front. The number of copies is
 %the number of DNF clauses, which is not the number of ' or ' substrings:

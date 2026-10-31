@@ -3,18 +3,19 @@ function warmup = sampleWarmupPoints(model,varargin)
 %
 % Generates warmup points for sampleACHR by maximising and minimising each
 % reaction in turn and storing the full flux distribution at each optimum.
-% These vertices span the flux polytope and seed the hit-and-run directions.
+% These vertices span the flux polytope and define the hit-and-run
+% directions.
 %
 % Parameters
 % ----------
 % model : struct
-%     a RAVEN model structure.
+%     a model structure.
 %
 % Name-Value Arguments
 % --------------------
 % runParallel : logical
-%     speed up calculations by parallel processing, as in getAllowedBounds,
-%     which solves the same per-reaction min/max LPs (default true).
+%     run the calculations in parallel, as in getAllowedBounds, which solves
+%     the same per-reaction minimisation and maximisation LPs (default true).
 %
 % Returns
 % -------

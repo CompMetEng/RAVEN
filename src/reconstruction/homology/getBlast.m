@@ -19,25 +19,28 @@ function [blastStructure,blastReport]=getBlast(organismID,fastaFile,...
 % Name-Value Arguments
 % --------------------
 % developMode : logical
-%     true if blastReport should be generated that is used in the unit
-%     testing function for BLAST+ (default false).
+%     true if blastReport is filled, as used in the unit test for BLAST+
+%     (default false).
 % hideVerbose : logical
 %     true if no status messages should be printed (default false).
 %
 % Returns
 % -------
 % blastStructure : struct
-%     structure containing the bidirectional homology measurements that
-%     can be used by getModelFromHomology.
+%     structure array with one element per search direction and template
+%     organism (2 times the number of modelIDs), containing the bidirectional
+%     homology measurements (fromId, toId, fromGenes, toGenes, evalue,
+%     identity, aligLen, bitscore and ppos) for use by getModelFromHomology.
 % blastReport : struct
 %     structure containing MD5 hashes for FASTA database files and
-%     non-parsed BLAST output data. Will be blank if developMode is false.
+%     unparsed BLAST output data. The fields are empty if developMode is
+%     false.
 %
 % Notes
 % -----
 % This function calls BLAST+ to perform a bidirectional homology test
 % between the organism of interest and a set of other organisms using
-% standard settings. The only filtering this function does is the removal
+% standard settings. The only filtering this function applies is the removal
 % of hits with an E-value higher than 10e-5.
 %
 % Examples

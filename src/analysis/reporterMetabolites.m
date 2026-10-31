@@ -1,15 +1,15 @@
 function repMets=reporterMetabolites(model,genes,genePValues,varargin)
 % reporterMetabolites  Identify metabolites around which transcriptional changes occur.
 %
-% The Reporter Metabolites algorithm for identifying metabolites around
-% which transcriptional changes occur.
+% Applies the Reporter Metabolites algorithm, which scores each metabolite
+% by the differential expression of the genes around it.
 %
 % Parameters
 % ----------
 % model : struct
 %     a model structure.
 % genes : cell
-%     a cell array of gene names (should match with model.genes).
+%     a cell array of gene names (matching model.genes).
 % genePValues : double
 %     P-values for differential expression of the genes. Values must lie in
 %     [0, 1]; NaN values are ignored, any other value raises an error.
@@ -17,14 +17,15 @@ function repMets=reporterMetabolites(model,genes,genePValues,varargin)
 % Name-Value Arguments
 % --------------------
 % printResults : logical
-%     true if the top 20 Reporter Metabolites should be printed to the
-%     screen (default false).
+%     true to print the top 20 Reporter Metabolites to the screen
+%     (default false).
 % outputFile : char
 %     the results are printed to this file (default none).
 % geneFoldChanges : double
-%     log-fold changes for the genes. If supplied, then Reporter
-%     Metabolites are calculated for only up/down-regulated genes in
-%     addition to the full test (default none).
+%     log-fold changes for the genes. If supplied, Reporter Metabolites are
+%     also calculated for the upregulated genes (fold change >= 0) alone and
+%     for the downregulated genes (fold change < 0) alone, in addition to
+%     the full test (default none).
 %
 % Returns
 % -------
@@ -32,11 +33,13 @@ function repMets=reporterMetabolites(model,genes,genePValues,varargin)
 %     an array of structures with the following fields:
 %
 %     - test : a string that describes the genes used to calculate the
-%       Reporter Metabolites ("all", "only up", or "only down"). The two
-%       latter structures are only calculated if geneFoldChanges are
+%       Reporter Metabolites ("all", "only up", or "only down"). The tests
+%       "only up" and "only down" are only calculated if geneFoldChanges is
 %       supplied.
 %     - mets : a cell array of metabolite IDs for the metabolites for which
 %       a score could be calculated.
+%     - metNames : a cell array with the names of the metabolites in
+%       "mets".
 %     - metZScores : background-corrected Z-scores for differential
 %       expression around each metabolite in "mets". The entries of all
 %       fields are sorted by this score, highest first.

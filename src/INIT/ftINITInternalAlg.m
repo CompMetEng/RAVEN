@@ -1,55 +1,61 @@
 function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,rankKeys,pinFluxes)
 % ftINITInternalAlg
-%	This function runs the MILP for a step in ftINIT.
+%	Run the MILP for one step of ftINIT.
 %
 %   model           a reference model structure
 %   rxnScores       a vector of scores for the reactions in the model.
 %                   Positive scores are reactions to keep and negative
-%                   scores are reactions to exclude. Rxns set to 0 are excluded
-%                   from the problem.
+%                   scores are reactions to exclude. Reactions with score 0
+%                   are not part of the problem
 %   metData         boolean matrix with mets as rows and rxns as columns
 %                   saying which reaction produces each detected met (optional, default [])
 %   essentialRxns   cell array of reactions that are essential and that
-%                   have to be in the resulting model. This is normally
-%                   used when fitting a model to task (see fitTasks)
-%   prodWeight      a score that determines the value of having
-%                   net-production of metabolites. This is a way of having
-%                   a more functional network as it provides a reason for
-%                   including bad reactions for connectivity reasons. This
-%                   score is for each metabolite, and the sum of these weights
-%                   and the scores for the reactions is what is optimized
-%   allowExcretion  true if excretion of all metabolites should be allowed.
+%                   have to be in the resulting model. ftINIT passes the
+%                   reactions that the tasks require (see fitTasks)
+%   prodWeight      a reward for each detected metabolite that has at least
+%                   one producing reaction turned on; net production is not
+%                   checked. The sum of these rewards and the scores for the
+%                   reactions is optimised. The reward gives a reason for
+%                   including reactions with a negative score for
+%                   connectivity reasons, which gives a more functional
+%                   network (default 0.5)
+%   allowExcretion  true if excretion of all metabolites is allowed.
 %                   This results in fewer reactions being considered
-%                   dead-ends, but all reactions in the resulting model may
-%                   not be able to carry flux. If this is "false" then the
+%                   dead-ends, but not every reaction in the resulting model
+%                   can carry flux. If this is "false" then the
 %                   equality constraints are taken from model.b. If the
-%                   input model lacks exchange reactions then this should
-%                   probably be "true", or a large proportion of the model
-%                   would be excluded for connectivity reasons
+%                   input model lacks exchange reactions, set it to true;
+%                   with false a large part of the model is excluded for
+%                   connectivity reasons
 %   remPosRev       If true, the positive reversible reactions are removed from the problem.
 %                   This is used in step 1 of ftINIT
 %   params          parameters for the MILP, for example MIPGap and TimeLimit
-%   startVals       Start values for the MILP, typically used when rerunning
-%                   with a higher MIPGap, to use the results from the previous
-%                   run
-%   fluxes          Fluxes from the last run.
-%   verbose         If true, the MILP progression will be shown.
+%   startVals       Start values for the MILP. ftINIT passes the result of
+%                   the previous run when it reruns the MILP with a higher
+%                   MIPGap
+%   fluxes          Fluxes from the last run. The flux of an essential
+%                   irreversible reaction is forced to at least
+%                   min(0.99*|flux|, 0.1), clamped to the reaction's capacity
+%                   in the forced direction (its upper bound, as ftINIT
+%                   passes reactions in the forward direction)
+%   verbose         If true, the MILP progression is shown.
 %   forceOn         minimum flux magnitude enforced through a reaction once
 %                   it is turned on in the MILP (optional, default 0.1)
-%   resolveTies     if true, pin the MILP's degenerate optimum to a canonical
-%                   answer instead of relying on the solver Seed alone: hold
-%                   the score objective at its optimum, then minimise the
-%                   count of "on" removable (negative-score) reactions, then,
-%                   among the sparsest, minimise their summed reaction-id
-%                   rank. Positive-score reactions carry a continuous, not a
-%                   free binary, on/off variable (pinned near 1 by the score
-%                   objective), so only the negative-score ones are a genuine
-%                   tie to resolve. The fluxes are then taken from the
+%   resolveTies     if true, the MILP's degenerate optimum is solved to a
+%                   canonical answer in addition to the solver Seed: the
+%                   score objective is held at its optimum, then the count
+%                   of "on" removable (negative-score) reactions is
+%                   minimised, then, among the sparsest solutions, their
+%                   summed reaction-id rank is minimised. Positive-score
+%                   reactions have a continuous on/off variable (pinned near
+%                   1 by the score objective) and only the negative-score
+%                   ones have a binary on/off variable, so only these are
+%                   tied. The fluxes are then taken from the
 %                   least-total-flux solution for that on/off state and,
 %                   among those, from the one with the least id-rank-weighted
 %                   backward flux, so the directions and forced magnitudes
-%                   the next ftINIT step reads from them are pinned too --
-%                   matches raven-toolbox's resolve_ties
+%                   the next ftINIT step reads from them are fixed too.
+%                   This follows resolve_ties in raven-toolbox
 %                   (raven-gecko-parity#104). The phases are skipped when
 %                   the primary solve stops at params.TimeLimit, and the
 %                   primary solution is kept. Phases 2a and 2b get half of
@@ -71,22 +77,22 @@ function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(m
 %
 %   deletedRxns     reactions which were deleted by the algorithm (only
 %                   rxns included in the problem)
-%   metProduction   array that indicates which of the
-%                   metabolites in presentMets that could be
-%                   produced
-%                   0: metabolite could not be produced
-%                   1: metabolite could be produced
+%   metProduction   logical array that indicates which of the metabolites in
+%                   metData could be produced (true) or not (false).
+%                   Metabolites with a producing reaction that is essential
+%                   are not part of the MILP and are not in the array
 %   res             The result from the MILP
 %   turnedOnRxns    The reactions determined to be present (only 
 %                   rxns included in the problem) 
 %   fluxes          The fluxes from the MILP
 %
-%   This function is the actual implementation of the algorithm. See
+%   This function is the implementation of the algorithm. See
 %   ftINIT for a higher-level function for model reconstruction. 
 %
-% Usage: [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=runINIT9(model,...
-%           rxnScores,presentMets,essentialRxns,prodWeight,allowExcretion,...
-%           remPosRev,params)
+% Usage: [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,...
+%           rxnScores,metData,essentialRxns,prodWeight,allowExcretion,...
+%           remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,...
+%           rankKeys,pinFluxes)
 
 if nargin < 12 || isempty(forceOn)
     forceOn = 0.1;

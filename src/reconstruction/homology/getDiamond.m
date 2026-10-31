@@ -19,28 +19,30 @@ function [blastStructure,diamondReport]=getDiamond(organismID,fastaFile,...
 % Name-Value Arguments
 % --------------------
 % developMode : logical
-%     true if blastReport should be generated that is used in the unit
-%     testing function for DIAMOND (default false).
+%     true if diamondReport is filled, as used in the unit test for DIAMOND
+%     (default false).
 % hideVerbose : logical
 %     true if no status messages should be printed (default false).
 %
 % Returns
 % -------
 % blastStructure : struct
-%     structure containing the bidirectional homology measurements which
-%     are used by getModelFromHomology.
+%     structure array with one element per search direction and template
+%     organism (2 times the number of modelIDs), containing the bidirectional
+%     homology measurements (fromId, toId, fromGenes, toGenes, evalue,
+%     identity, aligLen, bitscore and ppos) for use by getModelFromHomology.
 % diamondReport : struct
 %     structure containing MD5 hashes for FASTA database files and
-%     non-parsed BLAST output data. Will be blank if developMode is false.
+%     unparsed DIAMOND output data. The fields are empty if developMode is
+%     false.
 %
 % Notes
 % -----
 % This function calls DIAMOND to perform a bidirectional homology search
 % between the organism of interest and a set of other organisms using the
-% "--more-sensitive" setting from DIAMOND. For the most sensitive results,
-% the use of getBlast() is adviced, however, getDiamond() is a fast
-% alternative (>15x faster). The blastStructure generated is in the same
-% format as those obtained from getBlast().
+% "--more-sensitive" setting from DIAMOND. getBlast() gives the most
+% sensitive results; getDiamond() is >15x faster. The blastStructure is in
+% the same format as that obtained from getBlast().
 %
 % Examples
 % --------

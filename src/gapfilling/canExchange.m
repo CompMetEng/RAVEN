@@ -2,12 +2,14 @@ function canExchange=canExchange(model,direction,varargin)
 % canExchange  Check which metabolites a model can produce or consume.
 %
 % Adds an exchange reaction for each of the specified metabolites and
-% checks which of them can carry a flux. This is the unified replacement
-% for canProduce ('produce') and canConsume ('consume').
+% checks which of them can carry an absolute flux above 1e-5. The direction
+% 'produce' corresponds to the deprecated function canProduce and 'consume'
+% to canConsume.
 %
-% This is a less advanced but faster version of checkProduction, which
-% additionally reports which metabolites must be connected in order to make
-% the remaining ones producible.
+% canExchange only tests whether each added exchange reaction can carry flux.
+% checkProduction also reports which metabolites must be connected in order
+% to make the remaining ones producible, which requires further problems to be
+% solved.
 %
 % Parameters
 % ----------

@@ -12,13 +12,12 @@ function reducedModel = removeGenes(model,genesToRemove,varargin)
 % Name-Value Arguments
 % --------------------
 % removeUnusedMets : logical
-%     remove metabolites that are no longer in use (default false).
+%     remove metabolites that no remaining reaction uses (default false).
 % removeBlockedRxns : logical
-%     remove reactions that get blocked after deleting the genes (default
-%     false).
+%     remove reactions that cannot carry flux after the genes are deleted.
+%     When false, the bounds of these reactions are set to 0 (default false).
 % standardizeRules : logical
-%     format gene rules to be compliant with the standard format (default
-%     true).
+%     write the gene rules in the standard format (default true).
 %
 % Returns
 % -------
@@ -29,9 +28,12 @@ function reducedModel = removeGenes(model,genesToRemove,varargin)
 %     written in the standard format). Otherwise, besides genesToRemove, every
 %     gene that no remaining reaction used before the removal is deleted as
 %     well, also when it was not requested (for example a gene that no
-%     reaction uses). A gene whose only reaction is kept but blocked
+%     reaction uses). A gene that only occurs in a rule part removed with
+%     another gene stays, because the reaction used it before the removal
+%     (for example G3 in (G1 and G3) or G2 after removing G1). A gene also
+%     stays when its reaction remains, even if that reaction is blocked
 %     (removeBlockedRxns false), such as the other subunit of a complex that
-%     lost one, stays.
+%     lost one.
 %
 % Examples
 % --------

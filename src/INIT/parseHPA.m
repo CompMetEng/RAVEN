@@ -10,8 +10,7 @@ function hpaData=parseHPA(fileName, varargin)
 % Name-Value Arguments
 % --------------------
 % version : double
-%     accepted for backward compatibility but ignored; the format is now
-%     inferred from the column headers (default 19).
+%     ignored; the format is inferred from the column headers (default 19).
 %
 % Returns
 % -------
@@ -20,7 +19,7 @@ function hpaData=parseHPA(fileName, varargin)
 %
 %     - genes : cell array with the unique gene IDs (Ensembl in v>=18)
 %     - geneNames : cell array with the gene symbols (present in v>=18 only)
-%     - tissues : cell array with the tissue names (may not be unique; one
+%     - tissues : cell array with the tissue names (can repeat; one
 %       entry per tissue-cell-type combination)
 %     - celltypes : cell array with the cell type names for each tissue
 %     - levels : cell array with the unique expression level labels

@@ -6,14 +6,17 @@ function equationString=buildEquation(mets,stoichCoeffs,isrev)
 % mets : cell
 %     metabolites involved in the reaction.
 % stoichCoeffs : double
-%     vector with corresponding stoichiometric coeffs.
+%     vector with the corresponding stoichiometric coefficients, of the same
+%     length as mets. Negative coefficients are reactants and positive
+%     coefficients are products.
 % isrev : logical
-%     indicates if the reaction is reversible or not.
+%     true if the reaction is reversible (written with "<=>"), false if it
+%     is irreversible (written with "=>").
 %
 % Returns
 % -------
 % equationString : char
-%     equation as a string.
+%     the equation as a string.
 %
 % Examples
 % --------

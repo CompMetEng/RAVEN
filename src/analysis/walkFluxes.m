@@ -1,26 +1,30 @@
 function walkFluxes(model, fluxes, startRxn, varargin)
 % walkFluxes  Interactively navigate a flux distribution reaction by reaction.
 %
-% Starting from a chosen reaction, displays all flux-carrying reactions
+% Starting from a chosen reaction, displays the flux-carrying reactions
 % connected through shared metabolites, grouped by metabolite and labelled
-% with each neighbour's role (produces / consumes). Select a neighbour by
-% number to step to it; build a history and rewind with 'b'.
+% with each neighbour's role (produces or consumes). Entering the number of
+% a neighbour steps to it. The visited reactions are kept in a history, and
+% 'b' steps back through it.
 %
 % Parameters
 % ----------
 % model : struct
-%     RAVEN model structure.
+%     a model structure.
 % fluxes : double
 %     flux vector (length = numel(model.rxns)).
 % startRxn : char or double
-%     starting reaction ID (string) or column index.
+%     starting reaction ID (string) or reaction index.
 %
 % Name-Value Arguments
 % --------------------
 % cutoff : double
-%     minimum |flux| to display a reaction as a neighbour (default 1e-8).
+%     minimum net flux through a metabolite (|S_ij * v_j|) for the metabolite
+%     to be listed for the current reaction and for a reaction to be
+%     displayed as a neighbour (default 1e-8).
 % maxPerMet : double
-%     maximum neighbour reactions displayed per metabolite (default 8).
+%     maximum neighbour reactions displayed per metabolite, selected by
+%     decreasing absolute flux (default 8).
 %
 % Examples
 % --------
@@ -31,14 +35,12 @@ function walkFluxes(model, fluxes, startRxn, varargin)
 % Notes
 % -----
 % Navigation commands:
-%   <number>  — step to that neighbour reaction
-%   b         — go back to the previous reaction
-%   q         — quit
+%   <number>  : step to that neighbour reaction
+%   b         : go back to the previous reaction
+%   q         : quit
 %
-% This function is interactive and reads from the terminal at every step;
-% it errors immediately under -batch, in deployed code, or otherwise without
-% a real terminal, rather than blocking forever waiting for input that will
-% never arrive.
+% This function is interactive and reads from the terminal at every step.
+% It raises an error under -batch and in deployed code.
 
 isBatch = false;
 try

@@ -3,10 +3,10 @@ function targets=FSEOF(model,biomassRxn,targetRxn,varargin)
 %
 % Implements the Flux Scanning based on Enforced Objective Flux algorithm.
 % This function writes a tab-delimited file or prints to the command
-% window. If an output has been specified (targets), it will also generate
-% a structure indicating for each model reaction whether it is identified
-% by FSEOF as a target and the slope of the reaction when switching from
-% biomass formation to product formation.
+% window. If an output is specified (targets), it also returns a structure
+% indicating for each model reaction whether FSEOF identifies it as a target
+% and the slope of the reaction when switching from biomass formation to
+% product formation.
 %
 % Parameters
 % ----------
@@ -20,33 +20,35 @@ function targets=FSEOF(model,biomassRxn,targetRxn,varargin)
 % Name-Value Arguments
 % --------------------
 % iterations : double
-%     number of iterations (default 10).
+%     number of enforced target flux levels, equally spaced up to coefficient
+%     times the maximum target flux (default 10).
 % coefficient : double
-%     ratio of optimal target reaction flux, must be less than 1
-%     (default 0.9).
+%     ratio of the maximum target reaction flux that is enforced at the last
+%     iteration, less than 1 (default 0.9).
 % outputFile : char
 %     output filename (default prints to command window).
 % corrThreshold : double
-%     minimum absolute Pearson correlation coefficient between a
-%     reaction absolute flux and the enforced product flux for the
-%     reaction to be selected as a target. Values in [0, 1]; higher
-%     values require a more linear response and suppress LP alternative-
-%     optima noise (default 0.9).
+%     minimum absolute Pearson correlation coefficient between the absolute
+%     flux of a reaction and the enforced product flux for the reaction to be
+%     selected as a target. Values are in [0, 1]. The filter keeps reactions
+%     whose flux is close to linear in the enforced product flux, and a higher
+%     value keeps fewer reactions (default 0.9).
 %
 % Returns
 % -------
 % targets : struct
 %     structure with information for identified targets, with fields:
 %
-%     - logical : logical array, true for amplification targets (backward
-%       compatible alias for amplify).
+%     - logical : logical array, true for amplification targets (identical to
+%       amplify).
 %     - amplify : logical array, reactions whose absolute flux increases
 %       with enforced product flux.
-%     - knockdown : logical array, reactions driven toward but not to zero.
-%     - knockout : logical array, reactions driven to zero at max product.
+%     - knockdown : logical array, reactions whose absolute flux decreases but
+%       stays above zero at the highest enforced product flux.
+%     - knockout : logical array, reactions whose absolute flux decreases to
+%       zero at the highest enforced product flux.
 %     - slope : numeric array with per-reaction regression slopes of
-%       absolute flux versus enforced product flux (all reactions, not
-%       just targets).
+%       absolute flux versus enforced product flux (for all reactions).
 %
 % Examples
 % --------

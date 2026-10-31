@@ -1,29 +1,28 @@
 function legacyMethodNotice(oldFunction, preferred)
-% legacyMethodNotice  Point a caller at the recommended method, once.
+% legacyMethodNotice  Warn once that a function has a recommended replacement.
 %
-% For functions that remain supported but are no longer the recommended way
-% to do the job. Unlike deprecationWarning, this promises no removal: the
-% function keeps working and keeps being maintained. It is a signpost, not a
-% countdown.
+% For functions that remain supported and maintained but have a recommended
+% replacement for new work. Unlike deprecationWarning, the notice announces no
+% removal.
 %
-% The notice is issued the first time the function is called in a MATLAB
-% session and stays quiet afterwards, so a script that calls it in a loop
-% does not bury the console. Call "clear functions" to reset. A caller that
-% wants the legacy method deliberately can silence it with
-% warning('off','RAVEN:legacyMethod').
+% The warning RAVEN:legacyMethod is issued at the first call of each
+% oldFunction in a MATLAB session; later calls with the same oldFunction issue
+% nothing. "clear functions" resets this. warning('off','RAVEN:legacyMethod')
+% silences the notice.
 %
 % Parameters
 % ----------
 % oldFunction : char
-%     name of the function being called.
+%     name of the function being called. The notice is issued once per name.
 % preferred : char
-%     what to use instead for new work, written as it would be typed.
+%     name of the recommended replacement for new work, written as in the
+%     warning text.
 %
 % Examples
 % --------
 %     legacyMethodNotice('getINITModel','ftINIT');
 %
-% See Also
+% See also
 % --------
 % deprecationWarning
 

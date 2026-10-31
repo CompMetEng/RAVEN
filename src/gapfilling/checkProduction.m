@@ -1,16 +1,16 @@
 function [notProduced, notProducedNames, neededForProductionMat,minToConnect,model]=checkProduction(model,varargin)
 % checkProduction  Check which metabolites can be produced from a model.
 %
-% Checks which metabolites that can be produced from a model using the
-% specified constraints.
+% Checks which metabolites can be produced from a model under the current
+% constraints.
 %
-% The function is intended to be used to identify which metabolites must be
-% connected in order to have a fully connected network. It does so by first
-% identifying which metabolites could have a net production in the network.
-% Then it calculates which other metabolites must be able to have net
-% production in order to have production of all metabolites in the network.
-% So, if a network contains the equations A[external]->B, C->D, and D->E it
-% will identify that production of C will connect the metabolites D and E.
+% The function identifies which metabolites must be connected in order to
+% have a fully connected network. It first identifies which metabolites
+% can have a net production in the network. It then calculates which other
+% metabolites must be able to have net production in order to have
+% production of all metabolites in the network. If a network contains the
+% equations A[external]->B, C->D, and D->E, production of C connects the
+% metabolites D and E.
 %
 % Parameters
 % ----------
@@ -20,31 +20,43 @@ function [notProduced, notProducedNames, neededForProductionMat,minToConnect,mod
 % Name-Value Arguments
 % --------------------
 % checkNeededForProduction : logical
-%     for each of the metabolites that could not be produced, include an
-%     artificial production reaction and calculate which new metabolites that
-%     could be produced as an effect of this (default false).
+%     true to calculate, for each metabolite that could not be produced,
+%     which of the other such metabolites can be produced when an uptake
+%     reaction for it is added (default false).
 % excretionFromCompartments : cell
 %     cell array with compartment ids from which metabolites can be excreted
 %     (default model.comps).
 % printDetails : logical
-%     print details to the screen (default true).
+%     true to print the metabolites that could not be produced to the command
+%     window (default true).
 %
 % Returns
 % -------
 % notProduced : double
-%     indices of metabolites that could not be produced.
+%     indices of metabolites that could not be produced, counted among the
+%     metabolites in the compartments of excretionFromCompartments, in model
+%     order.
 % notProducedNames : cell
 %     cell array with names and compartments for metabolites that could not
 %     be produced.
 % neededForProductionMat : logical
 %     matrix where n x m is true if metabolite n allows for production of
-%     metabolite m.
+%     metabolite m. The rows and columns follow the order of notProduced.
+%     It is empty if checkNeededForProduction is false.
 % minToConnect : cell
-%     the minimal number of metabolites that need to be connected in order to
-%     be able to produce all other metabolites, and which metabolites each of
-%     them connects.
+%     metabolites that need to be connected in order to be able to produce
+%     all other metabolites, each with the number of metabolites it
+%     connects. The metabolites are selected iteratively, each time the one
+%     that connects the most remaining metabolites, so the number of
+%     metabolites need not be the global minimum. It is empty if
+%     checkNeededForProduction is false.
 % model : struct
-%     updated model structure with excretion reactions added.
+%     model structure with an excretion reaction added for each metabolite
+%     in the compartments of excretionFromCompartments. When
+%     checkNeededForProduction is true, the excretion reaction of the last
+%     metabolite in notProduced is returned as an uptake reaction, because
+%     the loop that flips each reaction into an uptake reaction does not
+%     reset the last one.
 %
 % Examples
 % --------

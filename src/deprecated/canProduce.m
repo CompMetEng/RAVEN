@@ -4,7 +4,7 @@ function produced=canProduce(model,varargin)
 % Deprecated wrapper kept so existing scripts keep working; it will be
 % removed in the next major release.
 %
-% See Also
+% See also
 % --------
 % canExchange
 

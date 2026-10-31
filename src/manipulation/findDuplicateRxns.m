@@ -1,21 +1,19 @@
 function pairs = findDuplicateRxns(model, varargin)
 % findDuplicateRxns  Find reactions that share identical stoichiometry.
 %
-% The upstream version of yeast-GEM's findDuplicatedRxns.
-%
-% Only stoichiometry is compared — bounds, GPRs, and annotations are
-% ignored. The default treats A→B and B→A as duplicates (typical curation
-% use case: "find reactions that could be merged").
+% Only the stoichiometry is compared; bounds, GPRs and annotations are ignored. With
+% the default ignoreDirection, A→B and B→A are duplicates. The pairs identify
+% reactions that could be merged (contractModel merges duplicate reactions).
 %
 % Parameters
 % ----------
 % model : struct
-%     RAVEN model struct.
+%     a model structure.
 %
 % Name-Value Arguments
 % --------------------
 % ignoreDirection : logical
-%     treat A→B and B→A as duplicates (default true).
+%     true to treat A→B and B→A as duplicates (default true).
 %
 % Returns
 % -------

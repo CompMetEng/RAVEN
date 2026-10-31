@@ -10,8 +10,7 @@ function arrayData=parseHPArna(fileName, varargin)
 % Name-Value Arguments
 % --------------------
 % version : double
-%     accepted for backward compatibility but ignored; the format is now
-%     inferred from the column headers (default 19).
+%     ignored; the format is inferred from the column headers (default 19).
 %
 % Returns
 % -------

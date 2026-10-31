@@ -18,21 +18,23 @@ function equationStrings=constructEquations(model,varargin)
 %     sort reversible reactions so that the metabolite that is first in the
 %     lexicographic order is a reactant (default false).
 % sortMetNames : logical
-%     sort the metabolite names in the equation. Uses compartment even if
-%     useComps is false (default false).
+%     sort the metabolite names in the equation. The compartment is included
+%     in the sorting even if useComps is false (default false).
 % useMetID : logical
-%     use metabolite ID in generated equations (default false).
+%     use metabolite ID in generated equations. Cannot be true together with
+%     useFormula (default false).
 % useFormula : logical
-%     use metabolite formula in generated equations (default false).
+%     use metabolite formula in generated equations. Cannot be true together
+%     with useMetID (default false).
 % useRevField : logical
-%     use the model.rev field to indicate reaction reversibility,
-%     alternatively this is determined from the model.ub and model.lb fields
+%     use the model.rev field to indicate reaction reversibility. When
+%     false, a reaction is reversible if model.lb < 0 and model.ub > 0
 %     (default true).
 %
 % Returns
 % -------
 % equationStrings : cell
-%     a cell array with equations.
+%     a cell array with the equation of each reaction.
 %
 % Examples
 % --------
@@ -41,9 +43,9 @@ function equationStrings=constructEquations(model,varargin)
 %
 % Notes
 % -----
-% If useRevField is false, then reactions should be organized in their
-% forward direction (e.g. ub = 1000 and lb = -1000/0) for the reversibility
-% to be correctly determined.
+% If useRevField is false, the reactions have to be written in their forward
+% direction (for example ub = 1000 and lb = -1000 or 0) for the reversibility
+% to be determined correctly.
 
 p=parseRAVENargs(varargin, {'rxns',[]; 'useComps',true; 'sortRevRxns',false; 'sortMetNames',false; 'useMetID',false; 'useFormula',false; 'useRevField',true});
 rxns=p.rxns;

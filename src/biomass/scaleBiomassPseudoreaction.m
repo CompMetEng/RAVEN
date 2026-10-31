@@ -6,10 +6,12 @@ function model = scaleBiomassPseudoreaction(model, biomassConfig, componentName,
 % The MATLAB counterpart of yeast-GEM's legacy rescalePseudoReaction.
 %
 % "Substrate" means every metabolite in the pseudoreaction whose
-% metabolite name does NOT match the component name (the component's
-% product is left untouched). After rescaling, the coefficient of
-% biomassConfig.proton_met is recomputed so the pseudoreaction's total
-% ionic charge sums to zero.
+% metabolite name differs from the component name; the coefficient of the
+% component's product is unchanged. After rescaling, the coefficient of
+% biomassConfig.proton_met is recomputed so that the total charge of the
+% pseudoreaction is zero. An error is raised if the model has no
+% metCharges field or if a metabolite other than proton_met in the
+% pseudoreaction has an undefined (NaN) charge.
 %
 % Parameters
 % ----------
@@ -18,12 +20,11 @@ function model = scaleBiomassPseudoreaction(model, biomassConfig, componentName,
 % biomassConfig : struct
 %     Struct (see getBiomassFractions).
 % componentName : char
-%     Name of the component to rescale (must match
-%     biomassConfig.components{i}.name for some i, AND be the
-%     model.metNames of the produced metabolite in the matching
-%     pseudoreaction).
+%     Name of the component to rescale. It must match
+%     biomassConfig.components{i}.name for some i and the model.metNames
+%     entry of the produced metabolite in the matching pseudoreaction.
 % factor : double
-%     Multiplicative factor.
+%     Factor by which the substrate coefficients are multiplied.
 %
 % Returns
 % -------

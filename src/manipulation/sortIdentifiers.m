@@ -1,8 +1,8 @@
 function newModel = sortIdentifiers(model)
 % sortIdentifiers  Sort model identifiers alphabetically.
 %
-% Sort reactions, metabolites, genes and compartments alphabetically by
-% their identifier.
+% Sorts reactions, metabolites, genes (if the genes field exists) and
+% compartments alphabetically by their identifier.
 %
 % Parameters
 % ----------

@@ -1,5 +1,5 @@
 function result = compareFluxes(model, fluxes1, fluxes2, varargin)
-% compareFluxes  Find the most significant flux changes between two conditions.
+% compareFluxes  Find the reactions whose flux differs between two flux vectors.
 %
 % Compares two flux vectors from the same model and returns all reactions
 % that changed, sorted by absolute flux difference. Classifies reactions as
@@ -8,22 +8,23 @@ function result = compareFluxes(model, fluxes1, fluxes2, varargin)
 % Parameters
 % ----------
 % model : struct
-%     RAVEN model structure.
+%     a model structure.
 % fluxes1 : double
-%     reference flux vector (condition A, e.g. wild-type).
+%     reference flux vector (condition A, such as wild-type).
 % fluxes2 : double
-%     comparison flux vector (condition B, e.g. mutant or knockin).
+%     comparison flux vector (condition B, such as a mutant or knock-in).
 %
 % Name-Value Arguments
 % --------------------
 % cutoff : double
-%     minimum |flux| to consider a reaction active (default 1e-8).
+%     minimum |flux| for a reaction to be active, and minimum |flux2 - flux1|
+%     for a reaction to be changed (default 1e-8).
 % metaboliteList : cell
 %     cell array of metabolite names. Only reactions involving at least one
-%     of these metabolites are compared; every other reaction is left out of
-%     the result entirely. Matching is against model.metNames and is case
-%     insensitive. A name that matches no metabolite is reported as a warning
-%     rather than an error (default all reactions).
+%     of these metabolites are compared; all other reactions are excluded
+%     from every field of the result. Matching is against model.metNames and
+%     is case insensitive. A name that matches no metabolite is reported as
+%     a warning (default all reactions).
 % nMax : double
 %     maximum rows printed in the summary table (default 20).
 % verbose : logical
@@ -32,18 +33,25 @@ function result = compareFluxes(model, fluxes1, fluxes2, varargin)
 % Returns
 % -------
 % result : struct
-%     .turnedOn  — cell, rxn IDs newly active in fluxes2
-%     .turnedOff — cell, rxn IDs silenced in fluxes2
-%     .flipped   — cell, rxn IDs that reversed sign between conditions
-%     .changed   — struct with fields (all reactions with |dflux|>cutoff,
-%                  sorted by |dflux| descending):
-%                    .rxn       — cell of reaction IDs
-%                    .flux1     — double, flux in condition A
-%                    .flux2     — double, flux in condition B
-%                    .absDelta  — double, |flux2 - flux1|
-%                    .relChange — double, (flux2-flux1)/|flux1|; NaN when
-%                                 flux1 is near-zero (reaction emerged)
-%                    .type      — cell, 'on'|'off'|'flip'|'' per reaction
+%     structure with fields:
+%
+%     - turnedOn : cell array with the IDs of reactions that are active in
+%       fluxes2 and not in fluxes1.
+%     - turnedOff : cell array with the IDs of reactions that are active in
+%       fluxes1 and not in fluxes2.
+%     - flipped : cell array with the IDs of reactions that are active in
+%       both conditions and change sign.
+%     - changed : struct with fields for all reactions with |flux2 - flux1|
+%       above cutoff, sorted by |flux2 - flux1| descending:
+%
+%       - rxn : cell array with the reaction IDs.
+%       - flux1 : double array with the flux in condition A.
+%       - flux2 : double array with the flux in condition B.
+%       - absDelta : double array with |flux2 - flux1|.
+%       - relChange : double array with (flux2 - flux1)/|flux1|. NaN when
+%         |flux1| is below cutoff.
+%       - type : cell array with 'on', 'off', 'flip' or '' (changed
+%         magnitude) for each reaction.
 %
 % Examples
 % --------
@@ -55,7 +63,8 @@ function result = compareFluxes(model, fluxes1, fluxes2, varargin)
 %     result = compareFluxes(model, solA.x, solB.x, 'metaboliteList', {'ATP','NADH'})
 %
 % See also
-%     walkFluxes, traceFluxPath, modelSummary
+% --------
+% walkFluxes, traceFluxPath, modelSummary
 
 p = parseRAVENargs(varargin, {'cutoff',1e-8; 'metaboliteList',[]; 'nMax',20; 'verbose',true});
 cutoff         = p.cutoff;

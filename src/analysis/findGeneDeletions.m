@@ -1,8 +1,9 @@
 function [genes, fluxes, originalGenes, details, grRatioMuts]=findGeneDeletions(model,varargin)
 % findGeneDeletions  Delete genes and track the resulting fluxes.
 %
-% Deletes genes, optimizes the model by FBA, and keeps track of the
-% resulting fluxes. This is used for identifying gene deletion targets.
+% Deletes single genes or gene pairs, solves the model by FBA after each
+% deletion, and returns the resulting fluxes. The output identifies gene
+% deletion targets.
 %
 % Parameters
 % ----------
@@ -12,7 +13,7 @@ function [genes, fluxes, originalGenes, details, grRatioMuts]=findGeneDeletions(
 % Name-Value Arguments
 % --------------------
 % testType : char
-%     single/double gene deletion (default "sgd"):
+%     type of gene deletion (default "sgd"):
 %
 %     - "sgd" : single gene deletion
 %     - "dgd" : double gene deletion
@@ -20,7 +21,7 @@ function [genes, fluxes, originalGenes, details, grRatioMuts]=findGeneDeletions(
 % Returns
 % -------
 % genes : double
-%     a matrix with the genes that were deleted in each optimization (the
+%     a matrix with the genes that were deleted in each simulation (the
 %     gene indexes in originalGenes). Each row corresponds to a column in
 %     fluxes.
 % fluxes : double
@@ -28,25 +29,23 @@ function [genes, fluxes, originalGenes, details, grRatioMuts]=findGeneDeletions(
 %     an unsolvable problem have all zero flux. Single deletions that
 %     result in an unsolvable problem are indicated in details instead.
 % originalGenes : cell
-%     simply the genes in the input model. Included for simple
-%     presentation of the output.
+%     the genes in the input model.
 % details : double
-%     not all genes will be deleted in all analyses. It is for example not
-%     necessary to delete genes for dead end reactions. This is a vector
-%     with details about each gene in originalGenes and why or why not it
-%     was deleted:
+%     a vector with one element per gene in originalGenes that states
+%     whether the gene was deleted and why. Genes that only belong to
+%     dead-end reactions, for example, are not deleted:
 %
-%     - 1 : was deleted, and the problem was solved (a lethal deletion
+%     - 1 : deleted, and the problem was solved (a lethal deletion
 %       with zero growth also gets 1)
 %     - 2 : the single-deletion problem had no optimal solution
 %       (infeasible or failed); fluxes and grRatioMuts are 0
-%     - 3 : redundant, no longer used
+%     - 3 : redundant (not assigned)
 %     - 4 : involved in dead-end reaction
 % grRatioMuts : double
 %     growth rate ratio between mutated strain and wild type, matching the
-%     originalGenes(genes) mutants. Note that this does not directly map
-%     to model.genes, as is the case for COBRA getEssentialGenes. However,
-%     this can be obtained by afterwards running:
+%     originalGenes(genes) mutants. The elements do not map directly to
+%     model.genes, unlike the output of COBRA getEssentialGenes. The
+%     mapping to model.genes is obtained with:
 %
 %         grRatio=zeros(1,numel(model.genes));
 %         grRatio(genes)=grRatioMuts;

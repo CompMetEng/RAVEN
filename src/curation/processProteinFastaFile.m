@@ -1,11 +1,13 @@
 function processedFaaFile = processProteinFastaFile(faaFile, geneTable, headerCol, varargin)
 % processProteinFastaFile  Rename protein FASTA headers using a gene mapping table.
 %
-% Reads a protein FASTA file (as downloaded by downloadGenomeData) and
-% replaces each sequence header with the value from the specified geneTable
-% column, matched via the GenBank_protein accession present in the original
-% FASTA header.  Sequences whose accession is not found in geneTable are
-% kept with their original header unchanged.
+% Reads a protein FASTA file (such as one downloaded by downloadGenomeData)
+% and replaces each sequence header with the value from the specified
+% geneTable column. A sequence is matched to a row through the
+% GenBank_protein accession, which is the first token of the original
+% FASTA header. Sequences whose accession is not found in geneTable keep
+% their original header. The numbers of renamed and kept sequences are
+% printed.
 %
 % Parameters
 % ----------
@@ -13,18 +15,19 @@ function processedFaaFile = processProteinFastaFile(faaFile, geneTable, headerCo
 %     Path to the protein FASTA file (.faa) to process.
 % geneTable : char | table
 %     Either a path to a tab-delimited .tsv file produced by getGeneData,
-%     or a MATLAB table variable.  Must contain at least the columns
+%     or a MATLAB table variable. It must contain the columns
 %     'GenBank_protein' and the column named by headerCol.
 % headerCol : char
 %     Name of the geneTable column whose values will replace each FASTA
-%     header (e.g. 'locus_tag', 'gene_name', 'GenBank_protein').
+%     header (for example 'locus_tag', 'gene_name', 'GenBank_protein').
 %
 % Name-Value Arguments
 % --------------------
 % outputDir : char
-%     Directory where the processed FASTA file is saved.  The output file
-%     name is the original base name with '_processed' appended before the
-%     extension (default: current working directory).
+%     Directory where the processed FASTA file is saved. It is created if
+%     missing. The output file name is the original base name with
+%     '_processed' appended before the extension (default: current working
+%     directory).
 %
 % Returns
 % -------
@@ -46,10 +49,11 @@ function processedFaaFile = processProteinFastaFile(faaFile, geneTable, headerCo
 %
 % Notes
 % -----
-% GenBank_protein must contain accessions matching the first token of each
-% FASTA header (after '>').  For prokaryotes this is the protein_id
-% (e.g. WP_012345678.1); for eukaryotes it is the GenBank accession stored
-% in the GFF3 annotation by getGeneData.
+% GenBank_protein must contain accessions equal to the first
+% whitespace-delimited token of each FASTA header (after '>'), for example
+% WP_012345678.1. getGeneData takes the accession from the protein_id
+% attribute of the CDS features of the GFF3 annotation, or from a GenBank
+% entry of the Dbxref attribute when protein_id is empty.
 	
     if nargin < 1 || isempty(faaFile)
         error('processProteinFastaFile:missingInput', ...

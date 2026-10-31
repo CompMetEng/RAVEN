@@ -1,7 +1,13 @@
 function closedModel=closeModel(model)
-% closeModel  Add boundary metabolites and their exchange reactions.
+% closeModel  Add boundary metabolites to exchange reactions.
 %
-% Adds boundary metabolites and their participation in exchange reactions.
+% Adds a compartment "b" (boundary) and a boundary metabolite in it for every reaction
+% that has metabolites on one side only (exchange, sink and demand reactions). The
+% boundary metabolite takes part in the reaction with the coefficient 1 or -1 and is
+% marked as unconstrained in model.unconstrained; all other metabolites are marked as
+% constrained. A reaction with one metabolite gets the boundary metabolite "<id>_b" with
+% the annotation of that metabolite; a reaction with several metabolites gets
+% "<reaction id>_b" without annotation.
 %
 % Parameters
 % ----------

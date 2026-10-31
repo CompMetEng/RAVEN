@@ -7,15 +7,19 @@ function indexes=getIndexes(model, objects, type, varargin)
 %     a model structure.
 % objects : cell or logical or double
 %     either a cell array of IDs, a logical vector with the same number of
-%     elements as metabolites in the model, or a vector of indexes.
+%     elements as objects of the given type in the model, or a vector of
+%     indexes. An error is raised if an ID is not found in the model, except
+%     for type 'metnames', where a name that is not found gives an empty
+%     index vector.
 % type : char
-%     'rxns', 'mets', or 'genes' depending on what to retrieve. 'metnames'
-%     queries metabolite names, while 'metcomps' allows providing specific
+%     'rxns', 'mets' or 'genes', depending on what to retrieve. 'metnames'
+%     queries metabolite names and returns, for each name, the indexes of all
+%     metabolites with that name. 'metcomps' queries specific
 %     metabolites and their compartments in the format metaboliteName[comp].
 %     An error is raised if such a name matches no metabolite, or more than
 %     one.
-%     If a model.ec structure exists (GECKO 3), then also 'ecenzymes',
-%     'ecrxns' and 'ecgenes' are allowed.
+%     If a model.ec structure exists (GECKO 3), 'ecenzymes', 'ecrxns' and
+%     'ecgenes' are also allowed.
 %
 % Name-Value Arguments
 % --------------------
@@ -26,8 +30,8 @@ function indexes=getIndexes(model, objects, type, varargin)
 % Returns
 % -------
 % indexes : logical or double
-%     can be a logical array or a double array depending on the value of
-%     returnLogical.
+%     a logical array if returnLogical is true, otherwise a double array. For
+%     'metnames' with several names, a cell array of double vectors.
 %
 % Notes
 % -----

@@ -1,19 +1,18 @@
 function [model,KOModel]=getModelFromKEGG(varargin)
 % getModelFromKEGG  Load the global KEGG model.
 %
-% Loads the global KEGG reaction/gene model from keggModel.mat. On first
-% use --- when no keggModel.mat is present yet --- the underlying
-% artefacts (the gene-free reference model plus the KO/reaction/organism-
-% gene relational tables, published as a toolbox-assets release) are
-% downloaded and assembled instead, and the result is cached to
-% keggModel.mat so later calls load instantly. The first build can take
-% a while (the organism-gene table covers every KEGG organism) and needs
-% a few hundred MB of disk.
+% Loads the global KEGG reaction and gene model from keggModel.mat. When
+% keggModel.mat is not present, the underlying artefacts (the gene-free
+% reference model plus the KO, reaction and organism-gene relational
+% tables, published as a toolbox-assets release) are downloaded and
+% assembled, and the result is saved to keggModel.mat for later calls. The
+% first build takes longer because the organism-gene table covers every
+% KEGG organism, and needs a few hundred MB of disk.
 %
 % Name-Value Arguments
 % --------------------
 % keepSpontaneous : logical
-%     include reactions labeled as "spontaneous" (default true).
+%     include reactions labelled as "spontaneous" (default true).
 % keepUndefinedStoich : logical
 %     include reactions in the form n A <=> n+1 A (default true).
 % keepIncomplete : logical
@@ -32,9 +31,9 @@ function [model,KOModel]=getModelFromKEGG(varargin)
 %
 % Notes
 % -----
-% The model output can be used as a template for fillGaps. In that case,
-% remove the genes and rxnGeneMat fields before parsing:
-%     model = rmfield(model, 'genes'), etc.
+% The model output can be used as a template for fillGaps after the genes
+% and rxnGeneMat fields are removed:
+%     model = rmfield(model, 'genes') and model = rmfield(model, 'rxnGeneMat').
 %
 % See also
 % --------

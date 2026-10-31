@@ -1,11 +1,10 @@
 function issues=findPotentialErrors(model)
 % findPotentialErrors  Identify reactions with non-DNF GPR rules.
 %
-% Detects grRules that are not in disjunctive normal form (DNF) —
-% i.e. rules where an OR operator is nested inside an AND context.
-% Standard RAVEN format requires DNF: groups of genes that must all be
-% present together (enzyme complexes) are written as conjunctions, and
-% the reaction is catalysed by at least one complex (disjunction of
+% Detects grRules that are not in disjunctive normal form (DNF), that is, rules in
+% which an OR operator is nested inside an AND context. The RAVEN format requires DNF:
+% groups of genes that must all be present together (enzyme complexes) are written as
+% conjunctions, and the reaction is catalysed by at least one complex (a disjunction of
 % conjunctions).
 %
 % Parameters
@@ -16,23 +15,22 @@ function issues=findPotentialErrors(model)
 % Returns
 % -------
 % issues : struct
-%     struct array — one element per problematic reaction — with fields:
+%     struct array with one element per problematic reaction and the fields:
 %
-%     - index  : double — 1-based index into model.rxns.
-%     - rxn    : char   — reaction ID.
-%     - grRule : char   — the problematic grRule string.
-%     - reason : char   — short explanation.
+%     - index  : double, 1-based index into model.rxns.
+%     - rxn    : char, reaction id.
+%     - grRule : char, the problematic grRule string.
+%     - reason : char, short explanation.
 %
 % Notes
 % -----
-% Detection walks the parse tree from parseGrRule rather than searching the
-% raw string, so gene IDs that contain substrings such as "and" or "or" do
-% not cause false positives or negatives.
+% Detection walks the parse tree from parseGrRule, so gene ids that contain substrings
+% such as "and" or "or" are not misread as operators.
 %
 % A rule is non-DNF when an AND operator has an OR anywhere beneath it.
-% Bracketing alone never makes a rule non-DNF: "((G1 and G2) or G3)" and
-% "(G1 or G2) or (G3 and G4)" are both fine.
-% Use standardizeGrRules to attempt automatic repair.
+% Bracketing alone does not make a rule non-DNF: "((G1 and G2) or G3)" and
+% "(G1 or G2) or (G3 and G4)" are both in DNF. standardizeGrRules attempts an
+% automatic repair.
 %
 % Rules that cannot be parsed at all are reported as issues too, with the
 % parser's message as the reason.

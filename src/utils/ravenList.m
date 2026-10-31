@@ -1,20 +1,23 @@
 function msg = ravenList(header, items, trim)
-% ravenList  Format a header and item list for warning() or error().
+% ravenList  Format a header and a list of items for warning() or error().
 %
 % Parameters
 % ----------
 % header : char
 %     message header string.
 % items : cell
-%     cell array of items to list below the header.
+%     cell array of items, listed one per line after the header.
 % trim : logical
-%     cap the list at 10 items (default true).
+%     true to limit the list to 10 lines (default true). When the list has more
+%     than 10 items, the tenth line reads '...and N more' and replaces items
+%     10 to the end, with N the number of replaced items.
 %
 % Returns
 % -------
 % msg : char
-%     header + newline + tab-indented items, ready to pass to warning() or
-%     error() as the format string.
+%     header, a newline, and the items separated by newlines with a tab before
+%     each item. If items is empty, msg is header. Passed to warning() or
+%     error() as an argument after the format '%s'.
 %
 % Examples
 % --------

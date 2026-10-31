@@ -13,9 +13,12 @@ function Z=getFluxZ(solutionsA, solutionsB)
 % Returns
 % -------
 % Z : double
-%     a vector with Z-scores that tells you for each reaction how likely it
-%     is for its flux to have increased (positive sign) or decreased
-%     (negative sign) in the second condition with respect to the first.
+%     a vector with one Z-score per reaction: the difference between the
+%     mean fluxes of solutionsB and solutionsA, divided by the square root
+%     of the sum of their variances. A positive sign indicates an increase
+%     of the flux in the second condition with respect to the first, a
+%     negative sign a decrease. Values are limited to the range -100 to
+%     100.
 %
 % Examples
 % --------

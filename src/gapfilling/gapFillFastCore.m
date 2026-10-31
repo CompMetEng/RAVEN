@@ -2,8 +2,9 @@ function activeRxns = gapFillFastCore(model, coreRxns, epsilon)
 % gapFillFastCore  L1-norm LP subroutine for fastGapFill.
 %
 % Finds the minimum-L1-flux extension of the model that activates all
-% reactions in the core set. Any reaction with non-zero flux in the
-% solution is "consistent" with the core. Used internally by gapFillFastLP.
+% reactions in the core set. Any reaction with a flux of at least
+% epsilon / 2 in the solution is "consistent" with the core. gapFillFastLP
+% calls this function.
 %
 % Based on FASTCORE (Vlassis et al. 2014, PLoS Comput Biol 10:e1003424).
 %
@@ -21,9 +22,10 @@ function activeRxns = gapFillFastCore(model, coreRxns, epsilon)
 % Returns
 % -------
 % activeRxns : logical
-%     logical vector (length numel(model.rxns)) where true indicates the
-%     reaction carries flux in the L1-minimal solution. Empty if the LP is
-%     infeasible (core reactions cannot all carry flux simultaneously).
+%     logical vector (length numel(model.rxns)) where true indicates that the
+%     reaction carries flux in the L1-minimal solution. All elements are
+%     false if the LP is infeasible (the core reactions cannot all carry flux
+%     simultaneously).
 %
 % See also
 % --------

@@ -1,18 +1,17 @@
 function args = parseRAVENargs(rawArgs, spec)
 % parseRAVENargs  Resolve optional arguments passed positionally or by name.
 %
-% Helper that lets a RAVEN function accept its optional arguments either in
-% the traditional positional order, as name-value pairs, or as a mix of
-% leading positional values followed by name-value pairs. The required
-% leading arguments stay explicit in the function signature; the optional
-% tail is collected into varargin and passed here together with a
-% specification of the optional parameters.
+% Helper for RAVEN functions that accept optional arguments in positional
+% order, as name-value pairs, or as leading positional values followed by
+% name-value pairs. The required leading arguments are explicit in the function
+% signature. The optional arguments are collected in varargin and passed to
+% this function together with a specification of the optional parameters.
 %
 % Parameters
 % ----------
 % rawArgs : cell
-%     the varargin of the function, i.e. whatever was supplied after the required
-%     positional arguments.
+%     the varargin of the function, holding the arguments supplied after the
+%     required positional arguments.
 % spec : cell
 %     an N-by-2 or N-by-3 cell array describing the optional parameters, one
 %     per row:
@@ -20,9 +19,9 @@ function args = parseRAVENargs(rawArgs, spec)
 %     - column 1 : parameter name (char).
 %     - column 2 : default value, used when the parameter is not supplied.
 %     - column 3 : optional validator, a function handle that is called with
-%       the resolved value (including the default, when the parameter was not
-%       supplied) and should error on an invalid value, e.g. @mustBeNumeric.
-%       Use [] for no validation.
+%       the resolved value (the default when the parameter was not supplied)
+%       and should error on an invalid value, for example @mustBeNumeric. [] means no
+%       validation.
 %
 % Returns
 % -------
@@ -31,27 +30,27 @@ function args = parseRAVENargs(rawArgs, spec)
 %
 % Notes
 % -----
-% Calling convention is resolved as follows:
+% The calling convention is resolved in these steps:
 %
 %   1. If rawArgs is empty, all parameters take their defaults.
-%   2. The first element in rawArgs that is a string matching a known
-%      parameter name marks position k. Everything before k is treated
-%      as positional (assigned left-to-right by the order in spec).
-%      Everything from k onward must form valid name-value pairs: an even
-%      count where every name-position element is a known parameter name.
-%   3. If no such position exists (no element is a matching string), or the
-%      trailing section from k does not form valid name-value pairs, the
-%      entire rawArgs is treated as positional.
+%   2. The first element in rawArgs that is a string matching a parameter
+%      name (case-insensitive) marks position k. The elements before k are
+%      positional and are assigned in the order of spec. The elements from k
+%      onward must form valid name-value pairs: an even count in which every
+%      name-position element is a parameter name.
+%   3. If no element is a matching string, or the elements from k do not form
+%      valid name-value pairs, all of rawArgs is positional.
 %
-% This means three styles are accepted interchangeably:
+% Three styles are accepted:
 %
 %     f(model, v1, v2)                   % purely positional
 %     f(model, "p1", v1, "p2", v2)       % purely named
 %     f(model, v1, "p2", v2, "p3", v3)   % hybrid: v1 positional, rest named
 %
-% When a positional value could itself be a string that equals a parameter
-% name, use the explicit name-value form for that argument to avoid
-% ambiguity.
+% A positional value that is a string equal to a parameter name is read as a
+% parameter name only when the arguments from there on form valid name-value
+% pairs; otherwise all arguments are positional. The name-value form passes
+% such a value unambiguously.
 %
 % Examples
 % --------
@@ -62,7 +61,7 @@ function args = parseRAVENargs(rawArgs, spec)
 %     fileName = p.fileName;
 %     sortIds  = p.sortIds;
 %
-%     % the caller may use any of these:
+%     % the caller can use any of these:
 %     exportToExcelFormat(model, "model.xlsx", true)              % positional
 %     exportToExcelFormat(model, "sortIds", true)                 % named
 %     exportToExcelFormat(model, "model.xlsx", "sortIds", true)   % hybrid

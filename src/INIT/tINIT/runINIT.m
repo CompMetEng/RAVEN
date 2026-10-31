@@ -1,15 +1,16 @@
 function [outModel, deletedRxns, metProduction, fValue]=runINIT(model,varargin)
 % runINIT  Solve the MILP of the original INIT algorithm.
 %
-% Generates a model using the INIT algorithm, based on proteomics and/or
-% transcriptomics and/or metabolomics and/or metabolic tasks. This function is
-% the actual implementation of the algorithm; see getINITModel for the
+% Generates a model using the INIT algorithm, from proteomics,
+% transcriptomics, metabolomics and metabolic tasks in any combination. This
+% function is the implementation of the algorithm; see getINITModel for the
 % higher-level reconstruction function, and PLoS Comput Biol. 2012;8(5):e1002518
 % for the formulation.
 %
-% ftINIT is the recommended method for context-specific model extraction, and
-% solves a different MILP in ftINITInternalAlg. This function remains
-% supported, and issues a RAVEN:legacyMethod notice once per session, which
+% ftINIT replaces this function for context-specific model extraction and
+% solves a different MILP in ftINITInternalAlg. This function is kept to
+% reproduce models built with the original INIT. It issues a
+% RAVEN:legacyMethod notice once per session, which
 % warning('off','RAVEN:legacyMethod') silences.
 %
 % Parameters
@@ -28,31 +29,35 @@ function [outModel, deletedRxns, metProduction, fValue]=runINIT(model,varargin)
 %     (default []).
 % essentialRxns : cell
 %     cell array of reactions that are essential and that have to be in the
-%     resulting model. This is normally used when fitting a model to task (see
-%     fitTasks) (default []).
+%     resulting model. fitTasks passes the reactions that the tasks require
+%     (default []).
 % prodWeight : double
-%     a score that determines the value of having net-production of
-%     metabolites. This is a way of having a more functional network as it
-%     provides a reason for including bad reactions for connectivity reasons.
-%     This score is for each metabolite, and the sum of these weights and the
-%     scores for the reactions is what is optimized (default 0.5).
+%     a score for each metabolite that has net production. The sum of these
+%     weights and the scores for the reactions is optimised. Net production
+%     of metabolites gives a reason for including reactions with a negative
+%     score for connectivity reasons, which gives a more functional network
+%     (default 0.5).
 % allowExcretion : logical
-%     true if excretion of all metabolites should be allowed. This results in
-%     fewer reactions being considered dead-ends, but all reactions in the
-%     resulting model may not be able to carry flux. If this is "false" then
+%     true if excretion of all metabolites is allowed. This results in
+%     fewer reactions being considered dead-ends, but not every reaction in the
+%     resulting model can carry flux. If this is "false" then
 %     the equality constraints are taken from model.b. If the input model
-%     lacks exchange reactions then this should probably be "true", or a large
-%     proportion of the model would be excluded for connectivity reasons
+%     lacks exchange reactions, set it to true; with false a large part of
+%     the model is excluded for connectivity reasons
 %     (default false).
 % noRevLoops : logical
-%     true if reversible reactions should be constrained to only carry flux in
-%     one direction. This prevents reversible reactions from being wrongly
-%     assigned as connected (the forward and backward reactions can form a loop
-%     and therefore appear connected), but it makes the problem significantly
-%     more computationally intensive to solve (two more integer constraints per
-%     reversible reaction) (default false).
+%     true if reversible reactions are constrained to carry flux in only one
+%     direction. This prevents reversible reactions from being assigned as
+%     connected wrongly (the forward and backward reactions can form a loop
+%     and therefore appear connected). It adds two binary variables per
+%     reversible reaction to the problem, which makes the MILP larger and more
+%     computationally intensive (default false).
 % params : struct
 %     parameter structure for use by optimizeProb.
+% eps : double
+%     the lower flux bound of a reaction that is turned on, which also
+%     applies to the essential reactions (capped by their upper bound)
+%     (default 1).
 %
 % Returns
 % -------
@@ -71,7 +76,7 @@ function [outModel, deletedRxns, metProduction, fValue]=runINIT(model,varargin)
 %     objective value (sum of (the negative of) reaction scores for the
 %     included reactions and prodWeight*number of produced metabolites).
 %
-% See Also
+% See also
 % --------
 % getINITModel, ftINITInternalAlg, ftINIT
 

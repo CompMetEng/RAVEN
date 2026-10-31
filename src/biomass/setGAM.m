@@ -8,11 +8,11 @@ function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 %
 % For every metabolite in the biomass pseudoreaction whose model.metNames
 % entry is in cofactorMetNames, the stoichiometric coefficient is set to
-% ±value preserving the sign of the current coefficient. An error is raised
+% value with the sign of the current coefficient. An error is raised
 % before the model is changed if ngamRxn is given and is not in the model,
 % and if ngamValue is given without ngamRxn (RAVEN:badInput).
-% Yeast-GEM scales ATP, ADP, H2O, H+ and phosphate (with ATP and H2O on the
-% substrate side, ADP / H+ / phosphate on the product side).
+% For yeast-GEM, the cofactors are ATP, ADP, H2O, H+ and phosphate (ATP and
+% H2O are substrates; ADP, H+ and phosphate are products).
 %
 % Parameters
 % ----------
@@ -23,7 +23,8 @@ function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 % biomassRxn : char
 %     Reaction id of the biomass pseudoreaction.
 % cofactorMetNames : cell
-%     Cell array of metabolite NAMES (not IDs) to rescale, e.g.
+%     Cell array of metabolite names (matched against model.metNames, not
+%     metabolite ids) to rescale, for example
 %     {'ATP','ADP','H2O','H+','phosphate'}.
 %
 % Name-Value Arguments
@@ -31,8 +32,8 @@ function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 % ngamRxn : char
 %     NGAM reaction id. Required when ngamValue is supplied.
 % ngamValue : double
-%     NGAM flux to fix. Sets the NGAM reaction's bounds to (ngamValue,
-%     ngamValue).
+%     NGAM flux to fix. Both bounds of the NGAM reaction are set to
+%     ngamValue.
 %
 % Returns
 % -------
@@ -45,8 +46,8 @@ function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 %
 % See also
 % --------
-% fitParameters : estimates such a value from measured fluxes instead of
-%     applying a known one. The two are complementary - fit first, then set.
+% fitParameters : derives such a value from measured fluxes; setGAM then
+%     applies it.
 
 if nargin < 4
     error('setGAM:missingArgs', ...

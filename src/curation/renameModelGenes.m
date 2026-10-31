@@ -1,34 +1,35 @@
 function model = renameModelGenes(model, geneTable, fromCol, toCol)
 % renameModelGenes  Replace gene identifiers in a RAVEN model.
 %
-% Updates model.genes and model.grRules by substituting the identifiers
-% currently used in the model (fromCol) with new identifiers (toCol) from
-% a mapping table produced by getGeneData or supplied manually. After
-% renaming, model.rxnGeneMat is rebuilt automatically.
+% Replaces the identifiers in model.genes and model.grRules that are listed
+% in column fromCol of a mapping table with the identifiers in column
+% toCol. The table is produced by getGeneData or supplied manually. After
+% renaming, model.rxnGeneMat is rebuilt.
 %
 % Parameters
 % ----------
 % model : struct
-%     RAVEN model struct. Must contain model.genes and model.grRules;
-%     model.rxnGeneMat is rebuilt automatically.
+%     RAVEN model struct. It must contain model.genes and model.grRules.
 % geneTable : table | char
-%     Gene-mapping table. Can be supplied as:
-%       (a) A MATLAB table variable already loaded in the workspace, or
-%       (b) A path to a tab-delimited .tsv file — loaded automatically.
+%     Gene-mapping table, either
+%       (a) a MATLAB table variable, or
+%       (b) the path to a tab-delimited .tsv file, which is read with
+%           readtable.
 % fromCol : char
-%     Column in geneTable whose values match the identifiers currently in
-%     model.genes (e.g. 'locus_tag').
+%     Name of the column in geneTable whose values match the identifiers
+%     in model.genes (for example 'locus_tag').
 % toCol : char
-%     Column in geneTable whose values will replace the current
-%     identifiers (e.g. 'gene_name').
+%     Name of the column in geneTable with the new identifiers (for
+%     example 'gene_name').
 %
 % Returns
 % -------
 % model : struct
-%     Updated model struct with:
-%       model.genes      — renamed gene list.
-%       model.grRules    — gene-reaction rules using new identifiers.
-%       model.rxnGeneMat — rebuilt sparse matrix matching the new gene list.
+%     Model struct with these fields changed:
+%
+%     - model.genes : gene list with the new identifiers.
+%     - model.grRules : gene-reaction rules with the new identifiers.
+%     - model.rxnGeneMat : sparse matrix rebuilt for the new gene list.
 %
 % Examples
 % --------
@@ -42,11 +43,17 @@ function model = renameModelGenes(model, geneTable, fromCol, toCol)
 % Notes
 % -----
 % * Genes with no entry in fromCol, or whose toCol value is empty, are left
-%   unchanged; a warning lists them for investigation.
-% * Word-boundary matching prevents partial substitution (e.g. 'gene1'
-%   is not replaced inside 'gene10').
-% * grRules are standardized via standardizeGrRules before and after
-%   renaming to ensure consistent formatting.
+%   unchanged, and a warning lists them.
+% * If a fromCol value occurs in several rows, the first row with a
+%   non-empty toCol value is used. Values are trimmed of surrounding
+%   whitespace.
+% * An identifier is replaced only where it is delimited by whitespace,
+%   parentheses or the start or end of the rule, so 'gene1' is not
+%   replaced inside 'gene10'.
+% * Unnecessary outer parentheses are removed from the grRules and the
+%   grRules are standardised with standardizeGrRules before and after
+%   renaming. A warning is issued when standardizeGrRules reports rules
+%   with potential issues.
 
     if nargin < 1 || isempty(model)
         error('renameModelGenes:missingInput', ...

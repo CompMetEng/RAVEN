@@ -16,7 +16,7 @@ function [blastStructure,suppOrthInfo]=hitsFromSuppOrth(source,organismID,vararg
 % organismID : char
 %     SuppOrth species label of the organism to build a model for: the
 %     FASTA file name without extension, or the --labels value. It becomes
-%     fromId/toId unless speciesToModel maps it to another id.
+%     fromId and toId unless speciesToModel maps it to another id.
 %
 % Name-Value Arguments
 % --------------------

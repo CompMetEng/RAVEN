@@ -1,13 +1,13 @@
 function tbl=readKEGGTable(gzFile)
-% readKEGGTable  Read a gzipped KEGG relational table into a table with
-% every column forced to char cellstr (matching RAVEN's own
-% cell-array-of-char convention, regardless of the caller's default
-% text-import type).
+% readKEGGTable  Read a gzipped KEGG relational table into a table of cellstr columns.
+%
+% Every column is a cellstr (RAVEN's cell-array-of-char convention), whatever the
+% default text-import type of the caller.
 %
 % Parameters
 % ----------
 % gzFile : char
-%     path to the gzipped TSV file, e.g. '.../kegg118_ko_reaction.tsv.gz'.
+%     path to the gzipped TSV file, for example '.../kegg118_ko_reaction.tsv.gz'.
 %
 % Returns
 % -------

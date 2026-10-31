@@ -11,9 +11,10 @@ function model = scaleBiomassFraction(model, biomassConfig, componentName, newVa
 % model : struct
 %     RAVEN model struct.
 % biomassConfig : struct
-%     Struct (see getBiomassFractions).
+%     Biomass layout struct, as described in getBiomassFractions.
 % componentName : char
-%     Component to rescale.
+%     Name of the component to rescale. An error is raised if its current
+%     fraction is 0.
 % newValue : double
 %     Target fraction in g/gDW.
 %
@@ -21,9 +22,9 @@ function model = scaleBiomassFraction(model, biomassConfig, componentName, newVa
 % --------------------
 % balanceOut : char
 %     Second component name to adjust so the biomass total becomes
-%     targetTotal. It must be large enough to absorb the change: an error
-%     is raised if its fraction would become zero or negative, or if it is
-%     0 to begin with. Empty / omit to skip balancing.
+%     targetTotal. An error is raised if its fraction would become zero or
+%     negative, or if it is 0 to begin with. No balancing is done when
+%     empty or omitted (default '').
 % targetTotal : double
 %     Biomass total in g/gDW that balanceOut brings the components to
 %     (default 1).
@@ -31,7 +32,7 @@ function model = scaleBiomassFraction(model, biomassConfig, componentName, newVa
 % Returns
 % -------
 % model : struct
-%     Modified model.
+%     Model with the rescaled pseudoreactions.
 %
 % Examples
 % --------

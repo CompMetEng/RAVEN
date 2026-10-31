@@ -1,39 +1,46 @@
 function geneTable = getGeneData(accession, varargin)
 % getGeneData  Build a gene-mapping table from NCBI genome annotation files.
 %
-% Parses the GFF3 annotation and protein FASTA (.faa) files for a given
-% NCBI genome assembly and produces a table mapping locus tags to gene
-% symbols, protein IDs, and other identifiers. The resulting table can be
-% passed directly to renameModelGenes to update gene identifiers in a
-% RAVEN model. If no local files are provided, downloadGenomeData is
-% called automatically to fetch them.
+% Parses the GFF3 annotation file of an NCBI genome assembly and produces
+% a table mapping locus tags to gene symbols, protein IDs and other
+% identifiers. The table can be passed to renameModelGenes to change gene
+% identifiers in a RAVEN model. If the input is an assembly accession,
+% downloadGenomeData downloads the GFF3 and protein FASTA (.faa) files to
+% downloadDir, unless both are already present there.
 %
 % Parameters
 % ----------
 % accession : char
-%     NCBI genome assembly accession, e.g. 'GCF_000002595.2', or a path to a
-%     local GFF3 annotation file.
+%     NCBI genome assembly accession, for example 'GCF_000002595.2', or the
+%     path to a local GFF3 annotation file. An error is raised if the
+%     input is neither an existing file nor an accession of the form
+%     'GCF_' or 'GCA_' followed by digits and an optional version.
 %
 % Name-Value Arguments
 % --------------------
 % outputFile : char
-%     Path to save the resulting table as a tab-delimited .tsv file. If
-%     omitted or empty, no file is written and the table is only returned.
+%     Path of the tab-delimited .tsv file to which the table is written.
+%     No file is written if omitted or empty (default '').
 % downloadDir : char
-%     Directory where genome files are downloaded if not already present
-%     (default: current working directory).
+%     Directory where genome files are downloaded if not already present.
+%     Only used when the input is an accession (default: current working
+%     directory).
 %
 % Returns
 % -------
 % geneTable : table
-%     MATLAB table with one row per gene containing:
-%       locus_tag       — stable locus identifier (e.g. 'Cre01.g000001')
-%       old_locus_tag   — previous locus identifier when available
-%       GeneID          — NCBI Gene ID (e.g. '5723799')
-%       gene_name       — common gene symbol when available (e.g. 'rbcL')
-%       GenBank_protein — protein accession (e.g. 'XP_001698190.2'), matching
-%                         the protein FASTA headers
-%       UniProt         — UniProt accession from Dbxref when available
+%     MATLAB table with one row per distinct combination of gene and
+%     protein accession (a CDS feature with a protein accession, repeated
+%     CDS rows are merged), with the columns below. A column entry is empty
+%     when the annotation lacks the value.
+%
+%     - locus_tag : locus identifier (for example 'Cre01.g000001')
+%     - old_locus_tag : earlier locus identifier
+%     - GeneID : NCBI Gene ID (for example '5723799')
+%     - gene_name : gene symbol (for example 'rbcL')
+%     - GenBank_protein : protein accession (for example 'XP_001698190.2'),
+%       as in the protein FASTA headers
+%     - UniProt : UniProt accession from the Dbxref attribute of the gene
 %
 % Examples
 % --------
@@ -49,8 +56,9 @@ function geneTable = getGeneData(accession, varargin)
 % Notes
 % -----
 % When outputFile is provided the table is written as UTF-8 encoded
-% tab-delimited text with a header row, compatible with readtable and
-% renameModelGenes. Rows without a locus_tag are silently discarded.
+% tab-delimited text with a header row, which readtable and
+% renameModelGenes can read. A CDS whose gene has no locus_tag, or whose
+% gene feature is missing, gives a row with an empty locus_tag.
 
 	if nargin < 1 || isempty(accession)
         error('getGeneData:missingInput', ...

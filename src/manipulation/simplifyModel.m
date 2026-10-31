@@ -1,9 +1,8 @@
 function [reducedModel, deletedReactions, deletedMetabolites]=simplifyModel(model,varargin)
 % simplifyModel  Simplify a model by deleting reactions and metabolites.
 %
-% This function is for reducing the model size by removing reactions and
-% associated metabolites that cannot carry flux. It can also be used for
-% identifying different types of gaps.
+% Deletes reactions and metabolites that cannot carry flux. The deleted
+% reactions and metabolites identify different types of gaps.
 %
 % Parameters
 % ----------
@@ -13,27 +12,37 @@ function [reducedModel, deletedReactions, deletedMetabolites]=simplifyModel(mode
 % Name-Value Arguments
 % --------------------
 % deleteUnconstrained : logical
-%     delete metabolites marked as unconstrained (default true).
+%     delete metabolites marked as unconstrained in model.unconstrained, and
+%     the compartments that are then left without metabolites (default true).
 % deleteDuplicates : logical
-%     delete all but one of duplicate reactions (default false).
+%     delete all but the first occurrence of duplicate reactions, as found by
+%     contractModel. Duplicate reactions have the same stoichiometry and
+%     reversibility. The kept reaction takes the minimum lower bound, the
+%     maximum upper bound and the maximum objective coefficient of the
+%     duplicates, with a warning when these differ (default false).
 % deleteZeroInterval : logical
 %     delete reactions that are constrained to zero flux (default false).
 % deleteInaccessible : logical
 %     delete dead end reactions (default false).
 % deleteMinMax : logical
-%     delete reactions that cannot carry a flux by trying to
-%     minimize/maximize the flux through that reaction. May be time
-%     consuming (default false).
+%     delete reactions that cannot carry a flux, as determined by haveFlux
+%     under the bounds of the model. The run time grows with the number of
+%     reactions, since haveFlux solves linear programs (default false).
 % groupLinear : logical
-%     group linearly dependent pathways (default false).
+%     group linearly dependent pathways. The grouped model is irreversible,
+%     and all gene information (genes, rxnGeneMat, grRules and the
+%     gene-associated fields) is deleted (default false).
 % constrainReversible : logical
 %     check if there are reversible reactions which can only carry flux in
-%     one direction, and if so constrain them to be irreversible. This
-%     tends to allow for more reactions grouped when using groupLinear
-%     (default false).
+%     one direction, and if so constrain them to be irreversible. A reversible
+%     reaction that is constrained to one direction is not split into two
+%     reactions when groupLinear converts the model to irreversible, so the
+%     metabolites that it connects can meet the condition for grouping (one
+%     producing and one consuming reaction) (default false).
 % reservedRxns : cell
-%     cell array with reaction IDs that are not allowed to be removed
-%     (default none).
+%     cell array with reaction IDs that are not deleted by
+%     deleteZeroInterval, deleteInaccessible and deleteMinMax and not merged
+%     by groupLinear (default none).
 % suppressWarnings : logical
 %     true if warnings should be suppressed (default false).
 %

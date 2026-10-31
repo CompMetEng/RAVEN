@@ -9,28 +9,28 @@ function [solution, hsSolOut]=solveLP(model,varargin)
 % Name-Value Arguments
 % --------------------
 % minFlux : double
-%     determines if a second optimization should be performed in order to
-%     get rid of loops in the flux distribution (default 0):
+%     determines if a second optimisation is performed to remove loops
+%     from the flux distribution (default 0):
 %
-%     - 0 : no such optimization is performed
-%     - 1 : the sum of abs(fluxes) is minimized. This is the fastest way of
-%       getting rid of loops
-%     - 2 : *option is deprecated*
-%     - 3 : the number of fluxes is minimized. This can result in the flux
-%       distributions that are the easiest to interpret. Note that this
-%       optimization can be very slow
+%     - 0 : no second optimisation is performed
+%     - 1 : the sum of abs(fluxes) is minimised with an LP, which does not
+%       need the MILP that the minimisation of the number of fluxes requires
+%     - 2 : deprecated; gives an error
+%     - 3 : the number of fluxes is minimised with getMinNrFluxes, which
+%       solves a MILP and can take long. The result has the fewest active
+%       reactions, which can make the flux distribution easier to interpret
 % params : struct
-%     solver parameters, forwarded to optimizeProb. Mostly obsolete, but the
-%     field "maxRatio" (a number > 1) can be set to improve numerical
-%     conditioning of ill-scaled models: any reaction whose stoichiometric
-%     coefficients span more than maxRatio is transiently split via
-%     auxiliary metabolites before solving, which preserves the feasible
-%     region (and thus the flux distribution of the original reactions). A
-%     common value is 1e6 (no splitting by default).
+%     solver parameters, forwarded to optimizeProb. The field "maxRatio"
+%     (a number > 1) can be set for numerical conditioning of ill-scaled
+%     models: any reaction whose stoichiometric coefficients span more
+%     than maxRatio is split with auxiliary metabolites before solving,
+%     which preserves the feasible region (and thus the flux distribution
+%     of the original reactions). A common value is 1e6. No splitting is done
+%     when maxRatio is absent (default struct with relGap=0.4).
 % hsSol : struct
-%     hot-start solution for the LP solver. This can significantly speed up
-%     the process if many similar optimization problems are solved
-%     iteratively. Only used if minFlux is 0 or 1.
+%     hot-start solution for the LP solver, as hsSolOut from a previous
+%     call. It speeds up the solution when many similar optimisation
+%     problems are solved iteratively. A hsSol with stat<1 is ignored.
 %
 % Returns
 % -------
@@ -39,15 +39,16 @@ function [solution, hsSolOut]=solveLP(model,varargin)
 %
 %     - f : objective value
 %     - x : primal (flux distribution)
-%     - stat : exit flag (1 = optimization terminated successfully, 0 =
+%     - stat : exit flag (1 = optimisation terminated successfully, 0 =
 %       solution is feasible but not necessarily optimal, -1 = no feasible
-%       solution found, -2 = solution found but flux minimization failed)
-%     - msg : string describing the status of the optimization
+%       solution found, -2 = solution found but flux minimisation failed)
+%     - msg : string describing the status of the optimisation
 %     - sPrice : shadow price (only reported if minFlux was 0)
 %     - rCost : reduced cost (only reported if minFlux was 0)
 % hsSolOut : struct
 %     solution to be used as hot-start solution (see the input parameters).
-%     Only used if minFlux is 0 or 1.
+%     Set only if minFlux is 0 or 1, and only when the solver returns a
+%     basis.
 %
 % Examples
 % --------

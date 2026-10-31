@@ -9,7 +9,7 @@ function clauses=grRuleToDNF(rule)
 % ----------
 % rule : char or string or struct
 %     a grRule, or a tree from parseGrRule. A grRule is read by parseGrRule:
-%     genes joined by "and"/"or" in any case or by "&", "&&", "|", "||",
+%     genes joined by "and" or "or" in any case or by "&", "&&", "|", "||",
 %     each operator separated from the gene ids by whitespace or a bracket,
 %     with AND binding tighter than OR.
 %
@@ -27,11 +27,11 @@ function clauses=grRuleToDNF(rule)
 %
 % Gene order within a clause follows the order the genes appear in the rule.
 % Duplicates are not removed: "G1 and G1" stays a two-element clause, since
-% collapsing it would silently rewrite the user's rule.
+% collapsing it would change the rule.
 %
 % The number of clauses is the product of the OR-arities across a complex,
-% so a pathological rule can expand combinatorially. Callers that build one
-% object per clause should check numel(clauses) first.
+% so the number of clauses can grow combinatorially with the rule. A caller
+% that builds one object per clause can check numel(clauses) first.
 %
 % Examples
 % --------

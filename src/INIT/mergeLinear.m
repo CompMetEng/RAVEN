@@ -1,10 +1,10 @@
 function [reducedModel,origRxnIds,groupIds,reversedRxns]=mergeLinear(model, noMergeRxns)
 % mergeLinear
-%   Simplifies a model by merging rxns with linear dependencies. There are two
-%   differences from the function in simplifyModel:
-%   1) Here we return which reactions were merged
-%   2) Here we allow reversible reactions to be merged as well, which will 
-%      probably reduce the size of the model more.
+%   Simplifies a model by merging rxns with linear dependencies. It differs
+%   from the grouping in simplifyModel in two ways:
+%   1) It returns which reactions were merged.
+%   2) It also merges reversible reactions.
+%   The reduced model has no genes and empty grRules.
 %
 %   model                 a model structure
 %   noMergeRxns           Cell array with reaction IDs that are not allowed to be
@@ -17,7 +17,7 @@ function [reducedModel,origRxnIds,groupIds,reversedRxns]=mergeLinear(model, noMe
 %                         in the order of their first reaction in origRxnIds.
 %   reversedRxns          Vector of booleans, saying for each rxn if it is reversed in the combined rxns.
 %
-% Usage: [reducedModel,origRxnIds,groupIds]=mergeLinear(model,noMergeRxns)
+% Usage: [reducedModel,origRxnIds,groupIds,reversedRxns]=mergeLinear(model,noMergeRxns)
 
 
 reducedModel=model;

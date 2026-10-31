@@ -6,20 +6,21 @@ function [I, rxnNames]=getRxnsInComp(model,comp,varargin)
 % model : struct
 %     a model structure.
 % comp : char
-%     string with the compartment id.
+%     the compartment id (case insensitive). An error is thrown if the id
+%     does not match exactly one compartment.
 %
 % Name-Value Arguments
 % --------------------
 % includePartial : logical
-%     true if reactions with metabolites in several compartments (normally
-%     transport reactions) should be included (default false).
+%     true if reactions with metabolites in several compartments (for
+%     example transport reactions) are included (default false).
 %
 % Returns
 % -------
 % I : double
-%     boolean vector of the reactions.
+%     indexes of the reactions in the compartment.
 % rxnNames : cell
-%     the names of the reactions.
+%     the names of these reactions.
 %
 % Examples
 % --------

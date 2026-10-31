@@ -1,10 +1,9 @@
 function removeRavenFromPath()
 % removeRavenFromPath
 %   This function removes all RAVEN directories and subdirectories from the
-%   MATLAB path. This function only removes RAVEN from the MATLAB path, it
-%   does not delete the RAVEN folder itself. If RAVEN was installed as
-%   MATLAB Add-On, the user is prompted to instead uninstall RAVEN via the
-%   Add-On Manager.
+%   MATLAB path and saves the path. The RAVEN folder itself is kept. If RAVEN
+%   is installed as MATLAB Add-On, the function raises an error that
+%   advises uninstalling RAVEN via the Add-On Manager.
 %
 % Usage: removeRavenFromPath()
 

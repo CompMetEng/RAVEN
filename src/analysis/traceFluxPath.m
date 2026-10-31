@@ -5,16 +5,16 @@ function [pathRxns, pathMets, cumFrac] = traceFluxPath(model, fluxes, fromRxn, t
 % network, quantifying what fraction of the source reaction's flux reaches
 % the target. At each metabolite junction the flux is split proportionally
 % among all consuming reactions; the path with the highest cumulative
-% fraction is returned and printed.
+% fraction is returned, and printed if verbose is true.
 %
-% By default the search excludes currency metabolites (ATP, NAD, H2O, etc.)
-% so the returned path represents material (carbon-skeleton) flow rather
-% than cofactor shortcuts. Set traceMaterial=false to disable this.
+% By default the search excludes currency metabolites (for example ATP,
+% NAD, H2O), which makes the returned path follow material flow. The
+% setting traceMaterial=false disables this.
 %
 % Parameters
 % ----------
 % model : struct
-%     RAVEN model structure.
+%     a model structure.
 % fluxes : double
 %     flux vector (length = numel(model.rxns)).
 % fromRxn : char
@@ -25,25 +25,27 @@ function [pathRxns, pathMets, cumFrac] = traceFluxPath(model, fluxes, fromRxn, t
 % Name-Value Arguments
 % --------------------
 % cutoff : double
-%     minimum |flux| for a reaction to be considered flux-carrying
-%     (default 1e-8).
+%     minimum net flux through a metabolite (|S_ij * v_j|) for a consuming
+%     reaction to be considered (default 1e-8).
 % maxHops : double
-%     maximum number of reactions in the path; longer paths are pruned
-%     (default 30).
+%     paths of more than maxHops reactions are not extended further, so a
+%     returned path has at most maxHops + 1 reactions (default 30).
 % verbose : logical
 %     print the path to the command window (default true).
 % traceMaterial : logical
-%     exclude common currency/cofactor metabolites (ATP, ADP, NAD, NADH,
-%     H2O, CoA, Pi, CO2, …) so the path follows material (carbon-skeleton)
-%     flux rather than energy-carrier shortcuts (default true).
+%     exclude common currency and cofactor metabolites (ATP, ADP, NAD, NADH,
+%     H2O, CoA, Pi, CO2 and others); the path then follows material flux
+%     (default true).
 % carbonOnly : logical
 %     additionally require each intermediate metabolite to contain at least
 %     one carbon atom, inferred from model.metFormulas. Drops H+, H2O, Pi,
-%     O2, NH3, CO2 that are not already caught by the currency list.
-%     Silently ignored when model.metFormulas is absent (default false).
+%     O2, NH3, CO2 that are not already caught by the currency list. Ignored
+%     with a warning when model.metFormulas is absent or empty
+%     (default false).
 % excludeMets : cell of char
 %     extra metabolite names or IDs (after stripping compartment suffix) to
-%     exclude, in addition to the built-in currency list (default {}).
+%     exclude, in addition to the built-in currency list (which applies when
+%     traceMaterial is true) (default {}).
 %
 % Returns
 % -------
@@ -53,13 +55,13 @@ function [pathRxns, pathMets, cumFrac] = traceFluxPath(model, fluxes, fromRxn, t
 % pathMets : cell
 %     metabolite IDs at each junction (numel = numel(pathRxns)-1).
 % cumFrac : double
-%     fraction of fromRxn's flux that routes through this exact path
+%     fraction of fromRxn's flux that passes through this exact path
 %     (0 = no path found, 1 = all flux reaches toRxn directly).
 %
 % Examples
 % --------
 %     [p, m, f] = traceFluxPath(model, sol.x, 'PFK', 'ATPS4rpp')
-%     % disable material filter to see all connections including ATP/ADP:
+%     % disable material filter to see all connections including ATP and ADP:
 %     [p, m, f] = traceFluxPath(model, sol.x, 'PFK', 'ATPS4rpp', 'traceMaterial', false)
 %     % add model-specific cofactors to the exclusion list:
 %     [p, m, f] = traceFluxPath(model, sol.x, 'PFK', 'CS', 'excludeMets', {'acetyl-CoA'})
@@ -67,12 +69,12 @@ function [pathRxns, pathMets, cumFrac] = traceFluxPath(model, fluxes, fromRxn, t
 % Notes
 % -----
 % The algorithm follows metabolites in the forward direction only: it
-% traces the metabolites that fromRxn PRODUCES and finds which consuming
+% traces the metabolites that fromRxn produces and finds which consuming
 % reactions eventually reach toRxn. If fromRxn and toRxn are not connected
-% in the forward flux direction (e.g. they are in parallel branches), an
-% empty path is returned. A best-first (greedy) search ensures the
-% highest-fraction path is found efficiently; a visited set prevents
-% revisiting reactions.
+% in the forward flux direction (for example they are in parallel branches), an
+% empty path is returned. A best-first search, which expands the entry with
+% the highest cumulative fraction first, finds the highest-fraction path;
+% a path does not revisit a reaction.
 
 p = parseRAVENargs(varargin, {'cutoff',1e-8; 'maxHops',30; 'verbose',true; ...
     'traceMaterial',true; 'carbonOnly',false; 'excludeMets',{}});

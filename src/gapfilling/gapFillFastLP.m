@@ -1,5 +1,5 @@
 function [addedRxns, newModel, cannotConnect] = gapFillFastLP(model, universalModel, varargin)
-% gapFillFastLP  LP-based gap-filling (fastGapFill / swiftGapFill).
+% gapFillFastLP  LP-based gap-filling (fastGapFill or swiftGapFill).
 %
 % Merges the draft model with a universal reaction database, then for each
 % blocked draft reaction calls an LP subroutine (FASTCORE or SWIFTCORE) to
@@ -15,19 +15,23 @@ function [addedRxns, newModel, cannotConnect] = gapFillFastLP(model, universalMo
 % model : struct
 %     draft RAVEN model to be gap-filled.
 % universalModel : struct
-%     universal reaction database (RAVEN model). The caller is responsible
-%     for building this, e.g. via getKEGGModelForOrganism with broad scope.
+%     universal reaction database (RAVEN model), for example built with
+%     getKEGGModelForOrganism with broad scope.
 %
-% Optional name-value parameters
-% --------------------------------
-% 'epsilon' (default 1e-4)
-%     minimum flux threshold for a reaction to be considered active.
-% 'variant' (default 'fast')
-%     'fast'  — use FASTCORE L1-norm LP (gapFillFastCore)
-%     'swift' — use SWIFTCORE single-LP (gapFillSwiftCore); faster but
-%               stochastic (results may vary between runs/solvers).
-% 'verbose' (default true)
-%     print progress messages.
+% Name-Value Arguments
+% --------------------
+% epsilon : double
+%     minimum flux threshold for a reaction to be considered active
+%     (default 1e-4).
+% variant : char
+%     the LP subroutine (default 'fast'):
+%
+%     - 'fast' : use the FASTCORE L1-norm LP (gapFillFastCore).
+%     - 'swift' : use the SWIFTCORE single LP (gapFillSwiftCore), which
+%       maximises the sum of the non-core fluxes. The LP is degenerate, so
+%       results can vary between runs and solvers.
+% verbose : logical
+%     true to print progress messages (default true).
 %
 % Returns
 % -------
@@ -37,8 +41,8 @@ function [addedRxns, newModel, cannotConnect] = gapFillFastLP(model, universalMo
 % newModel : struct
 %     copy of model with addedRxns incorporated.
 % cannotConnect : cell
-%     blocked draft reaction IDs that remain blocked even after augmenting
-%     with the full universalModel (cannot be rescued by the database).
+%     IDs of blocked draft reactions that remain blocked after merging with
+%     the full universalModel (the database cannot rescue them).
 %
 % See also
 % --------

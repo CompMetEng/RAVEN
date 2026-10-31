@@ -1,10 +1,10 @@
 function writeYAMLmodel(model,varargin)
-% writeYAMLmodel  Write a model to a yaml file in the standard cobra-format
-% !!omap structure.
+% writeYAMLmodel  Write a model to a YAML file in the cobra-format !!omap structure.
 %
 % The format uses the standard !!omap layout, extended with RAVEN-only
 % top-level per-entry keys (inchis, deltaG, metFrom, rxnFrom, references,
-% confidence_score, protein) and the GECKO ec-rxns / ec-enzymes sections.
+% confidence_score, protein, notes) and the GECKO ec-rxns and ec-enzymes
+% sections.
 % Reaction EC numbers are written inside the `annotation` block as
 % `ec-code`, not as a top-level reaction key.
 %
@@ -16,12 +16,11 @@ function writeYAMLmodel(model,varargin)
 % Name-Value Arguments
 % --------------------
 % fileName : char
-%     name that the file will have. A dialog window will open if no file
-%     name is specified.
+%     name of the file. A dialog window opens if no file name is specified.
 % sortIds : logical
-%     if metabolites, reactions, genes and compartments should be sorted
-%     alphabetically by their identifier, otherwise they are kept in their
-%     original order (default false).
+%     true to sort metabolites, reactions, genes and compartments
+%     alphabetically by their identifier. If false, they keep their original
+%     order (default false).
 %
 % Examples
 % --------

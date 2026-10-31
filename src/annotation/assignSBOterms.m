@@ -1,26 +1,26 @@
 function model = assignSBOterms(model, varargin)
 % assignSBOterms  Assign SBO terms to metabolites and reactions.
 %
-% Assign SBO terms to metabolites and reactions following a generic rule
-% set. The MATLAB counterpart of yeast-GEM's legacy addSBOterms;
-% organism-agnostic, parameterised entirely by opts.
+% Assigns SBO terms to metabolites and reactions following a generic rule
+% set that opts parameterises. The function is the MATLAB counterpart of
+% yeast-GEM's addSBOterms.
 %
-% SBO is written via editMiriam(..., 'fill') so pre-existing SBO
-% annotations are preserved. The terms are stored in model.metMiriams and
+% SBO is written via editMiriam(..., 'fill'), which preserves pre-existing
+% SBO annotations. The terms are stored in model.metMiriams and
 % model.rxnMiriams under the namespace 'sbo' (there is no separate SBO
-% field); read them with extractMiriam(model.rxnMiriams, 'sbo').
+% field); they can be read with extractMiriam(model.rxnMiriams, 'sbo').
 % exportModel writes them as the SBML sboTerm attribute.
 %
 % Parameters
 % ----------
 % model : struct
-%     RAVEN model struct.
+%     a model structure.
 %
 % Name-Value Arguments
 % --------------------
 % opts : struct
-%     Struct with any of the following fields. Missing fields take the
-%     defaults shown:
+%     structure with any of the following fields. Missing or empty fields
+%     take the defaults shown:
 %
 %     - biomassMetNames : {'biomass','DNA','RNA','protein','carbohydrate',
 %       'lipid','cofactor','ion'}
@@ -28,15 +28,19 @@ function model = assignSBOterms(model, varargin)
 %     - biomassRxnName : 'biomass pseudoreaction'
 %     - ngamRxnName : 'non-growth associated maintenance reaction'
 %     - pseudoreactionSubstrings : {'pseudoreaction','SLIME rxn'}
-%     - onlyLastReactionForPseudo : false. yeast-GEM bug-compat flag that
-%       replicates the legacy `for i=numel(...)` typo (pseudoreaction SBOs
-%       applied only to the last reaction). Off by default; turn ON for
-%       byte-equivalent yeast-GEM output.
+%     - onlyLastReactionForPseudo : false. If true, the biomass, NGAM and
+%       pseudoreaction terms are applied only to the last reaction of the
+%       model. This reproduces yeast-GEM's addSBOterms.m, which applies the
+%       pseudoreaction rule to the last reaction only, because of a typo in
+%       the loop header (for i=numel(...)).
+%     - transportRxnIdxs : indexes of the transport reactions (default:
+%       the reactions identified by getTransportRxns).
 %
 % Returns
 % -------
 % model : struct
-%     Modified model.
+%     model structure with the SBO terms added to model.metMiriams and
+%     model.rxnMiriams.
 %
 % Examples
 % --------
@@ -47,22 +51,21 @@ function model = assignSBOterms(model, varargin)
 % -----
 % Metabolites:
 %
-%     SBO:0000649 (Biomass) when met.name is in opts.biomassMetNames, or
-%     ends with any of opts.biomassMetSuffixes. Otherwise SBO:0000247
-%     (Simple chemical).
+%     SBO:0000649 (Biomass) when the metabolite name is in
+%     opts.biomassMetNames, or ends with any of opts.biomassMetSuffixes.
+%     Otherwise SBO:0000247 (Simple chemical).
 %
 % Reactions (default → override → pseudoreaction override):
 %
 %     SBO:0000176 (Metabolic reaction) default.
 %     Single-reactant reactions become:
 %         SBO:0000627 (exchange) if the lone metabolite is extracellular
-%             (compartment 'e' or compartment name containing
-%             'extracellular'),
+%             (compartment 'e' or compartment name 'extracellular'),
 %         SBO:0000632 (sink) if coef < 0,
 %         SBO:0000628 (demand) otherwise.
-%     Transport reactions (detected by opts.transportDetector or the
-%         default heuristic: same metName in ≥ 2 compartments in a single
-%         reaction) → SBO:0000655.
+%     Transport reactions (opts.transportRxnIdxs or, by default, the
+%         reactions identified by getTransportRxns: the same metabolite
+%         name more than once in a single reaction) → SBO:0000655.
 %     Reactions whose name matches opts.biomassRxnName → SBO:0000629.
 %     Reactions whose name matches opts.ngamRxnName → SBO:0000630.
 %     Reactions whose name contains any of opts.pseudoreactionSubstrings

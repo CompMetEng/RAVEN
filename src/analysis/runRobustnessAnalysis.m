@@ -1,8 +1,9 @@
 function [controlFlux, objFlux] = runRobustnessAnalysis(model, controlRxn, varargin)
 % runRobustnessAnalysis  Perform robustness analysis for a reaction and objective.
 %
-% Performs robustness analysis for a reaction of interest and an objective
-% of interest.
+% Varies the flux of a reaction of interest from its minimum to its maximum
+% and calculates the optimal value of an objective of interest at each
+% flux.
 %
 % Parameters
 % ----------
@@ -14,12 +15,13 @@ function [controlFlux, objFlux] = runRobustnessAnalysis(model, controlRxn, varar
 % Name-Value Arguments
 % --------------------
 % nPoints : double
-%     number of points to show on plot (default 20).
+%     number of control flux values (default 20).
 % objRxn : char
-%     reaction identifier of objective to be maximized (default uses the
+%     reaction identifier of the objective to be maximised (default: the
 %     objective defined in the model).
 % plotRedCost : logical
-%     whether reduced cost should also be plotted (default false).
+%     whether the reduced cost of the control reaction is also plotted on
+%     the right axis (default false).
 %
 % Returns
 % -------

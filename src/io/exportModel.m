@@ -9,18 +9,18 @@ function exportModel(model,varargin)
 % Name-Value Arguments
 % --------------------
 % fileName : char
-%     filename to export the model to. A dialog window will open if no file
-%     name is specified.
+%     file name to export the model to. A dialog window opens if no file name
+%     is specified.
 % neverPrefix : logical
 %     true if prefixes are never added to identifiers, even if they start
-%     with e.g. digits. This might result in invalid SBML files (default
-%     false).
+%     with digits. This can result in invalid SBML files (default false).
 % supressWarnings : logical
-%     true if warnings should be suppressed. This might result in invalid
-%     SBML files, as no checks are performed (default false).
+%     true if warnings should be suppressed. The check of the model
+%     structure (checkModelStruct) is skipped, which can result in invalid
+%     SBML files (default false).
 % sortIds : logical
-%     whether metabolites, reactions and genes should be sorted
-%     alphabetically by their identifiers (default false).
+%     true to sort metabolites, reactions and genes alphabetically by their
+%     identifiers (default false).
 %
 % Examples
 % --------

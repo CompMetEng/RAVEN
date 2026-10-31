@@ -1,17 +1,18 @@
 function [ravenPath, prevDir] = findRAVENroot()
 % findRAVENroot
 %   Finds the root of the RAVEN directory by searching for the path to
-%   version.txt. Can also record the current directory, in case a function will
-%   use the ravenPath to navigate to a precise folder, and it should return to
-%   the previous directory afterwards. See e.g. optimizeProb calling glpk.
+%   version.txt. Can also record the current directory, for functions that use
+%   the ravenPath to navigate to a precise folder and return to the previous
+%   directory afterwards. See, for example, optimizeProb calling glpk.
 %
-%   The resolved path is cached for the rest of the MATLAB session: this is
-%   called on every solver invocation, and re-reading the RAVEN.ravenPath
-%   preference from disk every time is both wasteful and, under the sustained
-%   call volume of a full test run, an intermittent source of failures from
-%   MATLAB's own preference-file I/O. Run `clear findRAVENroot` after
-%   changing that preference (checkRaven does this already) to pick
-%   up the change without restarting MATLAB.
+%   The RAVEN.ravenPath preference is used if it points to a directory with a
+%   version.txt file. Otherwise the search starts at the location of this
+%   function file and moves up the directory tree.
+%
+%   The resolved path is cached for the rest of the MATLAB session, so the
+%   preference is read once although the function is called on every solver
+%   invocation. `clear findRAVENroot` drops the cached path after a change of
+%   the preference (checkRaven does this) without a restart of MATLAB.
 
 persistent cachedPath
 prevDir = pwd();

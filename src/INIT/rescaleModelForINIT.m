@@ -1,21 +1,24 @@
 function model=rescaleModelForINIT(model, varargin)
 % rescaleModelForINIT  Rescale a model to avoid large stoichiometric differences.
 %
-% Rescales the MILP problem in ftINIT to avoid large differences in flux
-% magnitudes between reactions. Such differences cause among other things
-% difficulties regarding tolerances for integer variables. For now it just
-% scales down all reactions with high stoichiometric coefficients.
+% Rescales the stoichiometric matrix for the MILP problem in ftINIT to reduce
+% differences in flux magnitudes between reactions. Such differences cause,
+% among other effects, difficulties with the tolerances for integer variables.
+% In each reaction, each coefficient with an absolute value above
+% maxStoichDiff times the smallest absolute coefficient of the reaction is
+% set to that limit (keeping its sign). The reaction is then multiplied by a
+% factor that sets the mean absolute coefficient to 1.
 %
 % Parameters
 % ----------
 % model : struct
-%     the model to be modified (input and output).
+%     a model structure.
 %
 % Name-Value Arguments
 % --------------------
 % maxStoichDiff : double
-%     all reactions with a stoichiometric coefficient higher than this will be
-%     scaled down (default 25).
+%     largest allowed ratio between the largest and the smallest absolute
+%     stoichiometric coefficient in a reaction (default 25).
 %
 % Returns
 % -------

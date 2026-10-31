@@ -3,10 +3,10 @@ function compStruct = compareMultipleModels(models,varargin)
 %
 % Compares two or more models on overlap of reactions, metabolites, genes,
 % EC-codes, metabolite names and reaction equations (with and without
-% compartmentalization), and on high-dimensional comparisons in the
-% reaction-space: subsystem utilization, structural similarity, an optional
-% low-dimensional structural projection, and an optional functional
-% (task-based) comparison.
+% compartmentalisation), and on high-dimensional comparisons of the
+% reaction content: subsystem coverage, structural similarity, a
+% low-dimensional structural projection (skipped when neither tsne nor
+% mdscale is available), and an optional functional (task-based) comparison.
 %
 % Parameters
 % ----------
@@ -16,18 +16,19 @@ function compStruct = compareMultipleModels(models,varargin)
 % Name-Value Arguments
 % --------------------
 % printResults : logical
-%     true if the results should be printed on the screen (default false).
+%     true to print the results to the command window (default false).
 % plotResults : logical
-%     true if the results should be plotted (default false).
+%     true to plot the results (default false).
 % groupVector : double or cell
-%     numeric vector or cell array for grouping similar models, i.e. by
-%     tissue (default all models ungrouped).
+%     numeric vector or cell array that assigns each model to a group, for
+%     example by tissue. The groups colour the points of the structural
+%     projection plot (default [], no grouping).
 % funcCompare : logical
-%     should a functional comparison be run (default false).
+%     true to run the functional comparison, which requires taskFile
+%     (default false).
 % taskFile : char
-%     string containing the name of the task file to use for the functional
-%     comparison (should be an .xls or .xlsx file, required for functional
-%     comparison).
+%     name of the task file for the functional comparison, in a format that
+%     parseTaskList reads. Required when funcCompare is true.
 %
 % Returns
 % -------
@@ -40,24 +41,28 @@ function compStruct = compareMultipleModels(models,varargin)
 %       row indicates which models are included in the comparison) and
 %       nElements (vector with the number of elements for each comparison).
 %       "equ" are the reaction equations after sorting and "uEqu" are the
-%       equations when not taking compartmentalization into account. These
-%       are the only fields of the seven that use EC-code, metabolite name or
-%       reaction equation to compare models that do not share an id
-%       convention; the rest compare by identifier only.
+%       equations without compartments. The fields rxns, mets and genes
+%       compare identifiers; eccodes, metNames, equ and uEqu compare EC
+%       codes, metabolite names and reaction equations, which allows
+%       overlap between models that use different identifiers.
 %     - subsystems : substructure containing subsystem information, with
-%       fields matrix (matrix with comparison of number of rxns per
-%       subsystem) and ID (vector consisting of names of all subsystems)
+%       fields matrix (number of reactions per subsystem, subsystems in rows
+%       and models in columns) and ID (cell array with the names of all
+%       subsystems). Only the first subsystem of each reaction is counted.
+%       The field is absent when a model lacks the subSystems field.
 %     - reactions : substructure containing reaction information, with
-%       fields matrix (binary matrix composed of reactions (rows) in each
-%       model (column), used as the input for the model comparisons) and IDs
+%       fields matrix (binary matrix with reactions in rows and models in
+%       columns, used as the input for the model comparisons) and IDs
 %       (list of the reactions contained in the reaction matrix)
 %     - structComp : matrix with pairwise comparisons of model structure
-%       based on (1-Hamming distance) between models
-%     - structCompMap : matrix with 3D tSNE (or MDS) mapping of model
-%       structures based on Hamming distances
+%       based on (1 - Hamming distance) between models
+%     - structCompMap : matrix with the 3D tSNE (or MDS) mapping of model
+%       structures based on Hamming distances. It is empty when neither
+%       tsne nor mdscale is available.
 %     - funcComp : substructure containing function comparison results, with
-%       fields matrix (matrix with PASS / FAIL (1 / 0) values for each task)
-%       and tasks (vector containing names of all tasks)
+%       fields matrix (1 for a passed task and 0 for a failed task, tasks in
+%       rows and models in columns) and tasks (the descriptions of all
+%       tasks). It is present only when funcCompare is true.
 %
 % Examples
 % --------
@@ -71,9 +76,8 @@ function compStruct = compareMultipleModels(models,varargin)
 %
 % See also
 % --------
-% diffModels : takes exactly two models and reports the differing *values*
-%     (stoichiometry, bounds, grRules), where this reports overlap counts,
-%     similarity and clustering.
+% diffModels : reports the differing values (stoichiometry, bounds, grRules)
+%     between two models.
 
 %% Set up input defaults
 p=parseRAVENargs(varargin, {'printResults',false; 'plotResults',false; 'groupVector',[]; 'funcCompare',false; 'taskFile',[]});
@@ -429,10 +433,11 @@ function h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_
 %
 % clust_dist  Distance metric to be used for clustering, ignored if
 %             clust_dim is "none". Options are the same as those for
-%             distance in, e.g., PDIST ("euclidean", "hamming", etc.).
+%             distance in pdist (for example "euclidean", "hamming" and
+%             other metrics).
 %             (DEFAULT = "euclidean")
 %
-% col_map     Colormap, provided as string (e.g., "parula", "hot", "etc.")
+% col_map     Colormap, provided as string (for example "parula" or "hot")
 %             or an Nx3 RGB matrix of N colors.
 %             (DEFAULT = "hot")
 %

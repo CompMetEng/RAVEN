@@ -1,19 +1,21 @@
 function newModel=ravenCobraWrapper(model)
 % ravenCobraWrapper  Convert between RAVEN and COBRA structures.
 %
-% Recognises a COBRA structure by checking for the field 'rules', found
-% only in a COBRA Toolbox structure. If the COBRA model also has a grRules
-% field, that is used instead of parsing rules.
+% A structure with the field 'rules' is treated as a COBRA Toolbox
+% structure and converted to RAVEN; a structure without it is treated as a
+% RAVEN structure and converted to COBRA. If a COBRA structure also has a
+% grRules field, that field is used and rules is not parsed.
 %
 % Parameters
 % ----------
 % model : struct
-%     a RAVEN/COBRA-compatible model structure.
+%     a RAVEN or COBRA model structure.
 %
 % Returns
 % -------
 % newModel : struct
-%     a COBRA/RAVEN-compatible model structure.
+%     the model structure in the other format: COBRA for a RAVEN input and
+%     RAVEN for a COBRA input.
 %
 % Examples
 % --------
@@ -24,17 +26,18 @@ function newModel=ravenCobraWrapper(model)
 % During the RAVEN -> COBRA -> RAVEN conversion cycle the following fields
 % are lost: annotation, compOutside, compMiriams, rxnComps, geneComps,
 % unconstrained. Boundary metabolites are lost, because the COBRA
-% structure does not involve boundary metabolites, so they are removed
-% using simplifyModel before RAVEN -> COBRA conversion. The field 'rev' is
-% also partially lost, but during COBRA -> RAVEN conversion it is
-% reconstructed based on lower bound reaction values.
+% structure has no boundary metabolites, and are removed using
+% simplifyModel before the RAVEN -> COBRA conversion. The field 'rev' is
+% also partially lost; during the COBRA -> RAVEN conversion it is
+% reconstructed from the lower bounds (a reaction is reversible if its
+% lower bound is below zero).
 %
 % During the COBRA -> RAVEN -> COBRA conversion cycle the following fields
 % are lost: geneEntrezID, modelVersion, proteins.
 %
 % The information about mandatory RAVEN fields was taken from the
 % checkModelStruct function, whereas the corresponding information about
-% COBRA fields was fetched from the verifyModel function.
+% COBRA fields was taken from the verifyModel function.
 
 if isfield(model,'rules')
     isRaven=false;
