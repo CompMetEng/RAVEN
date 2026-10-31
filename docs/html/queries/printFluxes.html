@@ -74,8 +74,8 @@
 
  Examples
  --------
-     printFluxes(model, fluxes, onlyExchange, cutOffFlux, outputFile, ...
-                 outputString, metaboliteList);</pre></div>
+     printFluxes(model, fluxes, 'onlyExchange', false, 'cutOffFlux', 10^-6, ...
+                 'outputFile', 'fluxes.txt', 'metaboliteList', {'glucose'});</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -138,8 +138,8 @@ This function is called by:
 0046 <span class="comment">%</span>
 0047 <span class="comment">% Examples</span>
 0048 <span class="comment">% --------</span>
-0049 <span class="comment">%     printFluxes(model, fluxes, onlyExchange, cutOffFlux, outputFile, ...</span>
-0050 <span class="comment">%                 outputString, metaboliteList);</span>
+0049 <span class="comment">%     printFluxes(model, fluxes, 'onlyExchange', false, 'cutOffFlux', 10^-6, ...</span>
+0050 <span class="comment">%                 'outputFile', 'fluxes.txt', 'metaboliteList', {'glucose'});</span>
 0051 
 0052 p=parseRAVENargs(varargin, {<span class="string">'onlyExchange'</span>,true; <span class="string">'cutOffFlux'</span>,10^-8; <span class="string">'outputFile'</span>,[]; <span class="string">'outputString'</span>,[]; <span class="string">'metaboliteList'</span>,{}});
 0053 onlyExchange=p.onlyExchange;

@@ -93,8 +93,8 @@
 
  Examples
  --------
-     [outModel, addedRxns]=fitTasks(model,refModel,inputFile,printOutput,...
-         rxnScores,taskStructure,params);</pre></div>
+     [outModel, addedRxns, failedTasks]=fitTasks(model,refModel,inputFile,...
+         'printOutput',false,'rxnScores',rxnScores,'params',params);</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -178,8 +178,8 @@ This function is called by:
 0065 <span class="comment">%</span>
 0066 <span class="comment">% Examples</span>
 0067 <span class="comment">% --------</span>
-0068 <span class="comment">%     [outModel, addedRxns]=fitTasks(model,refModel,inputFile,printOutput,...</span>
-0069 <span class="comment">%         rxnScores,taskStructure,params);</span>
+0068 <span class="comment">%     [outModel, addedRxns, failedTasks]=fitTasks(model,refModel,inputFile,...</span>
+0069 <span class="comment">%         'printOutput',false,'rxnScores',rxnScores,'params',params);</span>
 0070 
 0071 p=parseRAVENargs(varargin, {<span class="string">'printOutput'</span>,true; <span class="keyword">...</span>
 0072     <span class="string">'rxnScores'</span>,[]; <span class="keyword">...</span>

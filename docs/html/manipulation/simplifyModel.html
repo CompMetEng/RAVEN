@@ -197,257 +197,258 @@ This function is called by:
 0090 <span class="keyword">end</span>
 0091 
 0092 <span class="keyword">if</span> deleteDuplicates==true
-0093     <span class="comment">%Delete all but the last occurrence of duplicate reactions. The</span>
-0094     <span class="comment">%reactions must have the same bounds, reversibility, and objective</span>
-0095     <span class="comment">%coefficient to be regarded as duplicate</span>
-0096     [reducedModel, rxnsToDelete, ~]=<a href="contractModel.html" class="code" title="function [reducedModel, removedRxns, indexedDuplicateRxns]=contractModel(model,varargin)">contractModel</a>(reducedModel);
-0097     deletedReactions=[deletedReactions; rxnsToDelete];
-0098 <span class="keyword">end</span>
-0099 
-0100 <span class="keyword">if</span> deleteZeroInterval==true
-0101     <span class="comment">%Find all reactions where both LB and UB are 0</span>
-0102     zeroIntervalReactions=and(reducedModel.lb==0,reducedModel.ub==0);
-0103     
-0104     rxnsToDelete=setdiff(reducedModel.rxns(zeroIntervalReactions),reservedRxns);
-0105     deletedReactions=[deletedReactions; rxnsToDelete];
-0106     
-0107     <span class="comment">%Remove reactions</span>
-0108     reducedModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,rxnsToDelete);
-0109     
-0110     <span class="comment">%Find metabolites that no longer are used and delete them</span>
-0111     notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(reducedModel);
-0112     deletedMetabolites=[deletedMetabolites;reducedModel.mets(notInUse)];
-0113     
-0114     <span class="comment">%Remove metabolites</span>
-0115     reducedModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(reducedModel,notInUse);
-0116 <span class="keyword">end</span>
-0117 
-0118 <span class="keyword">if</span> deleteInaccessible==true
-0119     <span class="comment">%Print a warning if exchange metabolites have not been deleted yet. This</span>
-0120     <span class="comment">%often means that the only allowed products are the metabolites that</span>
-0121     <span class="comment">%are taken up be the system</span>
-0122     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'unconstrained'</span>) &amp;&amp; suppressWarnings==false
-0123         EM=<span class="string">'Removing dead-end reactions before removing exchange metabolites'</span>;
-0124         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
-0125     <span class="keyword">end</span>
-0126     
-0127     <span class="keyword">while</span> true
-0128         <span class="comment">%Find all metabolites that are only reactants or only products.</span>
-0129         <span class="comment">%Delete those metabolites and reactions. This is done until no more</span>
-0130         <span class="comment">%such reactions are found</span>
-0131         
-0132         <span class="comment">%Construct a stoichiometric matrix where all reactions are written</span>
-0133         <span class="comment">%as reversible</span>
-0134         
-0135         <span class="comment">%Add fake exchange reactions if model.b~=0</span>
-0136         in=any(reducedModel.b&lt;0,2);
-0137         out=any(reducedModel.b&gt;0,2);
-0138         I=speye(numel(reducedModel.mets));
-0139         revS=[reducedModel.S,reducedModel.S(:,reducedModel.lb&lt;0)*-1 I(:,in) I(:,out)*-1];
-0140         
-0141         metUsage=sum(abs(revS')&gt;0);
-0142         onlyProducts=sum(revS'&gt;0) == metUsage;
-0143         onlyReactants=sum(revS'&lt;0) == metUsage;
-0144         
-0145         <span class="comment">%Also remove metabolites that only participate in one reversible</span>
-0146         <span class="comment">%reaction Do not remove the ones in one reversible reaction if is</span>
-0147         <span class="comment">%also has a non-zero coefficient in model.b</span>
-0148         notInUse=onlyProducts | onlyReactants | (sum(abs(reducedModel.S')&gt;0)&lt;=1 &amp; (~in &amp; ~out)');
-0149         deletedRxn=false;
-0150         <span class="keyword">if</span> any(notInUse)
-0151             <span class="comment">%Find their corresponding reactions</span>
-0152             rxnsNotInUse=sum(abs(reducedModel.S(notInUse,:))&gt;0,1)&gt;0;
-0153             rxnsToDelete=setdiff(reducedModel.rxns(rxnsNotInUse),reservedRxns);
-0154             deletedReactions=[deletedReactions; rxnsToDelete];
-0155             
-0156             <span class="comment">%Remove reactions</span>
-0157             reducedModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,rxnsToDelete);
-0158             
-0159             <span class="comment">%Remove metabolites. Recalculate since it could be that some</span>
-0160             <span class="comment">%cannot be deleted due to reserved rxns</span>
-0161             notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(reducedModel);
-0162             deletedMetabolites=[deletedMetabolites; reducedModel.mets(notInUse)];
-0163             reducedModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(reducedModel,notInUse);
-0164             
-0165             <span class="comment">%It could happen that it just finds reserved reactions and gets</span>
-0166             <span class="comment">%stuck</span>
-0167             <span class="keyword">if</span> ~isempty(rxnsToDelete)
-0168                 deletedRxn=true;
-0169             <span class="keyword">end</span>
-0170         <span class="keyword">else</span>
-0171             <span class="keyword">break</span>;
-0172         <span class="keyword">end</span>
-0173         <span class="keyword">if</span> deletedRxn==false
-0174             <span class="keyword">break</span>;
-0175         <span class="keyword">end</span>
-0176     <span class="keyword">end</span>
-0177 <span class="keyword">end</span>
-0178 
-0179 <span class="keyword">if</span> deleteMinMax==true
-0180     <span class="comment">%Get reactions that cannot carry fluxes. This should be done</span>
-0181     <span class="comment">%algebraically if possible</span>
-0182     I=~haveFlux(reducedModel);
-0183     
-0184     <span class="comment">%Remove reactions</span>
-0185     rxnsToDelete=setdiff(reducedModel.rxns(I),reservedRxns);
-0186     deletedReactions=[deletedReactions; rxnsToDelete];
-0187     reducedModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,rxnsToDelete);
-0188     
-0189     <span class="comment">%Remove metabolites</span>
-0190     notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(reducedModel);
-0191     deletedMetabolites=[deletedMetabolites; reducedModel.mets(notInUse)];
-0192     reducedModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(reducedModel,notInUse);
-0193 <span class="keyword">end</span>
-0194 
-0195 <span class="keyword">if</span> constrainReversible==true
-0196     revs=find(reducedModel.rev);
-0197     <span class="comment">%getAllowedBounds treats an empty reaction list as all reactions</span>
-0198     <span class="keyword">if</span> ~isempty(revs)
-0199         [I,J]=getAllowedBounds(reducedModel,revs);
-0200     
-0201         I=abs(I);
-0202         J=abs(J);
-0203     
-0204         <span class="comment">%Get the &quot;small&quot; values</span>
-0205         K=I&lt;10^-10;
-0206         L=J&lt;10^-10;
-0207     
-0208         <span class="comment">%Keep the values where only one direction is zero (small)</span>
-0209         I(K==L)=[];
-0210         J(K==L)=[];
-0211         revs(K==L)=[];
-0212     
-0213         <span class="comment">%Change the reversibility of the remaining reactions</span>
-0214         reducedModel.rev(revs(J&gt;10^-10))=0; <span class="comment">%Ignore reverse direction</span>
-0215         reducedModel.lb(revs(J&gt;10^-10))=0;
-0216     
-0217         toSwitch=revs(I&gt;10^-10);
-0218         reducedModel.rev(toSwitch)=0; <span class="comment">%Change directionality</span>
-0219         reducedModel.ub(toSwitch)=reducedModel.lb(toSwitch)*-1;
-0220         reducedModel.lb(toSwitch)=0;
-0221         reducedModel.S(:,toSwitch)=reducedModel.S(:,toSwitch).*-1;
-0222         reducedModel.c(toSwitch)=reducedModel.c(toSwitch)*-1;
-0223     <span class="keyword">end</span>
-0224 <span class="keyword">end</span>
-0225 <span class="keyword">if</span> groupLinear==true
-0226     <span class="keyword">if</span>  suppressWarnings==false
-0227         fprintf(<span class="string">'NOTE: You have chosen to group linear reactions. This option does not keep track of gene/reaction associations when reactions are merged. Deleting all gene information\n'</span>);
-0228     <span class="keyword">end</span>
-0229     
-0230     reducedModel.genes={};
-0231     reducedModel.rxnGeneMat=sparse(numel(reducedModel.rxns),0);
-0232     reducedModel.grRules(:)={<span class="string">''</span>};
-0233     
-0234     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneShortNames'</span>)
-0235         reducedModel.geneShortNames={};
-0236     <span class="keyword">end</span>
-0237     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'proteins'</span>)
-0238         reducedModel.proteins={};
-0239     <span class="keyword">end</span>
-0240     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneMiriams'</span>)
-0241         reducedModel.geneMiriams={};
-0242     <span class="keyword">end</span>
-0243     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneComps'</span>)
-0244         reducedModel.geneComps=[];
-0245     <span class="keyword">end</span>
-0246     
-0247     <span class="comment">%Convert the model to irreversible</span>
-0248     irrevModel=<a href="convertToIrrev.html" class="code" title="function [irrevModel,matchRev,rev2irrev,irrev2rev]=convertToIrrev(model,varargin)">convertToIrrev</a>(reducedModel);
-0249     
-0250     <span class="comment">%Loop through and iteratively group linear reactions</span>
-0251     <span class="keyword">while</span> 1
-0252         <span class="comment">%Get the banned reaction indexes. Note that the indexes will change</span>
-0253         <span class="comment">%in each iteration, but the names will not as they will not be merged</span>
-0254         <span class="comment">%with any other reaction</span>
-0255         bannedIndexes=getIndexes(irrevModel,reservedRxns,<span class="string">'rxns'</span>);
-0256         
-0257         <span class="comment">%Select all metabolites that are only present as reactants/products</span>
-0258         <span class="comment">%in one reaction</span>
-0259         singleNegative=find(sum(irrevModel.S'&lt;0)==1);
-0260         singlePositive=find(sum(irrevModel.S'&gt;0)==1);
-0261         
-0262         <span class="comment">%Retrieve the common metabolites</span>
-0263         common=intersect(singleNegative,singlePositive);
-0264         
-0265         mergedSome=false;
-0266         
-0267         <span class="comment">%Loop through each of them and see if the reactions should be</span>
-0268         <span class="comment">%merged</span>
-0269         <span class="keyword">for</span> i=1:numel(common)
-0270             involvedRxns=find(irrevModel.S(common(i),:));
-0271             
-0272             <span class="comment">%Check so that one or both of the reactions have not been merged</span>
-0273             <span class="comment">%already</span>
-0274             <span class="keyword">if</span> numel(involvedRxns)==2 &amp;&amp; isempty(intersect(bannedIndexes,involvedRxns))
-0275                 <span class="comment">%Calculate how many times the second reaction has to be</span>
-0276                 <span class="comment">%multiplied before being merged with the first</span>
-0277                 stoichRatio=abs(irrevModel.S(common(i),involvedRxns(1))/irrevModel.S(common(i),involvedRxns(2)));
-0278                 
-0279                 <span class="comment">%Add the second to the first</span>
-0280                 irrevModel.S(:,involvedRxns(1))=irrevModel.S(:,involvedRxns(1))+irrevModel.S(:,involvedRxns(2))*stoichRatio;
-0281                 
-0282                 <span class="comment">%Clear the second reaction</span>
-0283                 irrevModel.S(:,involvedRxns(2))=0;
-0284                 
-0285                 <span class="comment">%This is to prevent numerical issues. It should be 0</span>
-0286                 <span class="comment">%already</span>
-0287                 irrevModel.S(common(i),involvedRxns(1))=0;
-0288                 
-0289                 <span class="comment">%At this point the second reaction is certain to be deleted</span>
-0290                 <span class="comment">%in a later step and can therefore be ignored</span>
-0291                 
-0292                 <span class="comment">%Recalculate the bounds for the new reaction. This can be</span>
-0293                 <span class="comment">%problematic since the scale of the bounds may change</span>
-0294                 <span class="comment">%dramatically. Let the most constraining reaction determine</span>
-0295                 <span class="comment">%the new bound</span>
-0296                 lb1=irrevModel.lb(involvedRxns(1));
-0297                 lb2=irrevModel.lb(involvedRxns(2));
-0298                 ub1=irrevModel.ub(involvedRxns(1));
-0299                 ub2=irrevModel.ub(involvedRxns(2));
-0300                 
-0301                 <span class="keyword">if</span> lb2~=-inf
-0302                     irrevModel.lb(involvedRxns(1))=max(lb1,lb2/stoichRatio);
-0303                 <span class="keyword">end</span>
-0304                 <span class="keyword">if</span> ub2~=inf
-0305                     irrevModel.ub(involvedRxns(1))=min(ub1,ub2/stoichRatio);
-0306                 <span class="keyword">end</span>
-0307                 
-0308                 <span class="comment">%Then recalculate the objective coefficient. The resulting</span>
-0309                 <span class="comment">%coefficient is the weighted sum of the previous</span>
-0310                 irrevModel.c(involvedRxns(1))=irrevModel.c(involvedRxns(1))+irrevModel.c(involvedRxns(2))*stoichRatio;
-0311                 
-0312                 <span class="comment">%Iterate again</span>
-0313                 mergedSome=true;
-0314             <span class="keyword">end</span>
-0315         <span class="keyword">end</span>
-0316         
-0317         <span class="comment">%All possible reactions merged</span>
-0318         <span class="keyword">if</span> mergedSome==false
-0319             <span class="keyword">break</span>;
-0320         <span class="keyword">end</span>
-0321         
-0322         <span class="comment">%Now delete all reactions that involve no metabolites</span>
-0323         I=find(sum(irrevModel.S~=0)==0);
-0324         
-0325         <span class="comment">%Remove reactions</span>
-0326         irrevModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(irrevModel,I);
-0327         
-0328         <span class="comment">%Remove metabolites</span>
-0329         notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(irrevModel);
-0330         irrevModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(irrevModel,notInUse);
-0331     <span class="keyword">end</span>
-0332     
-0333     reducedModel=irrevModel;
-0334 <span class="keyword">end</span>
+0093     <span class="comment">%Merge duplicate reactions into the first occurrence and delete the</span>
+0094     <span class="comment">%others. Reactions with the same stoichiometry and reversibility are</span>
+0095     <span class="comment">%duplicates; the merged reaction keeps the widest bounds and the largest</span>
+0096     <span class="comment">%objective coefficient (see contractModel)</span>
+0097     [reducedModel, rxnsToDelete, ~]=<a href="contractModel.html" class="code" title="function [reducedModel, removedRxns, indexedDuplicateRxns]=contractModel(model,varargin)">contractModel</a>(reducedModel);
+0098     deletedReactions=[deletedReactions; rxnsToDelete];
+0099 <span class="keyword">end</span>
+0100 
+0101 <span class="keyword">if</span> deleteZeroInterval==true
+0102     <span class="comment">%Find all reactions where both LB and UB are 0</span>
+0103     zeroIntervalReactions=and(reducedModel.lb==0,reducedModel.ub==0);
+0104     
+0105     rxnsToDelete=setdiff(reducedModel.rxns(zeroIntervalReactions),reservedRxns);
+0106     deletedReactions=[deletedReactions; rxnsToDelete];
+0107     
+0108     <span class="comment">%Remove reactions</span>
+0109     reducedModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,rxnsToDelete);
+0110     
+0111     <span class="comment">%Find metabolites that no longer are used and delete them</span>
+0112     notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(reducedModel);
+0113     deletedMetabolites=[deletedMetabolites;reducedModel.mets(notInUse)];
+0114     
+0115     <span class="comment">%Remove metabolites</span>
+0116     reducedModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(reducedModel,notInUse);
+0117 <span class="keyword">end</span>
+0118 
+0119 <span class="keyword">if</span> deleteInaccessible==true
+0120     <span class="comment">%Print a warning if exchange metabolites have not been deleted yet. This</span>
+0121     <span class="comment">%often means that the only allowed products are the metabolites that</span>
+0122     <span class="comment">%are taken up be the system</span>
+0123     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'unconstrained'</span>) &amp;&amp; suppressWarnings==false
+0124         EM=<span class="string">'Removing dead-end reactions before removing exchange metabolites'</span>;
+0125         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0126     <span class="keyword">end</span>
+0127     
+0128     <span class="keyword">while</span> true
+0129         <span class="comment">%Find all metabolites that are only reactants or only products.</span>
+0130         <span class="comment">%Delete those metabolites and reactions. This is done until no more</span>
+0131         <span class="comment">%such reactions are found</span>
+0132         
+0133         <span class="comment">%Construct a stoichiometric matrix where all reactions are written</span>
+0134         <span class="comment">%as reversible</span>
+0135         
+0136         <span class="comment">%Add fake exchange reactions if model.b~=0</span>
+0137         in=any(reducedModel.b&lt;0,2);
+0138         out=any(reducedModel.b&gt;0,2);
+0139         I=speye(numel(reducedModel.mets));
+0140         revS=[reducedModel.S,reducedModel.S(:,reducedModel.lb&lt;0)*-1 I(:,in) I(:,out)*-1];
+0141         
+0142         metUsage=sum(abs(revS')&gt;0);
+0143         onlyProducts=sum(revS'&gt;0) == metUsage;
+0144         onlyReactants=sum(revS'&lt;0) == metUsage;
+0145         
+0146         <span class="comment">%Also remove metabolites that only participate in one reversible</span>
+0147         <span class="comment">%reaction Do not remove the ones in one reversible reaction if is</span>
+0148         <span class="comment">%also has a non-zero coefficient in model.b</span>
+0149         notInUse=onlyProducts | onlyReactants | (sum(abs(reducedModel.S')&gt;0)&lt;=1 &amp; (~in &amp; ~out)');
+0150         deletedRxn=false;
+0151         <span class="keyword">if</span> any(notInUse)
+0152             <span class="comment">%Find their corresponding reactions</span>
+0153             rxnsNotInUse=sum(abs(reducedModel.S(notInUse,:))&gt;0,1)&gt;0;
+0154             rxnsToDelete=setdiff(reducedModel.rxns(rxnsNotInUse),reservedRxns);
+0155             deletedReactions=[deletedReactions; rxnsToDelete];
+0156             
+0157             <span class="comment">%Remove reactions</span>
+0158             reducedModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,rxnsToDelete);
+0159             
+0160             <span class="comment">%Remove metabolites. Recalculate since it could be that some</span>
+0161             <span class="comment">%cannot be deleted due to reserved rxns</span>
+0162             notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(reducedModel);
+0163             deletedMetabolites=[deletedMetabolites; reducedModel.mets(notInUse)];
+0164             reducedModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(reducedModel,notInUse);
+0165             
+0166             <span class="comment">%It could happen that it just finds reserved reactions and gets</span>
+0167             <span class="comment">%stuck</span>
+0168             <span class="keyword">if</span> ~isempty(rxnsToDelete)
+0169                 deletedRxn=true;
+0170             <span class="keyword">end</span>
+0171         <span class="keyword">else</span>
+0172             <span class="keyword">break</span>;
+0173         <span class="keyword">end</span>
+0174         <span class="keyword">if</span> deletedRxn==false
+0175             <span class="keyword">break</span>;
+0176         <span class="keyword">end</span>
+0177     <span class="keyword">end</span>
+0178 <span class="keyword">end</span>
+0179 
+0180 <span class="keyword">if</span> deleteMinMax==true
+0181     <span class="comment">%Get reactions that cannot carry fluxes. This should be done</span>
+0182     <span class="comment">%algebraically if possible</span>
+0183     I=~haveFlux(reducedModel);
+0184     
+0185     <span class="comment">%Remove reactions</span>
+0186     rxnsToDelete=setdiff(reducedModel.rxns(I),reservedRxns);
+0187     deletedReactions=[deletedReactions; rxnsToDelete];
+0188     reducedModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,rxnsToDelete);
+0189     
+0190     <span class="comment">%Remove metabolites</span>
+0191     notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(reducedModel);
+0192     deletedMetabolites=[deletedMetabolites; reducedModel.mets(notInUse)];
+0193     reducedModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(reducedModel,notInUse);
+0194 <span class="keyword">end</span>
+0195 
+0196 <span class="keyword">if</span> constrainReversible==true
+0197     revs=find(reducedModel.rev);
+0198     <span class="comment">%getAllowedBounds treats an empty reaction list as all reactions</span>
+0199     <span class="keyword">if</span> ~isempty(revs)
+0200         [I,J]=getAllowedBounds(reducedModel,revs);
+0201     
+0202         I=abs(I);
+0203         J=abs(J);
+0204     
+0205         <span class="comment">%Get the &quot;small&quot; values</span>
+0206         K=I&lt;10^-10;
+0207         L=J&lt;10^-10;
+0208     
+0209         <span class="comment">%Keep the values where only one direction is zero (small)</span>
+0210         I(K==L)=[];
+0211         J(K==L)=[];
+0212         revs(K==L)=[];
+0213     
+0214         <span class="comment">%Change the reversibility of the remaining reactions</span>
+0215         reducedModel.rev(revs(J&gt;10^-10))=0; <span class="comment">%Ignore reverse direction</span>
+0216         reducedModel.lb(revs(J&gt;10^-10))=0;
+0217     
+0218         toSwitch=revs(I&gt;10^-10);
+0219         reducedModel.rev(toSwitch)=0; <span class="comment">%Change directionality</span>
+0220         reducedModel.ub(toSwitch)=reducedModel.lb(toSwitch)*-1;
+0221         reducedModel.lb(toSwitch)=0;
+0222         reducedModel.S(:,toSwitch)=reducedModel.S(:,toSwitch).*-1;
+0223         reducedModel.c(toSwitch)=reducedModel.c(toSwitch)*-1;
+0224     <span class="keyword">end</span>
+0225 <span class="keyword">end</span>
+0226 <span class="keyword">if</span> groupLinear==true
+0227     <span class="keyword">if</span>  suppressWarnings==false
+0228         fprintf(<span class="string">'NOTE: You have chosen to group linear reactions. This option does not keep track of gene/reaction associations when reactions are merged. Deleting all gene information\n'</span>);
+0229     <span class="keyword">end</span>
+0230     
+0231     reducedModel.genes={};
+0232     reducedModel.rxnGeneMat=sparse(numel(reducedModel.rxns),0);
+0233     reducedModel.grRules(:)={<span class="string">''</span>};
+0234     
+0235     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneShortNames'</span>)
+0236         reducedModel.geneShortNames={};
+0237     <span class="keyword">end</span>
+0238     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'proteins'</span>)
+0239         reducedModel.proteins={};
+0240     <span class="keyword">end</span>
+0241     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneMiriams'</span>)
+0242         reducedModel.geneMiriams={};
+0243     <span class="keyword">end</span>
+0244     <span class="keyword">if</span> isfield(reducedModel,<span class="string">'geneComps'</span>)
+0245         reducedModel.geneComps=[];
+0246     <span class="keyword">end</span>
+0247     
+0248     <span class="comment">%Convert the model to irreversible</span>
+0249     irrevModel=<a href="convertToIrrev.html" class="code" title="function [irrevModel,matchRev,rev2irrev,irrev2rev]=convertToIrrev(model,varargin)">convertToIrrev</a>(reducedModel);
+0250     
+0251     <span class="comment">%Loop through and iteratively group linear reactions</span>
+0252     <span class="keyword">while</span> 1
+0253         <span class="comment">%Get the banned reaction indexes. Note that the indexes will change</span>
+0254         <span class="comment">%in each iteration, but the names will not as they will not be merged</span>
+0255         <span class="comment">%with any other reaction</span>
+0256         bannedIndexes=getIndexes(irrevModel,reservedRxns,<span class="string">'rxns'</span>);
+0257         
+0258         <span class="comment">%Select all metabolites that are only present as reactants/products</span>
+0259         <span class="comment">%in one reaction</span>
+0260         singleNegative=find(sum(irrevModel.S'&lt;0)==1);
+0261         singlePositive=find(sum(irrevModel.S'&gt;0)==1);
+0262         
+0263         <span class="comment">%Retrieve the common metabolites</span>
+0264         common=intersect(singleNegative,singlePositive);
+0265         
+0266         mergedSome=false;
+0267         
+0268         <span class="comment">%Loop through each of them and see if the reactions should be</span>
+0269         <span class="comment">%merged</span>
+0270         <span class="keyword">for</span> i=1:numel(common)
+0271             involvedRxns=find(irrevModel.S(common(i),:));
+0272             
+0273             <span class="comment">%Check so that one or both of the reactions have not been merged</span>
+0274             <span class="comment">%already</span>
+0275             <span class="keyword">if</span> numel(involvedRxns)==2 &amp;&amp; isempty(intersect(bannedIndexes,involvedRxns))
+0276                 <span class="comment">%Calculate how many times the second reaction has to be</span>
+0277                 <span class="comment">%multiplied before being merged with the first</span>
+0278                 stoichRatio=abs(irrevModel.S(common(i),involvedRxns(1))/irrevModel.S(common(i),involvedRxns(2)));
+0279                 
+0280                 <span class="comment">%Add the second to the first</span>
+0281                 irrevModel.S(:,involvedRxns(1))=irrevModel.S(:,involvedRxns(1))+irrevModel.S(:,involvedRxns(2))*stoichRatio;
+0282                 
+0283                 <span class="comment">%Clear the second reaction</span>
+0284                 irrevModel.S(:,involvedRxns(2))=0;
+0285                 
+0286                 <span class="comment">%This is to prevent numerical issues. It should be 0</span>
+0287                 <span class="comment">%already</span>
+0288                 irrevModel.S(common(i),involvedRxns(1))=0;
+0289                 
+0290                 <span class="comment">%At this point the second reaction is certain to be deleted</span>
+0291                 <span class="comment">%in a later step and can therefore be ignored</span>
+0292                 
+0293                 <span class="comment">%Recalculate the bounds for the new reaction. This can be</span>
+0294                 <span class="comment">%problematic since the scale of the bounds may change</span>
+0295                 <span class="comment">%dramatically. Let the most constraining reaction determine</span>
+0296                 <span class="comment">%the new bound</span>
+0297                 lb1=irrevModel.lb(involvedRxns(1));
+0298                 lb2=irrevModel.lb(involvedRxns(2));
+0299                 ub1=irrevModel.ub(involvedRxns(1));
+0300                 ub2=irrevModel.ub(involvedRxns(2));
+0301                 
+0302                 <span class="keyword">if</span> lb2~=-inf
+0303                     irrevModel.lb(involvedRxns(1))=max(lb1,lb2/stoichRatio);
+0304                 <span class="keyword">end</span>
+0305                 <span class="keyword">if</span> ub2~=inf
+0306                     irrevModel.ub(involvedRxns(1))=min(ub1,ub2/stoichRatio);
+0307                 <span class="keyword">end</span>
+0308                 
+0309                 <span class="comment">%Then recalculate the objective coefficient. The resulting</span>
+0310                 <span class="comment">%coefficient is the weighted sum of the previous</span>
+0311                 irrevModel.c(involvedRxns(1))=irrevModel.c(involvedRxns(1))+irrevModel.c(involvedRxns(2))*stoichRatio;
+0312                 
+0313                 <span class="comment">%Iterate again</span>
+0314                 mergedSome=true;
+0315             <span class="keyword">end</span>
+0316         <span class="keyword">end</span>
+0317         
+0318         <span class="comment">%All possible reactions merged</span>
+0319         <span class="keyword">if</span> mergedSome==false
+0320             <span class="keyword">break</span>;
+0321         <span class="keyword">end</span>
+0322         
+0323         <span class="comment">%Now delete all reactions that involve no metabolites</span>
+0324         I=find(sum(irrevModel.S~=0)==0);
+0325         
+0326         <span class="comment">%Remove reactions</span>
+0327         irrevModel=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(irrevModel,I);
+0328         
+0329         <span class="comment">%Remove metabolites</span>
+0330         notInUse=<a href="#_sub1" class="code" title="subfunction I=orphanedMets(model)">orphanedMets</a>(irrevModel);
+0331         irrevModel=<a href="removeMets.html" class="code" title="function reducedModel=removeMets(model,metsToRemove,varargin)">removeMets</a>(irrevModel,notInUse);
+0332     <span class="keyword">end</span>
+0333     
+0334     reducedModel=irrevModel;
 0335 <span class="keyword">end</span>
-0336 
-0337 <a name="_sub1" href="#_subfunctions" class="code">function I=orphanedMets(model)</a>
-0338 <span class="comment">%Metabolites that take part in no reaction, and can therefore be removed</span>
-0339 <span class="comment">%without changing what the model can do. Metabolites with a non-zero</span>
-0340 <span class="comment">%model.b are kept: b is a boundary condition on the metabolite, so removing</span>
-0341 <span class="comment">%the row would drop that constraint along with it.</span>
-0342 I=sum(model.S~=0,2)==0 &amp; ~any(model.b~=0,2);
-0343 <span class="keyword">end</span></pre></div>
+0336 <span class="keyword">end</span>
+0337 
+0338 <a name="_sub1" href="#_subfunctions" class="code">function I=orphanedMets(model)</a>
+0339 <span class="comment">%Metabolites that take part in no reaction, and can therefore be removed</span>
+0340 <span class="comment">%without changing what the model can do. Metabolites with a non-zero</span>
+0341 <span class="comment">%model.b are kept: b is a boundary condition on the metabolite, so removing</span>
+0342 <span class="comment">%the row would drop that constraint along with it.</span>
+0343 I=sum(model.S~=0,2)==0 &amp; ~any(model.b~=0,2);
+0344 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

@@ -52,7 +52,9 @@
  Returns
  -------
  model : struct
-     a model structure with all reactions and the metabolites used in them.
+     a model structure with the reactions that the keep* options retain (by
+     default all except those labelled as &quot;general reaction&quot;) and the
+     metabolites used in them.
  KOModel : struct
      a model structure representing KEGG Orthology ids and their associated
      genes. KO ids are stored as reactions.
@@ -106,55 +108,57 @@ This function is called by:
 0024 <span class="comment">% Returns</span>
 0025 <span class="comment">% -------</span>
 0026 <span class="comment">% model : struct</span>
-0027 <span class="comment">%     a model structure with all reactions and the metabolites used in them.</span>
-0028 <span class="comment">% KOModel : struct</span>
-0029 <span class="comment">%     a model structure representing KEGG Orthology ids and their associated</span>
-0030 <span class="comment">%     genes. KO ids are stored as reactions.</span>
-0031 <span class="comment">%</span>
-0032 <span class="comment">% Notes</span>
-0033 <span class="comment">% -----</span>
-0034 <span class="comment">% The model output can be used as a template for fillGaps after the genes</span>
-0035 <span class="comment">% and rxnGeneMat fields are removed:</span>
-0036 <span class="comment">%     model = rmfield(model, 'genes') and model = rmfield(model, 'rxnGeneMat').</span>
-0037 <span class="comment">%</span>
-0038 <span class="comment">% See also</span>
-0039 <span class="comment">% --------</span>
-0040 <span class="comment">% getKEGGModelForOrganism, getPhylDist, fillGaps</span>
-0041 
-0042 ravenPath=findRAVENroot();
+0027 <span class="comment">%     a model structure with the reactions that the keep* options retain (by</span>
+0028 <span class="comment">%     default all except those labelled as &quot;general reaction&quot;) and the</span>
+0029 <span class="comment">%     metabolites used in them.</span>
+0030 <span class="comment">% KOModel : struct</span>
+0031 <span class="comment">%     a model structure representing KEGG Orthology ids and their associated</span>
+0032 <span class="comment">%     genes. KO ids are stored as reactions.</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">% Notes</span>
+0035 <span class="comment">% -----</span>
+0036 <span class="comment">% The model output can be used as a template for fillGaps after the genes</span>
+0037 <span class="comment">% and rxnGeneMat fields are removed:</span>
+0038 <span class="comment">%     model = rmfield(model, 'genes') and model = rmfield(model, 'rxnGeneMat').</span>
+0039 <span class="comment">%</span>
+0040 <span class="comment">% See also</span>
+0041 <span class="comment">% --------</span>
+0042 <span class="comment">% getKEGGModelForOrganism, getPhylDist, fillGaps</span>
 0043 
-0044 p=parseRAVENargs(varargin, {<span class="string">'keepSpontaneous'</span>,true; <span class="string">'keepUndefinedStoich'</span>,true; <span class="keyword">...</span>
-0045     <span class="string">'keepIncomplete'</span>,true; <span class="string">'keepGeneral'</span>,false});
-0046 keepSpontaneous=p.keepSpontaneous;
-0047 keepUndefinedStoich=p.keepUndefinedStoich;
-0048 keepIncomplete=p.keepIncomplete;
-0049 keepGeneral=p.keepGeneral;
-0050 
-0051 modelFile=fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>,<span class="string">'keggModel.mat'</span>);
-0052 <span class="keyword">if</span> isfile(modelFile)
-0053     fprintf([<span class="string">'Importing the global KEGG model from '</span> strrep(modelFile,<span class="string">'\'</span>,<span class="string">'/'</span>) <span class="string">'... '</span>]);
-0054     load(modelFile,<span class="string">'model'</span>,<span class="string">'KOModel'</span>,<span class="string">'isSpontaneous'</span>,<span class="string">'isUndefinedStoich'</span>,<span class="string">'isIncomplete'</span>,<span class="string">'isGeneral'</span>);
-0055     fprintf(<span class="string">'COMPLETE\n'</span>);
-0056 <span class="keyword">else</span>
-0057     [model,KOModel,isSpontaneous,isUndefinedStoich,isIncomplete,isGeneral]=<a href="buildGlobalKEGGModel.html" class="code" title="function [model,KOModel,isSpontaneous,isUndefinedStoich,isIncomplete,isGeneral]=buildGlobalKEGGModel(ravenPath)">buildGlobalKEGGModel</a>(ravenPath);
-0058     fprintf([<span class="string">'Saving the global KEGG model to '</span> strrep(modelFile,<span class="string">'\'</span>,<span class="string">'/'</span>) <span class="string">' for future use... '</span>]);
-0059     save(modelFile,<span class="string">'model'</span>,<span class="string">'KOModel'</span>,<span class="string">'isSpontaneous'</span>,<span class="string">'isUndefinedStoich'</span>,<span class="string">'isIncomplete'</span>,<span class="string">'isGeneral'</span>,<span class="string">'-v7.3'</span>);
-0060     fprintf(<span class="string">'COMPLETE\n'</span>);
-0061 <span class="keyword">end</span>
-0062 
-0063 <span class="keyword">if</span> keepSpontaneous==false
-0064     model=removeReactions(model,intersect(isSpontaneous,model.rxns),true,true);
-0065 <span class="keyword">end</span>
-0066 <span class="keyword">if</span> keepUndefinedStoich==false
-0067     model=removeReactions(model,intersect(isUndefinedStoich,model.rxns),true,true);
-0068 <span class="keyword">end</span>
-0069 <span class="keyword">if</span> keepIncomplete==false
-0070     model=removeReactions(model,intersect(isIncomplete,model.rxns),true,true);
-0071 <span class="keyword">end</span>
-0072 <span class="keyword">if</span> keepGeneral==false
-0073     model=removeReactions(model,intersect(isGeneral,model.rxns),true,true);
-0074 <span class="keyword">end</span>
-0075 <span class="keyword">end</span></pre></div>
+0044 ravenPath=findRAVENroot();
+0045 
+0046 p=parseRAVENargs(varargin, {<span class="string">'keepSpontaneous'</span>,true; <span class="string">'keepUndefinedStoich'</span>,true; <span class="keyword">...</span>
+0047     <span class="string">'keepIncomplete'</span>,true; <span class="string">'keepGeneral'</span>,false});
+0048 keepSpontaneous=p.keepSpontaneous;
+0049 keepUndefinedStoich=p.keepUndefinedStoich;
+0050 keepIncomplete=p.keepIncomplete;
+0051 keepGeneral=p.keepGeneral;
+0052 
+0053 modelFile=fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'reconstruction'</span>,<span class="string">'kegg'</span>,<span class="string">'keggModel.mat'</span>);
+0054 <span class="keyword">if</span> isfile(modelFile)
+0055     fprintf([<span class="string">'Importing the global KEGG model from '</span> strrep(modelFile,<span class="string">'\'</span>,<span class="string">'/'</span>) <span class="string">'... '</span>]);
+0056     load(modelFile,<span class="string">'model'</span>,<span class="string">'KOModel'</span>,<span class="string">'isSpontaneous'</span>,<span class="string">'isUndefinedStoich'</span>,<span class="string">'isIncomplete'</span>,<span class="string">'isGeneral'</span>);
+0057     fprintf(<span class="string">'COMPLETE\n'</span>);
+0058 <span class="keyword">else</span>
+0059     [model,KOModel,isSpontaneous,isUndefinedStoich,isIncomplete,isGeneral]=<a href="buildGlobalKEGGModel.html" class="code" title="function [model,KOModel,isSpontaneous,isUndefinedStoich,isIncomplete,isGeneral]=buildGlobalKEGGModel(ravenPath)">buildGlobalKEGGModel</a>(ravenPath);
+0060     fprintf([<span class="string">'Saving the global KEGG model to '</span> strrep(modelFile,<span class="string">'\'</span>,<span class="string">'/'</span>) <span class="string">' for future use... '</span>]);
+0061     save(modelFile,<span class="string">'model'</span>,<span class="string">'KOModel'</span>,<span class="string">'isSpontaneous'</span>,<span class="string">'isUndefinedStoich'</span>,<span class="string">'isIncomplete'</span>,<span class="string">'isGeneral'</span>,<span class="string">'-v7.3'</span>);
+0062     fprintf(<span class="string">'COMPLETE\n'</span>);
+0063 <span class="keyword">end</span>
+0064 
+0065 <span class="keyword">if</span> keepSpontaneous==false
+0066     model=removeReactions(model,intersect(isSpontaneous,model.rxns),true,true);
+0067 <span class="keyword">end</span>
+0068 <span class="keyword">if</span> keepUndefinedStoich==false
+0069     model=removeReactions(model,intersect(isUndefinedStoich,model.rxns),true,true);
+0070 <span class="keyword">end</span>
+0071 <span class="keyword">if</span> keepIncomplete==false
+0072     model=removeReactions(model,intersect(isIncomplete,model.rxns),true,true);
+0073 <span class="keyword">end</span>
+0074 <span class="keyword">if</span> keepGeneral==false
+0075     model=removeReactions(model,intersect(isGeneral,model.rxns),true,true);
+0076 <span class="keyword">end</span>
+0077 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

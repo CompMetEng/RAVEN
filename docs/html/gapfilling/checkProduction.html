@@ -80,11 +80,8 @@
      checkNeededForProduction is false.
  model : struct
      model structure with an excretion reaction added for each metabolite
-     in the compartments of excretionFromCompartments. When
-     checkNeededForProduction is true, the excretion reaction of the last
-     metabolite in notProduced is returned as an uptake reaction, because
-     the loop that flips each reaction into an uptake reaction does not
-     reset the last one.
+     in the compartments of excretionFromCompartments. All added reactions
+     are excretion reactions, also when checkNeededForProduction is true.
 
  Examples
  --------
@@ -158,126 +155,129 @@ This function is called by:
 0052 <span class="comment">%     checkNeededForProduction is false.</span>
 0053 <span class="comment">% model : struct</span>
 0054 <span class="comment">%     model structure with an excretion reaction added for each metabolite</span>
-0055 <span class="comment">%     in the compartments of excretionFromCompartments. When</span>
-0056 <span class="comment">%     checkNeededForProduction is true, the excretion reaction of the last</span>
-0057 <span class="comment">%     metabolite in notProduced is returned as an uptake reaction, because</span>
-0058 <span class="comment">%     the loop that flips each reaction into an uptake reaction does not</span>
-0059 <span class="comment">%     reset the last one.</span>
-0060 <span class="comment">%</span>
-0061 <span class="comment">% Examples</span>
-0062 <span class="comment">% --------</span>
-0063 <span class="comment">%     [notProduced, notProducedNames, neededForProductionMat, minToConnect, model] = ...</span>
-0064 <span class="comment">%         checkProduction(model, checkNeededForProduction, excretionFromCompartments, printDetails);</span>
-0065 
-0066 p=parseRAVENargs(varargin, {<span class="string">'checkNeededForProduction'</span>,false; <span class="keyword">...</span>
-0067     <span class="string">'excretionFromCompartments'</span>,[]; <span class="keyword">...</span>
-0068     <span class="string">'printDetails'</span>,true});
-0069 checkNeededForProduction=p.checkNeededForProduction;
-0070 excretionFromCompartments=p.excretionFromCompartments;
-0071 printDetails=p.printDetails;
-0072 
-0073 <span class="keyword">if</span> isempty(excretionFromCompartments)
-0074     excretionFromCompartments=model.comps;
-0075 <span class="keyword">else</span>
-0076     excretionFromCompartments=convertCharArray(excretionFromCompartments);
-0077 <span class="keyword">end</span>
-0078 
-0079 <span class="comment">%Add an exchange reaction for each metabolite in the allowed compartments</span>
-0080 <span class="comment">%and see if it can carry a flux</span>
-0081 allowedMetIds=ismember(model.comps(model.metComps),excretionFromCompartments);
-0082 allowedMetIndexes=find(allowedMetIds);
-0083 [model, addedRxns]=addExchangeRxns(model,<span class="string">'out'</span>,allowedMetIndexes);
-0084 
-0085 canProduce=haveFlux(model,10^-5,addedRxns);
-0086 
-0087 notProduced=find(~canProduce);
-0088 minToConnect={};
-0089 <span class="keyword">if</span> checkNeededForProduction==true
-0090     <span class="comment">%For each of the metabolites that couldn't be produced allow uptake and</span>
-0091     <span class="comment">%check which of the other metabolites that couldn't be produced that</span>
-0092     <span class="comment">%can be produced</span>
-0093     neededForProductionMat=false(numel(notProduced));
-0094     <span class="keyword">for</span> i=1:numel(notProduced)
-0095         <span class="comment">%Add uptake for this metabolite</span>
-0096         <span class="keyword">if</span> i&gt;1
-0097             <span class="comment">%Reset last iteration</span>
-0098             model.S(:,numel(model.rxns)-numel(addedRxns)+notProduced(i-1))=model.S(:,numel(model.rxns)-numel(addedRxns)+notProduced(i-1))*-1;
-0099         <span class="keyword">end</span>
-0100         <span class="comment">%Change the production reaction to an uptake reaction</span>
-0101         model.S(:,numel(model.rxns)-numel(addedRxns)+notProduced(i))=model.S(:,numel(model.rxns)-numel(addedRxns)+notProduced(i))*-1;
-0102         
-0103         <span class="comment">%Test which of the metabolites that couldn't be produced that can</span>
-0104         <span class="comment">%be produced now</span>
-0105         neededForProductionMat(i,:)=haveFlux(model,10^-5,addedRxns(notProduced));
-0106     <span class="keyword">end</span>
-0107     <span class="comment">%Calculate the smallest number of metabolites that must be connected to</span>
-0108     <span class="comment">%make everything connected and return their names</span>
-0109     
-0110     <span class="comment">%The algorithm is relatively straight forward. It finds the metabolite</span>
-0111     <span class="comment">%that connects the most unconnected metabolites (iteratively), adds it</span>
-0112     <span class="comment">%and removes the now connected metabolites until all are connected.</span>
-0113     <span class="comment">%This is not guaranteed to find the global minimum</span>
-0114     neededForProdTemp=neededForProductionMat;
-0115     <span class="keyword">while</span> 1==1
-0116         <span class="comment">%Get all metabolites a metabolite makes connected</span>
-0117         totalConnected=false(size(neededForProdTemp));
-0118         <span class="keyword">for</span> i=1:numel(notProduced)
-0119             totalConnected(i,:)=neededForProdTemp(i,:);
-0120             
-0121             lastIter=0;
-0122             <span class="keyword">while</span> 1==1
-0123                 [~, a]=find(neededForProdTemp(totalConnected(i,:),:));
-0124                 totalConnected(i,a)=true;
-0125                 <span class="keyword">if</span> numel(a)==lastIter
-0126                     <span class="keyword">break</span>; <span class="comment">%No more connections were possible</span>
-0127                 <span class="keyword">else</span>
-0128                     lastIter=numel(a);
-0129                 <span class="keyword">end</span>
-0130             <span class="keyword">end</span>
-0131         <span class="keyword">end</span>
-0132         [connections, mostConnected]=max(sum(totalConnected,2));
-0133         
-0134         <span class="keyword">if</span> connections&gt;0
-0135             <span class="comment">%Add the most connected metabolite to the list and remove all</span>
-0136             <span class="comment">%metabolites that it's connected to</span>
-0137             metID=allowedMetIndexes(notProduced(mostConnected));
-0138             entry=[model.metNames{metID},<span class="string">'['</span>,model.comps{model.metComps(metID)},<span class="string">'] (connects '</span> num2str(connections) <span class="string">' metabolites)'</span>];
-0139             minToConnect=[minToConnect;entry];
-0140             neededForProdTemp(totalConnected(mostConnected,:),:)=false;
-0141             neededForProdTemp(:,totalConnected(mostConnected,:))=false;
-0142         <span class="keyword">else</span>
-0143             <span class="keyword">break</span>;
-0144         <span class="keyword">end</span>
-0145     <span class="keyword">end</span>
-0146 <span class="keyword">else</span>
-0147     neededForProductionMat=[];
-0148 <span class="keyword">end</span>
-0149 
-0150 notProducedNames=strcat(model.metNames(allowedMetIndexes(notProduced)),<span class="string">'['</span>,model.comps(model.metComps(allowedMetIndexes(notProduced))),<span class="string">']'</span>);
-0151 
-0152 <span class="keyword">if</span> printDetails==true
-0153     fprintf(<span class="string">'The following metabolites could not be produced:\n'</span>);
-0154     [notProducedNamesTemp,perm]=sort(notProducedNames);
-0155     
-0156     <span class="keyword">if</span> checkNeededForProduction==true
-0157         neededForProdTemp=neededForProductionMat(:,perm);
-0158         neededForProdTemp=neededForProdTemp(perm,:);
-0159         fprintf(<span class="string">'\tIf the production of a metabolite is dependent on some other metabolites then those are printed under the name\n\n'</span>);
-0160     <span class="keyword">end</span>
-0161     <span class="keyword">for</span> i=1:numel(notProducedNamesTemp)
-0162         fprintf([notProducedNamesTemp{i} <span class="string">'\n'</span>]);
-0163         neededForProdTemp(i,i)=false; <span class="comment">%Not neat to do this here. Prevent printing itself</span>
-0164         <span class="keyword">if</span> checkNeededForProduction==true
-0165             enablesProduction=find(neededForProdTemp(:,i));
-0166             <span class="keyword">if</span> any(enablesProduction)
-0167                 <span class="keyword">for</span> j=1:numel(enablesProduction)
-0168                     fprintf([<span class="string">'\t'</span> notProducedNamesTemp{enablesProduction(j)} <span class="string">'\n'</span>]);
-0169                 <span class="keyword">end</span>
-0170             <span class="keyword">end</span>
-0171         <span class="keyword">end</span>
-0172     <span class="keyword">end</span>
-0173 <span class="keyword">end</span>
-0174 <span class="keyword">end</span></pre></div>
+0055 <span class="comment">%     in the compartments of excretionFromCompartments. All added reactions</span>
+0056 <span class="comment">%     are excretion reactions, also when checkNeededForProduction is true.</span>
+0057 <span class="comment">%</span>
+0058 <span class="comment">% Examples</span>
+0059 <span class="comment">% --------</span>
+0060 <span class="comment">%     [notProduced, notProducedNames, neededForProductionMat, minToConnect, model] = ...</span>
+0061 <span class="comment">%         checkProduction(model, checkNeededForProduction, excretionFromCompartments, printDetails);</span>
+0062 
+0063 p=parseRAVENargs(varargin, {<span class="string">'checkNeededForProduction'</span>,false; <span class="keyword">...</span>
+0064     <span class="string">'excretionFromCompartments'</span>,[]; <span class="keyword">...</span>
+0065     <span class="string">'printDetails'</span>,true});
+0066 checkNeededForProduction=p.checkNeededForProduction;
+0067 excretionFromCompartments=p.excretionFromCompartments;
+0068 printDetails=p.printDetails;
+0069 
+0070 <span class="keyword">if</span> isempty(excretionFromCompartments)
+0071     excretionFromCompartments=model.comps;
+0072 <span class="keyword">else</span>
+0073     excretionFromCompartments=convertCharArray(excretionFromCompartments);
+0074 <span class="keyword">end</span>
+0075 
+0076 <span class="comment">%Add an exchange reaction for each metabolite in the allowed compartments</span>
+0077 <span class="comment">%and see if it can carry a flux</span>
+0078 allowedMetIds=ismember(model.comps(model.metComps),excretionFromCompartments);
+0079 allowedMetIndexes=find(allowedMetIds);
+0080 [model, addedRxns]=addExchangeRxns(model,<span class="string">'out'</span>,allowedMetIndexes);
+0081 
+0082 canProduce=haveFlux(model,10^-5,addedRxns);
+0083 
+0084 notProduced=find(~canProduce);
+0085 minToConnect={};
+0086 <span class="keyword">if</span> checkNeededForProduction==true
+0087     <span class="comment">%For each of the metabolites that couldn't be produced allow uptake and</span>
+0088     <span class="comment">%check which of the other metabolites that couldn't be produced that</span>
+0089     <span class="comment">%can be produced</span>
+0090     neededForProductionMat=false(numel(notProduced));
+0091     <span class="keyword">for</span> i=1:numel(notProduced)
+0092         <span class="comment">%Add uptake for this metabolite</span>
+0093         <span class="keyword">if</span> i&gt;1
+0094             <span class="comment">%Reset last iteration</span>
+0095             model.S(:,numel(model.rxns)-numel(addedRxns)+notProduced(i-1))=model.S(:,numel(model.rxns)-numel(addedRxns)+notProduced(i-1))*-1;
+0096         <span class="keyword">end</span>
+0097         <span class="comment">%Change the production reaction to an uptake reaction</span>
+0098         model.S(:,numel(model.rxns)-numel(addedRxns)+notProduced(i))=model.S(:,numel(model.rxns)-numel(addedRxns)+notProduced(i))*-1;
+0099         
+0100         <span class="comment">%Test which of the metabolites that couldn't be produced that can</span>
+0101         <span class="comment">%be produced now</span>
+0102         neededForProductionMat(i,:)=haveFlux(model,10^-5,addedRxns(notProduced));
+0103     <span class="keyword">end</span>
+0104     <span class="keyword">if</span> ~isempty(notProduced)
+0105         <span class="comment">%Reset the last iteration, so that the returned model has excretion</span>
+0106         <span class="comment">%reactions only</span>
+0107         lastCol=numel(model.rxns)-numel(addedRxns)+notProduced(end);
+0108         model.S(:,lastCol)=model.S(:,lastCol)*-1;
+0109     <span class="keyword">end</span>
+0110     <span class="comment">%Calculate the smallest number of metabolites that must be connected to</span>
+0111     <span class="comment">%make everything connected and return their names</span>
+0112     
+0113     <span class="comment">%The algorithm is relatively straight forward. It finds the metabolite</span>
+0114     <span class="comment">%that connects the most unconnected metabolites (iteratively), adds it</span>
+0115     <span class="comment">%and removes the now connected metabolites until all are connected.</span>
+0116     <span class="comment">%This is not guaranteed to find the global minimum</span>
+0117     neededForProdTemp=neededForProductionMat;
+0118     <span class="keyword">while</span> 1==1
+0119         <span class="comment">%Get all metabolites a metabolite makes connected</span>
+0120         totalConnected=false(size(neededForProdTemp));
+0121         <span class="keyword">for</span> i=1:numel(notProduced)
+0122             totalConnected(i,:)=neededForProdTemp(i,:);
+0123             
+0124             lastIter=0;
+0125             <span class="keyword">while</span> 1==1
+0126                 [~, a]=find(neededForProdTemp(totalConnected(i,:),:));
+0127                 totalConnected(i,a)=true;
+0128                 <span class="keyword">if</span> numel(a)==lastIter
+0129                     <span class="keyword">break</span>; <span class="comment">%No more connections were possible</span>
+0130                 <span class="keyword">else</span>
+0131                     lastIter=numel(a);
+0132                 <span class="keyword">end</span>
+0133             <span class="keyword">end</span>
+0134         <span class="keyword">end</span>
+0135         [connections, mostConnected]=max(sum(totalConnected,2));
+0136         
+0137         <span class="keyword">if</span> connections&gt;0
+0138             <span class="comment">%Add the most connected metabolite to the list and remove all</span>
+0139             <span class="comment">%metabolites that it's connected to</span>
+0140             metID=allowedMetIndexes(notProduced(mostConnected));
+0141             entry=[model.metNames{metID},<span class="string">'['</span>,model.comps{model.metComps(metID)},<span class="string">'] (connects '</span> num2str(connections) <span class="string">' metabolites)'</span>];
+0142             minToConnect=[minToConnect;entry];
+0143             neededForProdTemp(totalConnected(mostConnected,:),:)=false;
+0144             neededForProdTemp(:,totalConnected(mostConnected,:))=false;
+0145         <span class="keyword">else</span>
+0146             <span class="keyword">break</span>;
+0147         <span class="keyword">end</span>
+0148     <span class="keyword">end</span>
+0149 <span class="keyword">else</span>
+0150     neededForProductionMat=[];
+0151 <span class="keyword">end</span>
+0152 
+0153 notProducedNames=strcat(model.metNames(allowedMetIndexes(notProduced)),<span class="string">'['</span>,model.comps(model.metComps(allowedMetIndexes(notProduced))),<span class="string">']'</span>);
+0154 
+0155 <span class="keyword">if</span> printDetails==true
+0156     fprintf(<span class="string">'The following metabolites could not be produced:\n'</span>);
+0157     [notProducedNamesTemp,perm]=sort(notProducedNames);
+0158     
+0159     <span class="keyword">if</span> checkNeededForProduction==true
+0160         neededForProdTemp=neededForProductionMat(:,perm);
+0161         neededForProdTemp=neededForProdTemp(perm,:);
+0162         fprintf(<span class="string">'\tIf the production of a metabolite is dependent on some other metabolites then those are printed under the name\n\n'</span>);
+0163     <span class="keyword">end</span>
+0164     <span class="keyword">for</span> i=1:numel(notProducedNamesTemp)
+0165         fprintf([notProducedNamesTemp{i} <span class="string">'\n'</span>]);
+0166         neededForProdTemp(i,i)=false; <span class="comment">%Not neat to do this here. Prevent printing itself</span>
+0167         <span class="keyword">if</span> checkNeededForProduction==true
+0168             enablesProduction=find(neededForProdTemp(:,i));
+0169             <span class="keyword">if</span> any(enablesProduction)
+0170                 <span class="keyword">for</span> j=1:numel(enablesProduction)
+0171                     fprintf([<span class="string">'\t'</span> notProducedNamesTemp{enablesProduction(j)} <span class="string">'\n'</span>]);
+0172                 <span class="keyword">end</span>
+0173             <span class="keyword">end</span>
+0174         <span class="keyword">end</span>
+0175     <span class="keyword">end</span>
+0176 <span class="keyword">end</span>
+0177 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

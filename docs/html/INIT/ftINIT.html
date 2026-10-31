@@ -331,10 +331,10 @@ This function is called by:
 0285     lastError = [];
 0286     <span class="keyword">if</span> ~isempty(proveAbsGap)
 0287         <span class="comment">%One solve proven to this fixed absolute gap, replacing the relative-gap</span>
-0288         <span class="comment">%escalation below. The escalation's final near-zero-objective run otherwise</span>
-0289         <span class="comment">%accepts an arbitrary within-gap incumbent -- measured on genome-scale</span>
-0290         <span class="comment">%Human-GEM to cost 2.0-4.0 objective units (raven-toolbox's prove_abs_gap,</span>
-0291         <span class="comment">%raven-gecko-parity#104). Pairs naturally with resolveTies.</span>
+0288         <span class="comment">%escalation below. The final near-zero-objective run of the escalation</span>
+0289         <span class="comment">%accepts an arbitrary incumbent within the gap; on genome-scale Human-GEM</span>
+0290         <span class="comment">%the step 1 objective of the escalation ended 4.0 to 12.0 units below the</span>
+0291         <span class="comment">%proven optimum (raven-toolbox's prove_abs_gap, raven-gecko-parity#104).</span>
 0292         <span class="keyword">if</span> ~isempty(stp.MILPParams) &amp;&amp; isfield(stp.MILPParams{1}, <span class="string">'TimeLimit'</span>)
 0293             params = struct(<span class="string">'TimeLimit'</span>, stp.MILPParams{1}.TimeLimit);
 0294         <span class="keyword">else</span>

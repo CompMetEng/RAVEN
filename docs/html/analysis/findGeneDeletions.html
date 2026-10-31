@@ -211,7 +211,7 @@ This function is called by:
 0113     [~, I]=ismember(originalGenes(details==1),model.genes);
 0114     genesToModify=nchoosek(I,2);
 0115     genes=geneMapping(genesToModify);
-0116     grRatioMuts=zeros(1,numel(genes));
+0116     grRatioMuts=zeros(1,size(genesToModify,1));
 0117     fluxes=sparse(numel(model.rxns),size(genesToModify,1));
 0118     <span class="keyword">for</span> i=1:size(genesToModify,1)
 0119         tempModel=removeGenes(model,genesToModify(i,:),false,false,false);
