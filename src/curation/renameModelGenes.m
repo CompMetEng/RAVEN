@@ -80,14 +80,15 @@ function model = renameModelGenes(model, geneTable, fromCol, toCol)
 
     % Load table if a file path was supplied
     if ischar(geneTable) || isstring(geneTable)
-        if ~isfile(geneTable)
+        tableFile = char(geneTable);
+        if ~isfile(tableFile)
             error('renameModelGenes:fileNotFound', ...
-                  'Table file not found: %s', geneTable);
+                  'Table file not found: %s', tableFile);
         end
-        geneTable = readtable(geneTable, 'Delimiter', '\t', 'FileType', 'text', ...
+        geneTable = readtable(tableFile, 'Delimiter', '\t', 'FileType', 'text', ...
                               'TextType', 'char');
         fprintf('Loaded gene table from file: %s  (%d rows)\n', ...
-                geneTable, height(geneTable));
+                tableFile, height(geneTable));
     end
 
     % Validate column names

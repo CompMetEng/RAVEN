@@ -21,6 +21,27 @@
 * `gapFillTopological`: without `targets` and without an objective reaction it raises
   `RAVEN:badInput` (was: an error without identifier). Help states the default seeds and
   targets.
+* `checkProduction` with `checkNeededForProduction`: the returned `model` holds excretion
+  reactions only (was: the excretion reaction of the last metabolite in `notProduced` was
+  returned as an uptake reaction). This matters for code that uses the fifth output.
+
+### Curation
+
+* `renameModelGenes` with a file path as `geneTable`: the table is read and the genes are
+  renamed (was: an error `MATLAB:invalidConversion` when the message that names the file
+  was printed).
+
+### Queries
+
+* `getIndexes` with type `'metnames'` and `returnLogical` true: raises `RAVEN:badInput` (was:
+  the error "Unable to use a value of type cell as an index"). A name can match several
+  metabolites, so no single logical vector is defined.
+
+### Analysis
+
+* `findGeneDeletions` with `'dgd'`: `grRatioMuts` has one element per gene pair, as the help
+  states (was: twice as many, the second half zero). This matters for code that indexes
+  `grRatioMuts` by the number of its elements.
 
 ### Context-specific models (ftINIT / tINIT)
 
@@ -56,6 +77,10 @@
 * `grRuleToDNF`: help states the grammar it reads, that of `parseGrRule` (`and`/`or` in any
   case, `&`, `&&`, `|`, `||`, operators as whole words, so `G1&G2` is one gene id), and that a
   malformed rule raises `RAVEN:badGrRule`.
+
+* `checkRaven`: when the binaries cannot be downloaded, the message names the
+  `RAVEN-<tag>-full.zip` bundle attached to each release for an offline install (was:
+  "the `*-binaries` RAVEN release").
 
 ### Documentation
 

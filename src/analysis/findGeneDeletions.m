@@ -113,7 +113,7 @@ if strcmpi(testType,'dgd')
     [~, I]=ismember(originalGenes(details==1),model.genes);
     genesToModify=nchoosek(I,2);
     genes=geneMapping(genesToModify);
-    grRatioMuts=zeros(1,numel(genes));
+    grRatioMuts=zeros(1,size(genesToModify,1));
     fluxes=sparse(numel(model.rxns),size(genesToModify,1));
     for i=1:size(genesToModify,1)
         tempModel=removeGenes(model,genesToModify(i,:),false,false,false);

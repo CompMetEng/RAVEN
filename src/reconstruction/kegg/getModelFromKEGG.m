@@ -24,7 +24,9 @@ function [model,KOModel]=getModelFromKEGG(varargin)
 % Returns
 % -------
 % model : struct
-%     a model structure with all reactions and the metabolites used in them.
+%     a model structure with the reactions that the keep* options retain (by
+%     default all except those labelled as "general reaction") and the
+%     metabolites used in them.
 % KOModel : struct
 %     a model structure representing KEGG Orthology ids and their associated
 %     genes. KO ids are stored as reactions.

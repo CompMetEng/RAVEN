@@ -90,9 +90,10 @@ if deleteUnconstrained==true
 end
 
 if deleteDuplicates==true
-    %Delete all but the last occurrence of duplicate reactions. The
-    %reactions must have the same bounds, reversibility, and objective
-    %coefficient to be regarded as duplicate
+    %Merge duplicate reactions into the first occurrence and delete the
+    %others. Reactions with the same stoichiometry and reversibility are
+    %duplicates; the merged reaction keeps the widest bounds and the largest
+    %objective coefficient (see contractModel)
     [reducedModel, rxnsToDelete, ~]=contractModel(reducedModel);
     deletedReactions=[deletedReactions; rxnsToDelete];
 end

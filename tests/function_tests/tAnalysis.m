@@ -122,6 +122,24 @@ classdef tAnalysis < RavenTestCase
             testCase.verifyGreaterThan(max(grRatioMuts), 0);
         end
 
+        function findGeneDeletionsDoubleDeletionSizes(testCase)
+            % Three genes with solvable single deletions give three gene pairs.
+            m = struct();
+            m.id = 'toy'; m.name = 'toy';
+            m.rxns = {'EX_a'; 'R1'; 'R2'; 'R3'; 'BIO'; 'EX_p'}; m.rxnNames = m.rxns;
+            m.mets = {'a'; 'b'; 'p'}; m.metNames = m.mets; m.metComps = ones(3,1);
+            m.comps = {'c'}; m.compNames = {'c'};
+            m.S = sparse([1 -1 -1 -1 0 0; 0 1 1 0 -1 0; 0 0 0 1 0 -1]);
+            m.lb = zeros(6,1); m.ub = [10; 1000; 1000; 1000; 1000; 1000];
+            m.rev = zeros(6,1); m.c = [0; 0; 0; 0; 1; 0]; m.b = zeros(3,1);
+            m.genes = {'g1'; 'g2'; 'g3'}; m.grRules = {''; 'g1'; 'g2'; 'g3'; ''; ''};
+            m.rxnGeneMat = sparse([0 0 0; 1 0 0; 0 1 0; 0 0 1; 0 0 0; 0 0 0]);
+            evalc('[genes, fluxes, ~, ~, grRatioMuts] = findGeneDeletions(m, ''dgd'');');
+            testCase.verifySize(genes, [3 2]);
+            testCase.verifySize(fluxes, [numel(m.rxns) 3]);
+            testCase.verifySize(grRatioMuts, [1 3]);
+        end
+
         function traceFluxPathReturnsCells(testCase)
             testCase.assumeSolver('solveLP');
             sol = solveLP(testCase.model);

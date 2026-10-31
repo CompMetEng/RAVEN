@@ -77,6 +77,25 @@ classdef tGenomeData < RavenTestCase
             testCase.verifyEqual(size(m2.rxnGeneMat,2), numel(m2.genes));
         end
 
+        function renameModelGenesReadsTableFromFilePath(testCase)
+            model.id         = 'test';
+            model.rxns       = {'r1'; 'r2'};
+            model.genes      = {'LT1'; 'LT2'};
+            model.grRules    = {'LT1'; 'LT1 or LT2'};
+            model.rxnGeneMat = sparse([1 0; 1 1]);
+
+            T = table({'LT1'; 'LT2'}, {'AAA'; 'BBB'}, ...
+                'VariableNames', {'locus_tag', 'gene_name'});
+            tsvFile = [tempname '.tsv'];
+            writetable(T, tsvFile, 'FileType', 'text', 'Delimiter', '\t');
+            testCase.addTeardown(@() delete(tsvFile));
+            output = evalc('m2 = renameModelGenes(model, tsvFile, ''locus_tag'', ''gene_name'');');
+
+            testCase.verifySubstring(output, tsvFile);
+            testCase.verifyEqual(sort(m2.genes), {'AAA'; 'BBB'});
+            testCase.verifyEqual(m2.grRules, {'AAA'; 'AAA or BBB'});
+        end
+
         function downloadGenomeDataDownloads(testCase)
             % Network test: download a small genome from NCBI Datasets.
             % Skipped when there is no internet connection.

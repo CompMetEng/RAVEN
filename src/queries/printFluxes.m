@@ -46,8 +46,8 @@ function printFluxes(model, fluxes, varargin)
 %
 % Examples
 % --------
-%     printFluxes(model, fluxes, onlyExchange, cutOffFlux, outputFile, ...
-%                 outputString, metaboliteList);
+%     printFluxes(model, fluxes, 'onlyExchange', false, 'cutOffFlux', 10^-6, ...
+%                 'outputFile', 'fluxes.txt', 'metaboliteList', {'glucose'});
 
 p=parseRAVENargs(varargin, {'onlyExchange',true; 'cutOffFlux',10^-8; 'outputFile',[]; 'outputString',[]; 'metaboliteList',{}});
 onlyExchange=p.onlyExchange;

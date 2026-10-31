@@ -285,10 +285,10 @@ for initStep = 1:length(INITSteps)
     lastError = [];
     if ~isempty(proveAbsGap)
         %One solve proven to this fixed absolute gap, replacing the relative-gap
-        %escalation below. The escalation's final near-zero-objective run otherwise
-        %accepts an arbitrary within-gap incumbent -- measured on genome-scale
-        %Human-GEM to cost 2.0-4.0 objective units (raven-toolbox's prove_abs_gap,
-        %raven-gecko-parity#104). Pairs naturally with resolveTies.
+        %escalation below. The final near-zero-objective run of the escalation
+        %accepts an arbitrary incumbent within the gap; on genome-scale Human-GEM
+        %the step 1 objective of the escalation ended 4.0 to 12.0 units below the
+        %proven optimum (raven-toolbox's prove_abs_gap, raven-gecko-parity#104).
         if ~isempty(stp.MILPParams) && isfield(stp.MILPParams{1}, 'TimeLimit')
             params = struct('TimeLimit', stp.MILPParams{1}.TimeLimit);
         else

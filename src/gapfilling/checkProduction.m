@@ -52,11 +52,8 @@ function [notProduced, notProducedNames, neededForProductionMat,minToConnect,mod
 %     checkNeededForProduction is false.
 % model : struct
 %     model structure with an excretion reaction added for each metabolite
-%     in the compartments of excretionFromCompartments. When
-%     checkNeededForProduction is true, the excretion reaction of the last
-%     metabolite in notProduced is returned as an uptake reaction, because
-%     the loop that flips each reaction into an uptake reaction does not
-%     reset the last one.
+%     in the compartments of excretionFromCompartments. All added reactions
+%     are excretion reactions, also when checkNeededForProduction is true.
 %
 % Examples
 % --------
@@ -103,6 +100,12 @@ if checkNeededForProduction==true
         %Test which of the metabolites that couldn't be produced that can
         %be produced now
         neededForProductionMat(i,:)=haveFlux(model,10^-5,addedRxns(notProduced));
+    end
+    if ~isempty(notProduced)
+        %Reset the last iteration, so that the returned model has excretion
+        %reactions only
+        lastCol=numel(model.rxns)-numel(addedRxns)+notProduced(end);
+        model.S(:,lastCol)=model.S(:,lastCol)*-1;
     end
     %Calculate the smallest number of metabolites that must be connected to
     %make everything connected and return their names

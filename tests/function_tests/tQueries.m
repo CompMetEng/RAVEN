@@ -322,6 +322,19 @@ classdef tQueries < RavenTestCase
             testCase.verifyEqual(find(lg), 1);
         end
 
+        function getIndexesMetnamesReturnLogicalErrors(testCase)
+            name = testCase.model.metNames(1);
+            testCase.verifyError( ...
+                @() getIndexes(testCase.model, name, 'metnames', 'returnLogical', true), ...
+                'RAVEN:badInput');
+            try
+                getIndexes(testCase.model, name, 'metnames', 'returnLogical', true);
+            catch e
+                testCase.verifySubstring(e.message, 'metnames');
+                testCase.verifySubstring(e.message, 'returnLogical');
+            end
+        end
+
         function getIndexesLogicalMaskAllTrueReturnsIndices(testCase)
             % A logical all-true mask of length n must return numeric [1..n],
             % not be passed through as a logical array: this requires an
