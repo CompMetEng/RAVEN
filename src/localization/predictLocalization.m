@@ -3,71 +3,62 @@ function [outModel, geneLocalization, transportStruct, scores,...
 	defaultCompartment, varargin)
 % predictLocalization  Assign reactions to compartments using localization predictors.
 %
-% Tries to assign reactions to compartments in a manner that is in
-% agreement with localization predictors while at the same time maintaining
-% connectivity.
+% Assigns reactions to compartments so that the assignment agrees with the localization
+% predictors and the network stays connected.
 %
 % Parameters
 % ----------
 % model : struct
-%     a model structure. If the model contains several compartments they
-%     will be merged.
+%     a model structure. If the model contains several compartments, they
+%     are merged.
 % GSS : struct
 %     a gene scoring structure as from parseScores.
 % defaultCompartment : char
 %     transport reactions are expressed as diffusion between the
-%     defaultCompartment and the others. This is usually the cytosol. The
-%     default compartment must have a match in GSS.
+%     defaultCompartment and the others. The compartment is usually the cytosol. It must
+%     be one of GSS.compartments.
 %
 % Name-Value Arguments
 % --------------------
 % transportCost : double
-%     the cost for including a transport reaction. If this is a scalar then
-%     the same cost is used for all metabolites. It can also be a vector of
-%     costs with the same dimension as model.mets. Negative costs encourage
-%     transport of the metabolite (default 0.5).
+%     the cost for including a transport reaction. A scalar applies the same cost to all
+%     metabolites; a vector must have the same dimension as model.mets. A negative cost
+%     favours transport of the metabolite (default 0.5).
 % maxTime : double
-%     maximum optimization time in minutes (default 15).
+%     maximum optimisation time in minutes (default 15).
 % plotResults : logical
-%     true if the results should be plotted during the optimization
-%     (default false).
+%     true to plot the results during the optimisation (default false).
 %
 % Returns
 % -------
 % outModel : struct
 %     the resulting model structure.
 % geneLocalization : struct
-%     structure with the genes and their resulting localization.
+%     structure with the genes and their resulting localisation.
 % transportStruct : struct
-%     structure with the transport reactions that had to be inferred and
-%     between which compartments.
+%     structure with the inferred transport reactions and the compartments between which
+%     they transport.
 % scores : struct
-%     structure that contains the total score history together with the
-%     score based on gene localization and the score based on included
-%     transport reactions.
+%     structure with the total score history, the score based on gene localisation and
+%     the score based on the included transport reactions.
 % removedRxns : cell
-%     cell array with the reaction ids that had to be removed to have a
-%     connected input model.
+%     cell array with the ids of the reactions removed to obtain a connected input model.
 %
 % Notes
 % -----
-% This function requires that the starting network is connected when it is
-% in one compartment. Reactions that are unconnected are removed and saved
-% in removedRxns. Try running fillGaps to have a more connected input model
-% if there are many such reactions. The input model should also not include
-% any exchange, demand or sink reactions, otherwise this function would not
-% provide any results.
+% The starting network must be connected when it is in one compartment. Unconnected
+% reactions are removed and returned in removedRxns. If many reactions are removed,
+% fillGaps can produce a more connected input model. The input model must not include
+% exchange, demand or sink reactions; otherwise the function provides no results.
 %
-% In the final model all metabolites are produced in at least one reaction.
-% This does not guarantee a fully functional model since there can be
-% internal loops. Transport reactions are only included as passive diffusion
-% (A <=> B).
+% In the final model, every metabolite is produced in at least one reaction. Internal
+% loops can still make the model non-functional. Transport reactions are included only
+% as passive diffusion (A <=> B).
 %
-% The score of a model is the sum of scores for all genes in their assigned
-% compartment minus the cost of all transport reactions that had to be
-% included. A gene can only be assigned to one compartment. This is a
-% simplification to keep the problem size down. The problem is solved using
-% simulated annealing.
+% The score of a model is the sum of the scores of all genes in their assigned
+% compartment minus the cost of all included transport reactions. A gene is assigned
+% to one compartment, which limits the problem size. The problem is solved by simulated
+% annealing.
 %
 % Examples
 % --------

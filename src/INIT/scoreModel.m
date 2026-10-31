@@ -2,11 +2,8 @@ function [rxnScores, geneScores, hpaScores, arrayScores] = scoreModel(model,hpaD
 % scoreModel  Score reactions and genes in a model with complex gene rules.
 %
 % Scores the reactions and genes in a model containing complex gene rules
-% based on expression data from HPA and/or gene arrays.
-%
-% It is highly recommended that the model grRules are "cleaned" and verified by
-% the "cleanModelGeneRules" function prior to scoring the model with
-% scoreModel.
+% based on expression data from HPA, gene arrays or both. The model grRules
+% should be standardised with standardizeGrRules before scoring.
 %
 % Parameters
 % ----------
@@ -20,26 +17,27 @@ function [rxnScores, geneScores, hpaScores, arrayScores] = scoreModel(model,hpaD
 %     []). With fields:
 %
 %     - genes : cell array with the unique gene names.
-%     - tissues : cell array with the tissue names. The list may not be unique,
-%       as there can be multiple cell types per tissue.
+%     - tissues : cell array with the tissue names. The list can contain
+%       duplicates, as there can be multiple cell types per tissue.
 %     - celltypes : cell array with the cell type names for each tissue.
 %     - levels : GENESxTISSUES array with the expression level for each gene in
-%       each tissue/celltype. NaN should be used when no measurement was
-%       performed.
+%       each tissue and cell type. NaN marks a gene that was not measured.
 %     - threshold : a single value or a vector of gene expression thresholds,
-%       above which genes are considered to be "expressed". (optional, by
-%       default, the mean expression levels of each gene across all tissues in
-%       arrayData will be used as the threshold values).
+%       above which genes are considered to be "expressed". If omitted, the
+%       mean expression level of each gene across all tissues in arrayData
+%       is used as the threshold.
 % tissue : char
-%     tissue to score for. Should exist in either hpaData.tissues or
-%     arrayData.tissues.
+%     tissue to score for. Must exist in either hpaData.tissues or
+%     arrayData.tissues (matched without regard to case); otherwise an error
+%     is raised.
 %
 % Name-Value Arguments
 % --------------------
 % celltype : char
-%     cell type to score for. Should exist in either hpaData.celltypes or
-%     arrayData.celltypes for this tissue (default is to use the max values
-%     among all the cell types for the tissue).
+%     cell type to score for. Must exist in either hpaData.celltypes or
+%     arrayData.celltypes (matched without regard to case); otherwise an error
+%     is raised (default [], which uses all cell types of the tissue,
+%     combined as set by multipleCellScoring).
 % noGeneScore : double
 %     score for reactions without genes (default -2).
 % isozymeScoring : char
@@ -55,8 +53,9 @@ function [rxnScores, geneScores, hpaScores, arrayScores] = scoreModel(model,hpaD
 %     ("max" or "average") (default "max").
 % hpaLevelScores : struct
 %     structure with numerical scores for the expression level categories from
-%     HPA. The structure should have a "names" and a "scores" field (default,
-%     see code for default scores).
+%     HPA. The structure has a "names" and a "scores" field. The default names
+%     are High, Medium, Low, None, Strong, Moderate, Weak, Negative and Not
+%     detected, with the scores 20, 15, 10, -8, 20, 15, 10, -8 and -8.
 % dataPrecedence : char
 %     how hpaData takes precedence over arrayData when both are supplied
 %     (default "gene"):
@@ -73,8 +72,9 @@ function [rxnScores, geneScores, hpaScores, arrayScores] = scoreModel(model,hpaD
 %     scores for each of the reactions in model.
 % geneScores : double
 %     scores for each of the genes in model. Genes which are not in the
-%     dataset(s) have NaN as scores, which removeLowScoreGenes reads as "no
-%     evidence" and leaves in place, where a negative score would be pruned.
+%     dataset(s) have NaN as scores. removeLowScoreGenes reads NaN as "no
+%     evidence" and leaves the gene in place, and prunes genes with a
+%     negative score.
 % hpaScores : double
 %     scores for each of the genes in model if only taking hpaData into
 %     account. Genes which are not in the dataset(s) have -Inf as scores.

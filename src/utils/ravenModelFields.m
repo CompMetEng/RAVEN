@@ -1,20 +1,21 @@
 function reg = ravenModelFields()
 % ravenModelFields  Declarative registry of all RAVEN model struct fields.
 %
-% Returns a struct array. Each element describes one field:
+% Returns a struct array with one element per field. The elements have the
+% fields:
 %   .name    - field name (char)
-%   .type    - entity type: 'rxn', 'met', 'gene', or 'comp' (char)
+%   .type    - entity type: 'rxn', 'met', 'gene' or 'comp' (char)
 %   .default - default value when padding new entries
 %
-% Only 1-D (vector-per-entity) fields are listed here. Fields that require
-% custom 2-D indexing or value-remapping are excluded and must be handled
-% explicitly by callers:
+% Only 1-D (vector-per-entity) fields are listed. Fields that need 2-D
+% indexing or value remapping are excluded, and callers handle them
+% explicitly:
 %
 %   S          - sparse (mets x rxns); use S(:,perm) for rxns, S(perm,:) for mets
 %   rxnGeneMat - sparse (rxns x genes); use rxnGeneMat(perm,:) or rxnGeneMat(:,perm)
 %   b          - double (mets x N), may be 2-D; use b(perm,:)
-%   metComps, rxnComps, geneComps - when permuting comps, their VALUES must
-%       be remapped (not the arrays themselves permuted)
+%   metComps, rxnComps, geneComps - when the compartments are permuted, the
+%       values of these arrays are remapped; the arrays are not permuted
 
 rows = {
 % name                   type      default

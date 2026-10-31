@@ -3,15 +3,15 @@ function [model, hasChanged]=removeIdentifierPrefix(model,varargin)
 %
 % Removes identifier prefixes:
 %
-%     "R_" for model.rxns, model.rxnNames and model.id,
-%     "M_" for model.mets and model.metNames,
+%     "R_" for model.rxns and model.rxnNames,
+%     "M_" for model.mets, model.metNames and model.id,
 %     "C_" for model.comps;
 %     "G_" for model.genes (and also represented in model.grRules).
 %
 % By default, the prefixes are only removed if all entries in a particular
-% field have the prefix. The prefixes might have been present because one
-% or more identifiers do not start with a letter or _, which conflicts
-% with SBML specifications.
+% field have the prefix. The prefixes are required when one or more
+% identifiers do not start with a letter or _, which conflicts with SBML
+% specifications.
 %
 % Parameters
 % ----------
@@ -21,20 +21,20 @@ function [model, hasChanged]=removeIdentifierPrefix(model,varargin)
 % Name-Value Arguments
 % --------------------
 % fields : cell
-%     cell array with model field names from which the identifiers should
-%     be removed, possible values: 'rxns', 'mets', 'comps', 'genes',
-%     'metNames', 'rxnNames', 'id' (default all listed model fields will
-%     be checked).
+%     cell array with the names of the model fields from which the prefix
+%     is removed, possible values: 'rxns', 'mets', 'comps', 'genes',
+%     'metNames', 'rxnNames', 'id' (default all of these fields).
 % forceRemove : logical
-%     if prefixes should be removed even if not all entries in a model
-%     field have the prefix (default false).
+%     true to remove the prefix from the entries that have it when not all
+%     entries in a model field have the prefix (default false).
 %
 % Returns
 % -------
 % model : struct
 %     modified model.
 % hasChanged : cell
-%     cell array with fields and prefixes that are removed.
+%     cell array of char with one entry per field from which a prefix is
+%     removed, for example 'model.rxns (R_ prefix)'.
 %
 % Examples
 % --------

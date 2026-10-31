@@ -10,31 +10,34 @@ function [exchModel,unusedMets] = setExchangeBounds(model,varargin)
 % --------------------
 % mets : cell or double
 %     a cell array of metabolite names (case insensitive) or metabolite
-%     IDs, or a vector of metabolite indices (default all exchanged
+%     IDs, or a vector of indices in model.mets (default all exchanged
 %     metabolites).
 % lb : double
-%     lower bound of exchange flux. Can be either a vector of bounds
-%     corresponding to each of the provided metabolites, or a single value
-%     that will be applied to all (default model.annotation.defaultLB if it
-%     exists, otherwise -1000).
+%     lower bound of exchange flux. Either a vector of bounds corresponding
+%     to each of the provided metabolites, or a single value that is applied
+%     to all (default model.annotation.defaultLB if it exists, otherwise
+%     -1000). Without mets, only a single value is accepted.
 % ub : double
-%     upper bound of exchange flux. Can be either a vector of bounds
-%     corresponding to each of the provided metabolites, or a single value
-%     that will be applied to all (default model.annotation.defaultUB if it
-%     exists, otherwise 1000).
+%     upper bound of exchange flux. Either a vector of bounds corresponding
+%     to each of the provided metabolites, or a single value that is applied
+%     to all (default model.annotation.defaultUB if it exists, otherwise
+%     1000). Without mets, only a single value is accepted.
 % closeOthers : logical
-%     close exchange reactions for all other exchanged metabolites not
-%     present in the provided list. This will prevent IMPORT of the
-%     metabolites, but their EXPORT will not be modified (default true).
+%     close the exchange reactions of all exchanged metabolites that are not
+%     in the provided list. This prevents import of these metabolites and
+%     leaves their export unchanged. Set to false, with a warning, when the
+%     exchange reactions are not all written in the same direction
+%     (default true).
 % mediaOnly : logical
 %     only consider exchange reactions involving exchange to or from the
 %     extracellular (media) compartment. Reactions such as "sink" reactions
 %     that exchange metabolites directly with an intracellular compartment
-%     will therefore be ignored even though "getExchangeRxns" identifies
-%     such reactions as exchange reactions. The function will attempt to
-%     identify the extracellular compartment by the "compNames" field, and
-%     also requires the "metComps" field to be present, otherwise the
-%     mediaOnly flag will be ignored (default false).
+%     are therefore ignored, although "getExchangeRxns" identifies such
+%     reactions as exchange reactions. The extracellular compartment is the
+%     one named "extracellular" in the "compNames" field (case insensitive).
+%     The "compNames" and "metComps" fields are required; an error is thrown
+%     if either is missing or if no compartment has this name
+%     (default false).
 %
 % Returns
 % -------
@@ -42,8 +45,8 @@ function [exchModel,unusedMets] = setExchangeBounds(model,varargin)
 %     a model structure with updated exchange flux bounds for the provided
 %     set of metabolites.
 % unusedMets : cell
-%     metabolites provided by the user that were not used because they are
-%     not involved in any exchange reactions in the model.
+%     metabolites in mets that were not used because they are not involved
+%     in any of the considered exchange reactions in the model.
 %
 % Examples
 % --------
@@ -52,7 +55,7 @@ function [exchModel,unusedMets] = setExchangeBounds(model,varargin)
 %
 % Notes
 % -----
-% Exchange reactions involving more than one metabolite will be ignored.
+% Exchange reactions involving more than one metabolite are ignored.
 
 
 % handle input arguments

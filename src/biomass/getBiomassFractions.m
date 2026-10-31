@@ -4,9 +4,16 @@ function fractions = getBiomassFractions(model, biomassConfig)
 % Compute the mass fraction (g/gDW) per biomass component plus the total.
 % The MATLAB counterpart of yeast-GEM's legacy sumBioMass.
 %
-% The biomassConfig struct describes the per-organism biomass layout — see
-% Parameters below. Components whose pseudoreaction is missing from the
-% model contribute 0.
+% The biomassConfig struct describes the per-organism biomass layout (see
+% Parameters). A component contributes 0 when its pseudoreaction is missing
+% from the model or has no substrates. For a component whose pseudoreaction
+% exists and has substrates, and whose mass_strategy is not 'grams', an error
+% is raised when the molecular weight of a substrate is 0 (an empty
+% metFormula field, or a formula that consists only of R), when its formula
+% contains an element outside the built-in element table, or when
+% mass_strategy is unknown. A component with an unknown mass_strategy whose
+% pseudoreaction is missing or has no substrates contributes 0 without an
+% error.
 %
 % Parameters
 % ----------
@@ -16,21 +23,22 @@ function fractions = getBiomassFractions(model, biomassConfig)
 %     Struct describing the biomass layout, with fields:
 %
 %     - biomass_rxn : rxn id of the top-level biomass pseudoreaction.
-%     - proton_met : met id of cytosolic H+ (used only by
-%       rescalePseudoreaction; may be unused here).
+%     - proton_met : met id of cytosolic H+ (used by
+%       scaleBiomassPseudoreaction, not by getBiomassFractions).
 %     - components : cell array of component structs, each with fields:
 %
-%       - name : component name (e.g. 'protein').
+%       - name : component name (for example 'protein').
 %       - pseudoreaction_name : model.rxnNames entry to identify the
 %         pseudoreaction.
-%       - mass_strategy : 'mw' | 'mw_minus_2h' | 'mw_minus_water' |
-%         'grams' — see Notes below.
+%       - mass_strategy : 'mw', 'mw_minus_2h', 'mw_minus_water' or
+%         'grams' (see Notes).
 %
 % Returns
 % -------
 % fractions : struct
-%     Struct keyed by component name plus 'total': fractions.protein,
-%     fractions.RNA, ... etc. All values are in g/gDW.
+%     Struct with one field per component name and a field 'total'
+%     (for example fractions.protein and fractions.RNA). All values are in
+%     g/gDW.
 %
 % Examples
 % --------
@@ -41,11 +49,11 @@ function fractions = getBiomassFractions(model, biomassConfig)
 % mass_strategy values:
 %
 %     'mw'              MW from chemical formula
-%     'mw_minus_2h'     MW − 2.016 g/mol (two protons released per charged
-%                       tRNA — protein-pseudoreaction substrates)
-%     'mw_minus_water'  MW − 18.015 g/mol (water released per
-%                       polymerisation step — RNA / DNA)
-%     'grams'           stoichiometry already in g/gDW (lipid backbone)
+%     'mw_minus_2h'     MW - 2.016 g/mol (two protons released per charged
+%                       tRNA; protein pseudoreaction substrates)
+%     'mw_minus_water'  MW - 18.015 g/mol (water released per
+%                       polymerisation step; RNA and DNA)
+%     'grams'           stoichiometry is already in g/gDW (lipid backbone)
 
 fractions = struct();
 total = 0;

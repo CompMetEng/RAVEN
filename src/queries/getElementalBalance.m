@@ -1,7 +1,10 @@
 function balanceStructure=getElementalBalance(model,varargin)
 % getElementalBalance  Check whether the reactions of a model are balanced.
 %
-% Checks a model to see if the reactions are elementally balanced.
+% Checks whether the reactions are elementally balanced, using the
+% metFormulas field or, when that is absent, the inchis field. An error is
+% thrown if the model has neither field. The charge balance is reported
+% separately.
 %
 % Parameters
 % ----------
@@ -13,13 +16,13 @@ function balanceStructure=getElementalBalance(model,varargin)
 % rxns : cell or logical or double
 %     either a cell array of reaction IDs, a logical vector with the same
 %     number of elements as reactions in the model, or a vector of
-%     indexes. Only these reactions will be checked (default model.rxns).
+%     indexes. Only these reactions are checked (default model.rxns).
 % printUnbalanced : logical
-%     print warnings about the reactions that were unbalanced
+%     print warnings about the reactions that are unbalanced
 %     (default false).
 % printUnparsable : logical
-%     print warnings about the reactions that cannot be parsed
-%     (default false).
+%     print warnings about the reactions that cannot be balanced because of
+%     missing information or parsing errors (default false).
 %
 % Returns
 % -------
@@ -28,12 +31,13 @@ function balanceStructure=getElementalBalance(model,varargin)
 %
 %     - balanceStatus : 1 if the reaction is balanced, 0 if it is
 %       unbalanced, -1 if it could not be balanced due to missing
-%       information, -2 if it could not be balanced due to an error.
-%       Elemental only; charge is reported separately below
+%       information (including a reaction without metabolites), -2 if it
+%       could not be balanced because a formula could not be parsed.
+%       Elemental only; charge is reported in chargeStatus
 %     - chargeStatus : 1 if the reaction is charge balanced, 0 if it is
-%       not, -1 if any participating metabolite has no charge (or the
-%       model has no metCharges field), in which case the charge balance
-%       is unknown rather than zero
+%       not, -1 if any participating metabolite has no charge, the reaction
+%       has no metabolites, or the model has no metCharges field; the
+%       charge balance is then unknown
 %     - chargeResidual : the sum of charges over the reaction, NaN where
 %       chargeStatus is -1
 %     - elements : struct with fields abbrevs (cell array with

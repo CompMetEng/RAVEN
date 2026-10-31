@@ -57,6 +57,10 @@
   case, `&`, `&&`, `|`, `||`, operators as whole words, so `G1&G2` is one gene id), and that a
   malformed rule raises `RAVEN:badGrRule`.
 
+### Documentation
+
+* Help blocks of 176 files are rewritten in impersonal, present-tense wording with British spelling; the code is unchanged. Statements that differed from the code are corrected, for example `simplifyModel` `deleteDuplicates` (first occurrence kept), `removeBadRxns` `refModel`, `replaceMets` outputs, `getMinNrFluxes` `params`, `checkRaven` `developMode` and the `downloadRavenBinaries` offline bundle. `reverseRxns` has the RAVEN 3 help structure.
+
 ## 3.0.0b1 — 2026-09-07
 
 First beta toward 3.0. Changes below are relative to RAVEN 2.9.3, the last 2.x release:

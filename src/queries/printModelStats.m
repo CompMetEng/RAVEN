@@ -1,5 +1,10 @@
 function printModelStats(model, varargin)
-% printModelStats  Print some statistics about a model to the screen.
+% printModelStats  Print statistics about a model to the screen.
+%
+% Prints the numbers of genes, reactions and metabolites in total and per
+% compartment, the number of unique EC codes (if the eccodes field exists),
+% the number of biochemically unique reactions and the number of unique
+% metabolite names.
 %
 % Parameters
 % ----------
@@ -9,11 +14,12 @@ function printModelStats(model, varargin)
 % Name-Value Arguments
 % --------------------
 % printModelIssues : logical
-%     true if information about unconnected reactions/metabolites and
-%     elemental balancing should be printed (default false).
+%     true if information about unused metabolites, empty reactions,
+%     dead-end reactions and metabolites, and elemental balancing is printed
+%     (default false).
 % printDetails : logical
-%     true if detailed information should be printed about model issues.
-%     Only used if printModelIssues is true (default true).
+%     true if the individual metabolites and reactions of each issue are
+%     listed. Used only if printModelIssues is true (default true).
 %
 % Examples
 % --------
@@ -21,9 +27,9 @@ function printModelStats(model, varargin)
 %
 % See also
 % --------
-% modelSummary : the shorter view, without the per-compartment breakdown, but
-%     adding the objective function and - given a flux vector - the objective
-%     value and the net uptake and secretion.
+% modelSummary : prints the model dimensions without the per-compartment
+%     breakdown, the objective function and, given a flux vector, the
+%     objective value and the net uptake and secretion.
 
 p=parseRAVENargs(varargin, {'printModelIssues',false; 'printDetails',true});
 printModelIssues=p.printModelIssues;

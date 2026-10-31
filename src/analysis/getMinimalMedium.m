@@ -2,21 +2,22 @@ function [medium, mediumIdx] = getMinimalMedium(model, varargin)
 % getMinimalMedium  Find the minimal set of uptake reactions for growth.
 %
 % Uses MILP to find the smallest set of exchange reactions that can carry
-% uptake flux (lb < 0) while still allowing the model to achieve a target
-% growth rate. Unlike iterative heuristics, the MILP formulation finds the
-% globally minimal medium.
+% uptake flux (lb < 0) while the model achieves a target growth rate. The
+% MILP formulation gives a medium with the globally minimal number of
+% uptake reactions.
 %
 % Parameters
 % ----------
 % model : struct
-%     RAVEN model structure.
+%     a model structure.
 %
 % Name-Value Arguments
 % --------------------
 % minGrowth : double
-%     minimum objective value (growth rate) the medium must support.
-%     Defaults to 10 % of the unconstrained optimum computed automatically.
-%     Set explicitly to avoid an extra FBA call (e.g. 'minGrowth', 0.1).
+%     minimum objective value (growth rate) the medium must support. If
+%     empty, 10 % of the optimum objective value under the current bounds,
+%     which requires one extra FBA call. A value given explicitly avoids
+%     that call (for example 'minGrowth', 0.1) (default empty).
 % verbose : logical
 %     print the resulting minimal medium (default true).
 %
@@ -36,9 +37,8 @@ function [medium, mediumIdx] = getMinimalMedium(model, varargin)
 %
 % Notes
 % -----
-% Only exchange reactions with lb < 0 are considered as candidate uptake
-% reactions. Exchange reactions that are always secretion-only (lb >= 0) or
-% that are completely blocked are not included.
+% Only exchange reactions with lb < 0 are candidate uptake reactions.
+% Exchange reactions with lb >= 0 are not included.
 %
 % The MILP formulation:
 %   minimise  sum(y_i)
@@ -51,15 +51,15 @@ function [medium, mediumIdx] = getMinimalMedium(model, varargin)
 % A y_i = 0 forces reaction i to carry non-negative flux (no net uptake);
 % y_i = 1 allows it to carry flux as low as lb_i.
 %
-% The minimal number of uptakes is guaranteed, but the medium itself need
-% not be unique: when several media of the same size support the growth
-% rate, the solver returns one of them, and another solver or solver
-% version can return a different one.
+% The number of uptake reactions is minimal, but the medium is not
+% necessarily unique: when several media of the same size support the
+% growth rate, the solver returns one of them, and another solver or
+% solver version can return a different one.
 %
 % The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled
-% GLPK solves it for small models (with a RAVEN:glpkMILP warning); for
-% larger models Gurobi is much faster and more reliable
-% (setRavenSolver('gurobi')).
+% GLPK solves it for small models. The RAVEN:glpkMILP warning issued with
+% GLPK states that GLPK works for small problems and that Gurobi is much
+% faster and more reliable for larger ones (setRavenSolver('gurobi')).
 
 p = parseRAVENargs(varargin, {'minGrowth',[]; 'verbose',true});
 minGrowth = p.minGrowth;

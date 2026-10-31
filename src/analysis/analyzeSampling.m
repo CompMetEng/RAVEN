@@ -8,14 +8,12 @@ function scores=analyzeSampling(Tex, df, solutionsA, solutionsB, varargin)
 % ----------
 % Tex : double
 %     a vector of t-scores for the change in gene expression for each
-%     reaction. This score could be the Student t between the two
-%     conditions, or you can calculate it from a p-value (by computing the
-%     inverse of the so called error function). If you choose the second
-%     alternative you should be aware that the transcripts that increased
-%     in expression level should have positive values and those who
-%     decreased in expression level should have negative values (the
-%     p-values only tell you if the fluxes changed or not but not in which
-%     direction).
+%     reaction. The score is the Student t between the two conditions, or
+%     is calculated from a p-value by the inverse of the error function.
+%     Transcripts that increased in expression level have positive values
+%     and transcripts that decreased have negative values. A p-value does
+%     not give the direction of the change, so a score calculated from a
+%     p-value takes its sign from the direction of the expression change.
 % df : double
 %     the degrees of freedom in the t-test.
 % solutionsA : double
@@ -28,8 +26,8 @@ function scores=analyzeSampling(Tex, df, solutionsA, solutionsB, varargin)
 % Name-Value Arguments
 % --------------------
 % printResults : logical
-%     prints the most significant reactions in each category
-%     (default false).
+%     true to print the 10 reactions with the highest probability in each
+%     category (default false).
 %
 % Returns
 % -------

@@ -1,10 +1,10 @@
 function [newModel,remGenes] = removeLowScoreGenes(model,geneScores,varargin)
-% removeLowScoreGenes  Remove low-scoring genes from model.
+% removeLowScoreGenes  Remove low-score genes from a model.
 %
-% This function removes genes from a model based on their scores, a step used
-% by the tINIT package. The function recognizes and differentiates between
-% isozymes and subunits of an enzyme complex. Genes are removed from each
-% grRule, subject to the following conditions:
+% Removes genes from a model based on their scores, a step used by the tINIT
+% package. The function distinguishes isozymes from subunits of an enzyme
+% complex. Genes are removed from each grRule, subject to the following
+% conditions:
 %
 %     1) At least one gene must remain associated with the reaction.
 %     2) Genes involved in a complex (joined by ANDs) are not removed.
@@ -14,17 +14,18 @@ function [newModel,remGenes] = removeLowScoreGenes(model,geneScores,varargin)
 % model : struct
 %     model structure from which genes are to be removed.
 % geneScores : double
-%     a vector of scores associated with the model genes. Genes with a
-%     positive score will remain in the model, whereas genes with a negative
-%     score will try to be removed.
+%     a vector of scores associated with the model genes, with the same
+%     dimensions as model.genes. Genes with a score of zero or above and genes
+%     without a score (NaN) remain in the rules; a gene that no rule uses
+%     afterwards is removed from model.genes. Genes with a negative score
+%     are removed from the rules when the conditions above allow it.
 %
-%     If all genes associated with a reaction have a negative score, then the
-%     least-negative gene will remain; if there is a tie, the gene listed first
-%     in the rule will be kept.
+%     If all genes associated with a reaction have a negative score, the
+%     least-negative gene remains; in a tie, the gene listed first in the rule
+%     is kept.
 %
-%     If a negative-scoring gene is a subunit in a complex, it will not be
-%     removed; however, the entire complex may be removed. See the following
-%     example cases:
+%     A negative-scoring gene that is a subunit in a complex is not removed,
+%     but the entire complex may be removed. Example cases:
 %
 %     - Original: G1 or (G2 and G3 and G4); Negative: G1, G2; New: G2 and G3
 %       and G4.
@@ -36,21 +37,23 @@ function [newModel,remGenes] = removeLowScoreGenes(model,geneScores,varargin)
 % Name-Value Arguments
 % --------------------
 % isozymeScoring : char
-%     method used to combine the scores of multiple isozymes; "min", "max",
-%     "median", or "average" (default "max").
+%     method used to combine the scores of multiple isozymes: "min", "max",
+%     "median" or "average" (default "max").
 % complexScoring : char
 %     method used to combine the scores of enzyme complex subunits: "min",
-%     "max", "median", or "average" (default "min").
+%     "max", "median" or "average" (default "min").
 %
 % Returns
 % -------
 % newModel : struct
-%     model with updated gene, grRules, and rxnGeneMat fields after attempting
-%     to remove negative-score genes.
+%     model with updated genes, grRules and rxnGeneMat fields, and with the
+%     gene-associated fields (geneShortNames, proteins, geneMiriams, geneFrom,
+%     geneComps) trimmed to the remaining genes.
 % remGenes : cell
-%     a list of negative-score genes that were fully removed from the model.
-%     Negative-score genes that were removed from some grRules but not all
-%     will not be included in this list.
+%     the genes removed from model.genes: negative-score genes removed from every
+%     grRule and genes that no rule uses, whatever their score. Negative-score
+%     genes that are removed from some grRules but not all are not included in
+%     this list.
 
 
 p=parseRAVENargs(varargin, {'isozymeScoring',[]; 'complexScoring','min'});

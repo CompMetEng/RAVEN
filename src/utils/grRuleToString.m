@@ -1,9 +1,10 @@
 function rule=grRuleToString(tree)
 % grRuleToString  Render a grRule syntax tree back to a string.
 %
-% Writes the standard RAVEN format: " and " / " or " as operators, with
-% parentheses added only where precedence requires them, so that
-% parseGrRule(grRuleToString(tree)) round-trips to the same structure.
+% Writes the standard RAVEN format, with " and " and " or " as operators. An
+% AND node inside an OR node and an OR node inside an AND node are placed in
+% parentheses. The result parses with parseGrRule to a rule with the same
+% logic.
 %
 % Parameters
 % ----------

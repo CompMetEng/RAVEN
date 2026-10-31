@@ -1,6 +1,6 @@
 classdef INITStepDesc
 % Describes a step in the ftINIT algorithm. A cell array of objects of this
-% class is used as input to ftINIT to specify how the algorithm should be run.
+% class is the input to ftINIT that specifies how the algorithm is run.
    properties
       PosRevOff %If true, positive-scored reversible reactions are removed
                 %from the MILP problem (used in step 1 of ftINIT)
@@ -21,7 +21,7 @@ classdef INITStepDesc
                        % b8 - All rxns without GPRs
 
       MetsToIgnore % Structure describing mets that can be removed from the model
-                   % before running ftINIT, such as water etc.
+                   % before running ftINIT, such as water and other ubiquitous metabolites.
                    % .simpleMets
                    %      .mets        Names of metabolites to remove
                    %      .compsToKeep Compartments for which metabolites should be kept.

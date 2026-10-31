@@ -2,10 +2,10 @@ function [model,KOModel,isSpontaneous,isUndefinedStoich,isIncomplete,isGeneral]=
 % buildGlobalKEGGModel  Download and assemble the global KEGG model.
 %
 % Fetches the toolbox-assets <kegg version>_core.tar.gz bundle (the
-% gene-free reference model plus the ko_reaction / organism_gene_ko /
-% rxn_flags relational tables), then joins every organism's
-% genes onto the reference reactions through their shared KO ids. The
-% KEGG version is read from keggDataVersion, not hardcoded here.
+% gene-free reference model plus the ko_reaction, organism_gene_ko and
+% rxn_flags relational tables), then joins every organism's genes onto
+% the reference reactions through their shared KO ids. The KEGG version
+% is read from keggDataVersion.
 %
 % Parameters
 % ----------
@@ -15,9 +15,9 @@ function [model,KOModel,isSpontaneous,isUndefinedStoich,isIncomplete,isGeneral]=
 % Returns
 % -------
 % model : struct
-%     the full global KEGG model (all reactions/metabolites, genes and
-%     rxnGeneMat spanning every KEGG organism). Callers narrow this down
-%     to one organism (see getKEGGModelForOrganism).
+%     the full global KEGG model (all reactions and metabolites, genes and
+%     rxnGeneMat spanning every KEGG organism). getKEGGModelForOrganism
+%     narrows it to one organism.
 % KOModel : struct
 %     a minimal model struct whose rxns are the KO ids linked to at
 %     least one reaction (getKEGGModelForOrganism's HMM-search path uses

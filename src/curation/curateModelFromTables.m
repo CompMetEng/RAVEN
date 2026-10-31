@@ -1,17 +1,16 @@
 function newModel=curateModelFromTables(model,metsInfo,varargin)
 % curateModelFromTables  Curate or add mets, rxns and genes from tables.
 %
-% Curate existing and/or add new metabolites, reactions and genes from
+% Curates existing metabolites, reactions and genes and adds new ones from
 % tabular data files.
 %
-% If the *.tsv files contain metabolites, reactions and/or genes that are
-% already present in the model, then information in the model will be
-% overwritten. Note that this includes empty annotations in the *.tsv
-% files, unless 'overwriteWithEmpty' is false! Metabolites are matched by
-% metaboliteName[comp]; reactions by the stoichiometry of its reactants and
-% products; genes by their gene name.
-% This function can therefore be used to add new entities in the model, or
-% curate those already existing in the model.
+% If the *.tsv files contain metabolites, reactions or genes that are
+% already present in the model, the information in the model is
+% overwritten. This includes empty annotations in the *.tsv files, unless
+% 'overwriteWithEmpty' is false. Metabolites are matched by
+% metaboliteName[comp]; reactions by the stoichiometry of their reactants
+% and products; genes by their gene name. Entities that are not present in
+% the model are added.
 %
 % Columns are identified by their header (case-insensitive, and spaces around
 % a header are ignored, also inside its quotes), so their order
@@ -49,27 +48,30 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 %     Path to a *.tsv file with reaction information, or 'none'. Columns:
 %     rxnIdx (or index), rxnNames (both required), grRules, lb, ub, rev,
 %     subSystems, eccodes, rxnNotes, rxnReferences, rxnConfidenceScores,
-%     and MIRIAM. Each rxnIdx may be used by one row only (the rxnsCoeffs
-%     file has one row per metabolite of the reaction and repeats it).
+%     and MIRIAM. An index appears in at most one row of this table,
+%     otherwise RAVEN:badInput is raised (the rxnsCoeffs file has one row per
+%     metabolite of the reaction and repeats it). The two reaction tables
+%     are matched on index and name, and reactions or indices that appear
+%     in only one of them raise RAVEN:badInput.
 % metPrefix : char
-%     Prefix used to mint fresh metabolite ids (e.g. 's_' for yeast-GEM,
-%     'M_' for the BiGG default) (default 'M_').
+%     Prefix used to create new metabolite ids (for example 's_' for
+%     yeast-GEM, 'M_' for the BiGG default) (default 'M_').
 % rxnPrefix : char
-%     Prefix used to mint fresh reaction ids (default 'R_').
+%     Prefix used to create new reaction ids (default 'R_').
 % overwriteWithEmpty : logical
 %     if true, an empty cell in a row of an existing metabolite, gene or
 %     reaction empties the corresponding field of the model. If false, an
 %     empty cell leaves the existing value unchanged and only the cells with a
 %     value are written (default true; [] also means the default). Must be a
-%     scalar logical or 0/1. A cell with only blanks counts as empty in both
+%     scalar logical, 0 or 1. A cell with only blanks counts as empty in both
 %     modes. Empty grRules cells never overwrite. An empty or NaN lb, ub or
 %     rev cell always keeps the existing value. For the charge and the
 %     confidence score, an empty or NaN cell is treated alike: when
 %     overwriteWithEmpty is true and at least one other row of the column has
 %     a value, it becomes 0; a column in which no row has a value is not
 %     written, and the existing values stay. The same holds for a MIRIAM
-%     column: a column in which no row has a value does not clear the
-%     annotations of existing entities.
+%     column: a column in which no row of an existing entity has a value
+%     does not clear the annotations.
 %
 % Returns
 % -------
@@ -99,11 +101,12 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % given; for new reactions the reversibility is derived from lb and ub.
 %
 % Gene rules: a grRules cell must be a well-formed gene rule (genes joined by
-% and/or in any case, or by &, &&, | and ||, with balanced parentheses); a
-% rule with an operator that lacks an operand, empty parentheses or two genes
-% without an operator between them raises RAVEN:badInput before the model is
-% changed. A valid rule is stored in RAVEN's standard format. Whether the
-% genes exist is checked when the rule is applied.
+% the words and or or in any case, or by &, &&, | or ||, with balanced
+% parentheses); a rule with an operator that lacks an operand, empty
+% parentheses or two genes without an operator between them raises
+% RAVEN:badInput before the model is changed. A valid rule is stored in
+% RAVEN's standard format. Whether the genes exist is checked when the rule
+% is applied.
 %
 % Genes: a gene id that the genesInfo table lists more than once raises
 % RAVEN:badInput, whether the model has the gene or not.
@@ -117,9 +120,9 @@ function newModel=curateModelFromTables(model,metsInfo,varargin)
 % rxnIdx and a coefficient that is a finite number other than 0. A row of
 % the rxnsInfo table without any value is ignored; a row with a value needs
 % a rxnIdx. A rxnIdx is a whole number of at least 1; the indices (and
-% names) of the two reaction tables must match exactly, compared by their
-% numeric value (1, 1.0 and 1e0 are the same index). Otherwise RAVEN:badInput
-% is raised.
+% names) of the two reaction tables must match, with indices compared by
+% their numeric value (1, 1.0 and 1e0 are the same index). Otherwise
+% RAVEN:badInput is raised.
 
 p=parseRAVENargs(varargin, {'genesInfo','none'; 'rxnsCoeffs','none'; 'rxnsInfo','none'; 'metPrefix',[]; 'rxnPrefix',[]; 'overwriteWithEmpty',true});
 overwriteWithEmpty=p.overwriteWithEmpty;

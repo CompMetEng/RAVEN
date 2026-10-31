@@ -2,7 +2,8 @@ function allRxns=getAllRxnsFromGenes(model,rxns)
 % getAllRxnsFromGenes  Find all reactions annotated by the genes of a set.
 %
 % Given a list of reactions, this function finds the associated genes in
-% the model and returns all reactions that are annotated by these genes.
+% the model and returns all reactions that are annotated by these genes,
+% including the given reactions.
 %
 % Parameters
 % ----------
@@ -15,9 +16,9 @@ function allRxns=getAllRxnsFromGenes(model,rxns)
 % Returns
 % -------
 % allRxns : cell or logical or double
-%     either a cell array of IDs, a logical vector with the same number of
-%     elements as reactions in the model, or a vector of indexes,
-%     dependent on the format of rxns.
+%     the reactions in the same format as rxns: a cell array of IDs (unique
+%     and sorted), a logical vector with the same number of elements as
+%     reactions in the model, or a vector of indexes (unique and sorted).
 %
 % Examples
 % --------

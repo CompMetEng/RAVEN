@@ -1,5 +1,7 @@
 function model = changeGrRules(model,rxns,grRules,varargin)
-% changeGrRules  Change multiple grRules at the same time.
+% changeGrRules  Change the grRules of multiple reactions.
+%
+% Genes in grRules that are not in the model are added to the model.
 %
 % Parameters
 % ----------
@@ -8,16 +10,15 @@ function model = changeGrRules(model,rxns,grRules,varargin)
 % rxns : char or cell
 %     reaction IDs.
 % grRules : char or cell
-%     additional or replacement gene association. Should be written with
-%     ' and ' to indicate subunits, ' or ' to indicate isoenzymes, and
-%     brackets '()' to separate different instances.
+%     the replacement or additional gene association. ' and ' indicates subunits, ' or '
+%     indicates isoenzymes, and brackets '()' separate different instances. A single
+%     rule applies to all reactions in rxns.
 %
 % Name-Value Arguments
 % --------------------
 % replace : logical
-%     true if old gene association should be replaced with new association.
-%     False if new gene association should be concatenated to the old
-%     association (default true).
+%     true to replace the old gene association with the new association. False to
+%     combine them as "(old) or (new)" (default true).
 %
 % Returns
 % -------

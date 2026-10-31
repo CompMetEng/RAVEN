@@ -1,16 +1,16 @@
 function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnect,...
     neededForProductionMat, canProduceWithoutInput, canConsumeWithoutOutput, ...
     connectedFromTemplates, addedFromTemplates]=gapReport(model, varargin)
-% gapReport  Perform a gap analysis and summarize the results.
+% gapReport  Perform a gap analysis and summarise the results.
 %
-% Runs a series of connectivity checks on the model - which reactions are
+% Runs a series of connectivity checks on the model: which reactions are
 % blocked, how many isolated sub-networks exist, which metabolites cannot
 % be produced (and the minimal set of metabolites that would need to be
-% connected to fix that), and which metabolites can be produced/consumed
-% without any input/output, with every boundary reaction closed. If
-% templateModels is supplied, it also attempts to gap-fill using those
-% models. A formatted report is printed to the command window; the same
-% results are returned as outputs for further use.
+% connected to fix that), and which metabolites can be produced without any
+% input or consumed without any output, with every boundary reaction closed.
+% If templateModels is supplied, it also attempts to gap-fill using those
+% models. A formatted report is printed to the command window, and the same
+% results are returned as outputs.
 %
 % Parameters
 % ----------
@@ -20,8 +20,8 @@ function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnec
 % Name-Value Arguments
 % --------------------
 % templateModels : cell
-%     a cell array of template models to use for gap filling. If omitted,
-%     the automated gap-filling section is skipped.
+%     a cell array of template models used for gap filling. If omitted, the
+%     automated gap-filling section is skipped.
 %
 % Returns
 % -------
@@ -63,8 +63,8 @@ function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnec
 %
 % The model must be feasible under its own bounds and with its boundary
 % closed. Otherwise gapReport stops with a RAVEN:infeasibleModel error that
-% names the reactions with a forced flux; set the bounds of ATP maintenance
-% and any other forced flux to zero first.
+% names the reactions with a forced flux. Such reactions, for example ATP
+% maintenance, need bounds that allow zero flux.
 %
 % Examples
 % --------

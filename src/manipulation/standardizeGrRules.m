@@ -1,13 +1,17 @@
 function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)
-% standardizeGrRules  Standardize gene-reaction rules in a model.
+% standardizeGrRules  Standardise gene-reaction rules in a model.
 %
-% The grRules are standardized according to the following:
+% The grRules are standardised according to the following:
 %
 % - No overall containing brackets
-% - Just enzyme complexes are enclosed into brackets
-% - " and " and " or " strings are strictly set to lowercase
+% - Only enzyme complexes are enclosed in brackets
+% - " and " and " or " strings are set to lowercase
 %
-% A rxnGeneMat matrix consistent with the standardized grRules is created.
+% A rxnGeneMat matrix consistent with the standardised grRules is created.
+% grRules that are not in disjunctive normal form (an "or" nested inside an
+% "and") or that cannot be parsed are not standardised, apart from the
+% removal of double spaces, spaces inside brackets and uppercase operators.
+% The function throws an error if the model has no grRules field.
 %
 % Parameters
 % ----------
@@ -17,21 +21,21 @@ function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)
 % Name-Value Arguments
 % --------------------
 % embedded : logical
-%     if true, suppresses the console warning about potentially
-%     problematic grRules relationships, for use when this function is
-%     called inside of another RAVEN function that handles reporting
-%     itself (default false).
+%     if true, suppresses the console warning about grRules that are not in
+%     disjunctive normal form or cannot be parsed, for use when this
+%     function is called inside another RAVEN function that handles
+%     reporting itself (default false).
 %
 % Returns
 % -------
 % grRules : cell
-%     [nRxns x 1] cell array with the standardized grRules.
+%     [nRxns x 1] cell array with the standardised grRules.
 % rxnGeneMat : double
-%     [nRxns x nGenes] sparse matrix consistent with the standardized
+%     [nRxns x nGenes] sparse matrix consistent with the standardised
 %     grRules.
 % indexes2check : double
-%     indices of the grRules with potentially problematic relationships
-%     that should be checked manually.
+%     indices of the grRules that are not in disjunctive normal form or
+%     cannot be parsed. These grRules need a manual check.
 %
 % Examples
 % --------

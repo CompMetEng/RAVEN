@@ -6,26 +6,22 @@ function model=copyToComps(model,toComps,varargin)
 % model : struct
 %     a model structure.
 % toComps : cell
-%     cell array of compartment ids. If there is no match to model.comps
-%     then it is added as a new compartment (see compNames and
-%     compOutside).
+%     cell array of compartment ids. An id that is not in model.comps is added as a
+%     new compartment (see compNames and compOutside).
 %
 % Name-Value Arguments
 % --------------------
 % rxns : cell or logical or double
-%     either a cell array of reaction IDs, a logical vector with the same
-%     number of elements as reactions in the model, or a vector of indexes
-%     to copy (default model.rxns).
+%     a cell array of reaction ids, a logical vector with one element per reaction of
+%     the model, or a vector of reaction indexes to copy (default model.rxns).
 % deleteOriginal : logical
-%     true if the original reactions should be removed, making it move the
-%     reactions instead (default false).
+%     true to remove the original reactions, which moves the reactions (default false).
 % compNames : cell
-%     cell array of compartment names. Used if new compartments should be
-%     added (default toComps).
+%     cell array of compartment names. Used when new compartments are added
+%     (default toComps).
 % compOutside : cell
-%     cell array of the id (as in comps) for the compartment surrounding
-%     each of the compartments. Used if new compartments should be added
-%     (default all {''}).
+%     cell array with the id (as in comps) of the compartment that surrounds each new
+%     compartment. Used when new compartments are added (default all {''}).
 %
 % Returns
 % -------
@@ -38,7 +34,7 @@ function model=copyToComps(model,toComps,varargin)
 %
 % Notes
 % -----
-% New reactions and metabolites will be named as "id_toComps(i)".
+% New reactions and metabolites have the ids "id_toComps(i)".
 
 p=parseRAVENargs(varargin, {'rxns',[]; 'deleteOriginal',false; 'compNames',[]; 'compOutside',[]});
 rxns=p.rxns;

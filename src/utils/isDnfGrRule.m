@@ -1,11 +1,11 @@
 function tf=isDnfGrRule(rule)
 % isDnfGrRule  Test whether a grRule is in disjunctive normal form.
 %
-% DNF ("OR of AND-complexes") means no AND operator has an OR anywhere
-% beneath it, i.e. the rule is a single gene, a pure AND-complex, or an OR
-% of those. Standard RAVEN format requires DNF: subunits that must all be
-% present are ANDed into a complex, and the reaction is catalysed by at
-% least one such complex.
+% A rule in disjunctive normal form (DNF, an OR of AND-complexes) has no OR
+% operator beneath an AND operator. It is a single gene, an AND-complex, or an
+% OR of genes and AND-complexes. The standard RAVEN format requires DNF: the
+% subunits that must all be present are joined by AND into a complex, and the
+% reaction is catalysed by at least one such complex.
 %
 % Parameters
 % ----------

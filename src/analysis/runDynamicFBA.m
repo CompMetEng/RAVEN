@@ -1,5 +1,5 @@
 function [concentrationMatrix, excRxnNames, timeVec, biomassVec] = runDynamicFBA(model, substrateRxns, initConcentrations, initBiomass, timeStep, nSteps, plotRxns, exclUptakeRxns)
-% runDynamicFBA  Perform dynamic FBA using the static optimization approach.
+% runDynamicFBA  Perform dynamic FBA using the static optimisation approach.
 %
 % Parameters
 % ----------
@@ -7,8 +7,8 @@ function [concentrationMatrix, excRxnNames, timeVec, biomassVec] = runDynamicFBA
 %     a model structure.
 % substrateRxns : cell
 %     cell array with exchange reaction identifiers for substrates that are
-%     initially in the media, whose concentration may change (e.g. not h2o
-%     or co2).
+%     initially in the media, whose concentration may change (for example
+%     not h2o or co2).
 % initConcentrations : double
 %     initial concentrations of substrates (matching substrateRxns).
 % initBiomass : double
@@ -22,7 +22,7 @@ function [concentrationMatrix, excRxnNames, timeVec, biomassVec] = runDynamicFBA
 %     concentration should be plotted.
 % exclUptakeRxns : cell
 %     cell array with exchange reaction identifiers for substrates whose
-%     concentration does not change (e.g. co2, o2, h2o, h).
+%     concentration does not change (for example co2, o2, h2o, h).
 %
 % Returns
 % -------
@@ -45,12 +45,11 @@ function [concentrationMatrix, excRxnNames, timeVec, biomassVec] = runDynamicFBA
 % Notes
 % -----
 % If no initial concentration is given for a substrate that has an open
-% uptake in the model (i.e. model.lb < 0) the concentration is assumed to
-% be high enough to not be limiting. If the uptake rate for a nutrient is
-% calculated to exceed the maximum uptake rate for that nutrient specified
-% in the model and the max uptake rate specified is > 0, the maximum uptake
-% rate specified in the model is used instead of the calculated uptake
-% rate.
+% uptake in the model (that is, model.lb < 0), the initial concentration is set
+% to 1000. If the uptake bound calculated from the concentration exceeds
+% the maximum uptake rate specified in the model for that nutrient, and the
+% maximum uptake rate specified is > 0, the maximum uptake rate specified
+% in the model is used as the uptake bound.
 %
 % Modified from COBRA Toolbox dynamicFBA.m.
 

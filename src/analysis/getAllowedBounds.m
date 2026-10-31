@@ -13,12 +13,11 @@ function [minFluxes, maxFluxes, exitFlags]=getAllowedBounds(model,varargin)
 %     number of elements as reactions in the model, or a vector of
 %     reaction indexes (default model.rxns).
 % runParallel : logical
-%     speed up calculations by parallel processing. This is not beneficial
-%     if allowed bounds are calculated for only a few reactions, as the
-%     overhead of parallel processing will take longer. It requires MATLAB
-%     Parallel Computing Toolbox. If this is not installed, the
-%     calculations will not be parallelized, regardless of what is
-%     indicated as runParallel (default true).
+%     run the calculations in parallel (default true). Parallel processing
+%     requires the MATLAB Parallel Computing Toolbox; without it, the
+%     calculations run serially regardless of this setting. For a few
+%     reactions, the overhead of parallel processing exceeds the time it
+%     saves.
 %
 % Returns
 % -------
@@ -27,8 +26,9 @@ function [minFluxes, maxFluxes, exitFlags]=getAllowedBounds(model,varargin)
 % maxFluxes : double
 %     maximal allowed fluxes.
 % exitFlags : double
-%     exit flags for min/max for each of the reactions. True if it was
-%     possible to calculate a flux.
+%     a matrix with one row per reaction. Column 1 holds the solver status
+%     of the minimisation and column 2 the status of the maximisation
+%     (1 if a flux could be calculated).
 %
 % Notes
 % -----

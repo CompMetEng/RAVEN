@@ -5,7 +5,7 @@ function [solution, metabolite]=makeSomething(model,varargin)
 % removed in the next major release. Its argument order already matches
 % findLeakMetabolite's, so the arguments are forwarded as they are.
 %
-% See Also
+% See also
 % --------
 % findLeakMetabolite
 

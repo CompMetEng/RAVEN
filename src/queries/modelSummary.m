@@ -1,9 +1,9 @@
 function modelSummary(model, varargin)
-% modelSummary  Print a concise overview of a RAVEN model and its flux state.
+% modelSummary  Print an overview of a RAVEN model and its flux state.
 %
-% Prints model dimensions, the objective function, and — when a flux vector
-% is supplied — the objective value plus all net exchange fluxes partitioned
-% into uptake and secretion.
+% Prints the model dimensions and the objective function. When a flux vector
+% is supplied, it also prints the objective value and the net exchange
+% fluxes, partitioned into uptake and secretion.
 %
 % Parameters
 % ----------
@@ -13,12 +13,14 @@ function modelSummary(model, varargin)
 % Name-Value Arguments
 % --------------------
 % fluxes : double
-%     flux vector (length = numel(model.rxns)). When provided, shows the
-%     objective value and the exchange-flux summary (default []).
+%     flux vector with numel(model.rxns) elements. When provided, the
+%     objective value and the exchange-flux summary are printed
+%     (default []).
 % cutoff : double
 %     minimum absolute net exchange flux to include (default 1e-8).
 % nMax : double
-%     maximum exchange reactions displayed per direction (default 20).
+%     maximum number of exchange reactions displayed per direction, in
+%     descending order of absolute flux (default 20).
 %
 % Examples
 % --------
@@ -28,12 +30,12 @@ function modelSummary(model, varargin)
 %
 % See also
 % --------
-% printModelStats : the structural view instead. It breaks the counts down per
-%     compartment, adds unique EC codes, biochemically unique reactions and
-%     unique metabolite names, and optionally reports dead ends and elemental
-%     imbalances. It knows nothing about fluxes or the objective.
-% printFluxes : the exchange fluxes on their own, with more control over
-%     formatting and filtering than the summary here offers.
+% printModelStats : model statistics. It breaks the counts down per
+%     compartment, adds the number of unique EC codes, biochemically unique
+%     reactions and unique metabolite names, and optionally reports dead ends
+%     and elemental imbalances. It prints no fluxes or objective.
+% printFluxes : prints the fluxes of reactions with options for filtering
+%     and for the format of the output.
 
 p = parseRAVENargs(varargin, {'fluxes',[]; 'cutoff',1e-8; 'nMax',20});
 fluxes = p.fluxes;

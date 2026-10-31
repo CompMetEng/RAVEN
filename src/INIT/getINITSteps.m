@@ -1,38 +1,36 @@
 function steps = getINITSteps(varargin)
 % getINITSteps  Define the steps used as input to ftINIT.
 %
-% Defines the steps in the way ftINIT is run. Note that all combinations of
-% steps will not work. Avoid "exclude" if you want to define new
-% ways to run the algorithm.
+% Defines the steps in the way ftINIT is run. Not all combinations of steps
+% work. A new series that sets the HowToUsePrevResults option to "exclude",
+% which no predefined series uses, may not work.
 %
 % Name-Value Arguments
 % --------------------
 % metsToIgnore : struct
 %     structure describing mets that can be removed from the model before
-%     running ftINIT, such as water etc. With fields:
+%     running ftINIT, such as water and other ubiquitous metabolites. With fields:
 %
 %     - simpleMets.mets : names of metabolites to remove.
 %     - simpleMets.compsToKeep : compartments for which metabolites are kept.
 %
-%     (default []).
+%     (default []). Ignored for series "full".
 % series : char
 %     describes the way to run ftINIT (default "1+1"):
 %
-%     - "1+1" : standard behavior. Step 1 and 2 described in the paper are
+%     - "1+1" : standard behaviour. Step 1 and 2 described in the paper are
 %       merged into 1.
 %     - "2+1" : the 3-step procedure described in the paper. Faster and
-%       slightly less accurate than "1+1 steps".
-%     - "1+0" : same as "1+1 steps", but skips step 3 described in the paper.
-%       This will result in a model including a lot of reactions without GPRs.
-%       It is particularly useful for structural comparison, since the
-%       reactions removed in step 3 may be a bit random and does not really add
-%       any extra information. Faster than "1+1 steps".
-%     - "2+0" : same as "2+1 steps", but skips step 3 described in the paper.
-%       Faster and slightly less accurate than "1+0 steps", but will yield
-%       similar results.
-%     - "full" : 1-step run - similar to the old tINIT version but without
-%       simplifications. Accurate, but very slow. This is mainly used for
-%       testing purposes.
+%       slightly less accurate than "1+1".
+%     - "1+0" : same as "1+1", but skips step 3 described in the paper.
+%       The model includes many reactions without GPRs. The series suits
+%       structural comparison, because the reactions removed in step 3 can
+%       be arbitrary and add no information. Faster than "1+1".
+%     - "2+0" : same as "2+1", but skips step 3 described in the paper.
+%       Faster and slightly less accurate than "1+0", with similar results.
+%     - "full" : 1-step run, similar to tINIT, without the model
+%       simplifications that ftINIT applies in the other series. Accurate, but
+%       slow. This series is used for testing.
 %
 % Returns
 % -------

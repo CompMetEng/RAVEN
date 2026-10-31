@@ -1,9 +1,11 @@
 function [model, addedRxns]=addExchangeRxns(model,reactionType,varargin)
 % addExchangeRxns  Add exchange reactions for some metabolites.
 %
-% This is a faster version than addRxns when adding exchange reactions.
-% New reactions are named "metName exchange (OUT/IN/BOTH)" while reaction
-% ids are formatted as "EXC_OUT/IN/BOTH_METID".
+% The function builds the stoichiometric columns directly from the metabolite list,
+% without the equation parsing of addRxns, which makes it faster for adding exchange
+% reactions. New reactions are
+% named "metName exchange (TYPE)" and have the ids "EXC_TYPE_METID", where TYPE is IN,
+% OUT or BOTH according to reactionType.
 %
 % Parameters
 % ----------
@@ -14,15 +16,15 @@ function [model, addedRxns]=addExchangeRxns(model,reactionType,varargin)
 %
 %     - 'in'   : input reactions
 %     - 'out'  : output reactions
-%     - 'both' : reversible input/output reactions. Positive direction
+%     - 'both' : reversible input and output reactions. The positive direction
 %       corresponds to output
 %
 % Name-Value Arguments
 % --------------------
 % mets : cell or logical or double
-%     either a cell array of metabolite IDs, a logical vector with the same
-%     number of elements as metabolites in the model, or a vector of
-%     indexes to add for (default model.mets).
+%     a cell array of metabolite ids, a logical vector with one element per metabolite of
+%     the model, or a vector of metabolite indexes to add reactions for
+%     (default model.mets).
 %
 % Returns
 % -------

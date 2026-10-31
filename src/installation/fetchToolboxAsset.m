@@ -3,11 +3,10 @@ function localPath=fetchToolboxAsset(destDir,releaseTag,assetName)
 %
 % Downloads assetName from the given release tag of
 % https://github.com/CompMetEng/toolbox-assets into destDir
-% and returns its local path. An already-downloaded copy is reused as-is.
-% Generic across toolbox-assets' release families (KEGG artefacts, HMM
-% libraries, binaries, ...): nothing here is specific to any one of
-% them, so callers supply the release tag and asset name rather than
-% this function hardcoding either.
+% and returns its local path. An already-downloaded copy is reused without a
+% new download or checksum test. The function applies to every toolbox-assets
+% release family (KEGG artefacts, HMM libraries, binaries), and the caller
+% supplies the release tag and the asset name.
 %
 % A download is checked against the SHA-256 checksum that the
 % toolbox-assets manifest (release manifest-v3) lists for it. A file whose
@@ -20,9 +19,9 @@ function localPath=fetchToolboxAsset(destDir,releaseTag,assetName)
 % destDir : char
 %     directory to download into (created if it does not exist yet).
 % releaseTag : char
-%     the toolbox-assets release tag, e.g. 'kegg118'.
+%     the toolbox-assets release tag, for example 'kegg118'.
 % assetName : char
-%     the release asset file name, e.g. 'kegg118_core.tar.gz'.
+%     the release asset file name, for example 'kegg118_core.tar.gz'.
 %
 % Returns
 % -------

@@ -1,12 +1,12 @@
 function updateDocumentation()
 % updateDocumentation
-%	Regenerates the HTML documentation in RAVEN's docs/html directory from the
-%	function help texts. The docs/html directory is deleted and rebuilt, so
-%	anything hand-edited there is lost.
+%	Regenerates the HTML documentation in the docs/html directory of RAVEN from
+%	the function help texts. The docs/html directory is deleted and rebuilt, so
+%	manual edits there are lost.
 %
-%	The Documentation workflow runs this on every push to a release branch
-%	and commits the result, so docs/html stays in step with the sources without
-%	anyone running it by hand. Run it locally only to preview.
+%	The Documentation workflow runs this function on every push to the develop
+%	or main branch that changes a .m file or the workflow file, and commits the
+%	result. Running the function locally previews the documentation.
 %
 %	Usage: updateDocumentation()
 

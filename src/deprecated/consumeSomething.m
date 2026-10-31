@@ -4,16 +4,14 @@ function [solution, metabolite]=consumeSomething(model,varargin)
 % Deprecated wrapper kept so existing scripts keep working; it will be
 % removed in the next major release.
 %
-% Its positional argument order predates findLeakMetabolite and is
-% preserved here:
+% The positional argument order is:
 %
 %     consumeSomething(model, ignoreMets, isNames, minNrFluxes, params, ignoreIntBounds)
 %
-% findLeakMetabolite inserts allowExcretion (a produce-only option) in
-% position 4, so the arguments are translated rather than forwarded
-% verbatim.
+% findLeakMetabolite takes allowExcretion (a produce-only option) in
+% position 4, so the arguments are translated before they are passed on.
 %
-% See Also
+% See also
 % --------
 % findLeakMetabolite
 

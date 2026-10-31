@@ -4,18 +4,20 @@ function [prob, condInfo] = splitProbForConditioning(prob, maxRatio)
 % Reformulates an LP problem to improve its numerical conditioning by
 % splitting columns whose coefficients span more than a given ratio. In a
 % metabolic model a column corresponds to a reaction, and a wide spread of
-% stoichiometric coefficients within one reaction (e.g. a biomass reaction
-% with both major substrates and trace cofactors) cannot be removed by the
-% diagonal row/column scaling that LP solvers apply, and may lead to
+% stoichiometric coefficients within one reaction (for example a biomass reaction
+% with both large and small coefficients) cannot be removed by the
+% diagonal row and column scaling that LP solvers apply, and may lead to
 % unreliable solutions or spurious infeasibility.
 %
-% Splitting is done via auxiliary metabolites and variables that preserve
+% Splitting is done with auxiliary metabolites and variables that preserve
 % the feasible region of the original problem exactly, so the values of all
-% original variables are unchanged.
+% original variables are unchanged. A column is split when its ratio
+% exceeds maxRatio by more than 1 %. Columns with a single nonzero
+% coefficient are never split.
 %
-% The function is meant to be called inside optimizeProb, on the COBRA-style
-% problem struct, immediately before the problem is passed to the solver.
-% Auxiliary rows/columns are appended after the original ones, so the
+% optimizeProb calls this function on the COBRA-style problem struct of an
+% LP, immediately before the problem is passed to the solver. Auxiliary
+% rows and columns are appended after the original ones, so the
 % augmentation can be stripped from the solver output afterwards (see
 % condInfo).
 %
@@ -31,13 +33,14 @@ function [prob, condInfo] = splitProbForConditioning(prob, maxRatio)
 % Returns
 % -------
 % prob : struct
-%     the (possibly) augmented problem struct. Identical to the input if no
-%     column needed splitting.
+%     the augmented problem struct. Identical to the input if no column
+%     needed splitting.
 % condInfo : struct
 %     struct describing the augmentation, with fields:
 %
 %     - applied : true if any column was split
-%     - nSplits : number of auxiliary metabolite/conversion pairs added
+%     - nSplits : number of pairs of an auxiliary metabolite and a conversion
+%       variable added
 %     - nOrigRows : number of constraint rows before augmentation
 %     - nOrigCols : number of variables (columns) before augmentation
 %

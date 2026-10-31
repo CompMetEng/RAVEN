@@ -1,54 +1,57 @@
 function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(model,models,varargin)
 % fillGaps  Use template model(s) to fill gaps in a model.
 %
-% This method works by merging the model with the reference model(s) and
-% checking which reactions can carry flux. All reactions that cannot carry
-% flux are removed (cannotConnect). If useModelConstraints is false it
-% then solves the MILP problem of minimizing the number of active
-% reactions from the reference models that are required to have flux in
-% all the reactions in model. This requires that the input model has
-% exchange reactions present for the nutrients that are needed for its
-% metabolism. If useModelConstraints is true then the problem is to
-% include as few reactions as possible from the reference models in order
-% to satisfy the model constraints.
+% The model is merged with the reference model(s). If useModelConstraints
+% is false, the reactions of the model that cannot carry flux in the model
+% are tested for flux in the merged model. The non-reversible reactions that
+% carry flux in the merged model are the newConnected reactions. The other
+% reactions are returned as cannotConnect: the reactions that cannot carry
+% flux in the merged model and the reversible reactions that can, which are
+% left out of the MILP target set. A MILP then minimises the number of
+% active reactions from the reference models that are required for flux in
+% the reactions that can be connected (newConnected). This requires that
+% the input model has exchange reactions for the nutrients that its
+% metabolism needs. If useModelConstraints is true, the flux test and the
+% split into newConnected and cannotConnect are not run, and the MILP
+% includes as few reactions as possible from the reference models to
+% satisfy the model constraints.
 %
-% The intended use is that the user can attempt a general gap-filling
-% using useModelConstraints=false, or a more targeted gap-filling by
-% setting constraints in the model structure and then using
-% useModelConstraints=true. For example, to include reactions so that all
-% biomass components can be synthesized, the user could define a biomass
-% equation and set its lower bound to >0. Running this function with
-% useModelConstraints=true would then give the smallest set of reactions
-% that have to be included in order for the model to produce biomass.
+% A general gap-filling uses useModelConstraints=false. A targeted
+% gap-filling sets constraints in the model structure and uses
+% useModelConstraints=true. For example, a model with a biomass equation
+% whose lower bound is set above 0 gets the smallest set of reactions from
+% the reference models that allows it to produce biomass.
 %
 % Parameters
 % ----------
 % model : struct
 %     a model structure that may contain gaps to be filled.
 % models : cell or struct
-%     a cell array of reference models or a model structure. The gaps will
-%     be filled using reactions from these models.
+%     a cell array of reference models or a model structure. Reactions
+%     from these models are used to fill the gaps.
 %
 % Name-Value Arguments
 % --------------------
 % allowNetProduction : logical
-%     true if net production of all metabolites is allowed. A reaction can
-%     be unable to carry flux because one of the reactants is unavailable
-%     or because one of the products cannot be further processed. If true,
-%     only the first type of unconnectivity is considered (default false).
+%     true to allow net production of all metabolites. A reaction can be
+%     unable to carry flux because one of the reactants is unavailable or
+%     because one of the products cannot be further processed. If true,
+%     only the first cause is considered (default false).
 % useModelConstraints : logical
-%     true if the constraints specified in the model structure should be
-%     used. If false then reactions are included from the template
-%     model(s) so that as many reactions as possible in model can carry
-%     flux (default false).
+%     true to use the constraints specified in the model structure. If
+%     false, reactions are included from the template model(s) so that as
+%     many reactions as possible in model can carry flux (default false).
 % supressWarnings : logical
-%     false if warnings should be displayed (default false).
+%     true to suppress the warning and the note about missing exchange
+%     reactions (default false).
 % rxnScores : double or cell
-%     array with scores for each of the reactions in the reference
-%     model(s). If more than one model is supplied, then rxnScores should
-%     be a cell array of vectors. The solver will try to maximize the sum
-%     of the scores for the included reactions (default is -1 for all
-%     reactions).
+%     scores for each of the reactions in the reference model(s). If more
+%     than one model is supplied, rxnScores is a cell array of vectors. The
+%     solver maximises the sum of the scores of the included reactions.
+%     Used by the 'reference' algorithm (default -1 for all reactions).
+% params : struct
+%     solver parameters passed to getMinNrFluxes (algorithm 'reference') or
+%     to gapFillMILP (algorithm 'gapfillMILP') (default empty struct).
 % algorithm : char
 %     gap-filling algorithm to use (default 'reference'):
 %
@@ -62,20 +65,26 @@ function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(m
 % epsilon : double
 %     minimum flux threshold used by fastLP and swiftLP (default 1e-4).
 % minGrowth : double
-%     minimum growth rate for gapfillMILP (default [] = 10% of max FBA).
+%     minimum growth rate for gapfillMILP (default [], which is 10% of the
+%     maximum growth rate found by FBA on the merged model).
 % verbose : logical
-%     print progress messages for new algorithms (default true).
+%     true to print progress messages for the algorithms other than
+%     'reference' (default true).
 %
 % Returns
 % -------
 % newConnected : cell
-%     cell array with the reactions that could be connected. This is not
-%     calculated if useModelConstraints is true.
+%     cell array with the non-reversible reactions of model that cannot
+%     carry flux in model but can in the merged model. Empty if
+%     useModelConstraints is true or if the algorithm is not 'reference'.
 % cannotConnect : cell
-%     cell array with reactions that could not be connected. This is not
-%     calculated if useModelConstraints is true.
+%     cell array with the other reactions of model that cannot carry flux
+%     in model. For the algorithms 'fastLP' and 'swiftLP' it holds the
+%     reactions that remain blocked after merging (from gapFillFastLP), and
+%     for 'topological' the ids of the metabolites that cannot be reached.
+%     Empty if useModelConstraints is true or for 'gapfillMILP'.
 % addedRxns : cell
-%     cell array with the reactions that were added from "models".
+%     cell array with the reactions added from "models".
 % newModel : struct
 %     the model with reactions added to fill gaps.
 % exitFlag : double
@@ -97,14 +106,15 @@ function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(m
 % -----
 % The 'reference' and 'gapfillMILP' algorithms solve a MILP with the
 % solver set by setRavenSolver. RAVEN's bundled GLPK solves it for small
-% models (with a RAVEN:glpkMILP warning); for larger models Gurobi is much
-% faster and more reliable (setRavenSolver('gurobi')).
+% models. The RAVEN:glpkMILP warning issued with GLPK states that GLPK works
+% for small problems and that Gurobi is much faster and more reliable for
+% larger ones (setRavenSolver('gurobi')).
 %
-% See Also
+% See also
 % --------
-% ftINITFillGaps : the ftINIT-side counterpart, used when the reference
-%     model already contains the model's own reactions, so no per-task
-%     merge is needed.
+% ftINITFillGaps : the variant of fillGaps for ftINIT, used when the
+%     reference model already contains the reactions of the model. No merge
+%     per task is needed in that case.
 
 %If the user only supplied a single template model
 if ~iscell(models)

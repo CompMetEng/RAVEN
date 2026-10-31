@@ -1,16 +1,18 @@
 function status = checkFunctionUniqueness(varargin)
 % checkFunctionUniqueness
 %   Checks whether RAVEN toolbox functions are unique across other
-%   toolboxes or user-created functions accessible in Matlab pathlist.
+%   toolboxes and user-created functions on the MATLAB path.
 %
 % Name-Value Arguments
 % --------------------
-%   altDirs     cell array of alternative directories with functions,
-%               should only be specified if this function is used for other
-%               purposes, NOT when looking for RAVEN toolbox functions.
+%   altDirs     char with alternative directories with functions, separated
+%               by the path separator of the platform (';' on Windows, ':'
+%               otherwise). Specified only when the function checks
+%               directories other than the RAVEN toolbox.
 %
 % Output:
-%   status      true if all functions are unique, otherwise false
+%   status      true if all functions are unique, otherwise false. Without
+%               an output argument the function prints Pass or Fail.
 %
 % Usage: checkFunctionUniqueness()
 

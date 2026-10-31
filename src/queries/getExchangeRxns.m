@@ -2,7 +2,9 @@ function [exchangeRxns, exchangeRxnsIndexes, exchangedMets]=getExchangeRxns(mode
 % getExchangeRxns  Retrieve the exchange reactions from a model.
 %
 % Exchange reactions are identified by having either no substrates or no
-% products.
+% products. In a model with metabolites marked in the unconstrained field,
+% the exchange reactions are the reactions that involve such a metabolite
+% (as substrate for 'in', as product for 'out').
 %
 % Parameters
 % ----------
@@ -39,8 +41,9 @@ function [exchangeRxns, exchangeRxnsIndexes, exchangedMets]=getExchangeRxns(mode
 % exchangeRxnsIndexes : double
 %     vector with the indexes of the exchange reactions.
 % exchangedMets : double
-%     vector with the metabolite index for each exchange reaction (one
-%     metabolite per exchange reaction). Only computed when requested.
+%     vector with the index of the first metabolite with a non-zero
+%     coefficient in each exchange reaction (0 if there is none). Only
+%     computed when requested.
 %
 % Notes
 % -----

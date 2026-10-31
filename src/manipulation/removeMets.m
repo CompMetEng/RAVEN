@@ -13,16 +13,17 @@ function reducedModel=removeMets(model,metsToRemove,varargin)
 % Name-Value Arguments
 % --------------------
 % isNames : logical
-%     true if the supplied mets represent metabolite names (as opposed to
-%     IDs). This is a way to delete metabolites in several compartments at
-%     once without knowing the exact IDs. This only works if metsToRemove
-%     is a cell array (default false).
+%     true if the supplied mets are metabolite names, false if they are IDs.
+%     All metabolites with a listed name are deleted, which removes
+%     metabolites in several compartments at once. Requires metsToRemove to
+%     be a cell array (default false).
 % removeUnusedRxns : logical
-%     remove reactions that are no longer in use (default false).
+%     remove reactions that involve no metabolite (default false).
 % removeUnusedGenes : logical
-%     remove genes that are no longer in use (default false).
+%     remove genes that no remaining reaction uses. Takes effect only when
+%     removeUnusedRxns is true (default false).
 % removeUnusedComps : logical
-%     remove compartments that are no longer in use (default false).
+%     remove compartments that contain no metabolite (default false).
 %
 % Returns
 % -------

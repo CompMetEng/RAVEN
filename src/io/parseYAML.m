@@ -1,21 +1,20 @@
 function out = parseYAML(filename)
-% parseYAML  Read a YAML file into a MATLAB struct/cell tree.
+% parseYAML  Read a YAML file into a tree of MATLAB structs and cells.
 %
 % Supports block-style mappings and sequences (indentation-based),
 % flow-style mappings and sequences (`{ key: value }`, `[a, b]`), quoted
 % and unquoted scalars, and comments. Does not support multi-document
-% files, anchors/aliases, tags, or block scalars (`|`, `>`).
+% files, anchors, aliases, tags, or block scalars (`|`, `>`).
 %
-% Use this for parsing YAML configuration / data files with a nested
-% mapping/sequence/scalar shape (e.g. condition files consumed by
-% applyCondition). For loading a cobra-format model YAML, use
-% readYAMLmodel instead — that function knows the model schema and
-% returns a populated RAVEN model struct.
+% The function parses YAML configuration and data files with nested
+% mappings, sequences and scalars (for example condition files consumed by
+% applyCondition). readYAMLmodel loads a cobra-format model YAML: it applies
+% the model schema and returns a populated RAVEN model struct.
 %
 % Parameters
 % ----------
 % filename : char
-%     Path to the YAML file.
+%     path to the YAML file.
 %
 % Returns
 % -------
@@ -26,7 +25,7 @@ function out = parseYAML(filename)
 %     - sequence -> cell column vector
 %     - quoted or unquoted string -> char
 %     - integer or float -> double
-%     - true/false -> logical
+%     - true, false -> logical
 %     - null / ~ / empty value -> []
 %
 % Examples

@@ -1,14 +1,14 @@
 function [reducedModel, removedRxns, indexedDuplicateRxns]=contractModel(model,varargin)
-% contractModel  Contract a model by grouping all identical reactions.
+% contractModel  Contract a model by merging identical reactions.
 %
-% This is what simplifyModel's deleteDuplicates option runs; it is not a
-% separate implementation. If the duplicated reactions have "_EXP_*" suffixes
-% (where * is a digit), then the model is assumed to have been passed through
-% expandModel, and these suffixes are removed here.
+% simplifyModel runs contractModel for its deleteDuplicates option. If the duplicated
+% reactions have "_EXP_*" suffixes (where * is a digit), the model has passed through
+% expandModel, and the function removes these suffixes.
 %
-% Reactions are merged, so their gene associations are combined rather than
-% discarded. Use findDuplicateRxns instead to see which reactions are
-% duplicates without changing the model.
+% The gene associations and EC numbers of merged reactions are combined. The merged
+% reaction keeps the widest bounds and the largest objective coefficient, and a warning
+% is given when the duplicates differ in these. findDuplicateRxns lists duplicate
+% reactions without changing the model.
 %
 % Parameters
 % ----------
@@ -18,22 +18,22 @@ function [reducedModel, removedRxns, indexedDuplicateRxns]=contractModel(model,v
 % Name-Value Arguments
 % --------------------
 % distReverse : logical
-%     distinguish reactions with same metabolites but different reversibility
-%     as different reactions (default true).
+%     true to treat reactions with the same metabolites but different reversibility as
+%     different reactions (default true).
 % mets : char or cell
-%     string or cell array of strings with metabolite identifiers, whose
-%     involved reactions should be checked for duplication (by default all
-%     reactions are considered). This option is used by replaceMets.
+%     metabolite ids as a string or a cell array of strings; only the reactions that
+%     involve these metabolites are checked for duplication (default: all reactions).
+%     replaceMets uses this option.
 %
 % Returns
 % -------
 % reducedModel : struct
 %     a model structure without duplicate reactions.
 % removedRxns : cell
-%     cell array for the removed duplicate reactions.
+%     cell array with the ids of the removed duplicate reactions.
 % indexedDuplicateRxns : cell
-%     indexed cell array for the removed duplicate reactions (multiple values
-%     separated by semicolon).
+%     cell array with one entry per reaction of reducedModel, holding the ids of the
+%     duplicates removed into that reaction (multiple ids separated by semicolon).
 %
 % Examples
 % --------
@@ -41,8 +41,7 @@ function [reducedModel, removedRxns, indexedDuplicateRxns]=contractModel(model,v
 %
 % Notes
 % -----
-% This code might not work for advanced grRules strings that involve nested
-% expressions of "and" and "or".
+% The function may not work for grRules strings with nested expressions of "and" and "or".
 
 p=parseRAVENargs(varargin, {'distReverse',true; 'mets',[]});
 distReverse=p.distReverse;

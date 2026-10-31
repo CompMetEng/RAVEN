@@ -1,20 +1,24 @@
 function [model, removedRxns, idxDuplRxns]=replaceMets(model,metabolite,replacement,varargin)
 % replaceMets  Replace a metabolite with another already in the model.
 %
-% Replaces metabolite names and annotation with a replacement metabolite
-% that is already in the model. If this results in duplicate metabolites,
-% the replacement metabolite will be kept, while the S matrix is updated to
-% use the replacement metabolite instead. At the end, contractModel is run
-% to remove any duplicate reactions that might have occurred.
+% Replaces the name and annotation (formula, miriams, charge, deltaG, InChI
+% and SMILES) of a metabolite with those of a replacement metabolite that is
+% already in the model. If this results in duplicate metabolites, the S matrix
+% is updated to use one of them. With identifiers true the replacement
+% metabolite is kept; by name, the metabolite with the lowest index among those
+% of the same name and compartment is kept. At the end, contractModel is run to remove
+% duplicate reactions that this creates.
 %
 % Parameters
 % ----------
 % model : struct
 %     a model structure.
 % metabolite : char
-%     string with name of metabolite to be replaced.
+%     name of the metabolite to be replaced (its identifier if identifiers is
+%     true).
 % replacement : char
-%     string with name of replacement metabolite.
+%     name of the replacement metabolite (its identifier if identifiers is
+%     true).
 %
 % Name-Value Arguments
 % --------------------
@@ -22,17 +26,17 @@ function [model, removedRxns, idxDuplRxns]=replaceMets(model,metabolite,replacem
 %     whether to print the ids of reactions that involve the replaced
 %     metabolite (default false).
 % identifiers : logical
-%     true if 'metabolite' and 'replacement' refer to metabolite
-%     identifiers instead of metabolite names (default false).
+%     true if 'metabolite' and 'replacement' are metabolite identifiers,
+%     false if they are metabolite names (default false).
 %
 % Returns
 % -------
 % model : struct
-%     model structure with selected metabolites replaced.
+%     model structure with the selected metabolites replaced.
 % removedRxns : cell
-%     identifiers of duplicate reactions that were removed.
+%     not assigned by the function; requesting this output raises an error.
 % idxDuplRxns : double
-%     index of removedRxns in original model.
+%     not assigned by the function; requesting this output raises an error.
 %
 % Examples
 % --------
@@ -41,9 +45,9 @@ function [model, removedRxns, idxDuplRxns]=replaceMets(model,metabolite,replacem
 %
 % Notes
 % -----
-% This function is useful when the model contains both 'oxygen' and 'o2' as
-% metabolite names. If 'oxygen' and 'o2' are identifiers instead, then the
-% 'identifiers' flag should be set to true.
+% The function applies to a model that contains both 'oxygen' and 'o2' as
+% metabolite names. If 'oxygen' and 'o2' are identifiers, 'identifiers' is
+% set to true.
 
 metabolite=char(metabolite);
 replacement=char(replacement);

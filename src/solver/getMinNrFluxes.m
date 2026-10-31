@@ -12,16 +12,19 @@ function [x,I,exitFlag]=getMinNrFluxes(model, varargin)
 % Name-Value Arguments
 % --------------------
 % toMinimize : cell or logical or double
-%     either a cell array of reaction IDs, a logical vector with the same
-%     number of elements as reactions in the model, or a vector of indexes
-%     for the reactions that should be minimized (default model.rxns).
+%     a cell array of reaction IDs, a logical vector with the same number
+%     of elements as reactions in the model, or a vector of indexes for the
+%     reactions that should be minimised (default model.rxns).
 % params : struct
-%     *obsolete option*.
+%     solver parameters passed to optimizeProb. With formulation
+%     'reversible', intTol (10^-9), TimeLimit (300) and Seed (26) are set
+%     when absent (default empty struct).
 % scores : double
-%     vector of weights for the reactions. Negative scores should not have
-%     flux. Positive scores are not possible in this implementation, and
-%     they are changed to max(scores(scores<0)), or to 0 if scores has no
-%     negative entry at all. Must have the same dimension as toMinimize
+%     vector of weights for the reactions. A reaction with a negative
+%     score adds the negated score to the minimised objective when it
+%     carries flux. Scores of 0 or above are not supported and are
+%     changed to max(scores(scores<0)), or to 0 if scores has no negative
+%     entry at all. Must have the same dimension as toMinimize
 %     (find(toMinimize) if it is a logical vector) (default -1 for all
 %     reactions).
 % formulation : char
@@ -29,24 +32,26 @@ function [x,I,exitFlag]=getMinNrFluxes(model, varargin)
 %
 %     - 'irrev' : convert the model to irreversible format and use one
 %       binary per irreversible reaction, so a reversible reaction that is
-%       minimized costs two binaries. The magnitude of the fluxes is
+%       minimised needs two binaries. The magnitude of the fluxes is
 %       estimated with an LP first, which also provides a start solution.
 %     - 'reversible' : keep the model reversible and use one binary per
-%       reaction, at the cost of a larger constraint matrix. Fewer binaries
-%       makes this the faster formulation on large problems, but it needs a
-%       solver that handles MILPs well and no LP estimate of the flux
-%       magnitudes is made, so an arbitrary large flux is assumed.
+%       reaction, with a larger constraint matrix. The formulation has
+%       fewer binaries but needs a solver that handles MILPs well. No LP
+%       estimate of the flux magnitudes is made, and a fixed flux of 1000 is
+%       assumed.
 % verbose : logical
 %     if true, the MILP progression will be shown (default false).
 % resolveTies : logical
-%     if true, pin the MILP's degenerate optimum to a canonical answer instead of
-%     relying on Seed alone: hold the primary (scores) objective at its optimum,
-%     then minimize the count of "on" reactions, then, among the sparsest, minimize
-%     their summed reaction-id rank (lowest ids preferred). Two extra MILP solves;
-%     best-effort, so a phase that does not converge within TimeLimit is dropped
-%     with a warning rather than changing the result. Only implemented for
-%     formulation='reversible' -- errors if combined with 'irrev'. Matches
-%     raven-toolbox's resolve_ties (raven-gecko-parity#104) (default false).
+%     if true, select one optimum among the degenerate optima of the MILP
+%     instead of relying on Seed: the primary (scores) objective is held
+%     at its optimum, the count of "on" reactions is minimised, and among
+%     the sparsest solutions the summed reaction-id rank is minimised
+%     (lowest ids preferred). This takes two extra MILP solves. A phase
+%     that is not proven optimal within TimeLimit gives a warning, and the
+%     solution of the last phase is used when it is feasible. Only
+%     implemented for formulation='reversible'; combined with 'irrev' it
+%     gives an error. Matches resolve_ties in raven-toolbox
+%     (raven-gecko-parity#104) (default false).
 %
 % Returns
 % -------
@@ -62,8 +67,8 @@ function [x,I,exitFlag]=getMinNrFluxes(model, varargin)
 %     - -1 : no solution found, either because the problem is infeasible or
 %       because the solver reached its time limit before finding one
 %     - -2 : a solution was found but is not proven optimal, because the
-%       solver stopped before reaching optimality. It is returned, but it
-%       may use more fluxes than the minimum
+%       solver stopped before reaching optimality. It is returned and may
+%       use more fluxes than the minimum
 %
 % Examples
 % --------
@@ -71,8 +76,11 @@ function [x,I,exitFlag]=getMinNrFluxes(model, varargin)
 %
 % Notes
 % -----
-% Uses 1000 mmol/gDW/h as an arbitary large flux. Could possibly cause
-% problems if the fluxes in the model are larger than that.
+% The binary of a reaction is linked to its flux through a large flux
+% value. With formulation 'irrev' the value is the larger of 1000 and 5
+% times the largest flux of an LP solution; with 'reversible' it is 1000
+% (mmol/gDW/h). A flux above this value is cut off by the binary constraint
+% of the reaction, so the MILP can become infeasible.
 
 p=parseRAVENargs(varargin, {'toMinimize',[]; 'params',[]; 'scores',[]; ...
     'formulation','irrev'; 'verbose',false; 'resolveTies',false});

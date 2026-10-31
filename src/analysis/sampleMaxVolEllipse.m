@@ -6,7 +6,7 @@ function [x, E, converged] = sampleMaxVolEllipse(A, b, x0, maxiter, tol, reg)
 % {z : A*z <= b}, using the Zhang & Gao (2003) primal-dual interior-point
 % method (the regularised variant used in COBRA's CHRR sampler). This is the
 % rounding step of sampleCHRR: the returned transform E maps the polytope to a
-% well-conditioned body in which coordinate hit-and-run mixes rapidly.
+% well-conditioned body in which coordinate hit-and-run samples.
 %
 % This function is pure linear algebra (no LP solver) except when x0 is empty,
 % in which case a Chebyshev centre is obtained via sampleChebyshevCenter.
@@ -26,8 +26,8 @@ function [x, E, converged] = sampleMaxVolEllipse(A, b, x0, maxiter, tol, reg)
 % tol : double (optional)
 %     convergence tolerance (default 1e-6).
 % reg : double (optional)
-%     diagonal / Levenberg regularisation keeping the Newton solves
-%     well-conditioned (default 1e-8).
+%     diagonal (Levenberg) regularisation of the Newton solves
+%     (default 1e-8).
 %
 % Returns
 % -------
@@ -37,14 +37,15 @@ function [x, E, converged] = sampleMaxVolEllipse(A, b, x0, maxiter, tol, reg)
 %     n-by-n lower-triangular rounding transform with E*E' = E2 (the SPD
 %     ellipsoid matrix). The rounding substitution is z = x + E*y.
 % converged : logical
-%     whether tol was reached within maxiter. A false value is not fatal —
-%     the last iterate is still a valid (if looser) rounding.
+%     whether tol was reached within maxiter. If false, the last iterate
+%     is returned as the centre and transform, which is a valid but looser
+%     rounding.
 %
 % Notes
 % -----
-% Validated against analytic cases: a box maps to the unit ball (E = I); a
-% sheared box {z : -1 <= M*z <= 1} gives E*E' = inv(M)*inv(M)'; a triangle
-% gives its Steiner inellipse.
+% Analytic cases, tested in tSampling: a box maps to the unit ball (E = I);
+% a sheared box {z : -1 <= M*z <= 1} gives E*E' = inv(M)*inv(M)'; a
+% triangle gives its Steiner inellipse.
 %
 % Based on Y. Zhang & L. Gao (2003), SIAM J. Optim. 14:53-76; as used in
 % Haraldsdottir et al. (2017) Bioinformatics 33:1741 (CHRR).

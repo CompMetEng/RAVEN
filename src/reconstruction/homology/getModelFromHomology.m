@@ -21,28 +21,30 @@ function [draftModel, hitGenes]=getModelFromHomology(models,blastStructure,...
 % Name-Value Arguments
 % --------------------
 % preferredOrder : cell
-%     the order in which reactions should be added from the models. If not
-%     supplied, reactions will be included from all models, otherwise one
-%     gene will only result in reactions from one model (default {}).
+%     the order in which reactions are added from the models, as a cell array
+%     of model IDs. If not supplied, reactions are included from all models,
+%     otherwise one gene results in reactions from one model only
+%     (default {}).
 % strictness : double
-%     integer that specifies which reactions should be included (default 1):
+%     integer that specifies which reactions are included (default 1):
 %
-%     - 1 : map new genes to old for all pairs which have acceptable BLASTP
-%       results in both directions.
-%     - 2 : map new genes to old for all pairs which have acceptable BLASTP
-%       results in the correspondent direction (mapping can be done in the
-%       opposite direction, see mapNewGenesToOld below).
-%     - 3 : check all BLASTP results and retain only the best hit (by
-%       bitscore) for each gene pair in each direction separately, then map
-%       new genes to old for all pairs which have acceptable BLASTP results
-%       in both directions.
+%     - 1 : map new genes to old for all pairs which have BLASTP results
+%       that pass the filters (maxE, minLen, minIde) in both directions.
+%     - 2 : map new genes to old for all pairs which have BLASTP results
+%       that pass the filters in one direction, selected by mapNewGenesToOld.
+%     - 3 : apply the filters (maxE, minLen, minIde), retain only the best hit
+%       (highest bitscore, ties included) among the hits that passed them for
+%       each query gene in each direction separately, then map new genes to
+%       old for all pairs which have BLASTP results in both directions.
 % onlyGenesInModels : logical
 %     consider BLASTP results only for genes that exist in the models. This
 %     tends to import a larger fraction from the existing models but may
-%     give less reliable results. Has effect only if strictness=3
+%     give less reliable results. Changes the result only if strictness=3
 %     (default false).
 % maxE : double
-%     only look at genes with E-values <= this value (default 10^-30).
+%     only look at genes with E-values < this value (default 10^-30). In a
+%     benchmark against KEGG and OMA orthology, with the minIde filter in
+%     place, values between 10^-4 and 10^-50 gave the same result.
 % minLen : double
 %     only look at genes with alignment length >= this value (default 100).
 %     Measured against KEGG and OMA orthology across four organisms: any
@@ -50,37 +52,37 @@ function [draftModel, hitGenes]=getModelFromHomology(models,blastStructure,...
 %     real orthologs without reducing the number of wrong ones.
 % minIde : double
 %     only look at genes with identity >= this value (default 40 (%)).
-%     The filter that decides the outcome, and 40 is the measured optimum
-%     once a wrongly transferred reaction is treated as worse than a missing
-%     one. maxE, by contrast, changes nothing between 10^-4 and 10^-50.
+%     This filter determines the result. In the calibration, with a wrongly
+%     transferred reaction counted as worse than a missing one, 40 lies in the
+%     35 to 45 range that the KEGG and OMA references favour.
 % mapNewGenesToOld : logical
-%     determines how to match genes if not looking at only 1-1 orthologs.
-%     Either map the new genes to the old or old genes to new. The default
-%     is to map the new genes (default true).
+%     determines how to match genes when strictness is 2: true maps the new
+%     genes to the old, false maps the old genes to the new (default true).
 % complexPolicy : char
-%     what happens to an "and"-linked subunit without an ortholog:
-%     "flag" keeps the reaction with the subunit renamed
-%     OLD_MODELID_geneName, for a curator to review; "keep" drops just that
-%     subunit; "drop" drops the whole reaction (default "flag").
+%     what happens to an "and"-linked subunit without an ortholog (case
+%     insensitive): "flag" keeps the reaction with the subunit renamed
+%     OLD_MODELID_geneName, for review; "keep" drops that subunit;
+%     "drop" drops the whole reaction (default "flag").
 % keepGeneFree : logical
 %     also transfer the template reactions that have no grRule (spontaneous,
 %     transport, exchange, artificial). By default they are dropped, because
-%     nothing supports them in the new organism. Set it when the template is
-%     a curated reference whose gene-free reactions belong in every derived
-%     model. With several templates, a gene-free reaction comes in once per
-%     template (default false).
+%     no gene supports them in the new organism. When the template is a
+%     curated reference whose gene-free reactions belong in every derived
+%     model, true transfers them. With several templates, a gene-free
+%     reaction comes in once per template (default false).
 % preserveNotes : logical
-%     keep each transferred reaction's rxnNotes, rxnReferences and
-%     rxnConfidenceScores from the template. By default the notes say the
-%     reaction was included by getModelFromHomology and the confidence score
-%     is 2 (default false).
+%     keep rxnNotes and rxnConfidenceScores of each transferred reaction from
+%     the template. By default the notes say the reaction was included by
+%     getModelFromHomology and the confidence score is 2. The rxnReferences of
+%     the template reactions are always kept (default false).
 %
 % Returns
 % -------
 % draftModel : struct
 %     a model structure for the new organism.
 % hitGenes : struct
-%     collect the old and new genes.
+%     structure with the fields oldGenes (the template genes that were
+%     mapped) and newGenes (the corresponding genes of the new organism).
 %
 % Examples
 % --------
@@ -88,10 +90,10 @@ function [draftModel, hitGenes]=getModelFromHomology(models,blastStructure,...
 %
 % Notes
 % -----
-% The models in the "models" structure should have named the metabolites in
-% the same manner, have their reversible reactions in the same direction
-% (run sortModel), and use the same compartment names. To avoid keeping
-% unneccesary old genes, the models should not have "or"-relations in their
+% The models in the "models" structure should name the metabolites in the
+% same manner, have their reversible reactions in the same direction (run
+% sortModel), and use the same compartment names. To avoid keeping
+% unnecessary old genes, the models should not have "or"-relations in their
 % grRules (use expandModel).
 %
 % The gene ids of the new organism in blastStructure become its gene ids in
@@ -102,12 +104,14 @@ function [draftModel, hitGenes]=getModelFromHomology(models,blastStructure,...
 % The resulting draft model contains only reactions associated with
 % orthologous genes, plus the gene-free ones with keepGeneFree. With
 % complexPolicy "flag", the old (original) genes involved in "and" relations
-% in grRules without any orthologs are still included in the draft model as
+% in grRules without any orthologs are included in the draft model as
 % OLD_MODELID_geneName. A gene that several template genes map to appears
 % once in a grRule. The draft does not keep the version, date or
 % descriptive annotation of the templates.
 %
-% "to" and "from" means relative to the new organism.
+% "to" and "from" are relative to the new organism: "to" is a BLAST search from
+% a template organism to the new organism, "from" is a search from the new
+% organism to a template organism.
 %
 % The hits can also come from SuppOrth consensus orthologs (hitsFromSuppOrth,
 % runSuppOrth). Their e-value, identity and alignment length are

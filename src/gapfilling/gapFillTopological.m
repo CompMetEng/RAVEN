@@ -3,12 +3,11 @@ function result = gapFillTopological(model, universalModel, varargin)
 %
 % Identifies which metabolites in the draft model cannot be produced from a
 % given set of seed metabolites (medium), using a graph-based fixed-point
-% "scope" computation (no solver required). For each unreachable metabolite,
+% "scope" computation that needs no solver. For each unreachable metabolite,
 % finds candidate reactions in the universal database that produce it
 % directly.
 %
-% This is a computationally cheap pre-screening step that prunes the
-% universal database before a more expensive gap-filling solve. It is
+% The step prunes the universal database before a gap-filling solve. It is
 % inspired by the topological analysis used in Meneco (Prigent et al. 2017,
 % PLoS Comput Biol).
 %
@@ -27,30 +26,31 @@ function result = gapFillTopological(model, universalModel, varargin)
 % universalModel : struct
 %     universal reaction database (RAVEN model).
 %
-% Optional name-value parameters
-% --------------------------------
-% 'seeds' (default [])
-%     Metabolite IDs (cell array) available from the medium. Default:
+% Name-Value Arguments
+% --------------------
+% seeds : cell
+%     metabolite IDs available from the medium. If empty, the seeds are the
 %     metabolites of every exchange reaction whose bounds let it supply the
-%     metabolite, i.e. getExchangeRxns 'uptake' plus 'reverse'.
-% 'targets' (default [])
-%     Metabolite IDs (cell array) that should be produced. Default: every
+%     metabolite, that is getExchangeRxns 'uptake' plus 'reverse'
+%     (default []).
+% targets : cell
+%     metabolite IDs that should be produced. If empty, the targets are every
 %     metabolite of the objective (biomass) reaction, substrates and
 %     products; the first one when there are several objective reactions.
 %     Without targets and without an objective reaction the function raises
-%     RAVEN:badInput.
-% 'verbose' (default true)
-%     print a summary of the results.
+%     RAVEN:badInput (default []).
+% verbose : logical
+%     true to print a summary of the results (default true).
 %
 % Returns
 % -------
 % result : struct
-%     .reachableMets   — logical vector (length nMets) marking producible mets
-%     .blockedMets     — cell array of metabolite IDs that cannot be reached
-%     .candidateRxns   — n-by-1 cell array of universal rxn ID lists, one
-%                        cell per blocked metabolite (same order as blockedMets)
-%     .pruningFraction — fraction of universal reactions pruned (not needed
-%                        for any blocked metabolite)
+%     .reachableMets: logical vector (length nMets) marking producible mets
+%     .blockedMets: cell array of metabolite IDs that cannot be reached
+%     .candidateRxns: n-by-1 cell array of universal rxn ID lists, one cell
+%         per blocked metabolite (same order as blockedMets)
+%     .pruningFraction: fraction of universal reactions pruned (not
+%         candidates for any blocked metabolite)
 %
 % See also
 % --------

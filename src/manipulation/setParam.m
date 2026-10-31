@@ -6,23 +6,31 @@ function model=setParam(model, paramType, rxnList, params, var)
 % model : struct
 %     a model structure.
 % paramType : char
-%     the type of parameter to set:
+%     the type of parameter to set. The value is matched case-insensitively,
+%     except for the reset of the other objective coefficients under "obj"
+%     (below):
 %
 %     - "lb" : lower bound.
 %     - "ub" : upper bound.
 %     - "eq" : both upper and lower bound (equality constraint).
-%     - "obj" : objective coefficient.
-%     - "rev" : reversibility (only changes the model.rev fields, does not
-%       affect model.lb and model.ub).
+%     - "obj" : objective coefficient. The objective coefficients of all
+%       other reactions are set to 0 only when every element of paramType
+%       contains "obj" in lower case; with another capitalisation, or when
+%       paramType also holds other types, the other coefficients keep their
+%       values.
+%     - "rev" : reversibility (only changes the model.rev field, does not
+%       affect model.lb and model.ub). A non-zero value sets the reaction
+%       reversible.
 %     - "var" : variance around measured bound.
-%     - "unc" : unconstrained, set lower and upper bound to the default
-%       values (-1000 and 1000, or any other values that are defined in
-%       model.annotation.defaultLB and .defaultUB).
+%     - "unc" : unconstrained, sets the lower and upper bound to
+%       model.annotation.defaultLB and model.annotation.defaultUB if these
+%       are defined, otherwise to -1000 and 1000.
 % rxnList : cell or double
 %     a cell array of reaction IDs or a vector with their corresponding
-%     indexes.
+%     indexes. IDs that are not in the model are ignored with a warning.
 % params : double
-%     a vector of the corresponding values.
+%     a vector of the corresponding values, or a single value that is
+%     applied to all reactions in rxnList.
 % var : double, optional
 %     percentage of variance around measured value, if "var" is set as
 %     paramType. Defining "var" as 5 results in lb and ub at 97.5% and

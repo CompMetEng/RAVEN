@@ -2,8 +2,8 @@ function [irrevModel,matchRev,rev2irrev,irrev2rev]=convertToIrrev(model,varargin
 % convertToIrrev  Convert a model to irreversible form.
 %
 % Reversible reactions are split into one forward and one reverse
-% reaction. The reverse reactions are saved as 'rxnID_REV'. A warning is
-% shown if some reaction identifiers already end with '_REV'.
+% reaction. The reverse reactions are named 'rxnID_REV'. A warning is
+% shown if some reaction ids already end with '_REV'.
 %
 % Parameters
 % ----------
@@ -13,7 +13,7 @@ function [irrevModel,matchRev,rev2irrev,irrev2rev]=convertToIrrev(model,varargin
 % Name-Value Arguments
 % --------------------
 % rxns : cell
-%     cell array with the reactions to split, if reversible (default
+%     cell array with the ids of the reactions to split, if reversible (default
 %     model.rxns).
 %
 % Returns

@@ -1,20 +1,22 @@
 function [model, addedRxns]=addTransport(model,fromComp,toComps,varargin)
 % addTransport  Add transport reactions between compartments.
 %
-% This is a faster version than addRxns when adding transport reactions.
-% New reaction names are formatted as "metaboliteName, fromComp-toComp",
-% while new reaction IDs are sequentially counted with a tr_ prefix:
-% e.g. tr_0001, tr_0002, etc.
+% The function builds the stoichiometric columns directly from the metabolite names,
+% without the equation parsing of addRxns, which makes it faster for adding transport
+% reactions. New reaction names
+% have the format "metaboliteName transport, fromCompName-toCompName", where the
+% compartment names are the entries of model.compNames. New reaction ids are numbered
+% sequentially with the prefix tr_ (tr_0001, tr_0002, ...).
 %
 % Parameters
 % ----------
 % model : struct
 %     a model structure.
 % fromComp : char
-%     the id of the compartment to transport from (should match
-%     model.comps).
+%     the id of the compartment to transport from. Must match one entry of model.comps.
 % toComps : cell
-%     compartment names to transport to (should match model.comps).
+%     the ids of the compartments to transport to. Each must match an entry of
+%     model.comps.
 %
 % Name-Value Arguments
 % --------------------
@@ -24,11 +26,11 @@ function [model, addedRxns]=addTransport(model,fromComp,toComps,varargin)
 % isRev : logical
 %     true if the transport reactions should be reversible (default true).
 % onlyToExisting : logical
-%     true if transport of a metabolite should only be added if it already
-%     exists in toComp. If false, then new metabolites are added with
-%     addMets first (default true).
+%     true to add transport of a metabolite only if the metabolite exists in the target
+%     compartment. If false, the missing metabolites are first added with addMets
+%     (default true).
 % prefix : char
-%     prefix to reaction IDs (default "tr_").
+%     prefix of the reaction ids (default "tr_").
 %
 % Returns
 % -------
