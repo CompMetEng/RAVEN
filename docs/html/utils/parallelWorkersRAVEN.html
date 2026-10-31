@@ -29,29 +29,31 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> parallelWorkersRAVEN  Return the parfor worker count for a given setting.
 
- Returns a value for use with the parfor worker-count syntax:
+ Returns the value for the maximum-workers argument of parfor:
 
      nW = parallelWorkersRAVEN(runParallel);
      parfor (i = 1:N, nW)
          ...
      end
 
- This avoids mutating global parallel-pool state: nW == 0 forces parfor
- to run as a plain for loop; nW == Inf lets the Parallel Computing Toolbox
- manage the pool size and auto-creation.
+ The function leaves the global parallel pool unchanged. With nW == 0, parfor
+ runs as a plain for loop. With nW == Inf, the Parallel Computing Toolbox
+ manages the pool size and creates a pool when none exists. When
+ runParallel is true but the Parallel Computing Toolbox is not installed, the
+ function prints a message and returns 0.
 
  Parameters
  ----------
  runParallel : logical
-     whether the caller should use parallel workers.
+     true to use parallel workers, false for sequential execution.
 
  Returns
  -------
  nW : double
-     0   to force sequential execution (parfor behaves as a for loop,
-         no pool required or created).
-     Inf to use available pool workers (PCT manages pool size and
-         auto-creation).</pre></div>
+     0   sequential execution (parfor behaves as a for loop, no pool is
+         required or created).
+     Inf available pool workers (the Parallel Computing Toolbox manages
+         the pool size and creates a pool when none exists).</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -69,41 +71,43 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function nW = parallelWorkersRAVEN(runParallel)</a>
 0002 <span class="comment">% parallelWorkersRAVEN  Return the parfor worker count for a given setting.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Returns a value for use with the parfor worker-count syntax:</span>
+0004 <span class="comment">% Returns the value for the maximum-workers argument of parfor:</span>
 0005 <span class="comment">%</span>
 0006 <span class="comment">%     nW = parallelWorkersRAVEN(runParallel);</span>
 0007 <span class="comment">%     parfor (i = 1:N, nW)</span>
 0008 <span class="comment">%         ...</span>
 0009 <span class="comment">%     end</span>
 0010 <span class="comment">%</span>
-0011 <span class="comment">% This avoids mutating global parallel-pool state: nW == 0 forces parfor</span>
-0012 <span class="comment">% to run as a plain for loop; nW == Inf lets the Parallel Computing Toolbox</span>
-0013 <span class="comment">% manage the pool size and auto-creation.</span>
-0014 <span class="comment">%</span>
-0015 <span class="comment">% Parameters</span>
-0016 <span class="comment">% ----------</span>
-0017 <span class="comment">% runParallel : logical</span>
-0018 <span class="comment">%     whether the caller should use parallel workers.</span>
-0019 <span class="comment">%</span>
-0020 <span class="comment">% Returns</span>
-0021 <span class="comment">% -------</span>
-0022 <span class="comment">% nW : double</span>
-0023 <span class="comment">%     0   to force sequential execution (parfor behaves as a for loop,</span>
-0024 <span class="comment">%         no pool required or created).</span>
-0025 <span class="comment">%     Inf to use available pool workers (PCT manages pool size and</span>
-0026 <span class="comment">%         auto-creation).</span>
-0027 
-0028 <span class="keyword">if</span> ~runParallel
-0029     nW = 0;
-0030     <span class="keyword">return</span>
-0031 <span class="keyword">end</span>
-0032 <span class="keyword">if</span> isempty(ver(<span class="string">'parallel'</span>))
-0033     disp(<span class="string">'Cannot find MATLAB Parallel Computing Toolbox, process is not parallelized.'</span>)
-0034     nW = 0;
-0035 <span class="keyword">else</span>
-0036     nW = Inf;
-0037 <span class="keyword">end</span>
-0038 <span class="keyword">end</span></pre></div>
+0011 <span class="comment">% The function leaves the global parallel pool unchanged. With nW == 0, parfor</span>
+0012 <span class="comment">% runs as a plain for loop. With nW == Inf, the Parallel Computing Toolbox</span>
+0013 <span class="comment">% manages the pool size and creates a pool when none exists. When</span>
+0014 <span class="comment">% runParallel is true but the Parallel Computing Toolbox is not installed, the</span>
+0015 <span class="comment">% function prints a message and returns 0.</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">% Parameters</span>
+0018 <span class="comment">% ----------</span>
+0019 <span class="comment">% runParallel : logical</span>
+0020 <span class="comment">%     true to use parallel workers, false for sequential execution.</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% Returns</span>
+0023 <span class="comment">% -------</span>
+0024 <span class="comment">% nW : double</span>
+0025 <span class="comment">%     0   sequential execution (parfor behaves as a for loop, no pool is</span>
+0026 <span class="comment">%         required or created).</span>
+0027 <span class="comment">%     Inf available pool workers (the Parallel Computing Toolbox manages</span>
+0028 <span class="comment">%         the pool size and creates a pool when none exists).</span>
+0029 
+0030 <span class="keyword">if</span> ~runParallel
+0031     nW = 0;
+0032     <span class="keyword">return</span>
+0033 <span class="keyword">end</span>
+0034 <span class="keyword">if</span> isempty(ver(<span class="string">'parallel'</span>))
+0035     disp(<span class="string">'Cannot find MATLAB Parallel Computing Toolbox, process is not parallelized.'</span>)
+0036     nW = 0;
+0037 <span class="keyword">else</span>
+0038     nW = Inf;
+0039 <span class="keyword">end</span>
+0040 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

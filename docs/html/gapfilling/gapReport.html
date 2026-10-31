@@ -4,7 +4,7 @@
 <head>
   <title>Description of gapReport</title>
   <meta name="keywords" content="gapReport">
-  <meta name="description" content="gapReport  Perform a gap analysis and summarize the results.">
+  <meta name="description" content="gapReport  Perform a gap analysis and summarise the results.">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,22 +21,22 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>gapReport  Perform a gap analysis and summarize the results.</strong></div>
+<div class="box"><strong>gapReport  Perform a gap analysis and summarise the results.</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnect,neededForProductionMat, canProduceWithoutInput, canConsumeWithoutOutput,connectedFromTemplates, addedFromTemplates]=gapReport(model, varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> gapReport  Perform a gap analysis and summarize the results.
+<div class="fragment"><pre class="comment"> gapReport  Perform a gap analysis and summarise the results.
 
- Runs a series of connectivity checks on the model - which reactions are
+ Runs a series of connectivity checks on the model: which reactions are
  blocked, how many isolated sub-networks exist, which metabolites cannot
  be produced (and the minimal set of metabolites that would need to be
- connected to fix that), and which metabolites can be produced/consumed
- without any input/output, with every boundary reaction closed. If
- templateModels is supplied, it also attempts to gap-fill using those
- models. A formatted report is printed to the command window; the same
- results are returned as outputs for further use.
+ connected to fix that), and which metabolites can be produced without any
+ input or consumed without any output, with every boundary reaction closed.
+ If templateModels is supplied, it also attempts to gap-fill using those
+ models. A formatted report is printed to the command window, and the same
+ results are returned as outputs.
 
  Parameters
  ----------
@@ -46,8 +46,8 @@
  Name-Value Arguments
  --------------------
  templateModels : cell
-     a cell array of template models to use for gap filling. If omitted,
-     the automated gap-filling section is skipped.
+     a cell array of template models used for gap filling. If omitted, the
+     automated gap-filling section is skipped.
 
  Returns
  -------
@@ -89,8 +89,8 @@
 
  The model must be feasible under its own bounds and with its boundary
  closed. Otherwise gapReport stops with a RAVEN:infeasibleModel error that
- names the reactions with a forced flux; set the bounds of ATP maintenance
- and any other forced flux to zero first.
+ names the reactions with a forced flux. Such reactions, for example ATP
+ maintenance, need bounds that allow zero flux.
 
  Examples
  --------
@@ -116,16 +116,16 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnect,</a><span class="keyword">...</span>
 0002     neededForProductionMat, canProduceWithoutInput, canConsumeWithoutOutput, <span class="keyword">...</span>
 0003     connectedFromTemplates, addedFromTemplates]=gapReport(model, varargin)
-0004 <span class="comment">% gapReport  Perform a gap analysis and summarize the results.</span>
+0004 <span class="comment">% gapReport  Perform a gap analysis and summarise the results.</span>
 0005 <span class="comment">%</span>
-0006 <span class="comment">% Runs a series of connectivity checks on the model - which reactions are</span>
+0006 <span class="comment">% Runs a series of connectivity checks on the model: which reactions are</span>
 0007 <span class="comment">% blocked, how many isolated sub-networks exist, which metabolites cannot</span>
 0008 <span class="comment">% be produced (and the minimal set of metabolites that would need to be</span>
-0009 <span class="comment">% connected to fix that), and which metabolites can be produced/consumed</span>
-0010 <span class="comment">% without any input/output, with every boundary reaction closed. If</span>
-0011 <span class="comment">% templateModels is supplied, it also attempts to gap-fill using those</span>
-0012 <span class="comment">% models. A formatted report is printed to the command window; the same</span>
-0013 <span class="comment">% results are returned as outputs for further use.</span>
+0009 <span class="comment">% connected to fix that), and which metabolites can be produced without any</span>
+0010 <span class="comment">% input or consumed without any output, with every boundary reaction closed.</span>
+0011 <span class="comment">% If templateModels is supplied, it also attempts to gap-fill using those</span>
+0012 <span class="comment">% models. A formatted report is printed to the command window, and the same</span>
+0013 <span class="comment">% results are returned as outputs.</span>
 0014 <span class="comment">%</span>
 0015 <span class="comment">% Parameters</span>
 0016 <span class="comment">% ----------</span>
@@ -135,8 +135,8 @@ This function is called by:
 0020 <span class="comment">% Name-Value Arguments</span>
 0021 <span class="comment">% --------------------</span>
 0022 <span class="comment">% templateModels : cell</span>
-0023 <span class="comment">%     a cell array of template models to use for gap filling. If omitted,</span>
-0024 <span class="comment">%     the automated gap-filling section is skipped.</span>
+0023 <span class="comment">%     a cell array of template models used for gap filling. If omitted, the</span>
+0024 <span class="comment">%     automated gap-filling section is skipped.</span>
 0025 <span class="comment">%</span>
 0026 <span class="comment">% Returns</span>
 0027 <span class="comment">% -------</span>
@@ -178,8 +178,8 @@ This function is called by:
 0063 <span class="comment">%</span>
 0064 <span class="comment">% The model must be feasible under its own bounds and with its boundary</span>
 0065 <span class="comment">% closed. Otherwise gapReport stops with a RAVEN:infeasibleModel error that</span>
-0066 <span class="comment">% names the reactions with a forced flux; set the bounds of ATP maintenance</span>
-0067 <span class="comment">% and any other forced flux to zero first.</span>
+0066 <span class="comment">% names the reactions with a forced flux. Such reactions, for example ATP</span>
+0067 <span class="comment">% maintenance, need bounds that allow zero flux.</span>
 0068 <span class="comment">%</span>
 0069 <span class="comment">% Examples</span>
 0070 <span class="comment">% --------</span>

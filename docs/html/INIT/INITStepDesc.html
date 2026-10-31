@@ -46,7 +46,7 @@ This function is called by:
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 classdef <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>
 0002 <span class="comment">% Describes a step in the ftINIT algorithm. A cell array of objects of this</span>
-0003 <span class="comment">% class is used as input to ftINIT to specify how the algorithm should be run.</span>
+0003 <span class="comment">% class is the input to ftINIT that specifies how the algorithm is run.</span>
 0004    properties
 0005       PosRevOff <span class="comment">%If true, positive-scored reversible reactions are removed</span>
 0006                 <span class="comment">%from the MILP problem (used in step 1 of ftINIT)</span>
@@ -67,7 +67,7 @@ This function is called by:
 0021                        <span class="comment">% b8 - All rxns without GPRs</span>
 0022 
 0023       MetsToIgnore <span class="comment">% Structure describing mets that can be removed from the model</span>
-0024                    <span class="comment">% before running ftINIT, such as water etc.</span>
+0024                    <span class="comment">% before running ftINIT, such as water and other ubiquitous metabolites.</span>
 0025                    <span class="comment">% .simpleMets</span>
 0026                    <span class="comment">%      .mets        Names of metabolites to remove</span>
 0027                    <span class="comment">%      .compsToKeep Compartments for which metabolites should be kept.</span>

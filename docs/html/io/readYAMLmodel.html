@@ -29,16 +29,16 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> readYAMLmodel  Read a model structure from a YAML file.
 
- Reads a yaml file matching (roughly) the standard cobra-format model
- yaml structure.
+ Reads a yaml file in the cobra-format model yaml structure that
+ writeYAMLmodel writes.
 
  Name-Value Arguments
  --------------------
  fileName : char
-     a model file in yaml file format. A dialog window will open if no
-     file name is specified.
+     a model file in yaml file format. A dialog window opens if no file
+     name is specified.
  verbose : logical
-     set as true to monitor progress (default false).
+     true to print the progress (default false).
 
  Returns
  -------
@@ -67,16 +67,16 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function model=readYAMLmodel(varargin)</a>
 0002 <span class="comment">% readYAMLmodel  Read a model structure from a YAML file.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Reads a yaml file matching (roughly) the standard cobra-format model</span>
-0005 <span class="comment">% yaml structure.</span>
+0004 <span class="comment">% Reads a yaml file in the cobra-format model yaml structure that</span>
+0005 <span class="comment">% writeYAMLmodel writes.</span>
 0006 <span class="comment">%</span>
 0007 <span class="comment">% Name-Value Arguments</span>
 0008 <span class="comment">% --------------------</span>
 0009 <span class="comment">% fileName : char</span>
-0010 <span class="comment">%     a model file in yaml file format. A dialog window will open if no</span>
-0011 <span class="comment">%     file name is specified.</span>
+0010 <span class="comment">%     a model file in yaml file format. A dialog window opens if no file</span>
+0011 <span class="comment">%     name is specified.</span>
 0012 <span class="comment">% verbose : logical</span>
-0013 <span class="comment">%     set as true to monitor progress (default false).</span>
+0013 <span class="comment">%     true to print the progress (default false).</span>
 0014 <span class="comment">%</span>
 0015 <span class="comment">% Returns</span>
 0016 <span class="comment">% -------</span>

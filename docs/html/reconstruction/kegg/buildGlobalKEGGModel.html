@@ -30,10 +30,10 @@
 <div class="fragment"><pre class="comment"> buildGlobalKEGGModel  Download and assemble the global KEGG model.
 
  Fetches the toolbox-assets &lt;kegg version&gt;_core.tar.gz bundle (the
- gene-free reference model plus the ko_reaction / organism_gene_ko /
- rxn_flags relational tables), then joins every organism's
- genes onto the reference reactions through their shared KO ids. The
- KEGG version is read from keggDataVersion, not hardcoded here.
+ gene-free reference model plus the ko_reaction, organism_gene_ko and
+ rxn_flags relational tables), then joins every organism's genes onto
+ the reference reactions through their shared KO ids. The KEGG version
+ is read from keggDataVersion.
 
  Parameters
  ----------
@@ -43,9 +43,9 @@
  Returns
  -------
  model : struct
-     the full global KEGG model (all reactions/metabolites, genes and
-     rxnGeneMat spanning every KEGG organism). Callers narrow this down
-     to one organism (see getKEGGModelForOrganism).
+     the full global KEGG model (all reactions and metabolites, genes and
+     rxnGeneMat spanning every KEGG organism). getKEGGModelForOrganism
+     narrows it to one organism.
  KOModel : struct
      a minimal model struct whose rxns are the KO ids linked to at
      least one reaction (getKEGGModelForOrganism's HMM-search path uses
@@ -57,7 +57,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../../matlabicon.gif)">
-<li><a href="buildGlobalGPR.html" class="code" title="function [genes,rxnGeneMat]=buildGlobalGPR(rxns,koReaction,organismGeneKO)">buildGlobalGPR</a>	buildGlobalGPR  Join every KEGG organism's genes onto the reference</li><li><a href="keggDataVersion.html" class="code" title="function version=keggDataVersion()">keggDataVersion</a>	keggDataVersion  The toolbox-assets release tag for KEGG artefacts.</li><li><a href="readKEGGTable.html" class="code" title="function tbl=readKEGGTable(gzFile)">readKEGGTable</a>	readKEGGTable  Read a gzipped KEGG relational table into a table with</li></ul>
+<li><a href="buildGlobalGPR.html" class="code" title="function [genes,rxnGeneMat]=buildGlobalGPR(rxns,koReaction,organismGeneKO)">buildGlobalGPR</a>	buildGlobalGPR  Join the genes of all KEGG organisms to reference reactions by KO id.</li><li><a href="keggDataVersion.html" class="code" title="function version=keggDataVersion()">keggDataVersion</a>	keggDataVersion  The toolbox-assets release tag for KEGG artefacts.</li><li><a href="readKEGGTable.html" class="code" title="function tbl=readKEGGTable(gzFile)">readKEGGTable</a>	readKEGGTable  Read a gzipped KEGG relational table into a table of cellstr columns.</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../../matlabicon.gif)">
 <li><a href="getModelFromKEGG.html" class="code" title="function [model,KOModel]=getModelFromKEGG(varargin)">getModelFromKEGG</a>	getModelFromKEGG  Load the global KEGG model.</li></ul>
@@ -72,10 +72,10 @@ This function is called by:
 0002 <span class="comment">% buildGlobalKEGGModel  Download and assemble the global KEGG model.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Fetches the toolbox-assets &lt;kegg version&gt;_core.tar.gz bundle (the</span>
-0005 <span class="comment">% gene-free reference model plus the ko_reaction / organism_gene_ko /</span>
-0006 <span class="comment">% rxn_flags relational tables), then joins every organism's</span>
-0007 <span class="comment">% genes onto the reference reactions through their shared KO ids. The</span>
-0008 <span class="comment">% KEGG version is read from keggDataVersion, not hardcoded here.</span>
+0005 <span class="comment">% gene-free reference model plus the ko_reaction, organism_gene_ko and</span>
+0006 <span class="comment">% rxn_flags relational tables), then joins every organism's genes onto</span>
+0007 <span class="comment">% the reference reactions through their shared KO ids. The KEGG version</span>
+0008 <span class="comment">% is read from keggDataVersion.</span>
 0009 <span class="comment">%</span>
 0010 <span class="comment">% Parameters</span>
 0011 <span class="comment">% ----------</span>
@@ -85,9 +85,9 @@ This function is called by:
 0015 <span class="comment">% Returns</span>
 0016 <span class="comment">% -------</span>
 0017 <span class="comment">% model : struct</span>
-0018 <span class="comment">%     the full global KEGG model (all reactions/metabolites, genes and</span>
-0019 <span class="comment">%     rxnGeneMat spanning every KEGG organism). Callers narrow this down</span>
-0020 <span class="comment">%     to one organism (see getKEGGModelForOrganism).</span>
+0018 <span class="comment">%     the full global KEGG model (all reactions and metabolites, genes and</span>
+0019 <span class="comment">%     rxnGeneMat spanning every KEGG organism). getKEGGModelForOrganism</span>
+0020 <span class="comment">%     narrows it to one organism.</span>
 0021 <span class="comment">% KOModel : struct</span>
 0022 <span class="comment">%     a minimal model struct whose rxns are the KO ids linked to at</span>
 0023 <span class="comment">%     least one reaction (getKEGGModelForOrganism's HMM-search path uses</span>

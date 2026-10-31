@@ -4,7 +4,7 @@
 <head>
   <title>Description of getUniProtScores</title>
   <meta name="keywords" content="getUniProtScores">
-  <meta name="description" content="getUniProtScores  Fetch curated subcellular locations from UniProt -&gt; gene scoring structure.">
+  <meta name="description" content="getUniProtScores  Fetch curated subcellular locations from UniProt as a gene scoring structure.">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,44 +21,44 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>getUniProtScores  Fetch curated subcellular locations from UniProt -&gt; gene scoring structure.</strong></div>
+<div class="box"><strong>getUniProtScores  Fetch curated subcellular locations from UniProt as a gene scoring structure.</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function GSS = getUniProtScores(organism, varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> getUniProtScores  Fetch curated subcellular locations from UniProt -&gt; gene scoring structure.
+<div class="fragment"><pre class="comment"> getUniProtScores  Fetch curated subcellular locations from UniProt as a gene scoring structure.
 
- Queries the UniProtKB REST API for an organism's &quot;Subcellular location&quot; annotations and parses
- them into the GSS consumed by predictLocalization (no manual export needed). UniProt's curated
- location is qualitative, so each annotated compartment gets score 1.0 (a multi-located protein
- lands in several). Requires an internet connection.
+ Queries the UniProtKB REST API for the &quot;Subcellular location&quot; annotations of an organism and
+ parses them into the GSS consumed by predictLocalization. No manual export is needed. UniProt
+ locations are qualitative, so each annotated compartment gets score 1.0 and a protein with
+ several annotated locations scores 1.0 in each of them. The function requires an internet
+ connection.
 
  Parameters
  ----------
  organism : double or char
-     a UniProt organism / taxonomy id (e.g. 559292 for S. cerevisiae S288C).
+     a UniProt organism (taxonomy) id (for example 559292 for S. cerevisiae S288C).
 
  Name-Value Arguments
  --------------------
  idField : char
-     which identifier becomes the gene id: 'gene_oln' (ordered locus / ORF, the default, which
-     matches yeast-GEM), 'accession', or 'gene_primary'.
+     which identifier becomes the gene id: 'gene_oln' (ordered locus or ORF name, the default,
+     which matches yeast-GEM), 'accession', or 'gene_primary'.
  reviewed : logical
-     restrict to curated Swiss-Prot entries (default true).
+     true to restrict the query to curated Swiss-Prot entries (default true).
  compartmentMap : containers.Map
-     UniProt location term -&gt; your model's compartment id (default
-     defaultCompartmentMap). Here the map is not only a renaming: its keys are
-     also the vocabulary searched for in UniProt's &quot;Subcellular location [CC]&quot;
-     free text, matched whole-word and case insensitively, so they must be
-     UniProt's own noun forms ('endoplasmic reticulum', not 'ER') and a term
-     that is not a key is never looked for. Several keys may share one
-     compartment id, which merges them; since every hit scores 1.0, merging
-     here means &quot;annotated to any of these counts as this compartment&quot;. One
-     key cannot be split across two compartment ids - see parseScores for why,
-     and for the recipe to duplicate a column on the returned GSS instead.
+     maps UniProt location terms to the compartment ids of the model (default
+     defaultCompartmentMap). The keys are also the vocabulary searched for in the
+     &quot;Subcellular location [CC]&quot; free text of UniProt, matched as whole words and
+     case insensitively. The keys must be the noun forms used by UniProt
+     ('endoplasmic reticulum', not 'ER'), and a term that is not a key is not searched.
+     Several keys may share one compartment id, which merges them; since every hit
+     scores 1.0, a protein annotated to any of the merged terms scores 1.0 in that
+     compartment. One key cannot map to two compartment ids; parseScores describes
+     how to duplicate a column of the returned GSS instead.
  extraQuery : char
-     an additional UniProt query clause, ANDed into the query (e.g. 'gene:CIT1').
+     an additional UniProt query clause, combined with the query by AND (for example 'gene:CIT1').
 
  Returns
  -------
@@ -80,7 +80,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="defaultCompartmentMap.html" class="code" title="function map = defaultCompartmentMap()">defaultCompartmentMap</a>	defaultCompartmentMap  Default predictor/database compartment label -> model compartment id.</li><li><a href="parseScores.html" class="code" title="function GSS = parseScores(inputFile, varargin)">parseScores</a>	parseScores  Parse predictor / database output into a gene scoring structure (GSS).</li></ul>
+<li><a href="defaultCompartmentMap.html" class="code" title="function map = defaultCompartmentMap()">defaultCompartmentMap</a>	defaultCompartmentMap  Default map from compartment labels to model compartment ids.</li><li><a href="parseScores.html" class="code" title="function GSS = parseScores(inputFile, varargin)">parseScores</a>	parseScores  Parse predictor or database output into a gene scoring structure (GSS).</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
 </ul>
@@ -92,38 +92,38 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function GSS = getUniProtScores(organism, varargin)</a>
-0002 <span class="comment">% getUniProtScores  Fetch curated subcellular locations from UniProt -&gt; gene scoring structure.</span>
+0002 <span class="comment">% getUniProtScores  Fetch curated subcellular locations from UniProt as a gene scoring structure.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Queries the UniProtKB REST API for an organism's &quot;Subcellular location&quot; annotations and parses</span>
-0005 <span class="comment">% them into the GSS consumed by predictLocalization (no manual export needed). UniProt's curated</span>
-0006 <span class="comment">% location is qualitative, so each annotated compartment gets score 1.0 (a multi-located protein</span>
-0007 <span class="comment">% lands in several). Requires an internet connection.</span>
-0008 <span class="comment">%</span>
-0009 <span class="comment">% Parameters</span>
-0010 <span class="comment">% ----------</span>
-0011 <span class="comment">% organism : double or char</span>
-0012 <span class="comment">%     a UniProt organism / taxonomy id (e.g. 559292 for S. cerevisiae S288C).</span>
-0013 <span class="comment">%</span>
-0014 <span class="comment">% Name-Value Arguments</span>
-0015 <span class="comment">% --------------------</span>
-0016 <span class="comment">% idField : char</span>
-0017 <span class="comment">%     which identifier becomes the gene id: 'gene_oln' (ordered locus / ORF, the default, which</span>
-0018 <span class="comment">%     matches yeast-GEM), 'accession', or 'gene_primary'.</span>
-0019 <span class="comment">% reviewed : logical</span>
-0020 <span class="comment">%     restrict to curated Swiss-Prot entries (default true).</span>
-0021 <span class="comment">% compartmentMap : containers.Map</span>
-0022 <span class="comment">%     UniProt location term -&gt; your model's compartment id (default</span>
-0023 <span class="comment">%     defaultCompartmentMap). Here the map is not only a renaming: its keys are</span>
-0024 <span class="comment">%     also the vocabulary searched for in UniProt's &quot;Subcellular location [CC]&quot;</span>
-0025 <span class="comment">%     free text, matched whole-word and case insensitively, so they must be</span>
-0026 <span class="comment">%     UniProt's own noun forms ('endoplasmic reticulum', not 'ER') and a term</span>
-0027 <span class="comment">%     that is not a key is never looked for. Several keys may share one</span>
-0028 <span class="comment">%     compartment id, which merges them; since every hit scores 1.0, merging</span>
-0029 <span class="comment">%     here means &quot;annotated to any of these counts as this compartment&quot;. One</span>
-0030 <span class="comment">%     key cannot be split across two compartment ids - see parseScores for why,</span>
-0031 <span class="comment">%     and for the recipe to duplicate a column on the returned GSS instead.</span>
+0004 <span class="comment">% Queries the UniProtKB REST API for the &quot;Subcellular location&quot; annotations of an organism and</span>
+0005 <span class="comment">% parses them into the GSS consumed by predictLocalization. No manual export is needed. UniProt</span>
+0006 <span class="comment">% locations are qualitative, so each annotated compartment gets score 1.0 and a protein with</span>
+0007 <span class="comment">% several annotated locations scores 1.0 in each of them. The function requires an internet</span>
+0008 <span class="comment">% connection.</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">% Parameters</span>
+0011 <span class="comment">% ----------</span>
+0012 <span class="comment">% organism : double or char</span>
+0013 <span class="comment">%     a UniProt organism (taxonomy) id (for example 559292 for S. cerevisiae S288C).</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">% Name-Value Arguments</span>
+0016 <span class="comment">% --------------------</span>
+0017 <span class="comment">% idField : char</span>
+0018 <span class="comment">%     which identifier becomes the gene id: 'gene_oln' (ordered locus or ORF name, the default,</span>
+0019 <span class="comment">%     which matches yeast-GEM), 'accession', or 'gene_primary'.</span>
+0020 <span class="comment">% reviewed : logical</span>
+0021 <span class="comment">%     true to restrict the query to curated Swiss-Prot entries (default true).</span>
+0022 <span class="comment">% compartmentMap : containers.Map</span>
+0023 <span class="comment">%     maps UniProt location terms to the compartment ids of the model (default</span>
+0024 <span class="comment">%     defaultCompartmentMap). The keys are also the vocabulary searched for in the</span>
+0025 <span class="comment">%     &quot;Subcellular location [CC]&quot; free text of UniProt, matched as whole words and</span>
+0026 <span class="comment">%     case insensitively. The keys must be the noun forms used by UniProt</span>
+0027 <span class="comment">%     ('endoplasmic reticulum', not 'ER'), and a term that is not a key is not searched.</span>
+0028 <span class="comment">%     Several keys may share one compartment id, which merges them; since every hit</span>
+0029 <span class="comment">%     scores 1.0, a protein annotated to any of the merged terms scores 1.0 in that</span>
+0030 <span class="comment">%     compartment. One key cannot map to two compartment ids; parseScores describes</span>
+0031 <span class="comment">%     how to duplicate a column of the returned GSS instead.</span>
 0032 <span class="comment">% extraQuery : char</span>
-0033 <span class="comment">%     an additional UniProt query clause, ANDed into the query (e.g. 'gene:CIT1').</span>
+0033 <span class="comment">%     an additional UniProt query clause, combined with the query by AND (for example 'gene:CIT1').</span>
 0034 <span class="comment">%</span>
 0035 <span class="comment">% Returns</span>
 0036 <span class="comment">% -------</span>

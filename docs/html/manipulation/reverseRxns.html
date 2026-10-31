@@ -4,7 +4,7 @@
 <head>
   <title>Description of reverseRxns</title>
   <meta name="keywords" content="reverseRxns">
-  <meta name="description" content="reverseRxns">
+  <meta name="description" content="reverseRxns  Reverse the direction of reactions in a model.">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,18 +21,35 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>reverseRxns</strong></div>
+<div class="box"><strong>reverseRxns  Reverse the direction of reactions in a model.</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function model=reverseRxns(model, rxns) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> reverseRxns
- Reverses the given reactions in place: negates their stoichiometry and
- objective coefficient, and swaps/negates their lower and upper bounds,
- so flux in the new positive direction is what was previously negative flux.
- model     the model to change (input/output)
- rxns      the rxns to reverse</pre></div>
+<div class="fragment"><pre class="comment"> reverseRxns  Reverse the direction of reactions in a model.
+
+ Negates the stoichiometric coefficients and the objective coefficient of
+ the reactions, and sets the lower bound to the negated upper bound and the
+ upper bound to the negated lower bound. A flux in the new positive
+ direction equals a flux in the original negative direction. Reaction IDs
+ in rxns that are not in the model are ignored.
+
+ Parameters
+ ----------
+ model : struct
+     a model structure.
+ rxns : cell
+     IDs of the reactions to reverse.
+
+ Returns
+ -------
+ model : struct
+     an updated model structure.
+
+ Examples
+ --------
+     model = reverseRxns(model, rxns);</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -48,25 +65,42 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function model=reverseRxns(model, rxns)</a>
-0002 <span class="comment">% reverseRxns</span>
-0003 <span class="comment">% Reverses the given reactions in place: negates their stoichiometry and</span>
-0004 <span class="comment">% objective coefficient, and swaps/negates their lower and upper bounds,</span>
-0005 <span class="comment">% so flux in the new positive direction is what was previously negative flux.</span>
-0006 <span class="comment">% model     the model to change (input/output)</span>
-0007 <span class="comment">% rxns      the rxns to reverse</span>
-0008 
-0009 rxnInd = find(ismember(model.rxns,rxns));
-0010 
-0011 <span class="comment">%reverse the reactions</span>
-0012 model.S(:,rxnInd) = model.S(:,rxnInd)*-1;
-0013 <span class="comment">%swap the bounds</span>
-0014 ub = model.ub(rxnInd);
-0015 model.ub(rxnInd) = -model.lb(rxnInd);
-0016 model.lb(rxnInd) = -ub;
-0017 <span class="comment">%flip the objective</span>
-0018 model.c(rxnInd) = -model.c(rxnInd);
-0019 
-0020 <span class="keyword">end</span></pre></div>
+0002 <span class="comment">% reverseRxns  Reverse the direction of reactions in a model.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Negates the stoichiometric coefficients and the objective coefficient of</span>
+0005 <span class="comment">% the reactions, and sets the lower bound to the negated upper bound and the</span>
+0006 <span class="comment">% upper bound to the negated lower bound. A flux in the new positive</span>
+0007 <span class="comment">% direction equals a flux in the original negative direction. Reaction IDs</span>
+0008 <span class="comment">% in rxns that are not in the model are ignored.</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">% Parameters</span>
+0011 <span class="comment">% ----------</span>
+0012 <span class="comment">% model : struct</span>
+0013 <span class="comment">%     a model structure.</span>
+0014 <span class="comment">% rxns : cell</span>
+0015 <span class="comment">%     IDs of the reactions to reverse.</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">% Returns</span>
+0018 <span class="comment">% -------</span>
+0019 <span class="comment">% model : struct</span>
+0020 <span class="comment">%     an updated model structure.</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% Examples</span>
+0023 <span class="comment">% --------</span>
+0024 <span class="comment">%     model = reverseRxns(model, rxns);</span>
+0025 
+0026 rxnInd = find(ismember(model.rxns,rxns));
+0027 
+0028 <span class="comment">%reverse the reactions</span>
+0029 model.S(:,rxnInd) = model.S(:,rxnInd)*-1;
+0030 <span class="comment">%swap the bounds</span>
+0031 ub = model.ub(rxnInd);
+0032 model.ub(rxnInd) = -model.lb(rxnInd);
+0033 model.lb(rxnInd) = -ub;
+0034 <span class="comment">%flip the objective</span>
+0035 model.c(rxnInd) = -model.c(rxnInd);
+0036 
+0037 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

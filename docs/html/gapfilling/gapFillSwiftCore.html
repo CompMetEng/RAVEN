@@ -31,14 +31,13 @@
 
  Single-LP alternative to gapFillFastCore. Maximises the sum of non-core
  fluxes while enforcing that every core reaction carries at least epsilon
- flux. Any reaction with non-zero flux in the solution is &quot;consistent&quot;
- with the core.
+ flux. Any reaction with a flux of at least epsilon / 2 in the solution is
+ &quot;consistent&quot; with the core.
 
- Because the maximisation objective makes the LP degenerate (many optima
- exist that differ only in which non-core reactions carry flux), the
- returned active set can vary between LP solvers and between runs with
- slightly different numerical conditions. This is the expected behaviour
- of SWIFTCORE (Tefagh &amp; Boyd 2020).
+ The maximisation objective makes the LP degenerate: many optima differ only
+ in which non-core reactions carry flux. The returned active set can
+ therefore vary between LP solvers and between runs with slightly different
+ numerical conditions.
 
  Based on SWIFTCORE (Tefagh &amp; Boyd 2020, BMC Bioinformatics 21:23).
 
@@ -56,8 +55,9 @@
  Returns
  -------
  activeRxns : logical
-     logical vector (length numel(model.rxns)) where true indicates the
-     reaction carries flux in the solution. Empty on infeasibility.
+     logical vector (length numel(model.rxns)) where true indicates that the
+     reaction carries flux in the solution. All elements are false if the LP
+     is infeasible.
 
  See also
  --------
@@ -70,7 +70,7 @@ This function calls:
 </ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="gapFillFastLP.html" class="code" title="function [addedRxns, newModel, cannotConnect] = gapFillFastLP(model, universalModel, varargin)">gapFillFastLP</a>	gapFillFastLP  LP-based gap-filling (fastGapFill / swiftGapFill).</li></ul>
+<li><a href="gapFillFastLP.html" class="code" title="function [addedRxns, newModel, cannotConnect] = gapFillFastLP(model, universalModel, varargin)">gapFillFastLP</a>	gapFillFastLP  LP-based gap-filling (fastGapFill or swiftGapFill).</li></ul>
 <!-- crossreference -->
 
 
@@ -81,33 +81,33 @@ This function is called by:
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Single-LP alternative to gapFillFastCore. Maximises the sum of non-core</span>
 0005 <span class="comment">% fluxes while enforcing that every core reaction carries at least epsilon</span>
-0006 <span class="comment">% flux. Any reaction with non-zero flux in the solution is &quot;consistent&quot;</span>
-0007 <span class="comment">% with the core.</span>
+0006 <span class="comment">% flux. Any reaction with a flux of at least epsilon / 2 in the solution is</span>
+0007 <span class="comment">% &quot;consistent&quot; with the core.</span>
 0008 <span class="comment">%</span>
-0009 <span class="comment">% Because the maximisation objective makes the LP degenerate (many optima</span>
-0010 <span class="comment">% exist that differ only in which non-core reactions carry flux), the</span>
-0011 <span class="comment">% returned active set can vary between LP solvers and between runs with</span>
-0012 <span class="comment">% slightly different numerical conditions. This is the expected behaviour</span>
-0013 <span class="comment">% of SWIFTCORE (Tefagh &amp; Boyd 2020).</span>
-0014 <span class="comment">%</span>
-0015 <span class="comment">% Based on SWIFTCORE (Tefagh &amp; Boyd 2020, BMC Bioinformatics 21:23).</span>
-0016 <span class="comment">%</span>
-0017 <span class="comment">% Parameters</span>
-0018 <span class="comment">% ----------</span>
-0019 <span class="comment">% model : struct</span>
-0020 <span class="comment">%     a RAVEN model structure.</span>
-0021 <span class="comment">% coreRxns : cell or logical or double</span>
-0022 <span class="comment">%     core reaction set: cell array of reaction IDs, a logical vector, or a</span>
-0023 <span class="comment">%     vector of reaction indices into model.rxns. All core reactions are</span>
-0024 <span class="comment">%     forced to carry flux &gt;= epsilon in the LP solution.</span>
-0025 <span class="comment">% epsilon : double</span>
-0026 <span class="comment">%     minimum flux threshold for a reaction to be considered active.</span>
-0027 <span class="comment">%</span>
-0028 <span class="comment">% Returns</span>
-0029 <span class="comment">% -------</span>
-0030 <span class="comment">% activeRxns : logical</span>
-0031 <span class="comment">%     logical vector (length numel(model.rxns)) where true indicates the</span>
-0032 <span class="comment">%     reaction carries flux in the solution. Empty on infeasibility.</span>
+0009 <span class="comment">% The maximisation objective makes the LP degenerate: many optima differ only</span>
+0010 <span class="comment">% in which non-core reactions carry flux. The returned active set can</span>
+0011 <span class="comment">% therefore vary between LP solvers and between runs with slightly different</span>
+0012 <span class="comment">% numerical conditions.</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Based on SWIFTCORE (Tefagh &amp; Boyd 2020, BMC Bioinformatics 21:23).</span>
+0015 <span class="comment">%</span>
+0016 <span class="comment">% Parameters</span>
+0017 <span class="comment">% ----------</span>
+0018 <span class="comment">% model : struct</span>
+0019 <span class="comment">%     a RAVEN model structure.</span>
+0020 <span class="comment">% coreRxns : cell or logical or double</span>
+0021 <span class="comment">%     core reaction set: cell array of reaction IDs, a logical vector, or a</span>
+0022 <span class="comment">%     vector of reaction indices into model.rxns. All core reactions are</span>
+0023 <span class="comment">%     forced to carry flux &gt;= epsilon in the LP solution.</span>
+0024 <span class="comment">% epsilon : double</span>
+0025 <span class="comment">%     minimum flux threshold for a reaction to be considered active.</span>
+0026 <span class="comment">%</span>
+0027 <span class="comment">% Returns</span>
+0028 <span class="comment">% -------</span>
+0029 <span class="comment">% activeRxns : logical</span>
+0030 <span class="comment">%     logical vector (length numel(model.rxns)) where true indicates that the</span>
+0031 <span class="comment">%     reaction carries flux in the solution. All elements are false if the LP</span>
+0032 <span class="comment">%     is infeasible.</span>
 0033 <span class="comment">%</span>
 0034 <span class="comment">% See also</span>
 0035 <span class="comment">% --------</span>

@@ -40,13 +40,12 @@
  Name-Value Arguments
  --------------------
  removeUnusedMets : logical
-     remove metabolites that are no longer in use (default false).
+     remove metabolites that no remaining reaction uses (default false).
  removeBlockedRxns : logical
-     remove reactions that get blocked after deleting the genes (default
-     false).
+     remove reactions that cannot carry flux after the genes are deleted.
+     When false, the bounds of these reactions are set to 0 (default false).
  standardizeRules : logical
-     format gene rules to be compliant with the standard format (default
-     true).
+     write the gene rules in the standard format (default true).
 
  Returns
  -------
@@ -57,9 +56,12 @@
      written in the standard format). Otherwise, besides genesToRemove, every
      gene that no remaining reaction used before the removal is deleted as
      well, also when it was not requested (for example a gene that no
-     reaction uses). A gene whose only reaction is kept but blocked
+     reaction uses). A gene that only occurs in a rule part removed with
+     another gene stays, because the reaction used it before the removal
+     (for example G3 in (G1 and G3) or G2 after removing G1). A gene also
+     stays when its reaction remains, even if that reaction is blocked
      (removeBlockedRxns false), such as the other subunit of a complex that
-     lost one, stays.
+     lost one.
 
  Examples
  --------
@@ -70,7 +72,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>	removeReactions  Delete a set of reactions from a model.</li><li><a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>	standardizeGrRules  Standardize gene-reaction rules in a model.</li></ul>
+<li><a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>	removeReactions  Delete a set of reactions from a model.</li><li><a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>	standardizeGrRules  Standardise gene-reaction rules in a model.</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
 </ul>
@@ -95,177 +97,179 @@ This function is called by:
 0012 <span class="comment">% Name-Value Arguments</span>
 0013 <span class="comment">% --------------------</span>
 0014 <span class="comment">% removeUnusedMets : logical</span>
-0015 <span class="comment">%     remove metabolites that are no longer in use (default false).</span>
+0015 <span class="comment">%     remove metabolites that no remaining reaction uses (default false).</span>
 0016 <span class="comment">% removeBlockedRxns : logical</span>
-0017 <span class="comment">%     remove reactions that get blocked after deleting the genes (default</span>
-0018 <span class="comment">%     false).</span>
+0017 <span class="comment">%     remove reactions that cannot carry flux after the genes are deleted.</span>
+0018 <span class="comment">%     When false, the bounds of these reactions are set to 0 (default false).</span>
 0019 <span class="comment">% standardizeRules : logical</span>
-0020 <span class="comment">%     format gene rules to be compliant with the standard format (default</span>
-0021 <span class="comment">%     true).</span>
-0022 <span class="comment">%</span>
-0023 <span class="comment">% Returns</span>
-0024 <span class="comment">% -------</span>
-0025 <span class="comment">% reducedModel : struct</span>
-0026 <span class="comment">%     an updated model structure. Genes in genesToRemove that are not in the</span>
-0027 <span class="comment">%     model are ignored. When none of them is in the model, no gene, reaction</span>
-0028 <span class="comment">%     or bound changes (with standardizeRules true the gene rules are still</span>
-0029 <span class="comment">%     written in the standard format). Otherwise, besides genesToRemove, every</span>
-0030 <span class="comment">%     gene that no remaining reaction used before the removal is deleted as</span>
-0031 <span class="comment">%     well, also when it was not requested (for example a gene that no</span>
-0032 <span class="comment">%     reaction uses). A gene whose only reaction is kept but blocked</span>
-0033 <span class="comment">%     (removeBlockedRxns false), such as the other subunit of a complex that</span>
-0034 <span class="comment">%     lost one, stays.</span>
-0035 <span class="comment">%</span>
-0036 <span class="comment">% Examples</span>
-0037 <span class="comment">% --------</span>
-0038 <span class="comment">%     reducedModel = removeGenes(model, genesToRemove, removeUnusedMets, ...</span>
-0039 <span class="comment">%                        removeBlockedRxns, standardizeRules);</span>
-0040 
-0041 p=parseRAVENargs(varargin, {<span class="string">'removeUnusedMets'</span>,false; <span class="string">'removeBlockedRxns'</span>,false; <span class="string">'standardizeRules'</span>,true});
-0042 removeUnusedMets=p.removeUnusedMets;
-0043 removeBlockedRxns=p.removeBlockedRxns;
-0044 standardizeRules=p.standardizeRules;
-0045 <span class="comment">%Format grRules and rxnGeneMatrix:</span>
-0046 <span class="keyword">if</span> standardizeRules
-0047     [grRules,rxnGeneMat,toCheck] = <a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>(model,true);
-0048     model.grRules    = grRules;
-0049     model.rxnGeneMat = rxnGeneMat;
-0050 <span class="keyword">else</span>
-0051     toCheck    = [];
-0052     rxnGeneMat = model.rxnGeneMat;
-0053 <span class="keyword">end</span>
-0054 reducedModel = model;
-0055 <span class="comment">%Only remove genes that are actually in the model</span>
-0056 <span class="keyword">if</span> ~(islogical(genesToRemove) || isnumeric(genesToRemove))
-0057     genesToRemove=convertCharArray(genesToRemove);
-0058     genesToRemove=genesToRemove(ismember(genesToRemove,model.genes));
-0059 <span class="keyword">end</span>
-0060 <span class="keyword">if</span> ~isempty(genesToRemove)
-0061     indexesToRemove = getIndexes(model,genesToRemove,<span class="string">'genes'</span>);
-0062     <span class="keyword">if</span> ~isempty(indexesToRemove)
-0063         <span class="comment">%Make 0 corresponding columns from rxnGeneMat:</span>
-0064         reducedModel.rxnGeneMat(:,indexesToRemove) = 0;        
-0065         genes = model.genes(indexesToRemove);
-0066         <span class="comment">%Check if conflicting grRules contain any of the genes to remove</span>
-0067         <span class="keyword">if</span> ~isempty(toCheck)
-0068             <span class="keyword">for</span> i=1:numel(toCheck)
-0069                 index   = toCheck(i);
-0070                 gIdxs   = find(rxnGeneMat(index,:));
-0071                 g2check = model.genes(gIdxs);
-0072                 <span class="keyword">if</span> any(ismember(g2check,genes))
-0073                     warning([<span class="string">'Conflicting grRule #'</span> num2str(index) <span class="string">' ('</span> model.rxns{index} <span class="string">') contains at least one of the genes to be removed, this grRule will be bypassed in order to avoid logical errors'</span>])
-0074                 <span class="keyword">end</span>
-0075             <span class="keyword">end</span>
-0076         <span class="keyword">end</span>
-0077         canCarryFlux = true(size(model.rxns));       
-0078         <span class="comment">%Loop through genes and adapt rxns:</span>
-0079         <span class="keyword">for</span> i = 1:length(genes)
-0080             <span class="comment">%Find all reactions for this gene and loop through them:</span>
-0081             geneRxns = find(rxnGeneMat(:,indexesToRemove(i)));
-0082             <span class="keyword">if</span> ~isempty(geneRxns)
-0083                 <span class="keyword">for</span> j = 1:numel(geneRxns)
-0084                     index  = geneRxns(j);
-0085                     grRule = reducedModel.grRules{index};
-0086                     <span class="keyword">if</span> ~ismember(index,toCheck) &amp;&amp; canCarryFlux(index) &amp;&amp; ~isempty(grRule)
-0087                         <span class="comment">%Check if rxn can carry flux without this gene:</span>
-0088                         canCarryFlux(index) = <a href="#_sub1" class="code" title="subfunction canIt = canRxnCarryFlux(geneRule,geneToRemove)">canRxnCarryFlux</a>(grRule,genes{i});
-0089                         <span class="comment">%Adapt gene rule &amp; gene matrix:</span>
-0090                         grRule = <a href="#_sub3" class="code" title="subfunction geneRule = removeGeneFromRule(geneRule,geneToRemove)">removeGeneFromRule</a>(grRule,genes{i});
-0091                         reducedModel.grRules{index} = grRule;
-0092                     <span class="keyword">end</span>
-0093                 <span class="keyword">end</span>
-0094             <span class="keyword">end</span>
-0095         <span class="keyword">end</span>
-0096         <span class="comment">%Delete or block the reactions that cannot carry flux:</span>
-0097         <span class="keyword">if</span> removeBlockedRxns
-0098             rxnsToRemove = reducedModel.rxns(~canCarryFlux);
-0099             reducedModel = <a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,rxnsToRemove,removeUnusedMets,true);
-0100         <span class="keyword">else</span>
-0101             reducedModel = <a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,[],removeUnusedMets,true);
-0102             reducedModel.lb(~canCarryFlux) = 0;
-0103             reducedModel.ub(~canCarryFlux) = 0;
-0104         <span class="keyword">end</span>
-0105     <span class="keyword">end</span>
-0106 <span class="keyword">end</span>
-0107 <span class="comment">%Format grRules and rxnGeneMatrix after all modifications</span>
-0108 <span class="keyword">if</span> standardizeRules
-0109     [grRules,rxnGeneMat] = <a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>(reducedModel,true);
-0110     reducedModel.grRules = grRules;
-0111     reducedModel.rxnGeneMat = rxnGeneMat;
-0112 <span class="keyword">end</span>
-0113 <span class="keyword">end</span>
-0114 
-0115 <a name="_sub1" href="#_subfunctions" class="code">function canIt = canRxnCarryFlux(geneRule,geneToRemove)</a>
-0116 <span class="comment">%Evaluate the rule with geneToRemove absent and every other gene present.</span>
-0117 <span class="comment">%A complex (AND) needs all of its subunits, isozymes (OR) need only one.</span>
-0118 tree = parseGrRule(geneRule);
-0119 <span class="keyword">if</span> isempty(tree)
-0120     canIt = true;
-0121     <span class="keyword">return</span>
-0122 <span class="keyword">end</span>
-0123 canIt = <a href="#_sub2" class="code" title="subfunction tf = evalWithout(node,geneToRemove)">evalWithout</a>(tree,geneToRemove);
+0020 <span class="comment">%     write the gene rules in the standard format (default true).</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% Returns</span>
+0023 <span class="comment">% -------</span>
+0024 <span class="comment">% reducedModel : struct</span>
+0025 <span class="comment">%     an updated model structure. Genes in genesToRemove that are not in the</span>
+0026 <span class="comment">%     model are ignored. When none of them is in the model, no gene, reaction</span>
+0027 <span class="comment">%     or bound changes (with standardizeRules true the gene rules are still</span>
+0028 <span class="comment">%     written in the standard format). Otherwise, besides genesToRemove, every</span>
+0029 <span class="comment">%     gene that no remaining reaction used before the removal is deleted as</span>
+0030 <span class="comment">%     well, also when it was not requested (for example a gene that no</span>
+0031 <span class="comment">%     reaction uses). A gene that only occurs in a rule part removed with</span>
+0032 <span class="comment">%     another gene stays, because the reaction used it before the removal</span>
+0033 <span class="comment">%     (for example G3 in (G1 and G3) or G2 after removing G1). A gene also</span>
+0034 <span class="comment">%     stays when its reaction remains, even if that reaction is blocked</span>
+0035 <span class="comment">%     (removeBlockedRxns false), such as the other subunit of a complex that</span>
+0036 <span class="comment">%     lost one.</span>
+0037 <span class="comment">%</span>
+0038 <span class="comment">% Examples</span>
+0039 <span class="comment">% --------</span>
+0040 <span class="comment">%     reducedModel = removeGenes(model, genesToRemove, removeUnusedMets, ...</span>
+0041 <span class="comment">%                        removeBlockedRxns, standardizeRules);</span>
+0042 
+0043 p=parseRAVENargs(varargin, {<span class="string">'removeUnusedMets'</span>,false; <span class="string">'removeBlockedRxns'</span>,false; <span class="string">'standardizeRules'</span>,true});
+0044 removeUnusedMets=p.removeUnusedMets;
+0045 removeBlockedRxns=p.removeBlockedRxns;
+0046 standardizeRules=p.standardizeRules;
+0047 <span class="comment">%Format grRules and rxnGeneMatrix:</span>
+0048 <span class="keyword">if</span> standardizeRules
+0049     [grRules,rxnGeneMat,toCheck] = <a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>(model,true);
+0050     model.grRules    = grRules;
+0051     model.rxnGeneMat = rxnGeneMat;
+0052 <span class="keyword">else</span>
+0053     toCheck    = [];
+0054     rxnGeneMat = model.rxnGeneMat;
+0055 <span class="keyword">end</span>
+0056 reducedModel = model;
+0057 <span class="comment">%Only remove genes that are actually in the model</span>
+0058 <span class="keyword">if</span> ~(islogical(genesToRemove) || isnumeric(genesToRemove))
+0059     genesToRemove=convertCharArray(genesToRemove);
+0060     genesToRemove=genesToRemove(ismember(genesToRemove,model.genes));
+0061 <span class="keyword">end</span>
+0062 <span class="keyword">if</span> ~isempty(genesToRemove)
+0063     indexesToRemove = getIndexes(model,genesToRemove,<span class="string">'genes'</span>);
+0064     <span class="keyword">if</span> ~isempty(indexesToRemove)
+0065         <span class="comment">%Make 0 corresponding columns from rxnGeneMat:</span>
+0066         reducedModel.rxnGeneMat(:,indexesToRemove) = 0;        
+0067         genes = model.genes(indexesToRemove);
+0068         <span class="comment">%Check if conflicting grRules contain any of the genes to remove</span>
+0069         <span class="keyword">if</span> ~isempty(toCheck)
+0070             <span class="keyword">for</span> i=1:numel(toCheck)
+0071                 index   = toCheck(i);
+0072                 gIdxs   = find(rxnGeneMat(index,:));
+0073                 g2check = model.genes(gIdxs);
+0074                 <span class="keyword">if</span> any(ismember(g2check,genes))
+0075                     warning([<span class="string">'Conflicting grRule #'</span> num2str(index) <span class="string">' ('</span> model.rxns{index} <span class="string">') contains at least one of the genes to be removed, this grRule will be bypassed in order to avoid logical errors'</span>])
+0076                 <span class="keyword">end</span>
+0077             <span class="keyword">end</span>
+0078         <span class="keyword">end</span>
+0079         canCarryFlux = true(size(model.rxns));       
+0080         <span class="comment">%Loop through genes and adapt rxns:</span>
+0081         <span class="keyword">for</span> i = 1:length(genes)
+0082             <span class="comment">%Find all reactions for this gene and loop through them:</span>
+0083             geneRxns = find(rxnGeneMat(:,indexesToRemove(i)));
+0084             <span class="keyword">if</span> ~isempty(geneRxns)
+0085                 <span class="keyword">for</span> j = 1:numel(geneRxns)
+0086                     index  = geneRxns(j);
+0087                     grRule = reducedModel.grRules{index};
+0088                     <span class="keyword">if</span> ~ismember(index,toCheck) &amp;&amp; canCarryFlux(index) &amp;&amp; ~isempty(grRule)
+0089                         <span class="comment">%Check if rxn can carry flux without this gene:</span>
+0090                         canCarryFlux(index) = <a href="#_sub1" class="code" title="subfunction canIt = canRxnCarryFlux(geneRule,geneToRemove)">canRxnCarryFlux</a>(grRule,genes{i});
+0091                         <span class="comment">%Adapt gene rule &amp; gene matrix:</span>
+0092                         grRule = <a href="#_sub3" class="code" title="subfunction geneRule = removeGeneFromRule(geneRule,geneToRemove)">removeGeneFromRule</a>(grRule,genes{i});
+0093                         reducedModel.grRules{index} = grRule;
+0094                     <span class="keyword">end</span>
+0095                 <span class="keyword">end</span>
+0096             <span class="keyword">end</span>
+0097         <span class="keyword">end</span>
+0098         <span class="comment">%Delete or block the reactions that cannot carry flux:</span>
+0099         <span class="keyword">if</span> removeBlockedRxns
+0100             rxnsToRemove = reducedModel.rxns(~canCarryFlux);
+0101             reducedModel = <a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,rxnsToRemove,removeUnusedMets,true);
+0102         <span class="keyword">else</span>
+0103             reducedModel = <a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(reducedModel,[],removeUnusedMets,true);
+0104             reducedModel.lb(~canCarryFlux) = 0;
+0105             reducedModel.ub(~canCarryFlux) = 0;
+0106         <span class="keyword">end</span>
+0107     <span class="keyword">end</span>
+0108 <span class="keyword">end</span>
+0109 <span class="comment">%Format grRules and rxnGeneMatrix after all modifications</span>
+0110 <span class="keyword">if</span> standardizeRules
+0111     [grRules,rxnGeneMat] = <a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>(reducedModel,true);
+0112     reducedModel.grRules = grRules;
+0113     reducedModel.rxnGeneMat = rxnGeneMat;
+0114 <span class="keyword">end</span>
+0115 <span class="keyword">end</span>
+0116 
+0117 <a name="_sub1" href="#_subfunctions" class="code">function canIt = canRxnCarryFlux(geneRule,geneToRemove)</a>
+0118 <span class="comment">%Evaluate the rule with geneToRemove absent and every other gene present.</span>
+0119 <span class="comment">%A complex (AND) needs all of its subunits, isozymes (OR) need only one.</span>
+0120 tree = parseGrRule(geneRule);
+0121 <span class="keyword">if</span> isempty(tree)
+0122     canIt = true;
+0123     <span class="keyword">return</span>
 0124 <span class="keyword">end</span>
-0125 
-0126 <a name="_sub2" href="#_subfunctions" class="code">function tf = evalWithout(node,geneToRemove)</a>
-0127 <span class="keyword">switch</span> node.type
-0128     <span class="keyword">case</span> <span class="string">'gene'</span>
-0129         tf = ~strcmp(node.id,geneToRemove);
-0130     <span class="keyword">case</span> <span class="string">'and'</span>
-0131         tf = all(cellfun(@(c) <a href="#_sub2" class="code" title="subfunction tf = evalWithout(node,geneToRemove)">evalWithout</a>(c,geneToRemove),node.children));
-0132     <span class="keyword">case</span> <span class="string">'or'</span>
-0133         tf = any(cellfun(@(c) <a href="#_sub2" class="code" title="subfunction tf = evalWithout(node,geneToRemove)">evalWithout</a>(c,geneToRemove),node.children));
-0134     <span class="keyword">otherwise</span>
-0135         error(<span class="string">'RAVEN:badGrRule'</span>,[<span class="string">'Unexpected grRule node type: '</span> node.type]);
-0136 <span class="keyword">end</span>
-0137 <span class="keyword">end</span>
-0138 
-0139 <a name="_sub3" href="#_subfunctions" class="code">function geneRule = removeGeneFromRule(geneRule,geneToRemove)</a>
-0140 <span class="comment">%This function receives a gene rule and it returns it without the chosen</span>
-0141 <span class="comment">%gene. A complex that loses a subunit is dropped whole; an isozyme is</span>
-0142 <span class="comment">%dropped from its OR without disturbing the alternatives.</span>
-0143 tree = parseGrRule(geneRule);
-0144 geneRule = grRuleToString(<a href="#_sub4" class="code" title="subfunction node = pruneGene(node,geneToRemove)">pruneGene</a>(tree,geneToRemove));
-0145 <span class="keyword">end</span>
-0146 
-0147 <a name="_sub4" href="#_subfunctions" class="code">function node = pruneGene(node,geneToRemove)</a>
-0148 <span class="comment">%Remove geneToRemove from the tree, returning [] when nothing is left that</span>
-0149 <span class="comment">%can catalyse the reaction.</span>
-0150 <span class="keyword">if</span> isempty(node)
-0151     node = [];
-0152     <span class="keyword">return</span>
-0153 <span class="keyword">end</span>
-0154 <span class="keyword">switch</span> node.type
-0155     <span class="keyword">case</span> <span class="string">'gene'</span>
-0156         <span class="keyword">if</span> strcmp(node.id,geneToRemove)
-0157             node = [];
-0158         <span class="keyword">end</span>
-0159     <span class="keyword">case</span> <span class="string">'and'</span>
-0160         <span class="comment">%A complex missing any subunit cannot form at all.</span>
-0161         <span class="keyword">for</span> k = 1:numel(node.children)
-0162             <span class="keyword">if</span> isempty(<a href="#_sub4" class="code" title="subfunction node = pruneGene(node,geneToRemove)">pruneGene</a>(node.children{k},geneToRemove))
-0163                 node = [];
-0164                 <span class="keyword">return</span>
-0165             <span class="keyword">end</span>
-0166         <span class="keyword">end</span>
-0167     <span class="keyword">case</span> <span class="string">'or'</span>
-0168         kept = {};
-0169         <span class="keyword">for</span> k = 1:numel(node.children)
-0170             child = <a href="#_sub4" class="code" title="subfunction node = pruneGene(node,geneToRemove)">pruneGene</a>(node.children{k},geneToRemove);
-0171             <span class="keyword">if</span> ~isempty(child)
-0172                 kept{end+1} = child; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0173             <span class="keyword">end</span>
-0174         <span class="keyword">end</span>
-0175         <span class="keyword">if</span> isempty(kept)
-0176             node = [];
-0177         <span class="keyword">elseif</span> isscalar(kept)
-0178             node = kept{1};
-0179         <span class="keyword">else</span>
-0180             node.children = kept;
-0181         <span class="keyword">end</span>
-0182     <span class="keyword">otherwise</span>
-0183         error(<span class="string">'RAVEN:badGrRule'</span>,[<span class="string">'Unexpected grRule node type: '</span> node.type]);
-0184 <span class="keyword">end</span>
-0185 <span class="keyword">end</span></pre></div>
+0125 canIt = <a href="#_sub2" class="code" title="subfunction tf = evalWithout(node,geneToRemove)">evalWithout</a>(tree,geneToRemove);
+0126 <span class="keyword">end</span>
+0127 
+0128 <a name="_sub2" href="#_subfunctions" class="code">function tf = evalWithout(node,geneToRemove)</a>
+0129 <span class="keyword">switch</span> node.type
+0130     <span class="keyword">case</span> <span class="string">'gene'</span>
+0131         tf = ~strcmp(node.id,geneToRemove);
+0132     <span class="keyword">case</span> <span class="string">'and'</span>
+0133         tf = all(cellfun(@(c) <a href="#_sub2" class="code" title="subfunction tf = evalWithout(node,geneToRemove)">evalWithout</a>(c,geneToRemove),node.children));
+0134     <span class="keyword">case</span> <span class="string">'or'</span>
+0135         tf = any(cellfun(@(c) <a href="#_sub2" class="code" title="subfunction tf = evalWithout(node,geneToRemove)">evalWithout</a>(c,geneToRemove),node.children));
+0136     <span class="keyword">otherwise</span>
+0137         error(<span class="string">'RAVEN:badGrRule'</span>,[<span class="string">'Unexpected grRule node type: '</span> node.type]);
+0138 <span class="keyword">end</span>
+0139 <span class="keyword">end</span>
+0140 
+0141 <a name="_sub3" href="#_subfunctions" class="code">function geneRule = removeGeneFromRule(geneRule,geneToRemove)</a>
+0142 <span class="comment">%This function receives a gene rule and it returns it without the chosen</span>
+0143 <span class="comment">%gene. A complex that loses a subunit is dropped whole; an isozyme is</span>
+0144 <span class="comment">%dropped from its OR without disturbing the alternatives.</span>
+0145 tree = parseGrRule(geneRule);
+0146 geneRule = grRuleToString(<a href="#_sub4" class="code" title="subfunction node = pruneGene(node,geneToRemove)">pruneGene</a>(tree,geneToRemove));
+0147 <span class="keyword">end</span>
+0148 
+0149 <a name="_sub4" href="#_subfunctions" class="code">function node = pruneGene(node,geneToRemove)</a>
+0150 <span class="comment">%Remove geneToRemove from the tree, returning [] when nothing is left that</span>
+0151 <span class="comment">%can catalyse the reaction.</span>
+0152 <span class="keyword">if</span> isempty(node)
+0153     node = [];
+0154     <span class="keyword">return</span>
+0155 <span class="keyword">end</span>
+0156 <span class="keyword">switch</span> node.type
+0157     <span class="keyword">case</span> <span class="string">'gene'</span>
+0158         <span class="keyword">if</span> strcmp(node.id,geneToRemove)
+0159             node = [];
+0160         <span class="keyword">end</span>
+0161     <span class="keyword">case</span> <span class="string">'and'</span>
+0162         <span class="comment">%A complex missing any subunit cannot form at all.</span>
+0163         <span class="keyword">for</span> k = 1:numel(node.children)
+0164             <span class="keyword">if</span> isempty(<a href="#_sub4" class="code" title="subfunction node = pruneGene(node,geneToRemove)">pruneGene</a>(node.children{k},geneToRemove))
+0165                 node = [];
+0166                 <span class="keyword">return</span>
+0167             <span class="keyword">end</span>
+0168         <span class="keyword">end</span>
+0169     <span class="keyword">case</span> <span class="string">'or'</span>
+0170         kept = {};
+0171         <span class="keyword">for</span> k = 1:numel(node.children)
+0172             child = <a href="#_sub4" class="code" title="subfunction node = pruneGene(node,geneToRemove)">pruneGene</a>(node.children{k},geneToRemove);
+0173             <span class="keyword">if</span> ~isempty(child)
+0174                 kept{end+1} = child; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0175             <span class="keyword">end</span>
+0176         <span class="keyword">end</span>
+0177         <span class="keyword">if</span> isempty(kept)
+0178             node = [];
+0179         <span class="keyword">elseif</span> isscalar(kept)
+0180             node = kept{1};
+0181         <span class="keyword">else</span>
+0182             node.children = kept;
+0183         <span class="keyword">end</span>
+0184     <span class="keyword">otherwise</span>
+0185         error(<span class="string">'RAVEN:badGrRule'</span>,[<span class="string">'Unexpected grRule node type: '</span> node.type]);
+0186 <span class="keyword">end</span>
+0187 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

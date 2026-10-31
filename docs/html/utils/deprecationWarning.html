@@ -30,16 +30,16 @@
 <div class="fragment"><pre class="comment"> deprecationWarning  Warn once per session that a function is deprecated.
 
  Used by the wrappers in the deprecated/ folder. Each function warns the
- first time it is called in a MATLAB session and stays quiet afterwards,
- so a loop over thousands of reactions does not bury the console. Call
- &quot;clear functions&quot; to reset.
+ first time it is called in a MATLAB session and does not warn again, also
+ when it is called repeatedly in a loop. &quot;clear functions&quot; resets the
+ record of functions that have warned.
 
  Parameters
  ----------
  oldFunction : char
      name of the deprecated function.
  replacement : char
-     what to call instead, written as it would be typed, e.g.
+     what to call instead, written as it would be typed, for example
      'findLeakMetabolite(model,''produce'',...)'.
 
  Examples
@@ -63,16 +63,16 @@ This function is called by:
 0002 <span class="comment">% deprecationWarning  Warn once per session that a function is deprecated.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Used by the wrappers in the deprecated/ folder. Each function warns the</span>
-0005 <span class="comment">% first time it is called in a MATLAB session and stays quiet afterwards,</span>
-0006 <span class="comment">% so a loop over thousands of reactions does not bury the console. Call</span>
-0007 <span class="comment">% &quot;clear functions&quot; to reset.</span>
+0005 <span class="comment">% first time it is called in a MATLAB session and does not warn again, also</span>
+0006 <span class="comment">% when it is called repeatedly in a loop. &quot;clear functions&quot; resets the</span>
+0007 <span class="comment">% record of functions that have warned.</span>
 0008 <span class="comment">%</span>
 0009 <span class="comment">% Parameters</span>
 0010 <span class="comment">% ----------</span>
 0011 <span class="comment">% oldFunction : char</span>
 0012 <span class="comment">%     name of the deprecated function.</span>
 0013 <span class="comment">% replacement : char</span>
-0014 <span class="comment">%     what to call instead, written as it would be typed, e.g.</span>
+0014 <span class="comment">%     what to call instead, written as it would be typed, for example</span>
 0015 <span class="comment">%     'findLeakMetabolite(model,''produce'',...)'.</span>
 0016 <span class="comment">%</span>
 0017 <span class="comment">% Examples</span>

@@ -30,13 +30,13 @@
 <div class="fragment"><pre class="comment"> exportForGit  Export a model for a Git-maintained model repository.
 
  Generates a directory structure and populates it with model files, ready
- to be committed to a Git(Hub) maintained model repository. Writes the
- model as SBML L3V1 FBCv2 (both XML and YAML), COBRA text, Matlab MAT-file
- and Microsoft Excel formats.
+ to be committed to a Git or GitHub repository of a model. Writes the
+ model as SBML L3V1 FBCv2 (XML) and YAML, COBRA text, MATLAB MAT-file and
+ Microsoft Excel formats.
 
  The flags mainBranchFlag, subDirs, COBRAtext and neverPrefixIDs accept a
- scalar logical or 0/1, or an empty value for the default. Text and other
- types raise RAVEN:badInput.
+ scalar logical, the value 0 or 1, or an empty value for the default. Text
+ and other types raise RAVEN:badInput.
 
  Parameters
  ----------
@@ -56,21 +56,20 @@
      should be exported (default all formats as {'mat', 'txt', 'xlsx',
      'xml', 'yml'}).
  mainBranchFlag : logical
-     if true, function will error if RAVEN (and GECKO for enzyme-
-     constrained models) is/are not on the main branch (default false).
+     true to raise an error if RAVEN (and GECKO for enzyme-constrained
+     models) is not on the main or master branch (default false).
  subDirs : logical
-     whether model files for each file format should be written in their
-     own subdirectory, with 'model' as parent directory, in accordance to
-     the standard-GEM repository format. If false, all files are stored in
-     the same folder (default true).
+     true to write the model files of each file format in their own
+     subdirectory, with 'model' as parent directory, following the
+     standard-GEM repository format. If false, all files are stored in the
+     same folder (default true).
  COBRAtext : logical
-     whether the txt file should be in COBRA Toolbox format using
-     metabolite IDs, instead of metabolite names and compartments
-     (default false).
+     true to write the txt file in COBRA Toolbox format, which uses
+     metabolite IDs. If false, the file uses metabolite names and
+     compartments (default false).
  neverPrefixIDs : logical
      true if prefixes are never added to identifiers, even if they start
-     with e.g. digits. This might result in invalid SBML files (default
-     false).
+     with digits. This can result in invalid SBML files (default false).
 
  Examples
  --------
@@ -81,7 +80,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="exportModel.html" class="code" title="function exportModel(model,varargin)">exportModel</a>	exportModel  Export a constraint-based model to an SBML file (L3V1 FBCv2).</li><li><a href="exportToExcelFormat.html" class="code" title="function exportToExcelFormat(model,varargin)">exportToExcelFormat</a>	exportToExcelFormat  Export a model to the Microsoft Excel model format.</li><li><a href="writeYAMLmodel.html" class="code" title="function writeYAMLmodel(model,varargin)">writeYAMLmodel</a>	writeYAMLmodel  Write a model to a yaml file in the standard cobra-format</li></ul>
+<li><a href="exportModel.html" class="code" title="function exportModel(model,varargin)">exportModel</a>	exportModel  Export a constraint-based model to an SBML file (L3V1 FBCv2).</li><li><a href="exportToExcelFormat.html" class="code" title="function exportToExcelFormat(model,varargin)">exportToExcelFormat</a>	exportToExcelFormat  Export a model to the Microsoft Excel model format.</li><li><a href="writeYAMLmodel.html" class="code" title="function writeYAMLmodel(model,varargin)">writeYAMLmodel</a>	writeYAMLmodel  Write a model to a YAML file in the cobra-format !!omap structure.</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
 </ul>
@@ -96,13 +95,13 @@ This function is called by:
 0002 <span class="comment">% exportForGit  Export a model for a Git-maintained model repository.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Generates a directory structure and populates it with model files, ready</span>
-0005 <span class="comment">% to be committed to a Git(Hub) maintained model repository. Writes the</span>
-0006 <span class="comment">% model as SBML L3V1 FBCv2 (both XML and YAML), COBRA text, Matlab MAT-file</span>
-0007 <span class="comment">% and Microsoft Excel formats.</span>
+0005 <span class="comment">% to be committed to a Git or GitHub repository of a model. Writes the</span>
+0006 <span class="comment">% model as SBML L3V1 FBCv2 (XML) and YAML, COBRA text, MATLAB MAT-file and</span>
+0007 <span class="comment">% Microsoft Excel formats.</span>
 0008 <span class="comment">%</span>
 0009 <span class="comment">% The flags mainBranchFlag, subDirs, COBRAtext and neverPrefixIDs accept a</span>
-0010 <span class="comment">% scalar logical or 0/1, or an empty value for the default. Text and other</span>
-0011 <span class="comment">% types raise RAVEN:badInput.</span>
+0010 <span class="comment">% scalar logical, the value 0 or 1, or an empty value for the default. Text</span>
+0011 <span class="comment">% and other types raise RAVEN:badInput.</span>
 0012 <span class="comment">%</span>
 0013 <span class="comment">% Parameters</span>
 0014 <span class="comment">% ----------</span>
@@ -122,248 +121,247 @@ This function is called by:
 0028 <span class="comment">%     should be exported (default all formats as {'mat', 'txt', 'xlsx',</span>
 0029 <span class="comment">%     'xml', 'yml'}).</span>
 0030 <span class="comment">% mainBranchFlag : logical</span>
-0031 <span class="comment">%     if true, function will error if RAVEN (and GECKO for enzyme-</span>
-0032 <span class="comment">%     constrained models) is/are not on the main branch (default false).</span>
+0031 <span class="comment">%     true to raise an error if RAVEN (and GECKO for enzyme-constrained</span>
+0032 <span class="comment">%     models) is not on the main or master branch (default false).</span>
 0033 <span class="comment">% subDirs : logical</span>
-0034 <span class="comment">%     whether model files for each file format should be written in their</span>
-0035 <span class="comment">%     own subdirectory, with 'model' as parent directory, in accordance to</span>
-0036 <span class="comment">%     the standard-GEM repository format. If false, all files are stored in</span>
-0037 <span class="comment">%     the same folder (default true).</span>
+0034 <span class="comment">%     true to write the model files of each file format in their own</span>
+0035 <span class="comment">%     subdirectory, with 'model' as parent directory, following the</span>
+0036 <span class="comment">%     standard-GEM repository format. If false, all files are stored in the</span>
+0037 <span class="comment">%     same folder (default true).</span>
 0038 <span class="comment">% COBRAtext : logical</span>
-0039 <span class="comment">%     whether the txt file should be in COBRA Toolbox format using</span>
-0040 <span class="comment">%     metabolite IDs, instead of metabolite names and compartments</span>
-0041 <span class="comment">%     (default false).</span>
+0039 <span class="comment">%     true to write the txt file in COBRA Toolbox format, which uses</span>
+0040 <span class="comment">%     metabolite IDs. If false, the file uses metabolite names and</span>
+0041 <span class="comment">%     compartments (default false).</span>
 0042 <span class="comment">% neverPrefixIDs : logical</span>
 0043 <span class="comment">%     true if prefixes are never added to identifiers, even if they start</span>
-0044 <span class="comment">%     with e.g. digits. This might result in invalid SBML files (default</span>
-0045 <span class="comment">%     false).</span>
-0046 <span class="comment">%</span>
-0047 <span class="comment">% Examples</span>
-0048 <span class="comment">% --------</span>
-0049 <span class="comment">%     exportForGit(model, prefix, path, formats, mainBranchFlag, subDirs, ...</span>
-0050 <span class="comment">%         COBRAtext, neverPrefixIDs);</span>
-0051 p=parseRAVENargs(varargin, {<span class="string">'prefix'</span>,[]; <span class="string">'path'</span>,[]; <span class="string">'formats'</span>,[]; <span class="string">'mainBranchFlag'</span>,[]; <span class="string">'subDirs'</span>,[]; <span class="string">'COBRAtext'</span>,[]; <span class="string">'neverPrefixIDs'</span>,false});
-0052 prefix=p.prefix; path=p.path; formats=p.formats; mainBranchFlag=p.mainBranchFlag; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
-0053 COBRAtext=<a href="#_sub4" class="code" title="subfunction flag = checkFlag(flag, name, default)">checkFlag</a>(COBRAtext,<span class="string">'COBRAtext'</span>,false);
-0054 subDirs=<a href="#_sub4" class="code" title="subfunction flag = checkFlag(flag, name, default)">checkFlag</a>(subDirs,<span class="string">'subDirs'</span>,true);
-0055 mainBranchFlag=<a href="#_sub4" class="code" title="subfunction flag = checkFlag(flag, name, default)">checkFlag</a>(mainBranchFlag,<span class="string">'mainBranchFlag'</span>,false);
-0056 neverPrefixIDs=<a href="#_sub4" class="code" title="subfunction flag = checkFlag(flag, name, default)">checkFlag</a>(neverPrefixIDs,<span class="string">'neverPrefixIDs'</span>,false);
-0057 <span class="keyword">if</span> isempty(formats)
-0058     formats={<span class="string">'mat'</span>, <span class="string">'txt'</span>, <span class="string">'xlsx'</span>, <span class="string">'xml'</span>, <span class="string">'yml'</span>};
-0059 <span class="keyword">else</span>
-0060     formats=convertCharArray(formats);
-0061 <span class="keyword">end</span>
-0062 <span class="keyword">if</span> any(~ismember(formats, {<span class="string">'mat'</span>, <span class="string">'txt'</span>, <span class="string">'xlsx'</span>, <span class="string">'xml'</span>, <span class="string">'yml'</span>}))
-0063     EM=<span class="string">'Unknown file format defined. Only mat, txt, xlsx, xml and yml are allowed file formats.'</span>;
-0064     error(EM)
-0065 <span class="keyword">end</span>
-0066 <span class="keyword">if</span> isempty(path)
-0067     path=<span class="string">'.'</span>;
-0068 <span class="keyword">else</span>
-0069     path=char(path);
-0070 <span class="keyword">end</span>
-0071 <span class="keyword">if</span> isempty(prefix)
-0072     prefix=<span class="string">'model'</span>;
-0073 <span class="keyword">else</span>
-0074     prefix=char(prefix);
-0075 <span class="keyword">end</span>
-0076 
-0077 <span class="comment">%Sort reactions, metabolites and genes alphabetically</span>
-0078 model=sortIdentifiers(model);
-0079 
-0080 <span class="comment">%Get versions or commits of toolboxes. GECKO is only relevant for</span>
-0081 <span class="comment">%enzyme-constrained models (those with an &quot;ec&quot; field).</span>
-0082 RAVENver = <a href="#_sub2" class="code" title="subfunction version = getToolboxVersion(toolbox,fileID,mainBranchFlag)">getToolboxVersion</a>(<span class="string">'RAVEN'</span>,<span class="string">'ravenCobraWrapper.m'</span>,mainBranchFlag);
-0083 <span class="keyword">if</span> isfield(model,<span class="string">'ec'</span>)
-0084     GECKOver = <a href="#_sub2" class="code" title="subfunction version = getToolboxVersion(toolbox,fileID,mainBranchFlag)">getToolboxVersion</a>(<span class="string">'GECKO'</span>,<span class="string">'GECKOInstaller.m'</span>,mainBranchFlag);
-0085 <span class="keyword">else</span>
-0086     GECKOver = [];
-0087 <span class="keyword">end</span>
-0088 <span class="comment">%Retrieve libSBML version:</span>
-0089 [ravenDir,prevDir]=findRAVENroot();
-0090 <span class="keyword">try</span> <span class="comment">% 5.17.0 and newer</span>
-0091     libSBMLver=OutputSBML_RAVEN;
-0092     libSBMLver=libSBMLver.libSBML_version_string;
-0093 <span class="keyword">catch</span> <span class="comment">% before 5.17.0</span>
-0094     fid = fopen(<span class="string">'tempModelForLibSBMLversion.xml'</span>,<span class="string">'w+'</span>);
-0095     fclose(fid);
-0096     evalc(<span class="string">'[~,~,libSBMLver]=TranslateSBML_RAVEN(''tempModelForLibSBMLversion.xml'',0,0)'</span>);
-0097     libSBMLver=libSBMLver.libSBML_version_string;
-0098     delete(<span class="string">'tempModelForLibSBMLversion.xml'</span>);
-0099 <span class="keyword">end</span>
-0100 
-0101 <span class="comment">% Make the folders, no warnings if they already exist</span>
-0102 <span class="keyword">if</span> subDirs
-0103     path=fullfile(path,<span class="string">'model'</span>);
-0104     filePath=strcat(path,filesep,{<span class="string">'txt'</span>,<span class="string">'yml'</span>,<span class="string">'mat'</span>,<span class="string">'xlsx'</span>,<span class="string">'xml'</span>});
-0105     [~,~,~]=mkdir(path);
-0106     <span class="keyword">for</span> i = 1:length(formats)
-0107         [~,~,~]=mkdir(fullfile(path,formats{i}));
-0108     <span class="keyword">end</span>
-0109 <span class="keyword">else</span>
-0110     [~,~,~]=mkdir(path);
-0111     filePath=cell(1,5); filePath(:)={path};
-0112 <span class="keyword">end</span>
+0044 <span class="comment">%     with digits. This can result in invalid SBML files (default false).</span>
+0045 <span class="comment">%</span>
+0046 <span class="comment">% Examples</span>
+0047 <span class="comment">% --------</span>
+0048 <span class="comment">%     exportForGit(model, prefix, path, formats, mainBranchFlag, subDirs, ...</span>
+0049 <span class="comment">%         COBRAtext, neverPrefixIDs);</span>
+0050 p=parseRAVENargs(varargin, {<span class="string">'prefix'</span>,[]; <span class="string">'path'</span>,[]; <span class="string">'formats'</span>,[]; <span class="string">'mainBranchFlag'</span>,[]; <span class="string">'subDirs'</span>,[]; <span class="string">'COBRAtext'</span>,[]; <span class="string">'neverPrefixIDs'</span>,false});
+0051 prefix=p.prefix; path=p.path; formats=p.formats; mainBranchFlag=p.mainBranchFlag; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
+0052 COBRAtext=<a href="#_sub4" class="code" title="subfunction flag = checkFlag(flag, name, default)">checkFlag</a>(COBRAtext,<span class="string">'COBRAtext'</span>,false);
+0053 subDirs=<a href="#_sub4" class="code" title="subfunction flag = checkFlag(flag, name, default)">checkFlag</a>(subDirs,<span class="string">'subDirs'</span>,true);
+0054 mainBranchFlag=<a href="#_sub4" class="code" title="subfunction flag = checkFlag(flag, name, default)">checkFlag</a>(mainBranchFlag,<span class="string">'mainBranchFlag'</span>,false);
+0055 neverPrefixIDs=<a href="#_sub4" class="code" title="subfunction flag = checkFlag(flag, name, default)">checkFlag</a>(neverPrefixIDs,<span class="string">'neverPrefixIDs'</span>,false);
+0056 <span class="keyword">if</span> isempty(formats)
+0057     formats={<span class="string">'mat'</span>, <span class="string">'txt'</span>, <span class="string">'xlsx'</span>, <span class="string">'xml'</span>, <span class="string">'yml'</span>};
+0058 <span class="keyword">else</span>
+0059     formats=convertCharArray(formats);
+0060 <span class="keyword">end</span>
+0061 <span class="keyword">if</span> any(~ismember(formats, {<span class="string">'mat'</span>, <span class="string">'txt'</span>, <span class="string">'xlsx'</span>, <span class="string">'xml'</span>, <span class="string">'yml'</span>}))
+0062     EM=<span class="string">'Unknown file format defined. Only mat, txt, xlsx, xml and yml are allowed file formats.'</span>;
+0063     error(EM)
+0064 <span class="keyword">end</span>
+0065 <span class="keyword">if</span> isempty(path)
+0066     path=<span class="string">'.'</span>;
+0067 <span class="keyword">else</span>
+0068     path=char(path);
+0069 <span class="keyword">end</span>
+0070 <span class="keyword">if</span> isempty(prefix)
+0071     prefix=<span class="string">'model'</span>;
+0072 <span class="keyword">else</span>
+0073     prefix=char(prefix);
+0074 <span class="keyword">end</span>
+0075 
+0076 <span class="comment">%Sort reactions, metabolites and genes alphabetically</span>
+0077 model=sortIdentifiers(model);
+0078 
+0079 <span class="comment">%Get versions or commits of toolboxes. GECKO is only relevant for</span>
+0080 <span class="comment">%enzyme-constrained models (those with an &quot;ec&quot; field).</span>
+0081 RAVENver = <a href="#_sub2" class="code" title="subfunction version = getToolboxVersion(toolbox,fileID,mainBranchFlag)">getToolboxVersion</a>(<span class="string">'RAVEN'</span>,<span class="string">'ravenCobraWrapper.m'</span>,mainBranchFlag);
+0082 <span class="keyword">if</span> isfield(model,<span class="string">'ec'</span>)
+0083     GECKOver = <a href="#_sub2" class="code" title="subfunction version = getToolboxVersion(toolbox,fileID,mainBranchFlag)">getToolboxVersion</a>(<span class="string">'GECKO'</span>,<span class="string">'GECKOInstaller.m'</span>,mainBranchFlag);
+0084 <span class="keyword">else</span>
+0085     GECKOver = [];
+0086 <span class="keyword">end</span>
+0087 <span class="comment">%Retrieve libSBML version:</span>
+0088 [ravenDir,prevDir]=findRAVENroot();
+0089 <span class="keyword">try</span> <span class="comment">% 5.17.0 and newer</span>
+0090     libSBMLver=OutputSBML_RAVEN;
+0091     libSBMLver=libSBMLver.libSBML_version_string;
+0092 <span class="keyword">catch</span> <span class="comment">% before 5.17.0</span>
+0093     fid = fopen(<span class="string">'tempModelForLibSBMLversion.xml'</span>,<span class="string">'w+'</span>);
+0094     fclose(fid);
+0095     evalc(<span class="string">'[~,~,libSBMLver]=TranslateSBML_RAVEN(''tempModelForLibSBMLversion.xml'',0,0)'</span>);
+0096     libSBMLver=libSBMLver.libSBML_version_string;
+0097     delete(<span class="string">'tempModelForLibSBMLversion.xml'</span>);
+0098 <span class="keyword">end</span>
+0099 
+0100 <span class="comment">% Make the folders, no warnings if they already exist</span>
+0101 <span class="keyword">if</span> subDirs
+0102     path=fullfile(path,<span class="string">'model'</span>);
+0103     filePath=strcat(path,filesep,{<span class="string">'txt'</span>,<span class="string">'yml'</span>,<span class="string">'mat'</span>,<span class="string">'xlsx'</span>,<span class="string">'xml'</span>});
+0104     [~,~,~]=mkdir(path);
+0105     <span class="keyword">for</span> i = 1:length(formats)
+0106         [~,~,~]=mkdir(fullfile(path,formats{i}));
+0107     <span class="keyword">end</span>
+0108 <span class="keyword">else</span>
+0109     [~,~,~]=mkdir(path);
+0110     filePath=cell(1,5); filePath(:)={path};
+0111 <span class="keyword">end</span>
+0112 
 0113 
-0114 
-0115 <span class="comment">% Write TXT format</span>
-0116 <span class="keyword">if</span> ismember(<span class="string">'txt'</span>, formats)
-0117     fid=fopen(fullfile(filePath{1},strcat(prefix,<span class="string">'.txt'</span>)),<span class="string">'w'</span>);
-0118     <span class="keyword">if</span> COBRAtext==true
-0119         eqns=constructEquations(model,model.rxns,false,false,false);
-0120         eqns=strrep(eqns,<span class="string">' =&gt; '</span>,<span class="string">'  -&gt; '</span>);
-0121         eqns=strrep(eqns,<span class="string">' &lt;=&gt; '</span>,<span class="string">'  &lt;=&gt; '</span>);
-0122         eqns=regexprep(eqns,<span class="string">'&gt; $'</span>,<span class="string">'&gt;'</span>);
-0123         grRules=regexprep(model.grRules,<span class="string">'\((?!\()'</span>,<span class="string">'( '</span>);
-0124         grRules=regexprep(grRules,<span class="string">'(?&lt;!\))\)'</span>,<span class="string">' )'</span>);
-0125     <span class="keyword">else</span>
-0126         eqns=constructEquations(model,model.rxns);
-0127         grRules=model.grRules;
-0128     <span class="keyword">end</span>
-0129     fprintf(fid, <span class="string">'Rxn id\tFormula\tGene-reaction association\tLB\tUB\tObjective\n'</span>);
-0130     <span class="keyword">for</span> i = 1:numel(model.rxns)
-0131         fprintf(fid, <span class="string">'%s\t'</span>, model.rxns{i});
-0132         fprintf(fid, <span class="string">'%s\t'</span>, strtrim(eqns{i}));
-0133         fprintf(fid, <span class="string">'%s\t'</span>, grRules{i});
-0134         fprintf(fid, <span class="string">'%s\t%s\t%s\n'</span>, <a href="#_sub1" class="code" title="subfunction s = shortestNumber(x)">shortestNumber</a>(model.lb(i)), <a href="#_sub1" class="code" title="subfunction s = shortestNumber(x)">shortestNumber</a>(model.ub(i)), <a href="#_sub1" class="code" title="subfunction s = shortestNumber(x)">shortestNumber</a>(model.c(i)));
-0135     <span class="keyword">end</span>
-0136     fclose(fid);
-0137 <span class="keyword">end</span>
-0138 
-0139 <span class="comment">% Write YML format</span>
-0140 <span class="keyword">if</span> ismember(<span class="string">'yml'</span>, formats)
-0141     <a href="writeYAMLmodel.html" class="code" title="function writeYAMLmodel(model,varargin)">writeYAMLmodel</a>(model,fullfile(filePath{2},strcat(prefix,<span class="string">'.yml'</span>)));
-0142 <span class="keyword">end</span>
-0143 
-0144 <span class="comment">% Write MAT format</span>
-0145 <span class="keyword">if</span> ismember(<span class="string">'mat'</span>, formats)
-0146     save(fullfile(filePath{3},strcat(prefix,<span class="string">'.mat'</span>)),<span class="string">'model'</span>);
-0147 <span class="keyword">end</span>
-0148 
-0149 <span class="comment">% Write XLSX format</span>
-0150 <span class="keyword">if</span> ismember(<span class="string">'xlsx'</span>, formats)
-0151     <a href="exportToExcelFormat.html" class="code" title="function exportToExcelFormat(model,varargin)">exportToExcelFormat</a>(model,fullfile(filePath{4},strcat(prefix,<span class="string">'.xlsx'</span>)));
-0152 <span class="keyword">end</span>
-0153 
-0154 <span class="comment">% Write XML format</span>
-0155 <span class="keyword">if</span> ismember(<span class="string">'xml'</span>, formats)
-0156         <a href="exportModel.html" class="code" title="function exportModel(model,varargin)">exportModel</a>(model,fullfile(filePath{5},strcat(prefix,<span class="string">'.xml'</span>)),neverPrefixIDs);
-0157 <span class="keyword">end</span>
-0158 
-0159 <span class="comment">%Save file with versions:</span>
-0160 fid = fopen(fullfile(path,<span class="string">'dependencies.txt'</span>),<span class="string">'wt'</span>);
-0161 fprintf(fid,[<span class="string">'MATLAB\t'</span> version <span class="string">'\n'</span>]);
-0162 fprintf(fid,[<span class="string">'libSBML\t'</span> libSBMLver <span class="string">'\n'</span>]);
-0163 fprintf(fid,[<span class="string">'RAVEN_toolbox\t'</span> RAVENver <span class="string">'\n'</span>]);
-0164 <span class="keyword">if</span> ~isempty(GECKOver)
-0165     fprintf(fid,[<span class="string">'GECKO_toolbox\t'</span> GECKOver <span class="string">'\n'</span>]);
-0166 <span class="keyword">end</span>
-0167 <span class="keyword">if</span> isfield(model,<span class="string">'modelVersion'</span>)
-0168     fields = fieldnames(model.modelVersion);
-0169     <span class="keyword">for</span> i = 1:length(fields)
-0170         value = model.modelVersion.(fields{i});
-0171         fprintf(fid,[fields{i} <span class="string">'\t'</span> num2str(value) <span class="string">'\n'</span>]);
-0172     <span class="keyword">end</span>
-0173 <span class="keyword">end</span>
-0174 fclose(fid);
-0175 <span class="keyword">end</span>
-0176 
-0177 <a name="_sub1" href="#_subfunctions" class="code">function s = shortestNumber(x)</a>
-0178 <span class="comment">% shortestNumber  The shortest text that reads back as exactly x, so a bound</span>
-0179 <span class="comment">% is never rounded on the way out (1/3 is 0.3333333333333333, 1000 is 1000).</span>
-0180 <span class="keyword">if</span> isinf(x)
-0181     <span class="keyword">if</span> x &gt; 0
-0182         s = <span class="string">'Inf'</span>;
-0183     <span class="keyword">else</span>
-0184         s = <span class="string">'-Inf'</span>;
-0185     <span class="keyword">end</span>
-0186     <span class="keyword">return</span>
-0187 <span class="keyword">elseif</span> isnan(x)
-0188     s = <span class="string">'NaN'</span>;
-0189     <span class="keyword">return</span>
-0190 <span class="keyword">end</span>
-0191 <span class="keyword">if</span> x == floor(x) &amp;&amp; abs(x) &lt; 1e15
-0192     s = sprintf(<span class="string">'%d'</span>, x);
-0193     <span class="keyword">return</span>
-0194 <span class="keyword">end</span>
-0195 <span class="keyword">for</span> digits = 1:17
-0196     s = sprintf([<span class="string">'%.'</span> num2str(digits) <span class="string">'g'</span>], x);
-0197     <span class="keyword">if</span> str2double(s) == x
-0198         <span class="keyword">break</span>
-0199     <span class="keyword">end</span>
+0114 <span class="comment">% Write TXT format</span>
+0115 <span class="keyword">if</span> ismember(<span class="string">'txt'</span>, formats)
+0116     fid=fopen(fullfile(filePath{1},strcat(prefix,<span class="string">'.txt'</span>)),<span class="string">'w'</span>);
+0117     <span class="keyword">if</span> COBRAtext==true
+0118         eqns=constructEquations(model,model.rxns,false,false,false);
+0119         eqns=strrep(eqns,<span class="string">' =&gt; '</span>,<span class="string">'  -&gt; '</span>);
+0120         eqns=strrep(eqns,<span class="string">' &lt;=&gt; '</span>,<span class="string">'  &lt;=&gt; '</span>);
+0121         eqns=regexprep(eqns,<span class="string">'&gt; $'</span>,<span class="string">'&gt;'</span>);
+0122         grRules=regexprep(model.grRules,<span class="string">'\((?!\()'</span>,<span class="string">'( '</span>);
+0123         grRules=regexprep(grRules,<span class="string">'(?&lt;!\))\)'</span>,<span class="string">' )'</span>);
+0124     <span class="keyword">else</span>
+0125         eqns=constructEquations(model,model.rxns);
+0126         grRules=model.grRules;
+0127     <span class="keyword">end</span>
+0128     fprintf(fid, <span class="string">'Rxn id\tFormula\tGene-reaction association\tLB\tUB\tObjective\n'</span>);
+0129     <span class="keyword">for</span> i = 1:numel(model.rxns)
+0130         fprintf(fid, <span class="string">'%s\t'</span>, model.rxns{i});
+0131         fprintf(fid, <span class="string">'%s\t'</span>, strtrim(eqns{i}));
+0132         fprintf(fid, <span class="string">'%s\t'</span>, grRules{i});
+0133         fprintf(fid, <span class="string">'%s\t%s\t%s\n'</span>, <a href="#_sub1" class="code" title="subfunction s = shortestNumber(x)">shortestNumber</a>(model.lb(i)), <a href="#_sub1" class="code" title="subfunction s = shortestNumber(x)">shortestNumber</a>(model.ub(i)), <a href="#_sub1" class="code" title="subfunction s = shortestNumber(x)">shortestNumber</a>(model.c(i)));
+0134     <span class="keyword">end</span>
+0135     fclose(fid);
+0136 <span class="keyword">end</span>
+0137 
+0138 <span class="comment">% Write YML format</span>
+0139 <span class="keyword">if</span> ismember(<span class="string">'yml'</span>, formats)
+0140     <a href="writeYAMLmodel.html" class="code" title="function writeYAMLmodel(model,varargin)">writeYAMLmodel</a>(model,fullfile(filePath{2},strcat(prefix,<span class="string">'.yml'</span>)));
+0141 <span class="keyword">end</span>
+0142 
+0143 <span class="comment">% Write MAT format</span>
+0144 <span class="keyword">if</span> ismember(<span class="string">'mat'</span>, formats)
+0145     save(fullfile(filePath{3},strcat(prefix,<span class="string">'.mat'</span>)),<span class="string">'model'</span>);
+0146 <span class="keyword">end</span>
+0147 
+0148 <span class="comment">% Write XLSX format</span>
+0149 <span class="keyword">if</span> ismember(<span class="string">'xlsx'</span>, formats)
+0150     <a href="exportToExcelFormat.html" class="code" title="function exportToExcelFormat(model,varargin)">exportToExcelFormat</a>(model,fullfile(filePath{4},strcat(prefix,<span class="string">'.xlsx'</span>)));
+0151 <span class="keyword">end</span>
+0152 
+0153 <span class="comment">% Write XML format</span>
+0154 <span class="keyword">if</span> ismember(<span class="string">'xml'</span>, formats)
+0155         <a href="exportModel.html" class="code" title="function exportModel(model,varargin)">exportModel</a>(model,fullfile(filePath{5},strcat(prefix,<span class="string">'.xml'</span>)),neverPrefixIDs);
+0156 <span class="keyword">end</span>
+0157 
+0158 <span class="comment">%Save file with versions:</span>
+0159 fid = fopen(fullfile(path,<span class="string">'dependencies.txt'</span>),<span class="string">'wt'</span>);
+0160 fprintf(fid,[<span class="string">'MATLAB\t'</span> version <span class="string">'\n'</span>]);
+0161 fprintf(fid,[<span class="string">'libSBML\t'</span> libSBMLver <span class="string">'\n'</span>]);
+0162 fprintf(fid,[<span class="string">'RAVEN_toolbox\t'</span> RAVENver <span class="string">'\n'</span>]);
+0163 <span class="keyword">if</span> ~isempty(GECKOver)
+0164     fprintf(fid,[<span class="string">'GECKO_toolbox\t'</span> GECKOver <span class="string">'\n'</span>]);
+0165 <span class="keyword">end</span>
+0166 <span class="keyword">if</span> isfield(model,<span class="string">'modelVersion'</span>)
+0167     fields = fieldnames(model.modelVersion);
+0168     <span class="keyword">for</span> i = 1:length(fields)
+0169         value = model.modelVersion.(fields{i});
+0170         fprintf(fid,[fields{i} <span class="string">'\t'</span> num2str(value) <span class="string">'\n'</span>]);
+0171     <span class="keyword">end</span>
+0172 <span class="keyword">end</span>
+0173 fclose(fid);
+0174 <span class="keyword">end</span>
+0175 
+0176 <a name="_sub1" href="#_subfunctions" class="code">function s = shortestNumber(x)</a>
+0177 <span class="comment">% shortestNumber  The shortest text that reads back as exactly x, so a bound</span>
+0178 <span class="comment">% is never rounded on the way out (1/3 is 0.3333333333333333, 1000 is 1000).</span>
+0179 <span class="keyword">if</span> isinf(x)
+0180     <span class="keyword">if</span> x &gt; 0
+0181         s = <span class="string">'Inf'</span>;
+0182     <span class="keyword">else</span>
+0183         s = <span class="string">'-Inf'</span>;
+0184     <span class="keyword">end</span>
+0185     <span class="keyword">return</span>
+0186 <span class="keyword">elseif</span> isnan(x)
+0187     s = <span class="string">'NaN'</span>;
+0188     <span class="keyword">return</span>
+0189 <span class="keyword">end</span>
+0190 <span class="keyword">if</span> x == floor(x) &amp;&amp; abs(x) &lt; 1e15
+0191     s = sprintf(<span class="string">'%d'</span>, x);
+0192     <span class="keyword">return</span>
+0193 <span class="keyword">end</span>
+0194 <span class="keyword">for</span> digits = 1:17
+0195     s = sprintf([<span class="string">'%.'</span> num2str(digits) <span class="string">'g'</span>], x);
+0196     <span class="keyword">if</span> str2double(s) == x
+0197         <span class="keyword">break</span>
+0198     <span class="keyword">end</span>
+0199 <span class="keyword">end</span>
 0200 <span class="keyword">end</span>
-0201 <span class="keyword">end</span>
-0202 
-0203 <a name="_sub2" href="#_subfunctions" class="code">function version = getToolboxVersion(toolbox,fileID,mainBranchFlag)</a>
-0204 <span class="comment">% getToolboxVersion  Return the version of RAVEN or GECKO.</span>
-0205 <span class="comment">%</span>
-0206 <span class="comment">% Returns the version of the toolbox as stated in its version.txt, or</span>
-0207 <span class="comment">% 'unknown' if that file cannot be found.</span>
-0208 <span class="comment">%</span>
-0209 <span class="comment">% toolbox        name of the toolbox (e.g. 'RAVEN' or 'GECKO').</span>
-0210 <span class="comment">% fileID         a file only found in that toolbox, used to locate its root</span>
-0211 <span class="comment">%                (e.g. 'ravenCobraWrapper.m' or 'GECKOInstaller.m').</span>
-0212 <span class="comment">% mainBranchFlag if true, error if the toolbox is not on the main branch.</span>
-0213 currentPath = pwd;
-0214 version     = <span class="string">''</span>;
-0215 
-0216 <span class="comment">%Try to find root of toolbox:</span>
-0217 <span class="keyword">try</span>
-0218     toolboxPath = which(fileID);                <span class="comment">%full file path</span>
-0219     slashPos    = <a href="#_sub3" class="code" title="subfunction slashPos = getSlashPos(path)">getSlashPos</a>(toolboxPath);
-0220     toolboxPath = toolboxPath(1:slashPos(end)); <span class="comment">%folder path</span>
-0221     <span class="comment">%Go up until the root is found:</span>
-0222     D = dir(toolboxPath);
-0223     <span class="keyword">while</span> ~ismember({<span class="string">'.git'</span>},{D.name})
-0224         slashPos    = <a href="#_sub3" class="code" title="subfunction slashPos = getSlashPos(path)">getSlashPos</a>(toolboxPath);
-0225         toolboxPath = toolboxPath(1:slashPos(end-1));
-0226         D           = dir(toolboxPath);
-0227     <span class="keyword">end</span>
-0228     cd(toolboxPath);
-0229 <span class="keyword">catch</span>
-0230     disp([toolbox <span class="string">' toolbox cannot be found'</span>])
-0231     version = <span class="string">'unknown'</span>;
-0232 <span class="keyword">end</span>
-0233 <span class="comment">%Check if in main:</span>
-0234 <span class="keyword">if</span> mainBranchFlag
-0235     [~,currentBranch] = system(<span class="string">'git rev-parse --abbrev-ref HEAD'</span>);
-0236     currentBranch = strtrim(currentBranch);
-0237     <span class="keyword">if</span> ~any([strcmp(currentBranch, &quot;main&quot;), strcmp(currentBranch, &quot;master&quot;)])
-0238         cd(currentPath);
-0239         error(<span class="string">'RAVEN:notMainBranch'</span>,[<span class="string">'ERROR: '</span> toolbox <span class="string">' not in main (or master) branch. Check-out this branch of '</span> toolbox <span class="string">' before submitting model for Git.'</span>])
-0240     <span class="keyword">end</span>
-0241 <span class="keyword">end</span>
-0242 <span class="comment">%Read the version from the toolbox version.txt; report 'unknown' otherwise</span>
-0243 <span class="keyword">if</span> isempty(version)
-0244     fid = fopen([toolboxPath <span class="string">'version.txt'</span>],<span class="string">'r'</span>);
-0245     <span class="keyword">if</span> fid ~= -1
-0246         version = fscanf(fid,<span class="string">'%s'</span>);
-0247         fclose(fid);
-0248     <span class="keyword">end</span>
-0249     <span class="keyword">if</span> isempty(version)
-0250         version = <span class="string">'unknown'</span>;
-0251     <span class="keyword">end</span>
-0252 <span class="keyword">end</span>
-0253 cd(currentPath);
-0254 <span class="keyword">end</span>
-0255 
-0256 <a name="_sub3" href="#_subfunctions" class="code">function slashPos = getSlashPos(path)</a>
-0257 slashPos = strfind(path,<span class="string">'\'</span>);       <span class="comment">%Windows</span>
-0258 <span class="keyword">if</span> isempty(slashPos)
-0259     slashPos = strfind(path,<span class="string">'/'</span>);   <span class="comment">%MAC/Linux</span>
+0201 
+0202 <a name="_sub2" href="#_subfunctions" class="code">function version = getToolboxVersion(toolbox,fileID,mainBranchFlag)</a>
+0203 <span class="comment">% getToolboxVersion  Return the version of RAVEN or GECKO.</span>
+0204 <span class="comment">%</span>
+0205 <span class="comment">% Returns the version of the toolbox as stated in its version.txt, or</span>
+0206 <span class="comment">% 'unknown' if that file cannot be found.</span>
+0207 <span class="comment">%</span>
+0208 <span class="comment">% toolbox        name of the toolbox (e.g. 'RAVEN' or 'GECKO').</span>
+0209 <span class="comment">% fileID         a file only found in that toolbox, used to locate its root</span>
+0210 <span class="comment">%                (e.g. 'ravenCobraWrapper.m' or 'GECKOInstaller.m').</span>
+0211 <span class="comment">% mainBranchFlag if true, error if the toolbox is not on the main branch.</span>
+0212 currentPath = pwd;
+0213 version     = <span class="string">''</span>;
+0214 
+0215 <span class="comment">%Try to find root of toolbox:</span>
+0216 <span class="keyword">try</span>
+0217     toolboxPath = which(fileID);                <span class="comment">%full file path</span>
+0218     slashPos    = <a href="#_sub3" class="code" title="subfunction slashPos = getSlashPos(path)">getSlashPos</a>(toolboxPath);
+0219     toolboxPath = toolboxPath(1:slashPos(end)); <span class="comment">%folder path</span>
+0220     <span class="comment">%Go up until the root is found:</span>
+0221     D = dir(toolboxPath);
+0222     <span class="keyword">while</span> ~ismember({<span class="string">'.git'</span>},{D.name})
+0223         slashPos    = <a href="#_sub3" class="code" title="subfunction slashPos = getSlashPos(path)">getSlashPos</a>(toolboxPath);
+0224         toolboxPath = toolboxPath(1:slashPos(end-1));
+0225         D           = dir(toolboxPath);
+0226     <span class="keyword">end</span>
+0227     cd(toolboxPath);
+0228 <span class="keyword">catch</span>
+0229     disp([toolbox <span class="string">' toolbox cannot be found'</span>])
+0230     version = <span class="string">'unknown'</span>;
+0231 <span class="keyword">end</span>
+0232 <span class="comment">%Check if in main:</span>
+0233 <span class="keyword">if</span> mainBranchFlag
+0234     [~,currentBranch] = system(<span class="string">'git rev-parse --abbrev-ref HEAD'</span>);
+0235     currentBranch = strtrim(currentBranch);
+0236     <span class="keyword">if</span> ~any([strcmp(currentBranch, &quot;main&quot;), strcmp(currentBranch, &quot;master&quot;)])
+0237         cd(currentPath);
+0238         error(<span class="string">'RAVEN:notMainBranch'</span>,[<span class="string">'ERROR: '</span> toolbox <span class="string">' not in main (or master) branch. Check-out this branch of '</span> toolbox <span class="string">' before submitting model for Git.'</span>])
+0239     <span class="keyword">end</span>
+0240 <span class="keyword">end</span>
+0241 <span class="comment">%Read the version from the toolbox version.txt; report 'unknown' otherwise</span>
+0242 <span class="keyword">if</span> isempty(version)
+0243     fid = fopen([toolboxPath <span class="string">'version.txt'</span>],<span class="string">'r'</span>);
+0244     <span class="keyword">if</span> fid ~= -1
+0245         version = fscanf(fid,<span class="string">'%s'</span>);
+0246         fclose(fid);
+0247     <span class="keyword">end</span>
+0248     <span class="keyword">if</span> isempty(version)
+0249         version = <span class="string">'unknown'</span>;
+0250     <span class="keyword">end</span>
+0251 <span class="keyword">end</span>
+0252 cd(currentPath);
+0253 <span class="keyword">end</span>
+0254 
+0255 <a name="_sub3" href="#_subfunctions" class="code">function slashPos = getSlashPos(path)</a>
+0256 slashPos = strfind(path,<span class="string">'\'</span>);       <span class="comment">%Windows</span>
+0257 <span class="keyword">if</span> isempty(slashPos)
+0258     slashPos = strfind(path,<span class="string">'/'</span>);   <span class="comment">%MAC/Linux</span>
+0259 <span class="keyword">end</span>
 0260 <span class="keyword">end</span>
-0261 <span class="keyword">end</span>
-0262 
-0263 <a name="_sub4" href="#_subfunctions" class="code">function flag = checkFlag(flag, name, default)</a>
-0264 <span class="comment">%An empty value gives the default; otherwise a scalar logical or 0/1 is required</span>
-0265 <span class="keyword">if</span> isempty(flag)
-0266     flag = default;
-0267 <span class="keyword">elseif</span> (islogical(flag) || isnumeric(flag)) &amp;&amp; isscalar(flag) &amp;&amp; isreal(flag) &amp;&amp; (flag == 0 || flag == 1)
-0268     flag = logical(flag);
-0269 <span class="keyword">else</span>
-0270     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s must be a scalar logical or 0/1.'</span>, name);
-0271 <span class="keyword">end</span>
-0272 <span class="keyword">end</span></pre></div>
+0261 
+0262 <a name="_sub4" href="#_subfunctions" class="code">function flag = checkFlag(flag, name, default)</a>
+0263 <span class="comment">%An empty value gives the default; otherwise a scalar logical or 0/1 is required</span>
+0264 <span class="keyword">if</span> isempty(flag)
+0265     flag = default;
+0266 <span class="keyword">elseif</span> (islogical(flag) || isnumeric(flag)) &amp;&amp; isscalar(flag) &amp;&amp; isreal(flag) &amp;&amp; (flag == 0 || flag == 1)
+0267     flag = logical(flag);
+0268 <span class="keyword">else</span>
+0269     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s must be a scalar logical or 0/1.'</span>, name);
+0270 <span class="keyword">end</span>
+0271 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

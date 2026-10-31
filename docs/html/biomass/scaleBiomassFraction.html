@@ -39,9 +39,10 @@
  model : struct
      RAVEN model struct.
  biomassConfig : struct
-     Struct (see getBiomassFractions).
+     Biomass layout struct, as described in getBiomassFractions.
  componentName : char
-     Component to rescale.
+     Name of the component to rescale. An error is raised if its current
+     fraction is 0.
  newValue : double
      Target fraction in g/gDW.
 
@@ -49,9 +50,9 @@
  --------------------
  balanceOut : char
      Second component name to adjust so the biomass total becomes
-     targetTotal. It must be large enough to absorb the change: an error
-     is raised if its fraction would become zero or negative, or if it is
-     0 to begin with. Empty / omit to skip balancing.
+     targetTotal. An error is raised if its fraction would become zero or
+     negative, or if it is 0 to begin with. No balancing is done when
+     empty or omitted (default '').
  targetTotal : double
      Biomass total in g/gDW that balanceOut brings the components to
      (default 1).
@@ -59,7 +60,7 @@
  Returns
  -------
  model : struct
-     Modified model.
+     Model with the rescaled pseudoreactions.
 
  Examples
  --------
@@ -97,80 +98,81 @@ This function is called by:
 0011 <span class="comment">% model : struct</span>
 0012 <span class="comment">%     RAVEN model struct.</span>
 0013 <span class="comment">% biomassConfig : struct</span>
-0014 <span class="comment">%     Struct (see getBiomassFractions).</span>
+0014 <span class="comment">%     Biomass layout struct, as described in getBiomassFractions.</span>
 0015 <span class="comment">% componentName : char</span>
-0016 <span class="comment">%     Component to rescale.</span>
-0017 <span class="comment">% newValue : double</span>
-0018 <span class="comment">%     Target fraction in g/gDW.</span>
-0019 <span class="comment">%</span>
-0020 <span class="comment">% Name-Value Arguments</span>
-0021 <span class="comment">% --------------------</span>
-0022 <span class="comment">% balanceOut : char</span>
-0023 <span class="comment">%     Second component name to adjust so the biomass total becomes</span>
-0024 <span class="comment">%     targetTotal. It must be large enough to absorb the change: an error</span>
-0025 <span class="comment">%     is raised if its fraction would become zero or negative, or if it is</span>
-0026 <span class="comment">%     0 to begin with. Empty / omit to skip balancing.</span>
-0027 <span class="comment">% targetTotal : double</span>
-0028 <span class="comment">%     Biomass total in g/gDW that balanceOut brings the components to</span>
-0029 <span class="comment">%     (default 1).</span>
-0030 <span class="comment">%</span>
-0031 <span class="comment">% Returns</span>
-0032 <span class="comment">% -------</span>
-0033 <span class="comment">% model : struct</span>
-0034 <span class="comment">%     Modified model.</span>
-0035 <span class="comment">%</span>
-0036 <span class="comment">% Examples</span>
-0037 <span class="comment">% --------</span>
-0038 <span class="comment">%     model = scaleBiomassFraction(model, biomassConfig, 'protein', 0.5, 'carbohydrate');</span>
-0039 <span class="comment">%     model = scaleBiomassFraction(model, biomassConfig, 'protein', 0.5, ...</span>
-0040 <span class="comment">%         'balanceOut', 'carbohydrate', 'targetTotal', 0.95);</span>
-0041 <span class="comment">%</span>
-0042 <span class="comment">% See also</span>
-0043 <span class="comment">% --------</span>
-0044 <span class="comment">% getBiomassFractions</span>
-0045 
-0046 p=parseRAVENargs(varargin, {<span class="string">'balanceOut'</span>,<span class="string">''</span>; <span class="string">'targetTotal'</span>,1});
-0047 balanceOut=p.balanceOut;
-0048 targetTotal=p.targetTotal;
-0049 
-0050 fractions = <a href="getBiomassFractions.html" class="code" title="function fractions = getBiomassFractions(model, biomassConfig)">getBiomassFractions</a>(model, biomassConfig);
-0051 <span class="keyword">if</span> ~isfield(fractions, componentName)
-0052     error(<span class="string">'scaleBiomassFraction:unknownComponent'</span>, <span class="keyword">...</span>
-0053         <span class="string">'biomassConfig has no component named %s'</span>, componentName);
-0054 <span class="keyword">end</span>
-0055 current = fractions.(componentName);
-0056 <span class="keyword">if</span> current == 0
-0057     error(<span class="string">'scaleBiomassFraction:zeroCurrent'</span>, <span class="keyword">...</span>
-0058         [<span class="string">'Cannot scale %s to %g: current fraction is 0 '</span> <span class="keyword">...</span>
-0059          <span class="string">'(pseudoreaction missing or empty).'</span>], componentName, newValue);
-0060 <span class="keyword">end</span>
-0061 factor = newValue / current;
-0062 model = <a href="scaleBiomassPseudoreaction.html" class="code" title="function model = scaleBiomassPseudoreaction(model, biomassConfig, componentName, factor)">scaleBiomassPseudoreaction</a>(model, biomassConfig, componentName, factor);
-0063 
-0064 <span class="keyword">if</span> ~isempty(balanceOut)
-0065     fractions = <a href="getBiomassFractions.html" class="code" title="function fractions = getBiomassFractions(model, biomassConfig)">getBiomassFractions</a>(model, biomassConfig);
-0066     total = fractions.total;
-0067     <span class="keyword">if</span> ~isfield(fractions, balanceOut)
-0068         error(<span class="string">'scaleBiomassFraction:unknownComponent'</span>, <span class="keyword">...</span>
-0069             <span class="string">'biomassConfig has no component named %s'</span>, balanceOut);
-0070     <span class="keyword">end</span>
-0071     balanceCurrent = fractions.(balanceOut);
-0072     <span class="keyword">if</span> balanceCurrent == 0
-0073         error(<span class="string">'scaleBiomassFraction:zeroCurrent'</span>, <span class="keyword">...</span>
-0074             [<span class="string">'Cannot balance with %s: current fraction is 0 '</span> <span class="keyword">...</span>
-0075              <span class="string">'(pseudoreaction missing or empty).'</span>], balanceOut);
-0076     <span class="keyword">end</span>
-0077     balanceNew = balanceCurrent + (targetTotal - total);
-0078     <span class="keyword">if</span> balanceNew &lt;= 0
-0079         error(<span class="string">'scaleBiomassFraction:negativeBalance'</span>, <span class="keyword">...</span>
-0080             [<span class="string">'Cannot balance with %s: its fraction would become %g g/gDW. '</span> <span class="keyword">...</span>
-0081              <span class="string">'It is %g g/gDW, but the other components total %g g/gDW.'</span>], <span class="keyword">...</span>
-0082             balanceOut, balanceNew, balanceCurrent, total - balanceCurrent);
-0083     <span class="keyword">end</span>
-0084     balanceFactor = balanceNew / balanceCurrent;
-0085     model = <a href="scaleBiomassPseudoreaction.html" class="code" title="function model = scaleBiomassPseudoreaction(model, biomassConfig, componentName, factor)">scaleBiomassPseudoreaction</a>(model, biomassConfig, balanceOut, balanceFactor);
-0086 <span class="keyword">end</span>
-0087 <span class="keyword">end</span></pre></div>
+0016 <span class="comment">%     Name of the component to rescale. An error is raised if its current</span>
+0017 <span class="comment">%     fraction is 0.</span>
+0018 <span class="comment">% newValue : double</span>
+0019 <span class="comment">%     Target fraction in g/gDW.</span>
+0020 <span class="comment">%</span>
+0021 <span class="comment">% Name-Value Arguments</span>
+0022 <span class="comment">% --------------------</span>
+0023 <span class="comment">% balanceOut : char</span>
+0024 <span class="comment">%     Second component name to adjust so the biomass total becomes</span>
+0025 <span class="comment">%     targetTotal. An error is raised if its fraction would become zero or</span>
+0026 <span class="comment">%     negative, or if it is 0 to begin with. No balancing is done when</span>
+0027 <span class="comment">%     empty or omitted (default '').</span>
+0028 <span class="comment">% targetTotal : double</span>
+0029 <span class="comment">%     Biomass total in g/gDW that balanceOut brings the components to</span>
+0030 <span class="comment">%     (default 1).</span>
+0031 <span class="comment">%</span>
+0032 <span class="comment">% Returns</span>
+0033 <span class="comment">% -------</span>
+0034 <span class="comment">% model : struct</span>
+0035 <span class="comment">%     Model with the rescaled pseudoreactions.</span>
+0036 <span class="comment">%</span>
+0037 <span class="comment">% Examples</span>
+0038 <span class="comment">% --------</span>
+0039 <span class="comment">%     model = scaleBiomassFraction(model, biomassConfig, 'protein', 0.5, 'carbohydrate');</span>
+0040 <span class="comment">%     model = scaleBiomassFraction(model, biomassConfig, 'protein', 0.5, ...</span>
+0041 <span class="comment">%         'balanceOut', 'carbohydrate', 'targetTotal', 0.95);</span>
+0042 <span class="comment">%</span>
+0043 <span class="comment">% See also</span>
+0044 <span class="comment">% --------</span>
+0045 <span class="comment">% getBiomassFractions</span>
+0046 
+0047 p=parseRAVENargs(varargin, {<span class="string">'balanceOut'</span>,<span class="string">''</span>; <span class="string">'targetTotal'</span>,1});
+0048 balanceOut=p.balanceOut;
+0049 targetTotal=p.targetTotal;
+0050 
+0051 fractions = <a href="getBiomassFractions.html" class="code" title="function fractions = getBiomassFractions(model, biomassConfig)">getBiomassFractions</a>(model, biomassConfig);
+0052 <span class="keyword">if</span> ~isfield(fractions, componentName)
+0053     error(<span class="string">'scaleBiomassFraction:unknownComponent'</span>, <span class="keyword">...</span>
+0054         <span class="string">'biomassConfig has no component named %s'</span>, componentName);
+0055 <span class="keyword">end</span>
+0056 current = fractions.(componentName);
+0057 <span class="keyword">if</span> current == 0
+0058     error(<span class="string">'scaleBiomassFraction:zeroCurrent'</span>, <span class="keyword">...</span>
+0059         [<span class="string">'Cannot scale %s to %g: current fraction is 0 '</span> <span class="keyword">...</span>
+0060          <span class="string">'(pseudoreaction missing or empty).'</span>], componentName, newValue);
+0061 <span class="keyword">end</span>
+0062 factor = newValue / current;
+0063 model = <a href="scaleBiomassPseudoreaction.html" class="code" title="function model = scaleBiomassPseudoreaction(model, biomassConfig, componentName, factor)">scaleBiomassPseudoreaction</a>(model, biomassConfig, componentName, factor);
+0064 
+0065 <span class="keyword">if</span> ~isempty(balanceOut)
+0066     fractions = <a href="getBiomassFractions.html" class="code" title="function fractions = getBiomassFractions(model, biomassConfig)">getBiomassFractions</a>(model, biomassConfig);
+0067     total = fractions.total;
+0068     <span class="keyword">if</span> ~isfield(fractions, balanceOut)
+0069         error(<span class="string">'scaleBiomassFraction:unknownComponent'</span>, <span class="keyword">...</span>
+0070             <span class="string">'biomassConfig has no component named %s'</span>, balanceOut);
+0071     <span class="keyword">end</span>
+0072     balanceCurrent = fractions.(balanceOut);
+0073     <span class="keyword">if</span> balanceCurrent == 0
+0074         error(<span class="string">'scaleBiomassFraction:zeroCurrent'</span>, <span class="keyword">...</span>
+0075             [<span class="string">'Cannot balance with %s: current fraction is 0 '</span> <span class="keyword">...</span>
+0076              <span class="string">'(pseudoreaction missing or empty).'</span>], balanceOut);
+0077     <span class="keyword">end</span>
+0078     balanceNew = balanceCurrent + (targetTotal - total);
+0079     <span class="keyword">if</span> balanceNew &lt;= 0
+0080         error(<span class="string">'scaleBiomassFraction:negativeBalance'</span>, <span class="keyword">...</span>
+0081             [<span class="string">'Cannot balance with %s: its fraction would become %g g/gDW. '</span> <span class="keyword">...</span>
+0082              <span class="string">'It is %g g/gDW, but the other components total %g g/gDW.'</span>], <span class="keyword">...</span>
+0083             balanceOut, balanceNew, balanceCurrent, total - balanceCurrent);
+0084     <span class="keyword">end</span>
+0085     balanceFactor = balanceNew / balanceCurrent;
+0086     model = <a href="scaleBiomassPseudoreaction.html" class="code" title="function model = scaleBiomassPseudoreaction(model, biomassConfig, componentName, factor)">scaleBiomassPseudoreaction</a>(model, biomassConfig, balanceOut, balanceFactor);
+0087 <span class="keyword">end</span>
+0088 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

@@ -29,14 +29,14 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> checkFileExistence  Check whether files exist.
 
- If no full path is given a file should be located in the current folder,
- which by default is appended to the filename.
+ A file name without a full path refers to a file in the current folder,
+ which is prepended to the file name.
 
  Parameters
  ----------
  files : char or cell
-     string or cell array of strings with path to file(s) or path or
-     filename(s).
+     string or cell array of strings with the path or file name of one or
+     more files.
 
  Name-Value Arguments
  --------------------
@@ -48,17 +48,17 @@
      - 2 : copy file(s) to system default temporary folder and return
        full path
  allowSpace : logical
-     whether the 'space' character is allowed in the path (default true).
+     true if the space character is allowed in the path (default true).
  checkExist : logical
-     whether file existence should really be checked, as this function can
-     also be used to return the full path to a new file (default true).
-     Can only be set to false if fullOrTemp is set to 1.
+     true if file existence is checked. Setting it to false returns the full
+     path to a file that does not exist yet (default true). Can only be set
+     to false if fullOrTemp is set to 1.
 
  Returns
  -------
  files : char or cell
-     string or cell array of strings with updated paths if fullOrTemp was
-     set as 1 or 2, otherwise original paths are returned.
+     string or cell array of strings with updated paths if fullOrTemp is 1
+     or 2, otherwise the original paths.
 
  Examples
  --------
@@ -80,14 +80,14 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function files=checkFileExistence(files,varargin)</a>
 0002 <span class="comment">% checkFileExistence  Check whether files exist.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% If no full path is given a file should be located in the current folder,</span>
-0005 <span class="comment">% which by default is appended to the filename.</span>
+0004 <span class="comment">% A file name without a full path refers to a file in the current folder,</span>
+0005 <span class="comment">% which is prepended to the file name.</span>
 0006 <span class="comment">%</span>
 0007 <span class="comment">% Parameters</span>
 0008 <span class="comment">% ----------</span>
 0009 <span class="comment">% files : char or cell</span>
-0010 <span class="comment">%     string or cell array of strings with path to file(s) or path or</span>
-0011 <span class="comment">%     filename(s).</span>
+0010 <span class="comment">%     string or cell array of strings with the path or file name of one or</span>
+0011 <span class="comment">%     more files.</span>
 0012 <span class="comment">%</span>
 0013 <span class="comment">% Name-Value Arguments</span>
 0014 <span class="comment">% --------------------</span>
@@ -99,17 +99,17 @@ This function is called by:
 0020 <span class="comment">%     - 2 : copy file(s) to system default temporary folder and return</span>
 0021 <span class="comment">%       full path</span>
 0022 <span class="comment">% allowSpace : logical</span>
-0023 <span class="comment">%     whether the 'space' character is allowed in the path (default true).</span>
+0023 <span class="comment">%     true if the space character is allowed in the path (default true).</span>
 0024 <span class="comment">% checkExist : logical</span>
-0025 <span class="comment">%     whether file existence should really be checked, as this function can</span>
-0026 <span class="comment">%     also be used to return the full path to a new file (default true).</span>
-0027 <span class="comment">%     Can only be set to false if fullOrTemp is set to 1.</span>
+0025 <span class="comment">%     true if file existence is checked. Setting it to false returns the full</span>
+0026 <span class="comment">%     path to a file that does not exist yet (default true). Can only be set</span>
+0027 <span class="comment">%     to false if fullOrTemp is set to 1.</span>
 0028 <span class="comment">%</span>
 0029 <span class="comment">% Returns</span>
 0030 <span class="comment">% -------</span>
 0031 <span class="comment">% files : char or cell</span>
-0032 <span class="comment">%     string or cell array of strings with updated paths if fullOrTemp was</span>
-0033 <span class="comment">%     set as 1 or 2, otherwise original paths are returned.</span>
+0032 <span class="comment">%     string or cell array of strings with updated paths if fullOrTemp is 1</span>
+0033 <span class="comment">%     or 2, otherwise the original paths.</span>
 0034 <span class="comment">%</span>
 0035 <span class="comment">% Examples</span>
 0036 <span class="comment">% --------</span>

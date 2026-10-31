@@ -29,9 +29,10 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> grRuleToString  Render a grRule syntax tree back to a string.
 
- Writes the standard RAVEN format: &quot; and &quot; / &quot; or &quot; as operators, with
- parentheses added only where precedence requires them, so that
- parseGrRule(grRuleToString(tree)) round-trips to the same structure.
+ Writes the standard RAVEN format, with &quot; and &quot; and &quot; or &quot; as operators. An
+ AND node inside an OR node and an OR node inside an AND node are placed in
+ parentheses. The result parses with parseGrRule to a rule with the same
+ logic.
 
  Parameters
  ----------
@@ -67,60 +68,61 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function rule=grRuleToString(tree)</a>
 0002 <span class="comment">% grRuleToString  Render a grRule syntax tree back to a string.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Writes the standard RAVEN format: &quot; and &quot; / &quot; or &quot; as operators, with</span>
-0005 <span class="comment">% parentheses added only where precedence requires them, so that</span>
-0006 <span class="comment">% parseGrRule(grRuleToString(tree)) round-trips to the same structure.</span>
-0007 <span class="comment">%</span>
-0008 <span class="comment">% Parameters</span>
-0009 <span class="comment">% ----------</span>
-0010 <span class="comment">% tree : struct</span>
-0011 <span class="comment">%     a tree from parseGrRule. An empty tree yields ''.</span>
-0012 <span class="comment">%</span>
-0013 <span class="comment">% Returns</span>
-0014 <span class="comment">% -------</span>
-0015 <span class="comment">% rule : char</span>
-0016 <span class="comment">%     the rendered grRule.</span>
-0017 <span class="comment">%</span>
-0018 <span class="comment">% Examples</span>
-0019 <span class="comment">% --------</span>
-0020 <span class="comment">%     grRuleToString(parseGrRule('(G1 and G2) or G3'))   % '(G1 and G2) or G3'</span>
-0021 <span class="comment">%</span>
-0022 <span class="comment">% See also: parseGrRule, standardizeGrRules</span>
-0023 
-0024 <span class="keyword">if</span> isempty(tree)
-0025     rule=<span class="string">''</span>;
-0026     <span class="keyword">return</span>
-0027 <span class="keyword">end</span>
-0028 rule=<a href="#_sub1" class="code" title="subfunction str=nodeToString(node)">nodeToString</a>(tree);
-0029 <span class="keyword">end</span>
-0030 
+0004 <span class="comment">% Writes the standard RAVEN format, with &quot; and &quot; and &quot; or &quot; as operators. An</span>
+0005 <span class="comment">% AND node inside an OR node and an OR node inside an AND node are placed in</span>
+0006 <span class="comment">% parentheses. The result parses with parseGrRule to a rule with the same</span>
+0007 <span class="comment">% logic.</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">% Parameters</span>
+0010 <span class="comment">% ----------</span>
+0011 <span class="comment">% tree : struct</span>
+0012 <span class="comment">%     a tree from parseGrRule. An empty tree yields ''.</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Returns</span>
+0015 <span class="comment">% -------</span>
+0016 <span class="comment">% rule : char</span>
+0017 <span class="comment">%     the rendered grRule.</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">% Examples</span>
+0020 <span class="comment">% --------</span>
+0021 <span class="comment">%     grRuleToString(parseGrRule('(G1 and G2) or G3'))   % '(G1 and G2) or G3'</span>
+0022 <span class="comment">%</span>
+0023 <span class="comment">% See also: parseGrRule, standardizeGrRules</span>
+0024 
+0025 <span class="keyword">if</span> isempty(tree)
+0026     rule=<span class="string">''</span>;
+0027     <span class="keyword">return</span>
+0028 <span class="keyword">end</span>
+0029 rule=<a href="#_sub1" class="code" title="subfunction str=nodeToString(node)">nodeToString</a>(tree);
+0030 <span class="keyword">end</span>
 0031 
-0032 <a name="_sub1" href="#_subfunctions" class="code">function str=nodeToString(node)</a>
-0033 <span class="keyword">switch</span> node.type
-0034     <span class="keyword">case</span> <span class="string">'gene'</span>
-0035         str=node.id;
-0036     <span class="keyword">case</span> <span class="string">'and'</span>
-0037         <span class="comment">% An OR child inside an AND must be bracketed to keep precedence.</span>
-0038         parts=cellfun(@(c) <a href="#_sub2" class="code" title="subfunction str=bracketIf(node,type)">bracketIf</a>(c,<span class="string">'or'</span>),node.children,<span class="string">'UniformOutput'</span>,false);
-0039         str=strjoin(parts,<span class="string">' and '</span>);
-0040     <span class="keyword">case</span> <span class="string">'or'</span>
-0041         <span class="comment">% An AND child inside an OR needs no brackets for correctness, but</span>
-0042         <span class="comment">% RAVEN writes complexes bracketed, matching standardizeGrRules and</span>
-0043         <span class="comment">% the joinOR helper in removeLowScoreGenes.</span>
-0044         parts=cellfun(@(c) <a href="#_sub2" class="code" title="subfunction str=bracketIf(node,type)">bracketIf</a>(c,<span class="string">'and'</span>),node.children,<span class="string">'UniformOutput'</span>,false);
-0045         str=strjoin(parts,<span class="string">' or '</span>);
-0046     <span class="keyword">otherwise</span>
-0047         error(<span class="string">'RAVEN:badGrRule'</span>,[<span class="string">'Unexpected grRule node type: '</span> node.type]);
-0048 <span class="keyword">end</span>
+0032 
+0033 <a name="_sub1" href="#_subfunctions" class="code">function str=nodeToString(node)</a>
+0034 <span class="keyword">switch</span> node.type
+0035     <span class="keyword">case</span> <span class="string">'gene'</span>
+0036         str=node.id;
+0037     <span class="keyword">case</span> <span class="string">'and'</span>
+0038         <span class="comment">% An OR child inside an AND must be bracketed to keep precedence.</span>
+0039         parts=cellfun(@(c) <a href="#_sub2" class="code" title="subfunction str=bracketIf(node,type)">bracketIf</a>(c,<span class="string">'or'</span>),node.children,<span class="string">'UniformOutput'</span>,false);
+0040         str=strjoin(parts,<span class="string">' and '</span>);
+0041     <span class="keyword">case</span> <span class="string">'or'</span>
+0042         <span class="comment">% An AND child inside an OR needs no brackets for correctness, but</span>
+0043         <span class="comment">% RAVEN writes complexes bracketed, matching standardizeGrRules and</span>
+0044         <span class="comment">% the joinOR helper in removeLowScoreGenes.</span>
+0045         parts=cellfun(@(c) <a href="#_sub2" class="code" title="subfunction str=bracketIf(node,type)">bracketIf</a>(c,<span class="string">'and'</span>),node.children,<span class="string">'UniformOutput'</span>,false);
+0046         str=strjoin(parts,<span class="string">' or '</span>);
+0047     <span class="keyword">otherwise</span>
+0048         error(<span class="string">'RAVEN:badGrRule'</span>,[<span class="string">'Unexpected grRule node type: '</span> node.type]);
 0049 <span class="keyword">end</span>
-0050 
+0050 <span class="keyword">end</span>
 0051 
-0052 <a name="_sub2" href="#_subfunctions" class="code">function str=bracketIf(node,type)</a>
-0053 str=<a href="#_sub1" class="code" title="subfunction str=nodeToString(node)">nodeToString</a>(node);
-0054 <span class="keyword">if</span> strcmp(node.type,type)
-0055     str=[<span class="string">'('</span> str <span class="string">')'</span>];
-0056 <span class="keyword">end</span>
-0057 <span class="keyword">end</span></pre></div>
+0052 
+0053 <a name="_sub2" href="#_subfunctions" class="code">function str=bracketIf(node,type)</a>
+0054 str=<a href="#_sub1" class="code" title="subfunction str=nodeToString(node)">nodeToString</a>(node);
+0055 <span class="keyword">if</span> strcmp(node.type,type)
+0056     str=[<span class="string">'('</span> str <span class="string">')'</span>];
+0057 <span class="keyword">end</span>
+0058 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

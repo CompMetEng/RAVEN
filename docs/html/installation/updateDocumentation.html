@@ -28,13 +28,13 @@
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> updateDocumentation
-    Regenerates the HTML documentation in RAVEN's docs/html directory from the
-    function help texts. The docs/html directory is deleted and rebuilt, so
-    anything hand-edited there is lost.
+    Regenerates the HTML documentation in the docs/html directory of RAVEN from
+    the function help texts. The docs/html directory is deleted and rebuilt, so
+    manual edits there are lost.
 
-    The Documentation workflow runs this on every push to a release branch
-    and commits the result, so docs/html stays in step with the sources without
-    anyone running it by hand. Run it locally only to preview.
+    The Documentation workflow runs this function on every push to the develop
+    or main branch that changes a .m file or the workflow file, and commits the
+    result. Running the function locally previews the documentation.
 
     Usage: updateDocumentation()</pre></div>
 
@@ -53,13 +53,13 @@ This function is called by:
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function updateDocumentation()</a>
 0002 <span class="comment">% updateDocumentation</span>
-0003 <span class="comment">%    Regenerates the HTML documentation in RAVEN's docs/html directory from the</span>
-0004 <span class="comment">%    function help texts. The docs/html directory is deleted and rebuilt, so</span>
-0005 <span class="comment">%    anything hand-edited there is lost.</span>
+0003 <span class="comment">%    Regenerates the HTML documentation in the docs/html directory of RAVEN from</span>
+0004 <span class="comment">%    the function help texts. The docs/html directory is deleted and rebuilt, so</span>
+0005 <span class="comment">%    manual edits there are lost.</span>
 0006 <span class="comment">%</span>
-0007 <span class="comment">%    The Documentation workflow runs this on every push to a release branch</span>
-0008 <span class="comment">%    and commits the result, so docs/html stays in step with the sources without</span>
-0009 <span class="comment">%    anyone running it by hand. Run it locally only to preview.</span>
+0007 <span class="comment">%    The Documentation workflow runs this function on every push to the develop</span>
+0008 <span class="comment">%    or main branch that changes a .m file or the workflow file, and commits the</span>
+0009 <span class="comment">%    result. Running the function locally previews the documentation.</span>
 0010 <span class="comment">%</span>
 0011 <span class="comment">%    Usage: updateDocumentation()</span>
 0012 

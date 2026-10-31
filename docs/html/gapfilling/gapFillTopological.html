@@ -31,12 +31,11 @@
 
  Identifies which metabolites in the draft model cannot be produced from a
  given set of seed metabolites (medium), using a graph-based fixed-point
- &quot;scope&quot; computation (no solver required). For each unreachable metabolite,
+ &quot;scope&quot; computation that needs no solver. For each unreachable metabolite,
  finds candidate reactions in the universal database that produce it
  directly.
 
- This is a computationally cheap pre-screening step that prunes the
- universal database before a more expensive gap-filling solve. It is
+ The step prunes the universal database before a gap-filling solve. It is
  inspired by the topological analysis used in Meneco (Prigent et al. 2017,
  PLoS Comput Biol).
 
@@ -55,30 +54,31 @@
  universalModel : struct
      universal reaction database (RAVEN model).
 
- Optional name-value parameters
- --------------------------------
- 'seeds' (default [])
-     Metabolite IDs (cell array) available from the medium. Default:
+ Name-Value Arguments
+ --------------------
+ seeds : cell
+     metabolite IDs available from the medium. If empty, the seeds are the
      metabolites of every exchange reaction whose bounds let it supply the
-     metabolite, i.e. getExchangeRxns 'uptake' plus 'reverse'.
- 'targets' (default [])
-     Metabolite IDs (cell array) that should be produced. Default: every
+     metabolite, that is getExchangeRxns 'uptake' plus 'reverse'
+     (default []).
+ targets : cell
+     metabolite IDs that should be produced. If empty, the targets are every
      metabolite of the objective (biomass) reaction, substrates and
      products; the first one when there are several objective reactions.
      Without targets and without an objective reaction the function raises
-     RAVEN:badInput.
- 'verbose' (default true)
-     print a summary of the results.
+     RAVEN:badInput (default []).
+ verbose : logical
+     true to print a summary of the results (default true).
 
  Returns
  -------
  result : struct
-     .reachableMets   — logical vector (length nMets) marking producible mets
-     .blockedMets     — cell array of metabolite IDs that cannot be reached
-     .candidateRxns   — n-by-1 cell array of universal rxn ID lists, one
-                        cell per blocked metabolite (same order as blockedMets)
-     .pruningFraction — fraction of universal reactions pruned (not needed
-                        for any blocked metabolite)
+     .reachableMets: logical vector (length nMets) marking producible mets
+     .blockedMets: cell array of metabolite IDs that cannot be reached
+     .candidateRxns: n-by-1 cell array of universal rxn ID lists, one cell
+         per blocked metabolite (same order as blockedMets)
+     .pruningFraction: fraction of universal reactions pruned (not
+         candidates for any blocked metabolite)
 
  See also
  --------
@@ -102,54 +102,54 @@ This function is called by:
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Identifies which metabolites in the draft model cannot be produced from a</span>
 0005 <span class="comment">% given set of seed metabolites (medium), using a graph-based fixed-point</span>
-0006 <span class="comment">% &quot;scope&quot; computation (no solver required). For each unreachable metabolite,</span>
+0006 <span class="comment">% &quot;scope&quot; computation that needs no solver. For each unreachable metabolite,</span>
 0007 <span class="comment">% finds candidate reactions in the universal database that produce it</span>
 0008 <span class="comment">% directly.</span>
 0009 <span class="comment">%</span>
-0010 <span class="comment">% This is a computationally cheap pre-screening step that prunes the</span>
-0011 <span class="comment">% universal database before a more expensive gap-filling solve. It is</span>
-0012 <span class="comment">% inspired by the topological analysis used in Meneco (Prigent et al. 2017,</span>
-0013 <span class="comment">% PLoS Comput Biol).</span>
-0014 <span class="comment">%</span>
-0015 <span class="comment">% Algorithm</span>
-0016 <span class="comment">% ---------</span>
-0017 <span class="comment">% Starting from seed metabolites (available in the medium), iteratively</span>
-0018 <span class="comment">% mark reactions as &quot;fireable&quot; when all their substrates are reachable,</span>
-0019 <span class="comment">% then mark their products as newly reachable. Continue until no new</span>
-0020 <span class="comment">% metabolite is reached (fixed point). Reversible reactions (lb &lt; 0) are</span>
-0021 <span class="comment">% also considered in their reverse direction.</span>
-0022 <span class="comment">%</span>
-0023 <span class="comment">% Parameters</span>
-0024 <span class="comment">% ----------</span>
-0025 <span class="comment">% model : struct</span>
-0026 <span class="comment">%     draft RAVEN model.</span>
-0027 <span class="comment">% universalModel : struct</span>
-0028 <span class="comment">%     universal reaction database (RAVEN model).</span>
-0029 <span class="comment">%</span>
-0030 <span class="comment">% Optional name-value parameters</span>
-0031 <span class="comment">% --------------------------------</span>
-0032 <span class="comment">% 'seeds' (default [])</span>
-0033 <span class="comment">%     Metabolite IDs (cell array) available from the medium. Default:</span>
-0034 <span class="comment">%     metabolites of every exchange reaction whose bounds let it supply the</span>
-0035 <span class="comment">%     metabolite, i.e. getExchangeRxns 'uptake' plus 'reverse'.</span>
-0036 <span class="comment">% 'targets' (default [])</span>
-0037 <span class="comment">%     Metabolite IDs (cell array) that should be produced. Default: every</span>
+0010 <span class="comment">% The step prunes the universal database before a gap-filling solve. It is</span>
+0011 <span class="comment">% inspired by the topological analysis used in Meneco (Prigent et al. 2017,</span>
+0012 <span class="comment">% PLoS Comput Biol).</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Algorithm</span>
+0015 <span class="comment">% ---------</span>
+0016 <span class="comment">% Starting from seed metabolites (available in the medium), iteratively</span>
+0017 <span class="comment">% mark reactions as &quot;fireable&quot; when all their substrates are reachable,</span>
+0018 <span class="comment">% then mark their products as newly reachable. Continue until no new</span>
+0019 <span class="comment">% metabolite is reached (fixed point). Reversible reactions (lb &lt; 0) are</span>
+0020 <span class="comment">% also considered in their reverse direction.</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% Parameters</span>
+0023 <span class="comment">% ----------</span>
+0024 <span class="comment">% model : struct</span>
+0025 <span class="comment">%     draft RAVEN model.</span>
+0026 <span class="comment">% universalModel : struct</span>
+0027 <span class="comment">%     universal reaction database (RAVEN model).</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">% Name-Value Arguments</span>
+0030 <span class="comment">% --------------------</span>
+0031 <span class="comment">% seeds : cell</span>
+0032 <span class="comment">%     metabolite IDs available from the medium. If empty, the seeds are the</span>
+0033 <span class="comment">%     metabolites of every exchange reaction whose bounds let it supply the</span>
+0034 <span class="comment">%     metabolite, that is getExchangeRxns 'uptake' plus 'reverse'</span>
+0035 <span class="comment">%     (default []).</span>
+0036 <span class="comment">% targets : cell</span>
+0037 <span class="comment">%     metabolite IDs that should be produced. If empty, the targets are every</span>
 0038 <span class="comment">%     metabolite of the objective (biomass) reaction, substrates and</span>
 0039 <span class="comment">%     products; the first one when there are several objective reactions.</span>
 0040 <span class="comment">%     Without targets and without an objective reaction the function raises</span>
-0041 <span class="comment">%     RAVEN:badInput.</span>
-0042 <span class="comment">% 'verbose' (default true)</span>
-0043 <span class="comment">%     print a summary of the results.</span>
+0041 <span class="comment">%     RAVEN:badInput (default []).</span>
+0042 <span class="comment">% verbose : logical</span>
+0043 <span class="comment">%     true to print a summary of the results (default true).</span>
 0044 <span class="comment">%</span>
 0045 <span class="comment">% Returns</span>
 0046 <span class="comment">% -------</span>
 0047 <span class="comment">% result : struct</span>
-0048 <span class="comment">%     .reachableMets   — logical vector (length nMets) marking producible mets</span>
-0049 <span class="comment">%     .blockedMets     — cell array of metabolite IDs that cannot be reached</span>
-0050 <span class="comment">%     .candidateRxns   — n-by-1 cell array of universal rxn ID lists, one</span>
-0051 <span class="comment">%                        cell per blocked metabolite (same order as blockedMets)</span>
-0052 <span class="comment">%     .pruningFraction — fraction of universal reactions pruned (not needed</span>
-0053 <span class="comment">%                        for any blocked metabolite)</span>
+0048 <span class="comment">%     .reachableMets: logical vector (length nMets) marking producible mets</span>
+0049 <span class="comment">%     .blockedMets: cell array of metabolite IDs that cannot be reached</span>
+0050 <span class="comment">%     .candidateRxns: n-by-1 cell array of universal rxn ID lists, one cell</span>
+0051 <span class="comment">%         per blocked metabolite (same order as blockedMets)</span>
+0052 <span class="comment">%     .pruningFraction: fraction of universal reactions pruned (not</span>
+0053 <span class="comment">%         candidates for any blocked metabolite)</span>
 0054 <span class="comment">%</span>
 0055 <span class="comment">% See also</span>
 0056 <span class="comment">% --------</span>

@@ -4,7 +4,7 @@
 <head>
   <title>Description of buildGlobalGPR</title>
   <meta name="keywords" content="buildGlobalGPR">
-  <meta name="description" content="buildGlobalGPR  Join every KEGG organism's genes onto the reference">
+  <meta name="description" content="buildGlobalGPR  Join the genes of all KEGG organisms to reference reactions by KO id.">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,19 +21,19 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
-<div class="box"><strong>buildGlobalGPR  Join every KEGG organism's genes onto the reference</strong></div>
+<div class="box"><strong>buildGlobalGPR  Join the genes of all KEGG organisms to reference reactions by KO id.</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
 <div class="box"><strong>function [genes,rxnGeneMat]=buildGlobalGPR(rxns,koReaction,organismGeneKO) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> buildGlobalGPR  Join every KEGG organism's genes onto the reference
- reactions through their shared KO (KEGG Orthology) ids.
+<div class="fragment"><pre class="comment"> buildGlobalGPR  Join the genes of all KEGG organisms to reference reactions by KO id.
 
- Builds two sparse gene-KO / KO-reaction incidence matrices sharing one
- KO axis, and multiplies them, rather than expanding the join row by
- row --- organismGeneKO can carry millions of rows (every gene of every
- KEGG organism), so a per-row loop is not viable.
+ Joins every KEGG organism's genes onto the reference reactions through their
+ shared KO (KEGG Orthology) ids. The function builds two sparse incidence
+ matrices (gene to KO and KO to reaction) that share one KO axis, and
+ multiplies them. The join is not expanded row by row, because organismGeneKO
+ can contain millions of rows (every gene of every KEGG organism).
 
  Parameters
  ----------
@@ -50,7 +50,7 @@
  genes : cell array
      sorted unique 'organism:gene' identifiers.
  rxnGeneMat : sparse double
-     numel(rxns) x numel(genes); rxnGeneMat(i,j)=1 when gene j shares at
+     numel(rxns) by numel(genes); rxnGeneMat(i,j)=1 when gene j shares at
      least one KO with reaction i.</pre></div>
 
 <!-- crossreference -->
@@ -67,13 +67,13 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [genes,rxnGeneMat]=buildGlobalGPR(rxns,koReaction,organismGeneKO)</a>
-0002 <span class="comment">% buildGlobalGPR  Join every KEGG organism's genes onto the reference</span>
-0003 <span class="comment">% reactions through their shared KO (KEGG Orthology) ids.</span>
-0004 <span class="comment">%</span>
-0005 <span class="comment">% Builds two sparse gene-KO / KO-reaction incidence matrices sharing one</span>
-0006 <span class="comment">% KO axis, and multiplies them, rather than expanding the join row by</span>
-0007 <span class="comment">% row --- organismGeneKO can carry millions of rows (every gene of every</span>
-0008 <span class="comment">% KEGG organism), so a per-row loop is not viable.</span>
+0002 <span class="comment">% buildGlobalGPR  Join the genes of all KEGG organisms to reference reactions by KO id.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Joins every KEGG organism's genes onto the reference reactions through their</span>
+0005 <span class="comment">% shared KO (KEGG Orthology) ids. The function builds two sparse incidence</span>
+0006 <span class="comment">% matrices (gene to KO and KO to reaction) that share one KO axis, and</span>
+0007 <span class="comment">% multiplies them. The join is not expanded row by row, because organismGeneKO</span>
+0008 <span class="comment">% can contain millions of rows (every gene of every KEGG organism).</span>
 0009 <span class="comment">%</span>
 0010 <span class="comment">% Parameters</span>
 0011 <span class="comment">% ----------</span>
@@ -90,7 +90,7 @@ This function is called by:
 0022 <span class="comment">% genes : cell array</span>
 0023 <span class="comment">%     sorted unique 'organism:gene' identifiers.</span>
 0024 <span class="comment">% rxnGeneMat : sparse double</span>
-0025 <span class="comment">%     numel(rxns) x numel(genes); rxnGeneMat(i,j)=1 when gene j shares at</span>
+0025 <span class="comment">%     numel(rxns) by numel(genes); rxnGeneMat(i,j)=1 when gene j shares at</span>
 0026 <span class="comment">%     least one KO with reaction i.</span>
 0027 
 0028 <span class="comment">%Map each ko_reaction row onto the reference model's own reaction order;</span>

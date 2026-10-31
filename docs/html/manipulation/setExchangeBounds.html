@@ -38,31 +38,34 @@
  --------------------
  mets : cell or double
      a cell array of metabolite names (case insensitive) or metabolite
-     IDs, or a vector of metabolite indices (default all exchanged
+     IDs, or a vector of indices in model.mets (default all exchanged
      metabolites).
  lb : double
-     lower bound of exchange flux. Can be either a vector of bounds
-     corresponding to each of the provided metabolites, or a single value
-     that will be applied to all (default model.annotation.defaultLB if it
-     exists, otherwise -1000).
+     lower bound of exchange flux. Either a vector of bounds corresponding
+     to each of the provided metabolites, or a single value that is applied
+     to all (default model.annotation.defaultLB if it exists, otherwise
+     -1000). Without mets, only a single value is accepted.
  ub : double
-     upper bound of exchange flux. Can be either a vector of bounds
-     corresponding to each of the provided metabolites, or a single value
-     that will be applied to all (default model.annotation.defaultUB if it
-     exists, otherwise 1000).
+     upper bound of exchange flux. Either a vector of bounds corresponding
+     to each of the provided metabolites, or a single value that is applied
+     to all (default model.annotation.defaultUB if it exists, otherwise
+     1000). Without mets, only a single value is accepted.
  closeOthers : logical
-     close exchange reactions for all other exchanged metabolites not
-     present in the provided list. This will prevent IMPORT of the
-     metabolites, but their EXPORT will not be modified (default true).
+     close the exchange reactions of all exchanged metabolites that are not
+     in the provided list. This prevents import of these metabolites and
+     leaves their export unchanged. Set to false, with a warning, when the
+     exchange reactions are not all written in the same direction
+     (default true).
  mediaOnly : logical
      only consider exchange reactions involving exchange to or from the
      extracellular (media) compartment. Reactions such as &quot;sink&quot; reactions
      that exchange metabolites directly with an intracellular compartment
-     will therefore be ignored even though &quot;getExchangeRxns&quot; identifies
-     such reactions as exchange reactions. The function will attempt to
-     identify the extracellular compartment by the &quot;compNames&quot; field, and
-     also requires the &quot;metComps&quot; field to be present, otherwise the
-     mediaOnly flag will be ignored (default false).
+     are therefore ignored, although &quot;getExchangeRxns&quot; identifies such
+     reactions as exchange reactions. The extracellular compartment is the
+     one named &quot;extracellular&quot; in the &quot;compNames&quot; field (case insensitive).
+     The &quot;compNames&quot; and &quot;metComps&quot; fields are required; an error is thrown
+     if either is missing or if no compartment has this name
+     (default false).
 
  Returns
  -------
@@ -70,8 +73,8 @@
      a model structure with updated exchange flux bounds for the provided
      set of metabolites.
  unusedMets : cell
-     metabolites provided by the user that were not used because they are
-     not involved in any exchange reactions in the model.
+     metabolites in mets that were not used because they are not involved
+     in any of the considered exchange reactions in the model.
 
  Examples
  --------
@@ -80,7 +83,7 @@
 
  Notes
  -----
- Exchange reactions involving more than one metabolite will be ignored.</pre></div>
+ Exchange reactions involving more than one metabolite are ignored.</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -107,226 +110,229 @@ This function is called by:
 0010 <span class="comment">% --------------------</span>
 0011 <span class="comment">% mets : cell or double</span>
 0012 <span class="comment">%     a cell array of metabolite names (case insensitive) or metabolite</span>
-0013 <span class="comment">%     IDs, or a vector of metabolite indices (default all exchanged</span>
+0013 <span class="comment">%     IDs, or a vector of indices in model.mets (default all exchanged</span>
 0014 <span class="comment">%     metabolites).</span>
 0015 <span class="comment">% lb : double</span>
-0016 <span class="comment">%     lower bound of exchange flux. Can be either a vector of bounds</span>
-0017 <span class="comment">%     corresponding to each of the provided metabolites, or a single value</span>
-0018 <span class="comment">%     that will be applied to all (default model.annotation.defaultLB if it</span>
-0019 <span class="comment">%     exists, otherwise -1000).</span>
+0016 <span class="comment">%     lower bound of exchange flux. Either a vector of bounds corresponding</span>
+0017 <span class="comment">%     to each of the provided metabolites, or a single value that is applied</span>
+0018 <span class="comment">%     to all (default model.annotation.defaultLB if it exists, otherwise</span>
+0019 <span class="comment">%     -1000). Without mets, only a single value is accepted.</span>
 0020 <span class="comment">% ub : double</span>
-0021 <span class="comment">%     upper bound of exchange flux. Can be either a vector of bounds</span>
-0022 <span class="comment">%     corresponding to each of the provided metabolites, or a single value</span>
-0023 <span class="comment">%     that will be applied to all (default model.annotation.defaultUB if it</span>
-0024 <span class="comment">%     exists, otherwise 1000).</span>
+0021 <span class="comment">%     upper bound of exchange flux. Either a vector of bounds corresponding</span>
+0022 <span class="comment">%     to each of the provided metabolites, or a single value that is applied</span>
+0023 <span class="comment">%     to all (default model.annotation.defaultUB if it exists, otherwise</span>
+0024 <span class="comment">%     1000). Without mets, only a single value is accepted.</span>
 0025 <span class="comment">% closeOthers : logical</span>
-0026 <span class="comment">%     close exchange reactions for all other exchanged metabolites not</span>
-0027 <span class="comment">%     present in the provided list. This will prevent IMPORT of the</span>
-0028 <span class="comment">%     metabolites, but their EXPORT will not be modified (default true).</span>
-0029 <span class="comment">% mediaOnly : logical</span>
-0030 <span class="comment">%     only consider exchange reactions involving exchange to or from the</span>
-0031 <span class="comment">%     extracellular (media) compartment. Reactions such as &quot;sink&quot; reactions</span>
-0032 <span class="comment">%     that exchange metabolites directly with an intracellular compartment</span>
-0033 <span class="comment">%     will therefore be ignored even though &quot;getExchangeRxns&quot; identifies</span>
-0034 <span class="comment">%     such reactions as exchange reactions. The function will attempt to</span>
-0035 <span class="comment">%     identify the extracellular compartment by the &quot;compNames&quot; field, and</span>
-0036 <span class="comment">%     also requires the &quot;metComps&quot; field to be present, otherwise the</span>
-0037 <span class="comment">%     mediaOnly flag will be ignored (default false).</span>
-0038 <span class="comment">%</span>
-0039 <span class="comment">% Returns</span>
-0040 <span class="comment">% -------</span>
-0041 <span class="comment">% exchModel : struct</span>
-0042 <span class="comment">%     a model structure with updated exchange flux bounds for the provided</span>
-0043 <span class="comment">%     set of metabolites.</span>
-0044 <span class="comment">% unusedMets : cell</span>
-0045 <span class="comment">%     metabolites provided by the user that were not used because they are</span>
-0046 <span class="comment">%     not involved in any exchange reactions in the model.</span>
-0047 <span class="comment">%</span>
-0048 <span class="comment">% Examples</span>
-0049 <span class="comment">% --------</span>
-0050 <span class="comment">%     exchModel = setExchangeBounds(model, mets, lb, ub, closeOthers, ...</span>
-0051 <span class="comment">%         mediaOnly);</span>
-0052 <span class="comment">%</span>
-0053 <span class="comment">% Notes</span>
-0054 <span class="comment">% -----</span>
-0055 <span class="comment">% Exchange reactions involving more than one metabolite will be ignored.</span>
-0056 
-0057 
-0058 <span class="comment">% handle input arguments</span>
-0059 p=parseRAVENargs(varargin, {<span class="string">'mets'</span>,[]; <span class="string">'lb'</span>,[]; <span class="string">'ub'</span>,[]; <span class="string">'closeOthers'</span>,true; <span class="string">'mediaOnly'</span>,false});
-0060 mets=p.mets;
-0061 <span class="keyword">if</span> ~isempty(mets) &amp;&amp; ~islogical(mets) &amp;&amp; ~isnumeric(mets)
-0062     mets=convertCharArray(mets);
-0063 <span class="keyword">end</span>
-0064 
-0065 lb=p.lb;
-0066 <span class="keyword">if</span> isempty(lb)
-0067     <span class="keyword">if</span> isfield(model,<span class="string">'annotation'</span>) &amp;&amp; isfield(model.annotation,<span class="string">'defaultLB'</span>)
-0068         lb = model.annotation.defaultLB;
-0069     <span class="keyword">else</span>
-0070         lb = -1000;
-0071     <span class="keyword">end</span>
-0072 <span class="keyword">end</span>
-0073 
-0074 ub=p.ub;
-0075 <span class="keyword">if</span> isempty(ub)
-0076     <span class="keyword">if</span> isfield(model,<span class="string">'annotation'</span>) &amp;&amp; isfield(model.annotation,<span class="string">'defaultUB'</span>)
-0077         ub = model.annotation.defaultUB;
-0078     <span class="keyword">else</span>
-0079         ub = 1000;
-0080     <span class="keyword">end</span>
-0081 <span class="keyword">end</span>
-0082 
-0083 closeOthers=p.closeOthers;
-0084 <span class="keyword">if</span> isempty(closeOthers)
-0085     closeOthers = true;
-0086 <span class="keyword">end</span>
-0087 
-0088 mediaOnly=p.mediaOnly;
-0089 <span class="keyword">if</span> mediaOnly
-0090     <span class="keyword">if</span> ~all(isfield(model,{<span class="string">'compNames'</span>,<span class="string">'metComps'</span>}))
-0091         error(<span class="string">'mediaOnly option requires the &quot;compNames&quot; and &quot;metComps&quot; model fields.'</span>);
-0092     <span class="keyword">end</span>
-0093 <span class="keyword">end</span>
-0094 
-0095 
-0096 <span class="comment">% for models with an &quot;unconstrained&quot; field, generate a version of the model</span>
-0097 <span class="comment">% where all the unconstrained metabolites have stoichiometric coeffs set to</span>
-0098 <span class="comment">% zero, but remain in the model to avoid index changes</span>
-0099 model_temp = model;
-0100 <span class="keyword">if</span> isfield(model,<span class="string">'unconstrained'</span>)
-0101     model_temp.S(model_temp.unconstrained == 1,:) = 0;
-0102 <span class="keyword">end</span>
-0103 
-0104 <span class="comment">% find exchange rxns, ignoring those involving more than one metabolite</span>
-0105 [~,exchRxnInd] = getExchangeRxns(model);
-0106 exchRxnInd(sum(model_temp.S(:,exchRxnInd) ~= 0,1) &gt; 1) = [];
-0107 
-0108 <span class="comment">% find all exchanged metabolites</span>
-0109 exchMetInd = find(any(model_temp.S(:,exchRxnInd) ~= 0,2));
+0026 <span class="comment">%     close the exchange reactions of all exchanged metabolites that are not</span>
+0027 <span class="comment">%     in the provided list. This prevents import of these metabolites and</span>
+0028 <span class="comment">%     leaves their export unchanged. Set to false, with a warning, when the</span>
+0029 <span class="comment">%     exchange reactions are not all written in the same direction</span>
+0030 <span class="comment">%     (default true).</span>
+0031 <span class="comment">% mediaOnly : logical</span>
+0032 <span class="comment">%     only consider exchange reactions involving exchange to or from the</span>
+0033 <span class="comment">%     extracellular (media) compartment. Reactions such as &quot;sink&quot; reactions</span>
+0034 <span class="comment">%     that exchange metabolites directly with an intracellular compartment</span>
+0035 <span class="comment">%     are therefore ignored, although &quot;getExchangeRxns&quot; identifies such</span>
+0036 <span class="comment">%     reactions as exchange reactions. The extracellular compartment is the</span>
+0037 <span class="comment">%     one named &quot;extracellular&quot; in the &quot;compNames&quot; field (case insensitive).</span>
+0038 <span class="comment">%     The &quot;compNames&quot; and &quot;metComps&quot; fields are required; an error is thrown</span>
+0039 <span class="comment">%     if either is missing or if no compartment has this name</span>
+0040 <span class="comment">%     (default false).</span>
+0041 <span class="comment">%</span>
+0042 <span class="comment">% Returns</span>
+0043 <span class="comment">% -------</span>
+0044 <span class="comment">% exchModel : struct</span>
+0045 <span class="comment">%     a model structure with updated exchange flux bounds for the provided</span>
+0046 <span class="comment">%     set of metabolites.</span>
+0047 <span class="comment">% unusedMets : cell</span>
+0048 <span class="comment">%     metabolites in mets that were not used because they are not involved</span>
+0049 <span class="comment">%     in any of the considered exchange reactions in the model.</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">% Examples</span>
+0052 <span class="comment">% --------</span>
+0053 <span class="comment">%     exchModel = setExchangeBounds(model, mets, lb, ub, closeOthers, ...</span>
+0054 <span class="comment">%         mediaOnly);</span>
+0055 <span class="comment">%</span>
+0056 <span class="comment">% Notes</span>
+0057 <span class="comment">% -----</span>
+0058 <span class="comment">% Exchange reactions involving more than one metabolite are ignored.</span>
+0059 
+0060 
+0061 <span class="comment">% handle input arguments</span>
+0062 p=parseRAVENargs(varargin, {<span class="string">'mets'</span>,[]; <span class="string">'lb'</span>,[]; <span class="string">'ub'</span>,[]; <span class="string">'closeOthers'</span>,true; <span class="string">'mediaOnly'</span>,false});
+0063 mets=p.mets;
+0064 <span class="keyword">if</span> ~isempty(mets) &amp;&amp; ~islogical(mets) &amp;&amp; ~isnumeric(mets)
+0065     mets=convertCharArray(mets);
+0066 <span class="keyword">end</span>
+0067 
+0068 lb=p.lb;
+0069 <span class="keyword">if</span> isempty(lb)
+0070     <span class="keyword">if</span> isfield(model,<span class="string">'annotation'</span>) &amp;&amp; isfield(model.annotation,<span class="string">'defaultLB'</span>)
+0071         lb = model.annotation.defaultLB;
+0072     <span class="keyword">else</span>
+0073         lb = -1000;
+0074     <span class="keyword">end</span>
+0075 <span class="keyword">end</span>
+0076 
+0077 ub=p.ub;
+0078 <span class="keyword">if</span> isempty(ub)
+0079     <span class="keyword">if</span> isfield(model,<span class="string">'annotation'</span>) &amp;&amp; isfield(model.annotation,<span class="string">'defaultUB'</span>)
+0080         ub = model.annotation.defaultUB;
+0081     <span class="keyword">else</span>
+0082         ub = 1000;
+0083     <span class="keyword">end</span>
+0084 <span class="keyword">end</span>
+0085 
+0086 closeOthers=p.closeOthers;
+0087 <span class="keyword">if</span> isempty(closeOthers)
+0088     closeOthers = true;
+0089 <span class="keyword">end</span>
+0090 
+0091 mediaOnly=p.mediaOnly;
+0092 <span class="keyword">if</span> mediaOnly
+0093     <span class="keyword">if</span> ~all(isfield(model,{<span class="string">'compNames'</span>,<span class="string">'metComps'</span>}))
+0094         error(<span class="string">'mediaOnly option requires the &quot;compNames&quot; and &quot;metComps&quot; model fields.'</span>);
+0095     <span class="keyword">end</span>
+0096 <span class="keyword">end</span>
+0097 
+0098 
+0099 <span class="comment">% for models with an &quot;unconstrained&quot; field, generate a version of the model</span>
+0100 <span class="comment">% where all the unconstrained metabolites have stoichiometric coeffs set to</span>
+0101 <span class="comment">% zero, but remain in the model to avoid index changes</span>
+0102 model_temp = model;
+0103 <span class="keyword">if</span> isfield(model,<span class="string">'unconstrained'</span>)
+0104     model_temp.S(model_temp.unconstrained == 1,:) = 0;
+0105 <span class="keyword">end</span>
+0106 
+0107 <span class="comment">% find exchange rxns, ignoring those involving more than one metabolite</span>
+0108 [~,exchRxnInd] = getExchangeRxns(model);
+0109 exchRxnInd(sum(model_temp.S(:,exchRxnInd) ~= 0,1) &gt; 1) = [];
 0110 
-0111 <span class="keyword">if</span> ( mediaOnly )
-0112     <span class="comment">% ignore exchanged metabolites in non-extracellular compartments and</span>
-0113     <span class="comment">% any exchange reactions involving these metabolites</span>
-0114     [~,extCompInd] = ismember(<span class="string">'extracellular'</span>,lower(model.compNames));
-0115     <span class="keyword">if</span> extCompInd &gt; 0
-0116         ignoreMet = (model.metComps(exchMetInd) ~= extCompInd);
-0117     <span class="keyword">else</span>
-0118         error(<span class="string">'Could not find any compartments named &quot;extracellular&quot;.'</span>);
-0119     <span class="keyword">end</span>
-0120     ignoreRxn = any(model.S(exchMetInd(ignoreMet),exchRxnInd) ~= 0,1);
-0121     exchMetInd(ignoreMet) = [];
-0122     exchRxnInd(ignoreRxn) = [];
-0123 <span class="keyword">end</span>
-0124 
-0125 <span class="comment">% Check that all exchange reactions are formulated in the same direction.</span>
-0126 <span class="comment">% If not, this means that negative flux indicates import for some exchange</span>
-0127 <span class="comment">% reactions, but indicates export for others. Therefore, the LB and UB</span>
-0128 <span class="comment">% would need to be specified differently depending on the exchange reaction</span>
-0129 <span class="comment">% direction, which is error-prone.</span>
-0130 <span class="keyword">if</span> all(all(model.S(exchMetInd,exchRxnInd) &lt;= 0))
-0131     importDir = <span class="string">'backward'</span>;
-0132 <span class="keyword">elseif</span> all(all(model.S(exchMetInd,exchRxnInd) &gt;= 0))
-0133     importDir = <span class="string">'forward'</span>;
-0134 <span class="keyword">else</span>
-0135     fprintf(<span class="string">'WARNING: Some exchange reactions differ in direction, and therefore have opposite meanings of LB and UB.\n'</span>);
-0136     <span class="keyword">if</span> closeOthers
-0137         fprintf(<span class="string">'         Therefore, the &quot;closeOthers&quot; option will be set to FALSE.\n'</span>);
-0138     <span class="keyword">end</span>
-0139     closeOthers = false;
-0140 <span class="keyword">end</span>
-0141 
-0142 <span class="comment">% prepare exchanged metabolites and bounds</span>
-0143 <span class="keyword">if</span> ~isempty(mets)
-0144     
-0145     <span class="comment">% prepare lb and ub variables</span>
-0146     <span class="keyword">if</span> numel(lb) == 1
-0147         lb = lb*ones(size(mets));
-0148     <span class="keyword">elseif</span> numel(lb) ~= numel(mets)
-0149         error(<span class="string">'lb must be a single value or a vector of equal length as mets'</span>);
-0150     <span class="keyword">end</span>
-0151     <span class="keyword">if</span> numel(ub) == 1
-0152         ub = ub*ones(size(mets));
-0153     <span class="keyword">elseif</span> numel(ub) ~= numel(mets)
-0154         error(<span class="string">'ub must be a single value or a vector of equal length as mets'</span>);
-0155     <span class="keyword">end</span>
-0156     
-0157     <span class="comment">% map provided mets to exchanged metabolites</span>
-0158     <span class="keyword">if</span> isnumeric(mets)
-0159         <span class="comment">% mets are provided as indices</span>
-0160         [isExch,metInd] = ismember(mets,exchMetInd);    
-0161     <span class="keyword">elseif</span> sum(ismember(lower(mets),lower(model.metNames))) &gt; sum(ismember(mets,model.mets))
-0162         <span class="comment">% assume that mets are provided as names</span>
-0163         [isExch,metInd] = ismember(lower(mets),lower(model.metNames(exchMetInd)));
-0164     <span class="keyword">else</span>
-0165         <span class="comment">% assume that mets are provided as met IDs</span>
-0166         [isExch,metInd] = ismember(mets,model.mets(exchMetInd));
-0167     <span class="keyword">end</span>
-0168     
-0169     <span class="comment">% get exchanged met indices and determine unused (non-exchanged) mets</span>
-0170     unusedMets = mets(~isExch);
-0171     exchMetInd = exchMetInd(metInd(isExch));
-0172     
-0173     <span class="comment">% update bound vectors</span>
-0174     lb = lb(isExch);
-0175     ub = ub(isExch);
-0176     
-0177 <span class="keyword">else</span>
-0178     <span class="comment">% if no mets were provided, use all exchanged mets</span>
-0179     <span class="keyword">if</span> numel(lb) &gt; 1 || numel(ub) &gt; 1
-0180         error(<span class="string">'Only one upper and one lower bound may be provide if metabolites are not specified.'</span>);
-0181     <span class="keyword">else</span>
-0182         lb = lb*ones(size(exchMetInd));
-0183         ub = ub*ones(size(exchMetInd));
-0184     <span class="keyword">end</span>
-0185     unusedMets = {};
-0186 <span class="keyword">end</span>
-0187 
-0188 <span class="comment">% check that at least one exchanged metabolite matches</span>
-0189 <span class="keyword">if</span> isempty(exchMetInd)
-0190     fprintf(<span class="string">'None of the provided metabolites were found in any exchange reactions.\n'</span>);
-0191     exchModel = model;
-0192     <span class="keyword">return</span>
-0193 <span class="keyword">end</span>
-0194 
-0195 <span class="comment">% determine which metabolite is exchanged in each exchange reaction</span>
-0196 [metInd,rxnInd] = find(model_temp.S(exchMetInd,exchRxnInd) ~= 0);
+0111 <span class="comment">% find all exchanged metabolites</span>
+0112 exchMetInd = find(any(model_temp.S(:,exchRxnInd) ~= 0,2));
+0113 
+0114 <span class="keyword">if</span> ( mediaOnly )
+0115     <span class="comment">% ignore exchanged metabolites in non-extracellular compartments and</span>
+0116     <span class="comment">% any exchange reactions involving these metabolites</span>
+0117     [~,extCompInd] = ismember(<span class="string">'extracellular'</span>,lower(model.compNames));
+0118     <span class="keyword">if</span> extCompInd &gt; 0
+0119         ignoreMet = (model.metComps(exchMetInd) ~= extCompInd);
+0120     <span class="keyword">else</span>
+0121         error(<span class="string">'Could not find any compartments named &quot;extracellular&quot;.'</span>);
+0122     <span class="keyword">end</span>
+0123     ignoreRxn = any(model.S(exchMetInd(ignoreMet),exchRxnInd) ~= 0,1);
+0124     exchMetInd(ignoreMet) = [];
+0125     exchRxnInd(ignoreRxn) = [];
+0126 <span class="keyword">end</span>
+0127 
+0128 <span class="comment">% Check that all exchange reactions are formulated in the same direction.</span>
+0129 <span class="comment">% If not, this means that negative flux indicates import for some exchange</span>
+0130 <span class="comment">% reactions, but indicates export for others. Therefore, the LB and UB</span>
+0131 <span class="comment">% would need to be specified differently depending on the exchange reaction</span>
+0132 <span class="comment">% direction, which is error-prone.</span>
+0133 <span class="keyword">if</span> all(all(model.S(exchMetInd,exchRxnInd) &lt;= 0))
+0134     importDir = <span class="string">'backward'</span>;
+0135 <span class="keyword">elseif</span> all(all(model.S(exchMetInd,exchRxnInd) &gt;= 0))
+0136     importDir = <span class="string">'forward'</span>;
+0137 <span class="keyword">else</span>
+0138     fprintf(<span class="string">'WARNING: Some exchange reactions differ in direction, and therefore have opposite meanings of LB and UB.\n'</span>);
+0139     <span class="keyword">if</span> closeOthers
+0140         fprintf(<span class="string">'         Therefore, the &quot;closeOthers&quot; option will be set to FALSE.\n'</span>);
+0141     <span class="keyword">end</span>
+0142     closeOthers = false;
+0143 <span class="keyword">end</span>
+0144 
+0145 <span class="comment">% prepare exchanged metabolites and bounds</span>
+0146 <span class="keyword">if</span> ~isempty(mets)
+0147     
+0148     <span class="comment">% prepare lb and ub variables</span>
+0149     <span class="keyword">if</span> numel(lb) == 1
+0150         lb = lb*ones(size(mets));
+0151     <span class="keyword">elseif</span> numel(lb) ~= numel(mets)
+0152         error(<span class="string">'lb must be a single value or a vector of equal length as mets'</span>);
+0153     <span class="keyword">end</span>
+0154     <span class="keyword">if</span> numel(ub) == 1
+0155         ub = ub*ones(size(mets));
+0156     <span class="keyword">elseif</span> numel(ub) ~= numel(mets)
+0157         error(<span class="string">'ub must be a single value or a vector of equal length as mets'</span>);
+0158     <span class="keyword">end</span>
+0159     
+0160     <span class="comment">% map provided mets to exchanged metabolites</span>
+0161     <span class="keyword">if</span> isnumeric(mets)
+0162         <span class="comment">% mets are provided as indices</span>
+0163         [isExch,metInd] = ismember(mets,exchMetInd);    
+0164     <span class="keyword">elseif</span> sum(ismember(lower(mets),lower(model.metNames))) &gt; sum(ismember(mets,model.mets))
+0165         <span class="comment">% assume that mets are provided as names</span>
+0166         [isExch,metInd] = ismember(lower(mets),lower(model.metNames(exchMetInd)));
+0167     <span class="keyword">else</span>
+0168         <span class="comment">% assume that mets are provided as met IDs</span>
+0169         [isExch,metInd] = ismember(mets,model.mets(exchMetInd));
+0170     <span class="keyword">end</span>
+0171     
+0172     <span class="comment">% get exchanged met indices and determine unused (non-exchanged) mets</span>
+0173     unusedMets = mets(~isExch);
+0174     exchMetInd = exchMetInd(metInd(isExch));
+0175     
+0176     <span class="comment">% update bound vectors</span>
+0177     lb = lb(isExch);
+0178     ub = ub(isExch);
+0179     
+0180 <span class="keyword">else</span>
+0181     <span class="comment">% if no mets were provided, use all exchanged mets</span>
+0182     <span class="keyword">if</span> numel(lb) &gt; 1 || numel(ub) &gt; 1
+0183         error(<span class="string">'Only one upper and one lower bound may be provide if metabolites are not specified.'</span>);
+0184     <span class="keyword">else</span>
+0185         lb = lb*ones(size(exchMetInd));
+0186         ub = ub*ones(size(exchMetInd));
+0187     <span class="keyword">end</span>
+0188     unusedMets = {};
+0189 <span class="keyword">end</span>
+0190 
+0191 <span class="comment">% check that at least one exchanged metabolite matches</span>
+0192 <span class="keyword">if</span> isempty(exchMetInd)
+0193     fprintf(<span class="string">'None of the provided metabolites were found in any exchange reactions.\n'</span>);
+0194     exchModel = model;
+0195     <span class="keyword">return</span>
+0196 <span class="keyword">end</span>
 0197 
-0198 <span class="comment">% check for any metabolites that are exchanged in more than one reaction.</span>
-0199 <span class="comment">% metInd holds one entry per (metabolite,reaction) pair, so a metabolite</span>
-0200 <span class="comment">% involved in more than one exchange reaction is a repeated *value* in</span>
-0201 <span class="comment">% metInd, not a position past numel(unique(metInd)) -- comparing those two</span>
-0202 <span class="comment">% index spaces directly (as a previous version of this check did) compares</span>
-0203 <span class="comment">% positions in the unique list against indices into metInd itself.</span>
-0204 [uniqueMetInd,~,ic] = unique(metInd);
-0205 counts = accumarray(ic,1);
-0206 multiMetInd = exchMetInd(uniqueMetInd(counts&gt;1));
-0207 <span class="keyword">if</span> ~isempty(multiMetInd)
-0208     fprintf(<span class="string">'WARNING: The following metabolites are involved in more than one exchange reaction:\n'</span>);
-0209     fprintf(<span class="string">'\t%s\n'</span>,model.metNames{multiMetInd(1:min(numel(multiMetInd),10))});
-0210     <span class="keyword">if</span> numel(multiMetInd) &gt; 10
-0211         fprintf(<span class="string">'\t... and %u more.\n'</span>,numel(multiMetInd)-10);
-0212     <span class="keyword">end</span>
-0213 <span class="keyword">end</span>
-0214 
-0215 <span class="comment">% set exchange reaction bounds</span>
-0216 model = <a href="setParam.html" class="code" title="function model=setParam(model, paramType, rxnList, params, var)">setParam</a>(model,<span class="string">'lb'</span>,exchRxnInd(rxnInd),lb(metInd));
-0217 model = <a href="setParam.html" class="code" title="function model=setParam(model, paramType, rxnList, params, var)">setParam</a>(model,<span class="string">'ub'</span>,exchRxnInd(rxnInd),ub(metInd));
-0218 
-0219 <span class="keyword">if</span> closeOthers
-0220     <span class="comment">% constrain import of all other exchange reactions to zero</span>
-0221     constrainInd = setdiff(exchRxnInd,exchRxnInd(rxnInd));
-0222     <span class="keyword">if</span> strcmp(importDir,<span class="string">'backward'</span>)
-0223         model = <a href="setParam.html" class="code" title="function model=setParam(model, paramType, rxnList, params, var)">setParam</a>(model,<span class="string">'lb'</span>,constrainInd,0);
-0224     <span class="keyword">else</span>
-0225         model = <a href="setParam.html" class="code" title="function model=setParam(model, paramType, rxnList, params, var)">setParam</a>(model,<span class="string">'ub'</span>,constrainInd,0);
-0226     <span class="keyword">end</span>
-0227 <span class="keyword">end</span>
-0228 
-0229 <span class="comment">% assign output model</span>
-0230 exchModel = model;
+0198 <span class="comment">% determine which metabolite is exchanged in each exchange reaction</span>
+0199 [metInd,rxnInd] = find(model_temp.S(exchMetInd,exchRxnInd) ~= 0);
+0200 
+0201 <span class="comment">% check for any metabolites that are exchanged in more than one reaction.</span>
+0202 <span class="comment">% metInd holds one entry per (metabolite,reaction) pair, so a metabolite</span>
+0203 <span class="comment">% involved in more than one exchange reaction is a repeated *value* in</span>
+0204 <span class="comment">% metInd, not a position past numel(unique(metInd)) -- comparing those two</span>
+0205 <span class="comment">% index spaces directly (as a previous version of this check did) compares</span>
+0206 <span class="comment">% positions in the unique list against indices into metInd itself.</span>
+0207 [uniqueMetInd,~,ic] = unique(metInd);
+0208 counts = accumarray(ic,1);
+0209 multiMetInd = exchMetInd(uniqueMetInd(counts&gt;1));
+0210 <span class="keyword">if</span> ~isempty(multiMetInd)
+0211     fprintf(<span class="string">'WARNING: The following metabolites are involved in more than one exchange reaction:\n'</span>);
+0212     fprintf(<span class="string">'\t%s\n'</span>,model.metNames{multiMetInd(1:min(numel(multiMetInd),10))});
+0213     <span class="keyword">if</span> numel(multiMetInd) &gt; 10
+0214         fprintf(<span class="string">'\t... and %u more.\n'</span>,numel(multiMetInd)-10);
+0215     <span class="keyword">end</span>
+0216 <span class="keyword">end</span>
+0217 
+0218 <span class="comment">% set exchange reaction bounds</span>
+0219 model = <a href="setParam.html" class="code" title="function model=setParam(model, paramType, rxnList, params, var)">setParam</a>(model,<span class="string">'lb'</span>,exchRxnInd(rxnInd),lb(metInd));
+0220 model = <a href="setParam.html" class="code" title="function model=setParam(model, paramType, rxnList, params, var)">setParam</a>(model,<span class="string">'ub'</span>,exchRxnInd(rxnInd),ub(metInd));
+0221 
+0222 <span class="keyword">if</span> closeOthers
+0223     <span class="comment">% constrain import of all other exchange reactions to zero</span>
+0224     constrainInd = setdiff(exchRxnInd,exchRxnInd(rxnInd));
+0225     <span class="keyword">if</span> strcmp(importDir,<span class="string">'backward'</span>)
+0226         model = <a href="setParam.html" class="code" title="function model=setParam(model, paramType, rxnList, params, var)">setParam</a>(model,<span class="string">'lb'</span>,constrainInd,0);
+0227     <span class="keyword">else</span>
+0228         model = <a href="setParam.html" class="code" title="function model=setParam(model, paramType, rxnList, params, var)">setParam</a>(model,<span class="string">'ub'</span>,constrainInd,0);
+0229     <span class="keyword">end</span>
+0230 <span class="keyword">end</span>
 0231 
-0232</pre></div>
+0232 <span class="comment">% assign output model</span>
+0233 exchModel = model;
+0234 
+0235</pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

@@ -29,11 +29,11 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> saveDeltaGCSV  Save metDeltaG and rxnDeltaG to CSV files.
 
- Writes a two-column table (identifier, deltaG) per side, one row per
- entity, in model order. An entity with no value stored is written as
- NaN, unchanged from whatever the model field holds -- this function does
- not interpret or substitute values. Pass '' for either metCsv or rxnCsv
- to skip that side.
+ Writes a two-column table (identifier, deltaG) for metabolites and one for
+ reactions, one row per entity, in model order. Values are written as the
+ model field holds them, so an entity with no value stored is written as
+ NaN. A file is skipped when its path is '' or when the model lacks the
+ corresponding field.
 
  Parameters
  ----------
@@ -72,11 +72,11 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function saveDeltaGCSV(model, varargin)</a>
 0002 <span class="comment">% saveDeltaGCSV  Save metDeltaG and rxnDeltaG to CSV files.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Writes a two-column table (identifier, deltaG) per side, one row per</span>
-0005 <span class="comment">% entity, in model order. An entity with no value stored is written as</span>
-0006 <span class="comment">% NaN, unchanged from whatever the model field holds -- this function does</span>
-0007 <span class="comment">% not interpret or substitute values. Pass '' for either metCsv or rxnCsv</span>
-0008 <span class="comment">% to skip that side.</span>
+0004 <span class="comment">% Writes a two-column table (identifier, deltaG) for metabolites and one for</span>
+0005 <span class="comment">% reactions, one row per entity, in model order. Values are written as the</span>
+0006 <span class="comment">% model field holds them, so an entity with no value stored is written as</span>
+0007 <span class="comment">% NaN. A file is skipped when its path is '' or when the model lacks the</span>
+0008 <span class="comment">% corresponding field.</span>
 0009 <span class="comment">%</span>
 0010 <span class="comment">% Parameters</span>
 0011 <span class="comment">% ----------</span>

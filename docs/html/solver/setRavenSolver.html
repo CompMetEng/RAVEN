@@ -38,15 +38,15 @@
      string with solver name. The following options are available:
 
      - glpk : uses RAVEN-provided binaries. Solves LPs and MILPs; for
-       MILPs a RAVEN:glpkMILP warning recommends Gurobi, which is much
-       faster and more reliable on larger problems.
+       MILPs the RAVEN:glpkMILP warning states that Gurobi is much faster
+       and more reliable for larger problems.
      - gurobi : requires a working Gurobi installation.
      - scip : requires a SCIP MEX interface. RAVEN provides a
        precompiled binary for Windows only.
      - cobra : requires a working COBRA Toolbox installation. RAVEN
        parses the problem to COBRA and uses the solver that is set by
-       changeCobraSolver. MILPs are refused when COBRA's MILP solver is
-       GLPK.
+       changeCobraSolver. For MILPs, the RAVEN:glpkMILP warning is issued
+       when COBRA's MILP solver is GLPK.
 
  Examples
  --------
@@ -77,15 +77,15 @@ This function is called by:
 0010 <span class="comment">%     string with solver name. The following options are available:</span>
 0011 <span class="comment">%</span>
 0012 <span class="comment">%     - glpk : uses RAVEN-provided binaries. Solves LPs and MILPs; for</span>
-0013 <span class="comment">%       MILPs a RAVEN:glpkMILP warning recommends Gurobi, which is much</span>
-0014 <span class="comment">%       faster and more reliable on larger problems.</span>
+0013 <span class="comment">%       MILPs the RAVEN:glpkMILP warning states that Gurobi is much faster</span>
+0014 <span class="comment">%       and more reliable for larger problems.</span>
 0015 <span class="comment">%     - gurobi : requires a working Gurobi installation.</span>
 0016 <span class="comment">%     - scip : requires a SCIP MEX interface. RAVEN provides a</span>
 0017 <span class="comment">%       precompiled binary for Windows only.</span>
 0018 <span class="comment">%     - cobra : requires a working COBRA Toolbox installation. RAVEN</span>
 0019 <span class="comment">%       parses the problem to COBRA and uses the solver that is set by</span>
-0020 <span class="comment">%       changeCobraSolver. MILPs are refused when COBRA's MILP solver is</span>
-0021 <span class="comment">%       GLPK.</span>
+0020 <span class="comment">%       changeCobraSolver. For MILPs, the RAVEN:glpkMILP warning is issued</span>
+0021 <span class="comment">%       when COBRA's MILP solver is GLPK.</span>
 0022 <span class="comment">%</span>
 0023 <span class="comment">% Examples</span>
 0024 <span class="comment">% --------</span>

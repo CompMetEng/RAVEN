@@ -40,16 +40,19 @@
  Name-Value Arguments
  --------------------
  toMinimize : cell or logical or double
-     either a cell array of reaction IDs, a logical vector with the same
-     number of elements as reactions in the model, or a vector of indexes
-     for the reactions that should be minimized (default model.rxns).
+     a cell array of reaction IDs, a logical vector with the same number
+     of elements as reactions in the model, or a vector of indexes for the
+     reactions that should be minimised (default model.rxns).
  params : struct
-     *obsolete option*.
+     solver parameters passed to optimizeProb. With formulation
+     'reversible', intTol (10^-9), TimeLimit (300) and Seed (26) are set
+     when absent (default empty struct).
  scores : double
-     vector of weights for the reactions. Negative scores should not have
-     flux. Positive scores are not possible in this implementation, and
-     they are changed to max(scores(scores&lt;0)), or to 0 if scores has no
-     negative entry at all. Must have the same dimension as toMinimize
+     vector of weights for the reactions. A reaction with a negative
+     score adds the negated score to the minimised objective when it
+     carries flux. Scores of 0 or above are not supported and are
+     changed to max(scores(scores&lt;0)), or to 0 if scores has no negative
+     entry at all. Must have the same dimension as toMinimize
      (find(toMinimize) if it is a logical vector) (default -1 for all
      reactions).
  formulation : char
@@ -57,24 +60,26 @@
 
      - 'irrev' : convert the model to irreversible format and use one
        binary per irreversible reaction, so a reversible reaction that is
-       minimized costs two binaries. The magnitude of the fluxes is
+       minimised needs two binaries. The magnitude of the fluxes is
        estimated with an LP first, which also provides a start solution.
      - 'reversible' : keep the model reversible and use one binary per
-       reaction, at the cost of a larger constraint matrix. Fewer binaries
-       makes this the faster formulation on large problems, but it needs a
-       solver that handles MILPs well and no LP estimate of the flux
-       magnitudes is made, so an arbitrary large flux is assumed.
+       reaction, with a larger constraint matrix. The formulation has
+       fewer binaries but needs a solver that handles MILPs well. No LP
+       estimate of the flux magnitudes is made, and a fixed flux of 1000 is
+       assumed.
  verbose : logical
      if true, the MILP progression will be shown (default false).
  resolveTies : logical
-     if true, pin the MILP's degenerate optimum to a canonical answer instead of
-     relying on Seed alone: hold the primary (scores) objective at its optimum,
-     then minimize the count of &quot;on&quot; reactions, then, among the sparsest, minimize
-     their summed reaction-id rank (lowest ids preferred). Two extra MILP solves;
-     best-effort, so a phase that does not converge within TimeLimit is dropped
-     with a warning rather than changing the result. Only implemented for
-     formulation='reversible' -- errors if combined with 'irrev'. Matches
-     raven-toolbox's resolve_ties (raven-gecko-parity#104) (default false).
+     if true, select one optimum among the degenerate optima of the MILP
+     instead of relying on Seed: the primary (scores) objective is held
+     at its optimum, the count of &quot;on&quot; reactions is minimised, and among
+     the sparsest solutions the summed reaction-id rank is minimised
+     (lowest ids preferred). This takes two extra MILP solves. A phase
+     that is not proven optimal within TimeLimit gives a warning, and the
+     solution of the last phase is used when it is feasible. Only
+     implemented for formulation='reversible'; combined with 'irrev' it
+     gives an error. Matches resolve_ties in raven-toolbox
+     (raven-gecko-parity#104) (default false).
 
  Returns
  -------
@@ -90,8 +95,8 @@
      - -1 : no solution found, either because the problem is infeasible or
        because the solver reached its time limit before finding one
      - -2 : a solution was found but is not proven optimal, because the
-       solver stopped before reaching optimality. It is returned, but it
-       may use more fluxes than the minimum
+       solver stopped before reaching optimality. It is returned and may
+       use more fluxes than the minimum
 
  Examples
  --------
@@ -99,14 +104,17 @@
 
  Notes
  -----
- Uses 1000 mmol/gDW/h as an arbitary large flux. Could possibly cause
- problems if the fluxes in the model are larger than that.</pre></div>
+ The binary of a reaction is linked to its flux through a large flux
+ value. With formulation 'irrev' the value is the larger of 1000 and 5
+ times the largest flux of an LP solution; with 'reversible' it is 1000
+ (mmol/gDW/h). A flux above this value is cut off by the binary constraint
+ of the reaction, so the MILP can become infeasible.</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>	checkSolution  Check if a solver result is feasible and optimal.</li><li><a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>	optimizeProb  Optimize an LP or MILP formulated in COBRA terms.</li><li><a href="solveLP.html" class="code" title="function [solution, hsSolOut]=solveLP(model,varargin)">solveLP</a>	solveLP  Solve a linear programming problem.</li></ul>
+<li><a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>	checkSolution  Check if a solver result is feasible and optimal.</li><li><a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>	optimizeProb  Optimise an LP or MILP formulated in COBRA terms.</li><li><a href="solveLP.html" class="code" title="function [solution, hsSolOut]=solveLP(model,varargin)">solveLP</a>	solveLP  Solve a linear programming problem.</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
 <li><a href="solveLP.html" class="code" title="function [solution, hsSolOut]=solveLP(model,varargin)">solveLP</a>	solveLP  Solve a linear programming problem.</li></ul>
@@ -131,531 +139,539 @@ This function is called by:
 0012 <span class="comment">% Name-Value Arguments</span>
 0013 <span class="comment">% --------------------</span>
 0014 <span class="comment">% toMinimize : cell or logical or double</span>
-0015 <span class="comment">%     either a cell array of reaction IDs, a logical vector with the same</span>
-0016 <span class="comment">%     number of elements as reactions in the model, or a vector of indexes</span>
-0017 <span class="comment">%     for the reactions that should be minimized (default model.rxns).</span>
+0015 <span class="comment">%     a cell array of reaction IDs, a logical vector with the same number</span>
+0016 <span class="comment">%     of elements as reactions in the model, or a vector of indexes for the</span>
+0017 <span class="comment">%     reactions that should be minimised (default model.rxns).</span>
 0018 <span class="comment">% params : struct</span>
-0019 <span class="comment">%     *obsolete option*.</span>
-0020 <span class="comment">% scores : double</span>
-0021 <span class="comment">%     vector of weights for the reactions. Negative scores should not have</span>
-0022 <span class="comment">%     flux. Positive scores are not possible in this implementation, and</span>
-0023 <span class="comment">%     they are changed to max(scores(scores&lt;0)), or to 0 if scores has no</span>
-0024 <span class="comment">%     negative entry at all. Must have the same dimension as toMinimize</span>
-0025 <span class="comment">%     (find(toMinimize) if it is a logical vector) (default -1 for all</span>
-0026 <span class="comment">%     reactions).</span>
-0027 <span class="comment">% formulation : char</span>
-0028 <span class="comment">%     which MILP formulation to build (default 'irrev'):</span>
-0029 <span class="comment">%</span>
-0030 <span class="comment">%     - 'irrev' : convert the model to irreversible format and use one</span>
-0031 <span class="comment">%       binary per irreversible reaction, so a reversible reaction that is</span>
-0032 <span class="comment">%       minimized costs two binaries. The magnitude of the fluxes is</span>
-0033 <span class="comment">%       estimated with an LP first, which also provides a start solution.</span>
-0034 <span class="comment">%     - 'reversible' : keep the model reversible and use one binary per</span>
-0035 <span class="comment">%       reaction, at the cost of a larger constraint matrix. Fewer binaries</span>
-0036 <span class="comment">%       makes this the faster formulation on large problems, but it needs a</span>
-0037 <span class="comment">%       solver that handles MILPs well and no LP estimate of the flux</span>
-0038 <span class="comment">%       magnitudes is made, so an arbitrary large flux is assumed.</span>
-0039 <span class="comment">% verbose : logical</span>
-0040 <span class="comment">%     if true, the MILP progression will be shown (default false).</span>
-0041 <span class="comment">% resolveTies : logical</span>
-0042 <span class="comment">%     if true, pin the MILP's degenerate optimum to a canonical answer instead of</span>
-0043 <span class="comment">%     relying on Seed alone: hold the primary (scores) objective at its optimum,</span>
-0044 <span class="comment">%     then minimize the count of &quot;on&quot; reactions, then, among the sparsest, minimize</span>
-0045 <span class="comment">%     their summed reaction-id rank (lowest ids preferred). Two extra MILP solves;</span>
-0046 <span class="comment">%     best-effort, so a phase that does not converge within TimeLimit is dropped</span>
-0047 <span class="comment">%     with a warning rather than changing the result. Only implemented for</span>
-0048 <span class="comment">%     formulation='reversible' -- errors if combined with 'irrev'. Matches</span>
-0049 <span class="comment">%     raven-toolbox's resolve_ties (raven-gecko-parity#104) (default false).</span>
-0050 <span class="comment">%</span>
-0051 <span class="comment">% Returns</span>
-0052 <span class="comment">% -------</span>
-0053 <span class="comment">% x : double</span>
-0054 <span class="comment">%     the corresponding fluxes for the full model.</span>
-0055 <span class="comment">% I : double</span>
-0056 <span class="comment">%     the indexes of the reactions in toMinimize that were used in the</span>
-0057 <span class="comment">%     solution.</span>
-0058 <span class="comment">% exitFlag : double</span>
-0059 <span class="comment">%     exit status:</span>
-0060 <span class="comment">%</span>
-0061 <span class="comment">%     - 1 : optimal solution found</span>
-0062 <span class="comment">%     - -1 : no solution found, either because the problem is infeasible or</span>
-0063 <span class="comment">%       because the solver reached its time limit before finding one</span>
-0064 <span class="comment">%     - -2 : a solution was found but is not proven optimal, because the</span>
-0065 <span class="comment">%       solver stopped before reaching optimality. It is returned, but it</span>
-0066 <span class="comment">%       may use more fluxes than the minimum</span>
-0067 <span class="comment">%</span>
-0068 <span class="comment">% Examples</span>
-0069 <span class="comment">% --------</span>
-0070 <span class="comment">%     [x, I, exitFlag] = getMinNrFluxes(model, toMinimize, params, scores);</span>
-0071 <span class="comment">%</span>
-0072 <span class="comment">% Notes</span>
-0073 <span class="comment">% -----</span>
-0074 <span class="comment">% Uses 1000 mmol/gDW/h as an arbitary large flux. Could possibly cause</span>
-0075 <span class="comment">% problems if the fluxes in the model are larger than that.</span>
-0076 
-0077 p=parseRAVENargs(varargin, {<span class="string">'toMinimize'</span>,[]; <span class="string">'params'</span>,[]; <span class="string">'scores'</span>,[]; <span class="keyword">...</span>
-0078     <span class="string">'formulation'</span>,<span class="string">'irrev'</span>; <span class="string">'verbose'</span>,false; <span class="string">'resolveTies'</span>,false});
-0079 toMinimize=p.toMinimize;
-0080 params=p.params;
-0081 scores=p.scores;
-0082 formulation=p.formulation;
-0083 verbose=p.verbose;
-0084 resolveTies=p.resolveTies;
-0085 <span class="keyword">if</span> isempty(toMinimize)
-0086     toMinimize=model.rxns;
-0087 <span class="keyword">elseif</span> ~islogical(toMinimize) &amp;&amp; ~isnumeric(toMinimize)
-0088     toMinimize=convertCharArray(toMinimize);
-0089 <span class="keyword">else</span>
-0090     toMinimize=model.rxns(toMinimize);
-0091 <span class="keyword">end</span>
-0092 
-0093 <span class="keyword">if</span> isempty(formulation)
-0094     formulation=<span class="string">'irrev'</span>;
-0095 <span class="keyword">end</span>
-0096 formulation=lower(char(formulation));
-0097 <span class="keyword">if</span> ~ismember(formulation,{<span class="string">'irrev'</span>,<span class="string">'reversible'</span>})
-0098     EM=<span class="string">'Valid options for formulation are &quot;irrev&quot; or &quot;reversible&quot;'</span>;
-0099     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0100 <span class="keyword">end</span>
-0101 
-0102 <span class="comment">%For passing parameters to the solver</span>
-0103 <span class="keyword">if</span> isempty(params)
-0104     params=struct();
-0105 <span class="keyword">end</span>
-0106 
-0107 <span class="keyword">if</span> isempty(scores)
-0108     <span class="comment">%It says that the default is -1, but that is to fit with other code</span>
-0109     scores=ones(numel(toMinimize),1)*1;
-0110 <span class="keyword">else</span>
-0111     <span class="keyword">if</span> numel(scores)~=numel(toMinimize)
-0112         EM=<span class="string">'The number of scores must be the same as the number of reactions to minimize'</span>;
-0113         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0114     <span class="keyword">end</span>
-0115 
-0116     <span class="comment">%Change positive scores to have a small negative weight. This is a</span>
-0117     <span class="comment">%temporary solution. If no score is negative there is nothing to clamp</span>
-0118     <span class="comment">%to (max([]) errors here rather than filling in a value, since the</span>
-0119     <span class="comment">%right-hand side is a computed empty array, not the literal [] MATLAB</span>
-0120     <span class="comment">%treats as a delete), so clamp to 0 instead: every reaction is then</span>
-0121     <span class="comment">%equally (un)weighted.</span>
-0122     negScores=scores&lt;0;
-0123     <span class="keyword">if</span> any(negScores)
-0124         scores(~negScores)=max(scores(negScores));
-0125     <span class="keyword">else</span>
-0126         scores(~negScores)=0;
-0127     <span class="keyword">end</span>
-0128 
-0129     <span class="comment">%It says that the default is -1, but that is to fit with other code</span>
-0130     scores=scores*-1;
-0131 <span class="keyword">end</span>
-0132 
-0133 <span class="keyword">if</span> strcmp(formulation,<span class="string">'reversible'</span>)
-0134     [x,I,exitFlag]=<a href="#_sub2" class="code" title="subfunction [x,I,exitFlag]=minNrFluxesReversible(model,toMinimize,scores,params,verbose,resolveTies)">minNrFluxesReversible</a>(model,toMinimize,scores,params,verbose,resolveTies);
-0135 <span class="keyword">else</span>
-0136     <span class="keyword">if</span> resolveTies
-0137         EM=<span class="string">'resolveTies is only implemented for formulation=''reversible'''</span>;
-0138         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0139     <span class="keyword">end</span>
-0140     [x,I,exitFlag]=<a href="#_sub1" class="code" title="subfunction [x,I,exitFlag]=minNrFluxesIrrev(model,toMinimize,scores,params,verbose)">minNrFluxesIrrev</a>(model,toMinimize,scores,params,verbose);
-0141 <span class="keyword">end</span>
-0142 <span class="keyword">end</span>
-0143 
-0144 <a name="_sub1" href="#_subfunctions" class="code">function [x,I,exitFlag]=minNrFluxesIrrev(model,toMinimize,scores,params,verbose)</a>
-0145 <span class="comment">%One binary per irreversible reaction. Reversible reactions to minimize are</span>
-0146 <span class="comment">%split by convertToIrrev and therefore carry two binaries each.</span>
-0147 
-0148 exitFlag=1;
-0149 
-0150 <span class="comment">%Check if the model is in irreversible format</span>
-0151 <span class="keyword">if</span> any(model.rev)
-0152     <span class="comment">%Convert the model to irreversible format</span>
-0153     irrevModel=convertToIrrev(model);
-0154 
-0155     <span class="comment">%Find the indexes for the reactions in toMinimize</span>
-0156     [indexes, I]=ismember(strrep(irrevModel.rxns,<span class="string">'_REV'</span>,<span class="string">''</span>),toMinimize);
-0157 <span class="keyword">else</span>
-0158     irrevModel=model;
-0159 
-0160     <span class="comment">%Find the indexes for the reactions in toMinimize</span>
-0161     [indexes, I]=ismember(irrevModel.rxns,toMinimize);
-0162 <span class="keyword">end</span>
-0163 
-0164 indexes=find(indexes);
-0165 <span class="comment">%Adjust scores to fit with reversible</span>
-0166 scores=scores(I(indexes));
+0019 <span class="comment">%     solver parameters passed to optimizeProb. With formulation</span>
+0020 <span class="comment">%     'reversible', intTol (10^-9), TimeLimit (300) and Seed (26) are set</span>
+0021 <span class="comment">%     when absent (default empty struct).</span>
+0022 <span class="comment">% scores : double</span>
+0023 <span class="comment">%     vector of weights for the reactions. A reaction with a negative</span>
+0024 <span class="comment">%     score adds the negated score to the minimised objective when it</span>
+0025 <span class="comment">%     carries flux. Scores of 0 or above are not supported and are</span>
+0026 <span class="comment">%     changed to max(scores(scores&lt;0)), or to 0 if scores has no negative</span>
+0027 <span class="comment">%     entry at all. Must have the same dimension as toMinimize</span>
+0028 <span class="comment">%     (find(toMinimize) if it is a logical vector) (default -1 for all</span>
+0029 <span class="comment">%     reactions).</span>
+0030 <span class="comment">% formulation : char</span>
+0031 <span class="comment">%     which MILP formulation to build (default 'irrev'):</span>
+0032 <span class="comment">%</span>
+0033 <span class="comment">%     - 'irrev' : convert the model to irreversible format and use one</span>
+0034 <span class="comment">%       binary per irreversible reaction, so a reversible reaction that is</span>
+0035 <span class="comment">%       minimised needs two binaries. The magnitude of the fluxes is</span>
+0036 <span class="comment">%       estimated with an LP first, which also provides a start solution.</span>
+0037 <span class="comment">%     - 'reversible' : keep the model reversible and use one binary per</span>
+0038 <span class="comment">%       reaction, with a larger constraint matrix. The formulation has</span>
+0039 <span class="comment">%       fewer binaries but needs a solver that handles MILPs well. No LP</span>
+0040 <span class="comment">%       estimate of the flux magnitudes is made, and a fixed flux of 1000 is</span>
+0041 <span class="comment">%       assumed.</span>
+0042 <span class="comment">% verbose : logical</span>
+0043 <span class="comment">%     if true, the MILP progression will be shown (default false).</span>
+0044 <span class="comment">% resolveTies : logical</span>
+0045 <span class="comment">%     if true, select one optimum among the degenerate optima of the MILP</span>
+0046 <span class="comment">%     instead of relying on Seed: the primary (scores) objective is held</span>
+0047 <span class="comment">%     at its optimum, the count of &quot;on&quot; reactions is minimised, and among</span>
+0048 <span class="comment">%     the sparsest solutions the summed reaction-id rank is minimised</span>
+0049 <span class="comment">%     (lowest ids preferred). This takes two extra MILP solves. A phase</span>
+0050 <span class="comment">%     that is not proven optimal within TimeLimit gives a warning, and the</span>
+0051 <span class="comment">%     solution of the last phase is used when it is feasible. Only</span>
+0052 <span class="comment">%     implemented for formulation='reversible'; combined with 'irrev' it</span>
+0053 <span class="comment">%     gives an error. Matches resolve_ties in raven-toolbox</span>
+0054 <span class="comment">%     (raven-gecko-parity#104) (default false).</span>
+0055 <span class="comment">%</span>
+0056 <span class="comment">% Returns</span>
+0057 <span class="comment">% -------</span>
+0058 <span class="comment">% x : double</span>
+0059 <span class="comment">%     the corresponding fluxes for the full model.</span>
+0060 <span class="comment">% I : double</span>
+0061 <span class="comment">%     the indexes of the reactions in toMinimize that were used in the</span>
+0062 <span class="comment">%     solution.</span>
+0063 <span class="comment">% exitFlag : double</span>
+0064 <span class="comment">%     exit status:</span>
+0065 <span class="comment">%</span>
+0066 <span class="comment">%     - 1 : optimal solution found</span>
+0067 <span class="comment">%     - -1 : no solution found, either because the problem is infeasible or</span>
+0068 <span class="comment">%       because the solver reached its time limit before finding one</span>
+0069 <span class="comment">%     - -2 : a solution was found but is not proven optimal, because the</span>
+0070 <span class="comment">%       solver stopped before reaching optimality. It is returned and may</span>
+0071 <span class="comment">%       use more fluxes than the minimum</span>
+0072 <span class="comment">%</span>
+0073 <span class="comment">% Examples</span>
+0074 <span class="comment">% --------</span>
+0075 <span class="comment">%     [x, I, exitFlag] = getMinNrFluxes(model, toMinimize, params, scores);</span>
+0076 <span class="comment">%</span>
+0077 <span class="comment">% Notes</span>
+0078 <span class="comment">% -----</span>
+0079 <span class="comment">% The binary of a reaction is linked to its flux through a large flux</span>
+0080 <span class="comment">% value. With formulation 'irrev' the value is the larger of 1000 and 5</span>
+0081 <span class="comment">% times the largest flux of an LP solution; with 'reversible' it is 1000</span>
+0082 <span class="comment">% (mmol/gDW/h). A flux above this value is cut off by the binary constraint</span>
+0083 <span class="comment">% of the reaction, so the MILP can become infeasible.</span>
+0084 
+0085 p=parseRAVENargs(varargin, {<span class="string">'toMinimize'</span>,[]; <span class="string">'params'</span>,[]; <span class="string">'scores'</span>,[]; <span class="keyword">...</span>
+0086     <span class="string">'formulation'</span>,<span class="string">'irrev'</span>; <span class="string">'verbose'</span>,false; <span class="string">'resolveTies'</span>,false});
+0087 toMinimize=p.toMinimize;
+0088 params=p.params;
+0089 scores=p.scores;
+0090 formulation=p.formulation;
+0091 verbose=p.verbose;
+0092 resolveTies=p.resolveTies;
+0093 <span class="keyword">if</span> isempty(toMinimize)
+0094     toMinimize=model.rxns;
+0095 <span class="keyword">elseif</span> ~islogical(toMinimize) &amp;&amp; ~isnumeric(toMinimize)
+0096     toMinimize=convertCharArray(toMinimize);
+0097 <span class="keyword">else</span>
+0098     toMinimize=model.rxns(toMinimize);
+0099 <span class="keyword">end</span>
+0100 
+0101 <span class="keyword">if</span> isempty(formulation)
+0102     formulation=<span class="string">'irrev'</span>;
+0103 <span class="keyword">end</span>
+0104 formulation=lower(char(formulation));
+0105 <span class="keyword">if</span> ~ismember(formulation,{<span class="string">'irrev'</span>,<span class="string">'reversible'</span>})
+0106     EM=<span class="string">'Valid options for formulation are &quot;irrev&quot; or &quot;reversible&quot;'</span>;
+0107     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0108 <span class="keyword">end</span>
+0109 
+0110 <span class="comment">%For passing parameters to the solver</span>
+0111 <span class="keyword">if</span> isempty(params)
+0112     params=struct();
+0113 <span class="keyword">end</span>
+0114 
+0115 <span class="keyword">if</span> isempty(scores)
+0116     <span class="comment">%It says that the default is -1, but that is to fit with other code</span>
+0117     scores=ones(numel(toMinimize),1)*1;
+0118 <span class="keyword">else</span>
+0119     <span class="keyword">if</span> numel(scores)~=numel(toMinimize)
+0120         EM=<span class="string">'The number of scores must be the same as the number of reactions to minimize'</span>;
+0121         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0122     <span class="keyword">end</span>
+0123 
+0124     <span class="comment">%Change positive scores to have a small negative weight. This is a</span>
+0125     <span class="comment">%temporary solution. If no score is negative there is nothing to clamp</span>
+0126     <span class="comment">%to (max([]) errors here rather than filling in a value, since the</span>
+0127     <span class="comment">%right-hand side is a computed empty array, not the literal [] MATLAB</span>
+0128     <span class="comment">%treats as a delete), so clamp to 0 instead: every reaction is then</span>
+0129     <span class="comment">%equally (un)weighted.</span>
+0130     negScores=scores&lt;0;
+0131     <span class="keyword">if</span> any(negScores)
+0132         scores(~negScores)=max(scores(negScores));
+0133     <span class="keyword">else</span>
+0134         scores(~negScores)=0;
+0135     <span class="keyword">end</span>
+0136 
+0137     <span class="comment">%It says that the default is -1, but that is to fit with other code</span>
+0138     scores=scores*-1;
+0139 <span class="keyword">end</span>
+0140 
+0141 <span class="keyword">if</span> strcmp(formulation,<span class="string">'reversible'</span>)
+0142     [x,I,exitFlag]=<a href="#_sub2" class="code" title="subfunction [x,I,exitFlag]=minNrFluxesReversible(model,toMinimize,scores,params,verbose,resolveTies)">minNrFluxesReversible</a>(model,toMinimize,scores,params,verbose,resolveTies);
+0143 <span class="keyword">else</span>
+0144     <span class="keyword">if</span> resolveTies
+0145         EM=<span class="string">'resolveTies is only implemented for formulation=''reversible'''</span>;
+0146         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0147     <span class="keyword">end</span>
+0148     [x,I,exitFlag]=<a href="#_sub1" class="code" title="subfunction [x,I,exitFlag]=minNrFluxesIrrev(model,toMinimize,scores,params,verbose)">minNrFluxesIrrev</a>(model,toMinimize,scores,params,verbose);
+0149 <span class="keyword">end</span>
+0150 <span class="keyword">end</span>
+0151 
+0152 <a name="_sub1" href="#_subfunctions" class="code">function [x,I,exitFlag]=minNrFluxesIrrev(model,toMinimize,scores,params,verbose)</a>
+0153 <span class="comment">%One binary per irreversible reaction. Reversible reactions to minimize are</span>
+0154 <span class="comment">%split by convertToIrrev and therefore carry two binaries each.</span>
+0155 
+0156 exitFlag=1;
+0157 
+0158 <span class="comment">%Check if the model is in irreversible format</span>
+0159 <span class="keyword">if</span> any(model.rev)
+0160     <span class="comment">%Convert the model to irreversible format</span>
+0161     irrevModel=convertToIrrev(model);
+0162 
+0163     <span class="comment">%Find the indexes for the reactions in toMinimize</span>
+0164     [indexes, I]=ismember(strrep(irrevModel.rxns,<span class="string">'_REV'</span>,<span class="string">''</span>),toMinimize);
+0165 <span class="keyword">else</span>
+0166     irrevModel=model;
 0167 
-0168 <span class="comment">%Add binary constraints in the following manner: -  Add one unique</span>
-0169 <span class="comment">%&quot;metabolite&quot; for each integer reaction as a substrate.</span>
-0170 <span class="comment">%   These metabolites can have net production</span>
-0171 <span class="comment">%-  Add reactions for the production of each of those metabolites. The</span>
-0172 <span class="comment">%   amount produced in one reaction unit must be larger than the largest</span>
-0173 <span class="comment">%   possible flux in the model (but not too large to avoid bad scaling)</span>
-0174 
-0175 <span class="comment">%Calculate a solution to the problem without any constraints. This is to</span>
-0176 <span class="comment">%get an estimate about the magnitude of fluxes in the model and to get a</span>
-0177 <span class="comment">%feasible start solution.</span>
-0178 sol=<a href="solveLP.html" class="code" title="function [solution, hsSolOut]=solveLP(model,varargin)">solveLP</a>(irrevModel,1);
-0179 
-0180 <span class="comment">%Return an empty solution if the non-constrained problem could not be solved</span>
-0181 <span class="keyword">if</span> isempty(sol.x)
-0182     x=[];
-0183     I=[];
-0184     exitFlag=-1;
-0185     <span class="keyword">return</span>;
-0186 <span class="keyword">end</span>
+0168     <span class="comment">%Find the indexes for the reactions in toMinimize</span>
+0169     [indexes, I]=ismember(irrevModel.rxns,toMinimize);
+0170 <span class="keyword">end</span>
+0171 
+0172 indexes=find(indexes);
+0173 <span class="comment">%Adjust scores to fit with reversible</span>
+0174 scores=scores(I(indexes));
+0175 
+0176 <span class="comment">%Add binary constraints in the following manner: -  Add one unique</span>
+0177 <span class="comment">%&quot;metabolite&quot; for each integer reaction as a substrate.</span>
+0178 <span class="comment">%   These metabolites can have net production</span>
+0179 <span class="comment">%-  Add reactions for the production of each of those metabolites. The</span>
+0180 <span class="comment">%   amount produced in one reaction unit must be larger than the largest</span>
+0181 <span class="comment">%   possible flux in the model (but not too large to avoid bad scaling)</span>
+0182 
+0183 <span class="comment">%Calculate a solution to the problem without any constraints. This is to</span>
+0184 <span class="comment">%get an estimate about the magnitude of fluxes in the model and to get a</span>
+0185 <span class="comment">%feasible start solution.</span>
+0186 sol=<a href="solveLP.html" class="code" title="function [solution, hsSolOut]=solveLP(model,varargin)">solveLP</a>(irrevModel,1);
 0187 
-0188 <span class="comment">%Take the maximal times 5 to have a safe margin. If it is smaller than 1000,</span>
-0189 <span class="comment">%then use 1000 instead.</span>
-0190 maxFlux=max(max(sol.x)*5,1000);
-0191 
-0192 intArray=speye(numel(irrevModel.rxns))*-1;
-0193 intArray=intArray(indexes,:);
-0194 prob.a=[irrevModel.S;intArray];
-0195 a=[sparse(numel(irrevModel.mets),numel(indexes));speye(numel(indexes))*maxFlux];
-0196 prob.a=[prob.a a];
-0197 prob.ints.sub=numel(irrevModel.rxns)+1:numel(irrevModel.rxns)+numel(indexes);
-0198 
-0199 prob.c=[zeros(numel(irrevModel.rxns),1);scores(:);zeros(size(prob.a,1),1)]; <span class="comment">%Minimize the number of fluxes</span>
-0200 prob.A=[prob.a -speye(size(prob.a,1))];
-0201 prob.blc=[irrevModel.b(:,1);zeros(numel(indexes),1)];
-0202 <span class="keyword">if</span> size(irrevModel.b,2)==2
-0203     prob.buc=[irrevModel.b(:,2);inf(numel(indexes),1)];
-0204 <span class="keyword">else</span>
-0205     prob.buc=[irrevModel.b(:,1);inf(numel(indexes),1)];
-0206 <span class="keyword">end</span>
-0207 prob.blx=[irrevModel.lb;zeros(numel(indexes),1)];
-0208 prob.bux=[irrevModel.ub;ones(numel(indexes),1)];
-0209 prob.lb = [prob.blx; prob.blc];
-0210 prob.ub = [prob.bux; prob.buc];
-0211 prob.osense=1;
-0212 prob.csense=repmat(<span class="string">'E'</span>, 1, size(prob.a,1),1);
-0213 prob.b=zeros(size(prob.a,1), 1);
-0214 
-0215 <span class="comment">%Use the output from the linear solution as starting point. Only the values</span>
-0216 <span class="comment">%for the integer variables will be used, but all are supplied.</span>
-0217 prob.sol.int.xx=zeros(numel(prob.c),1);
-0218 prob.sol.int.xx(prob.ints.sub(sol.x(indexes)&gt;10^-12))=1;
-0219 prob.x0=[];
-0220 prob.vartype=repmat(<span class="string">'C'</span>, size(prob.A,2), 1);
-0221 prob.vartype(prob.ints.sub) = <span class="string">'I'</span>; <span class="comment">% with .lb = 0 and .ub = 1, they are binary</span>
-0222 <span class="comment">% integers (glpk in octave only allows &quot;continuous&quot; or &quot;&quot;, not &quot;binary&quot;)</span>
-0223 prob=rmfield(prob,{<span class="string">'blx'</span>,<span class="string">'bux'</span>,<span class="string">'blc'</span>,<span class="string">'buc'</span>});
-0224 
-0225 <span class="comment">% Optimize the problem</span>
-0226 res = <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>(prob,params,verbose);
-0227 [isFeasible, isOptimal]=<a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>(res);
-0228 
-0229 <span class="keyword">if</span> ~isFeasible
-0230     x=[];
-0231     I=[];
-0232     exitFlag=-1;
-0233     <span class="keyword">if</span> res.hitTimeLimit
-0234         <span class="comment">%Nothing is returned either way, but the caller reports -1 as &quot;no</span>
-0235         <span class="comment">%feasible solution exists&quot;, which is not what happened here.</span>
-0236         EM=<span class="string">'Time limit reached before finding a solution. Try increasing the TimeLimit parameter.'</span>;
-0237         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
-0238     <span class="keyword">end</span>
-0239     <span class="keyword">return</span>;
-0240 <span class="keyword">end</span>
-0241 <span class="keyword">if</span> res.hitTimeLimit || ~isOptimal
-0242     <span class="comment">%A feasible but suboptimal solution, i.e. the solver stopped before</span>
-0243     <span class="comment">%reaching optimality. The solution is still returned, but must not be</span>
-0244     <span class="comment">%reported as optimal: it may use more fluxes than the minimum.</span>
-0245     <span class="comment">%Not every solver reports this in its status, gurobi for one presents a</span>
-0246     <span class="comment">%MILP solution found before the limit as optimal, so res.hitTimeLimit is</span>
-0247     <span class="comment">%consulted as well.</span>
-0248     exitFlag=-2;
-0249 <span class="keyword">end</span>
-0250 
-0251 xx=res.full(1:numel(irrevModel.rxns));
-0252 I=res.full(numel(xx)+1:end);
-0253 
-0254 <span class="comment">%Map back to original model from irrevModel</span>
-0255 x=xx(1:numel(model.rxns));
-0256 <span class="keyword">if</span> numel(irrevModel.rxns)&gt;numel(model.rxns)
-0257     x(model.rev~=0)=x(model.rev~=0)-xx(numel(model.rxns)+1:end);
-0258 <span class="keyword">end</span>
-0259 
-0260 I=ismember(toMinimize,strrep(irrevModel.rxns(indexes(I&gt;10^-12)),<span class="string">'_REV'</span>,<span class="string">''</span>));
-0261 <span class="keyword">end</span>
-0262 
-0263 <a name="_sub2" href="#_subfunctions" class="code">function [x,I,exitFlag]=minNrFluxesReversible(model,toMinimize,scores,params,verbose,resolveTies)</a>
-0264 <span class="comment">%One binary per reaction, on the reversible model. Trades a larger</span>
-0265 <span class="comment">%constraint matrix for half the binaries on reversible reactions.</span>
-0266 
-0267 exitFlag=1;
-0268 
-0269 <span class="comment">%The trick to make this possible using a reversible model is that for</span>
-0270 <span class="comment">%reversible reactions, we do the following. Set the flux Vi == Vipos - Vineg.</span>
-0271 <span class="comment">%What happens then is that if the flux is positive, Vipos will have a nonzero value,</span>
-0272 <span class="comment">%and when the flux is negative, Vineg will have a positive value. In addition</span>
-0273 <span class="comment">%we can add an arbitrary constant to both Vipos and Vineg. For example, if the</span>
-0274 <span class="comment">%flux Vi is -1, Vineg can be 4 and Vipos 3. This is however not a problem,</span>
-0275 <span class="comment">%because we can be sure that Vineg + Vipos &gt;= abs(Vi). Since we are interested</span>
-0276 <span class="comment">%in forcing the ints to be on when there is a flux, it does not matter if we overestimate</span>
-0277 <span class="comment">%the flux! So, we can simply constrain the boolean Yi to Yi*Maxflux &gt;= Vineg + Vipos.</span>
-0278 
-0279 <span class="comment">%The matrix then becomes as this:</span>
-0280 <span class="comment">%         S       p n int b     var</span>
-0281 <span class="comment">%         SSSSSSSS        -</span>
-0282 <span class="comment">%         SSSSSSSS         -</span>
-0283 <span class="comment">%         SSSSSSSS          -</span>
-0284 <span class="comment">%         SSSSSSSS           -</span>
-0285 <span class="comment">%         SSSSSSSS            -</span>
-0286 <span class="comment">%         SSSSSSSS             -</span>
-0287 <span class="comment">%         -       1 -</span>
-0288 <span class="comment">%               -  1 -</span>
-0289 <span class="comment">%           -          M         -</span>
-0290 <span class="comment">%             -         M         -</span>
-0291 <span class="comment">%                 - - M         -</span>
-0292 <span class="comment">%                  - -   M         -</span>
-0293 <span class="comment">% An example with 8 rxns and 6 metabolites. - means -1, M max flux, and S is the S matrix.</span>
-0294 <span class="comment">% 4 rxns are to be minimized(1,3,5,7) and 1,7 are reversible. The p and n</span>
-0295 <span class="comment">% are the Vipos and Vineg variables (2 rxns of each). The ints are the Yi for</span>
-0296 <span class="comment">% the variables that are to be minimized (the rest of the rxns does not have any).</span>
-0297 <span class="comment">% The mets here are the constraints, so right under the S matrix, you have</span>
-0298 <span class="comment">% Vi == Vipos - Vineg for the reactions 1 and 7 while the two next rows represent</span>
-0299 <span class="comment">% the non-reversible rxns 3 and 5, where we simply say that yi*M &gt;= Vi. The last</span>
-0300 <span class="comment">% 2 rows are the reactions yi*M &gt;= Vipos + Vineg. To the right, we first have a</span>
-0301 <span class="comment">% -I matrix for setting the b constraints, and under that we have rxns that are</span>
-0302 <span class="comment">% just variables (rxns) between 0 and Inf to complete the constraints mentioned above.</span>
-0303 <span class="comment">%Ex: yi*M &gt;= Vipos + Vineg is impl. as yi*M - Vipos - Vineg - var == 0, 0 &lt;= var &lt;= Inf.</span>
-0304 <span class="comment">%</span>
-0305 <span class="comment">%All rows should be equal to zero, so we do not set the b vector in the problem</span>
-0306 <span class="comment">%The reactions should be constrained as follows</span>
-0307 <span class="comment">%S - as given in model.lb and model.ub</span>
-0308 <span class="comment">%pos and neg - between 0 and inf</span>
-0309 <span class="comment">%ints - between 0 and 1</span>
-0310 <span class="comment">%b - as stated in the model.b vector - if this has one column, that is lb and ub (fixed value), if two columns, that is lb and ub</span>
-0311 <span class="comment">%var - between zero and inf</span>
-0312 
-0313 [minLog, I]=ismember(model.rxns,toMinimize);
-0314 indexes=find(minLog);
-0315 revIndexes = find(minLog &amp; (model.rev == 1));
-0316 irrevIndexes = find(minLog &amp; (model.rev == 0));
-0317 revIndexesInInd = find(model.rev(indexes) == 1);
-0318 irrevIndexesInInd = find(model.rev(indexes) == 0);
-0319 
-0320 <span class="comment">%The int columns are ordered as indexes, i.e. by position in the model,</span>
-0321 <span class="comment">%while the scores arrive ordered as toMinimize</span>
-0322 scores=scores(I(indexes));
-0323 
-0324 <span class="comment">%Add binary constraints in the following manner: -  Add one unique</span>
-0325 <span class="comment">%&quot;metabolite&quot; for each integer reaction as a substrate.</span>
-0326 <span class="comment">%   These metabolites can have net production</span>
-0327 <span class="comment">%-  Add reactions for the production of each of those metabolites. The</span>
-0328 <span class="comment">%   amount produced in one reaction unit must be larger than the largest</span>
-0329 <span class="comment">%   possible flux in the model (but not too large to avoid bad scaling)</span>
-0330 
-0331 maxFlux=1000;
-0332 <span class="comment">%we build the total matrix as blocks: [S pos neg int b var]</span>
-0333 
-0334 <span class="comment">%s block</span>
-0335 intArray=speye(numel(model.rxns))*-1;
-0336 intArrayRev=intArray(revIndexes,:);
-0337 intArrayIrrev = intArray(irrevIndexes,:);
-0338 sBlock=[model.S;intArrayRev;intArrayIrrev;sparse(numel(revIndexes), numel(model.rxns))]; <span class="comment">%the S matrix and what is below</span>
-0339 
-0340 <span class="comment">%pos/neg blocks</span>
-0341 revposorneg1 = sparse(numel(model.mets), numel(revIndexes));
-0342 revpos2 = speye(numel(revIndexes));
-0343 revneg2 = -revpos2;
-0344 revposneg3 = sparse(numel(irrevIndexes), numel(revIndexes));
-0345 revposneg4 = revneg2;
-0346 posBlock = [revposorneg1;revpos2;revposneg3;revposneg4];
-0347 negBlock = [revposorneg1;revneg2;revposneg3;revposneg4];
-0348 
-0349 <span class="comment">%int block</span>
-0350 int1 = sparse(numel(model.mets), numel(indexes));
-0351 int2 = sparse(numel(revIndexes), numel(indexes));
-0352 tmpEye = speye(numel(indexes))*maxFlux;
-0353 int3 = tmpEye(irrevIndexesInInd,:);<span class="comment">%we here select only the irrev indexes from the indexes</span>
-0354 int4 = tmpEye(revIndexesInInd,:);
-0355 intBlock = [int1;int2;int3;int4];
+0188 <span class="comment">%Return an empty solution if the non-constrained problem could not be solved</span>
+0189 <span class="keyword">if</span> isempty(sol.x)
+0190     x=[];
+0191     I=[];
+0192     exitFlag=-1;
+0193     <span class="keyword">return</span>;
+0194 <span class="keyword">end</span>
+0195 
+0196 <span class="comment">%Take the maximal times 5 to have a safe margin. If it is smaller than 1000,</span>
+0197 <span class="comment">%then use 1000 instead.</span>
+0198 maxFlux=max(max(sol.x)*5,1000);
+0199 
+0200 intArray=speye(numel(irrevModel.rxns))*-1;
+0201 intArray=intArray(indexes,:);
+0202 prob.a=[irrevModel.S;intArray];
+0203 a=[sparse(numel(irrevModel.mets),numel(indexes));speye(numel(indexes))*maxFlux];
+0204 prob.a=[prob.a a];
+0205 prob.ints.sub=numel(irrevModel.rxns)+1:numel(irrevModel.rxns)+numel(indexes);
+0206 
+0207 prob.c=[zeros(numel(irrevModel.rxns),1);scores(:);zeros(size(prob.a,1),1)]; <span class="comment">%Minimize the number of fluxes</span>
+0208 prob.A=[prob.a -speye(size(prob.a,1))];
+0209 prob.blc=[irrevModel.b(:,1);zeros(numel(indexes),1)];
+0210 <span class="keyword">if</span> size(irrevModel.b,2)==2
+0211     prob.buc=[irrevModel.b(:,2);inf(numel(indexes),1)];
+0212 <span class="keyword">else</span>
+0213     prob.buc=[irrevModel.b(:,1);inf(numel(indexes),1)];
+0214 <span class="keyword">end</span>
+0215 prob.blx=[irrevModel.lb;zeros(numel(indexes),1)];
+0216 prob.bux=[irrevModel.ub;ones(numel(indexes),1)];
+0217 prob.lb = [prob.blx; prob.blc];
+0218 prob.ub = [prob.bux; prob.buc];
+0219 prob.osense=1;
+0220 prob.csense=repmat(<span class="string">'E'</span>, 1, size(prob.a,1),1);
+0221 prob.b=zeros(size(prob.a,1), 1);
+0222 
+0223 <span class="comment">%Use the output from the linear solution as starting point. Only the values</span>
+0224 <span class="comment">%for the integer variables will be used, but all are supplied.</span>
+0225 prob.sol.int.xx=zeros(numel(prob.c),1);
+0226 prob.sol.int.xx(prob.ints.sub(sol.x(indexes)&gt;10^-12))=1;
+0227 prob.x0=[];
+0228 prob.vartype=repmat(<span class="string">'C'</span>, size(prob.A,2), 1);
+0229 prob.vartype(prob.ints.sub) = <span class="string">'I'</span>; <span class="comment">% with .lb = 0 and .ub = 1, they are binary</span>
+0230 <span class="comment">% integers (glpk in octave only allows &quot;continuous&quot; or &quot;&quot;, not &quot;binary&quot;)</span>
+0231 prob=rmfield(prob,{<span class="string">'blx'</span>,<span class="string">'bux'</span>,<span class="string">'blc'</span>,<span class="string">'buc'</span>});
+0232 
+0233 <span class="comment">% Optimize the problem</span>
+0234 res = <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>(prob,params,verbose);
+0235 [isFeasible, isOptimal]=<a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>(res);
+0236 
+0237 <span class="keyword">if</span> ~isFeasible
+0238     x=[];
+0239     I=[];
+0240     exitFlag=-1;
+0241     <span class="keyword">if</span> res.hitTimeLimit
+0242         <span class="comment">%Nothing is returned either way, but the caller reports -1 as &quot;no</span>
+0243         <span class="comment">%feasible solution exists&quot;, which is not what happened here.</span>
+0244         EM=<span class="string">'Time limit reached before finding a solution. Try increasing the TimeLimit parameter.'</span>;
+0245         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0246     <span class="keyword">end</span>
+0247     <span class="keyword">return</span>;
+0248 <span class="keyword">end</span>
+0249 <span class="keyword">if</span> res.hitTimeLimit || ~isOptimal
+0250     <span class="comment">%A feasible but suboptimal solution, i.e. the solver stopped before</span>
+0251     <span class="comment">%reaching optimality. The solution is still returned, but must not be</span>
+0252     <span class="comment">%reported as optimal: it may use more fluxes than the minimum.</span>
+0253     <span class="comment">%Not every solver reports this in its status, gurobi for one presents a</span>
+0254     <span class="comment">%MILP solution found before the limit as optimal, so res.hitTimeLimit is</span>
+0255     <span class="comment">%consulted as well.</span>
+0256     exitFlag=-2;
+0257 <span class="keyword">end</span>
+0258 
+0259 xx=res.full(1:numel(irrevModel.rxns));
+0260 I=res.full(numel(xx)+1:end);
+0261 
+0262 <span class="comment">%Map back to original model from irrevModel</span>
+0263 x=xx(1:numel(model.rxns));
+0264 <span class="keyword">if</span> numel(irrevModel.rxns)&gt;numel(model.rxns)
+0265     x(model.rev~=0)=x(model.rev~=0)-xx(numel(model.rxns)+1:end);
+0266 <span class="keyword">end</span>
+0267 
+0268 I=ismember(toMinimize,strrep(irrevModel.rxns(indexes(I&gt;10^-12)),<span class="string">'_REV'</span>,<span class="string">''</span>));
+0269 <span class="keyword">end</span>
+0270 
+0271 <a name="_sub2" href="#_subfunctions" class="code">function [x,I,exitFlag]=minNrFluxesReversible(model,toMinimize,scores,params,verbose,resolveTies)</a>
+0272 <span class="comment">%One binary per reaction, on the reversible model. Trades a larger</span>
+0273 <span class="comment">%constraint matrix for half the binaries on reversible reactions.</span>
+0274 
+0275 exitFlag=1;
+0276 
+0277 <span class="comment">%The trick to make this possible using a reversible model is that for</span>
+0278 <span class="comment">%reversible reactions, we do the following. Set the flux Vi == Vipos - Vineg.</span>
+0279 <span class="comment">%What happens then is that if the flux is positive, Vipos will have a nonzero value,</span>
+0280 <span class="comment">%and when the flux is negative, Vineg will have a positive value. In addition</span>
+0281 <span class="comment">%we can add an arbitrary constant to both Vipos and Vineg. For example, if the</span>
+0282 <span class="comment">%flux Vi is -1, Vineg can be 4 and Vipos 3. This is however not a problem,</span>
+0283 <span class="comment">%because we can be sure that Vineg + Vipos &gt;= abs(Vi). Since we are interested</span>
+0284 <span class="comment">%in forcing the ints to be on when there is a flux, it does not matter if we overestimate</span>
+0285 <span class="comment">%the flux! So, we can simply constrain the boolean Yi to Yi*Maxflux &gt;= Vineg + Vipos.</span>
+0286 
+0287 <span class="comment">%The matrix then becomes as this:</span>
+0288 <span class="comment">%         S       p n int b     var</span>
+0289 <span class="comment">%         SSSSSSSS        -</span>
+0290 <span class="comment">%         SSSSSSSS         -</span>
+0291 <span class="comment">%         SSSSSSSS          -</span>
+0292 <span class="comment">%         SSSSSSSS           -</span>
+0293 <span class="comment">%         SSSSSSSS            -</span>
+0294 <span class="comment">%         SSSSSSSS             -</span>
+0295 <span class="comment">%         -       1 -</span>
+0296 <span class="comment">%               -  1 -</span>
+0297 <span class="comment">%           -          M         -</span>
+0298 <span class="comment">%             -         M         -</span>
+0299 <span class="comment">%                 - - M         -</span>
+0300 <span class="comment">%                  - -   M         -</span>
+0301 <span class="comment">% An example with 8 rxns and 6 metabolites. - means -1, M max flux, and S is the S matrix.</span>
+0302 <span class="comment">% 4 rxns are to be minimized(1,3,5,7) and 1,7 are reversible. The p and n</span>
+0303 <span class="comment">% are the Vipos and Vineg variables (2 rxns of each). The ints are the Yi for</span>
+0304 <span class="comment">% the variables that are to be minimized (the rest of the rxns does not have any).</span>
+0305 <span class="comment">% The mets here are the constraints, so right under the S matrix, you have</span>
+0306 <span class="comment">% Vi == Vipos - Vineg for the reactions 1 and 7 while the two next rows represent</span>
+0307 <span class="comment">% the non-reversible rxns 3 and 5, where we simply say that yi*M &gt;= Vi. The last</span>
+0308 <span class="comment">% 2 rows are the reactions yi*M &gt;= Vipos + Vineg. To the right, we first have a</span>
+0309 <span class="comment">% -I matrix for setting the b constraints, and under that we have rxns that are</span>
+0310 <span class="comment">% just variables (rxns) between 0 and Inf to complete the constraints mentioned above.</span>
+0311 <span class="comment">%Ex: yi*M &gt;= Vipos + Vineg is impl. as yi*M - Vipos - Vineg - var == 0, 0 &lt;= var &lt;= Inf.</span>
+0312 <span class="comment">%</span>
+0313 <span class="comment">%All rows should be equal to zero, so we do not set the b vector in the problem</span>
+0314 <span class="comment">%The reactions should be constrained as follows</span>
+0315 <span class="comment">%S - as given in model.lb and model.ub</span>
+0316 <span class="comment">%pos and neg - between 0 and inf</span>
+0317 <span class="comment">%ints - between 0 and 1</span>
+0318 <span class="comment">%b - as stated in the model.b vector - if this has one column, that is lb and ub (fixed value), if two columns, that is lb and ub</span>
+0319 <span class="comment">%var - between zero and inf</span>
+0320 
+0321 [minLog, I]=ismember(model.rxns,toMinimize);
+0322 indexes=find(minLog);
+0323 revIndexes = find(minLog &amp; (model.rev == 1));
+0324 irrevIndexes = find(minLog &amp; (model.rev == 0));
+0325 revIndexesInInd = find(model.rev(indexes) == 1);
+0326 irrevIndexesInInd = find(model.rev(indexes) == 0);
+0327 
+0328 <span class="comment">%The int columns are ordered as indexes, i.e. by position in the model,</span>
+0329 <span class="comment">%while the scores arrive ordered as toMinimize</span>
+0330 scores=scores(I(indexes));
+0331 
+0332 <span class="comment">%Add binary constraints in the following manner: -  Add one unique</span>
+0333 <span class="comment">%&quot;metabolite&quot; for each integer reaction as a substrate.</span>
+0334 <span class="comment">%   These metabolites can have net production</span>
+0335 <span class="comment">%-  Add reactions for the production of each of those metabolites. The</span>
+0336 <span class="comment">%   amount produced in one reaction unit must be larger than the largest</span>
+0337 <span class="comment">%   possible flux in the model (but not too large to avoid bad scaling)</span>
+0338 
+0339 maxFlux=1000;
+0340 <span class="comment">%we build the total matrix as blocks: [S pos neg int b var]</span>
+0341 
+0342 <span class="comment">%s block</span>
+0343 intArray=speye(numel(model.rxns))*-1;
+0344 intArrayRev=intArray(revIndexes,:);
+0345 intArrayIrrev = intArray(irrevIndexes,:);
+0346 sBlock=[model.S;intArrayRev;intArrayIrrev;sparse(numel(revIndexes), numel(model.rxns))]; <span class="comment">%the S matrix and what is below</span>
+0347 
+0348 <span class="comment">%pos/neg blocks</span>
+0349 revposorneg1 = sparse(numel(model.mets), numel(revIndexes));
+0350 revpos2 = speye(numel(revIndexes));
+0351 revneg2 = -revpos2;
+0352 revposneg3 = sparse(numel(irrevIndexes), numel(revIndexes));
+0353 revposneg4 = revneg2;
+0354 posBlock = [revposorneg1;revpos2;revposneg3;revposneg4];
+0355 negBlock = [revposorneg1;revneg2;revposneg3;revposneg4];
 0356 
-0357 <span class="comment">%b block</span>
-0358 b1 = speye(numel(model.mets))*-1;
-0359 b2 = sparse(numel(indexes) + numel(revIndexes), numel(model.mets));
-0360 bBlock = [b1;b2];
-0361 
-0362 <span class="comment">%var block</span>
-0363 var1 = sparse(numel(model.mets), numel(indexes));
-0364 var2 = sparse(numel(revIndexes), numel(indexes));
-0365 tmpEye = speye(numel(indexes))*-1;
-0366 var3 = tmpEye(irrevIndexesInInd,:);
-0367 var4 = tmpEye(revIndexesInInd,:);
-0368 varBlock = [var1;var2;var3;var4];
+0357 <span class="comment">%int block</span>
+0358 int1 = sparse(numel(model.mets), numel(indexes));
+0359 int2 = sparse(numel(revIndexes), numel(indexes));
+0360 tmpEye = speye(numel(indexes))*maxFlux;
+0361 int3 = tmpEye(irrevIndexesInInd,:);<span class="comment">%we here select only the irrev indexes from the indexes</span>
+0362 int4 = tmpEye(revIndexesInInd,:);
+0363 intBlock = [int1;int2;int3;int4];
+0364 
+0365 <span class="comment">%b block</span>
+0366 b1 = speye(numel(model.mets))*-1;
+0367 b2 = sparse(numel(indexes) + numel(revIndexes), numel(model.mets));
+0368 bBlock = [b1;b2];
 0369 
-0370 prob.A = [sBlock posBlock negBlock intBlock bBlock varBlock];
-0371 prob.a = prob.A;<span class="comment">%I think this is needed as well</span>
-0372 
-0373 prob.c=[zeros(numel(model.rxns),1);zeros(numel(revIndexes)*2,1); scores(:);zeros(numel(model.mets) + numel(indexes),1)]; <span class="comment">%Minimize the sum of reaction scores for reactions that are on</span>
-0374 
-0375 <span class="comment">%ub and lb, text copied from above</span>
-0376 <span class="comment">%S - as given in model.lb and model.ub</span>
-0377 <span class="comment">%pos and neg - between 0 and inf</span>
-0378 <span class="comment">%ints - between 0 and 1</span>
-0379 <span class="comment">%b - as stated in the model.b vector - if this has one column, that is lb and ub (fixed value), if two columns, that is lb and ub</span>
-0380 <span class="comment">%var - between zero and inf</span>
-0381 
-0382 <span class="keyword">if</span> size(model.b,2)==2
-0383     bub = model.b(:,2);
-0384 <span class="keyword">else</span>
-0385     bub = model.b(:,1);
-0386 <span class="keyword">end</span>
-0387 
-0388 prob.lb = [model.lb;zeros(numel(revIndexes)*2,1);zeros(numel(indexes),1);model.b(:,1);zeros(numel(indexes),1)];
-0389 prob.ub = [model.ub;inf(numel(revIndexes)*2,1);ones(numel(indexes),1);bub;inf(numel(indexes),1)];
-0390 
-0391 prob.b=zeros(size(prob.a,1), 1);
-0392 
-0393 intsIndexes = find(prob.c ~= 0);
-0394 prob.x0=[];
-0395 prob.vartype=repmat(<span class="string">'C'</span>, 1, size(prob.A,2));
-0396 prob.vartype(intsIndexes) = <span class="string">'B'</span>;
-0397 prob.csense = repmat(<span class="string">'E'</span>, 1, size(prob.A,1));
-0398 prob.osense=1; <span class="comment">%minimize the objective</span>
-0399 
-0400 <span class="comment">%Defaults that suit this formulation, without discarding what the caller set</span>
-0401 <span class="keyword">if</span> ~isfield(params,<span class="string">'intTol'</span>)
-0402     params.intTol = 10^-9;
-0403 <span class="keyword">end</span>
-0404 <span class="keyword">if</span> ~isfield(params,<span class="string">'TimeLimit'</span>)
-0405     params.TimeLimit = 300;
-0406 <span class="keyword">end</span>
-0407 <span class="keyword">if</span> ~isfield(params,<span class="string">'Seed'</span>)
-0408     <span class="comment">%Although the solver reports &quot;optimal solution found&quot;, different seeds</span>
-0409     <span class="comment">%can return solutions with noticeably different objective values, so a</span>
-0410     <span class="comment">%fixed one is used to keep results reproducible</span>
-0411     params.Seed = 26;
-0412 <span class="keyword">end</span>
-0413 
-0414 <span class="comment">% Optimize the problem</span>
-0415 res = <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>(prob,params,verbose);
-0416 [isFeasible, isOptimal]=<a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>(res);
-0417 
-0418 <span class="keyword">if</span> ~isFeasible
-0419     x=[];
-0420     I=[];
-0421     exitFlag=-1;
-0422     <span class="keyword">if</span> res.hitTimeLimit
-0423         <span class="comment">%Nothing is returned either way, but the caller reports -1 as &quot;no</span>
-0424         <span class="comment">%feasible solution exists&quot;, which is not what happened here.</span>
-0425         EM=<span class="string">'Time limit reached before finding a solution. Try increasing the TimeLimit parameter.'</span>;
-0426         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
-0427     <span class="keyword">end</span>
-0428     <span class="keyword">return</span>;
-0429 <span class="keyword">end</span>
-0430 <span class="keyword">if</span> res.hitTimeLimit || ~isOptimal
-0431     <span class="comment">%A feasible but suboptimal solution, i.e. the solver stopped before</span>
-0432     <span class="comment">%reaching optimality. The solution is still returned, but must not be</span>
-0433     <span class="comment">%reported as optimal: it may use more fluxes than the minimum.</span>
-0434     <span class="comment">%Not every solver reports this in its status, gurobi for one presents a</span>
-0435     <span class="comment">%MILP solution found before the limit as optimal, so res.hitTimeLimit is</span>
-0436     <span class="comment">%consulted as well.</span>
-0437     exitFlag=-2;
-0438 <span class="keyword">end</span>
-0439 
-0440 <span class="keyword">if</span> resolveTies
-0441     <span class="comment">%This MILP is highly degenerate: many reaction subsets reach the same</span>
-0442     <span class="comment">%score optimum, and the solver returns an arbitrary one -- reproducible</span>
-0443     <span class="comment">%for a fixed solver build + Seed, but fragile to a solver version bump</span>
-0444     <span class="comment">%or an unrelated change upstream of the MILP (see raven-gecko-parity#104,</span>
-0445     <span class="comment">%where this was demonstrated on genome-scale Human-GEM: the same Seed,</span>
-0446     <span class="comment">%same problem, but a different MILP construction path flipped a tied</span>
-0447     <span class="comment">%pair of reactions). This runs a lexicographic phase 2, holding the</span>
-0448     <span class="comment">%score objective at its optimum with a floor constraint: first minimise</span>
-0449     <span class="comment">%the count of &quot;on&quot; reactions (the sparsest optimum), then, among the</span>
-0450     <span class="comment">%sparsest, minimise their summed reaction-id rank (prefer lower ids).</span>
-0451     <span class="comment">%Ports raven-toolbox's _resolve_ties_fill (raven-toolbox#114).</span>
-0452     <span class="comment">%</span>
-0453     <span class="comment">%intCols identifies the int/binary variable columns directly from the</span>
-0454     <span class="comment">%block layout (prob.c = [zeros(rxns); zeros(2*revIndexes); scores(:);</span>
-0455     <span class="comment">%zeros(mets+indexes)]) rather than via find(prob.c~=0): a zero-scored</span>
-0456     <span class="comment">%reaction would otherwise silently drop out of the column count and</span>
-0457     <span class="comment">%misalign every later index into &quot;indexes&quot;.</span>
-0458     intCols = numel(model.rxns) + 2*numel(revIndexes) + (1:numel(indexes));
-0459     primaryObj = full(prob.c(intCols)' * res.full(intCols));
-0460     tol = max(abs(primaryObj)*1e-7, 1e-7);
-0461 
-0462     floorRow = sparse(1,size(prob.A,2));
-0463     floorRow(intCols) = prob.c(intCols)';
-0464     tieProb = prob;
-0465     tieProb.A = [prob.A; floorRow];
-0466     tieProb.a = tieProb.A;
-0467     tieProb.b = [prob.b; primaryObj+tol];
-0468     tieProb.csense = [prob.csense <span class="string">'L'</span>];
+0370 <span class="comment">%var block</span>
+0371 var1 = sparse(numel(model.mets), numel(indexes));
+0372 var2 = sparse(numel(revIndexes), numel(indexes));
+0373 tmpEye = speye(numel(indexes))*-1;
+0374 var3 = tmpEye(irrevIndexesInInd,:);
+0375 var4 = tmpEye(revIndexesInInd,:);
+0376 varBlock = [var1;var2;var3;var4];
+0377 
+0378 prob.A = [sBlock posBlock negBlock intBlock bBlock varBlock];
+0379 prob.a = prob.A;<span class="comment">%I think this is needed as well</span>
+0380 
+0381 prob.c=[zeros(numel(model.rxns),1);zeros(numel(revIndexes)*2,1); scores(:);zeros(numel(model.mets) + numel(indexes),1)]; <span class="comment">%Minimize the sum of reaction scores for reactions that are on</span>
+0382 
+0383 <span class="comment">%ub and lb, text copied from above</span>
+0384 <span class="comment">%S - as given in model.lb and model.ub</span>
+0385 <span class="comment">%pos and neg - between 0 and inf</span>
+0386 <span class="comment">%ints - between 0 and 1</span>
+0387 <span class="comment">%b - as stated in the model.b vector - if this has one column, that is lb and ub (fixed value), if two columns, that is lb and ub</span>
+0388 <span class="comment">%var - between zero and inf</span>
+0389 
+0390 <span class="keyword">if</span> size(model.b,2)==2
+0391     bub = model.b(:,2);
+0392 <span class="keyword">else</span>
+0393     bub = model.b(:,1);
+0394 <span class="keyword">end</span>
+0395 
+0396 prob.lb = [model.lb;zeros(numel(revIndexes)*2,1);zeros(numel(indexes),1);model.b(:,1);zeros(numel(indexes),1)];
+0397 prob.ub = [model.ub;inf(numel(revIndexes)*2,1);ones(numel(indexes),1);bub;inf(numel(indexes),1)];
+0398 
+0399 prob.b=zeros(size(prob.a,1), 1);
+0400 
+0401 intsIndexes = find(prob.c ~= 0);
+0402 prob.x0=[];
+0403 prob.vartype=repmat(<span class="string">'C'</span>, 1, size(prob.A,2));
+0404 prob.vartype(intsIndexes) = <span class="string">'B'</span>;
+0405 prob.csense = repmat(<span class="string">'E'</span>, 1, size(prob.A,1));
+0406 prob.osense=1; <span class="comment">%minimize the objective</span>
+0407 
+0408 <span class="comment">%Defaults that suit this formulation, without discarding what the caller set</span>
+0409 <span class="keyword">if</span> ~isfield(params,<span class="string">'intTol'</span>)
+0410     params.intTol = 10^-9;
+0411 <span class="keyword">end</span>
+0412 <span class="keyword">if</span> ~isfield(params,<span class="string">'TimeLimit'</span>)
+0413     params.TimeLimit = 300;
+0414 <span class="keyword">end</span>
+0415 <span class="keyword">if</span> ~isfield(params,<span class="string">'Seed'</span>)
+0416     <span class="comment">%Although the solver reports &quot;optimal solution found&quot;, different seeds</span>
+0417     <span class="comment">%can return solutions with noticeably different objective values, so a</span>
+0418     <span class="comment">%fixed one is used to keep results reproducible</span>
+0419     params.Seed = 26;
+0420 <span class="keyword">end</span>
+0421 
+0422 <span class="comment">% Optimize the problem</span>
+0423 res = <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>(prob,params,verbose);
+0424 [isFeasible, isOptimal]=<a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>(res);
+0425 
+0426 <span class="keyword">if</span> ~isFeasible
+0427     x=[];
+0428     I=[];
+0429     exitFlag=-1;
+0430     <span class="keyword">if</span> res.hitTimeLimit
+0431         <span class="comment">%Nothing is returned either way, but the caller reports -1 as &quot;no</span>
+0432         <span class="comment">%feasible solution exists&quot;, which is not what happened here.</span>
+0433         EM=<span class="string">'Time limit reached before finding a solution. Try increasing the TimeLimit parameter.'</span>;
+0434         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0435     <span class="keyword">end</span>
+0436     <span class="keyword">return</span>;
+0437 <span class="keyword">end</span>
+0438 <span class="keyword">if</span> res.hitTimeLimit || ~isOptimal
+0439     <span class="comment">%A feasible but suboptimal solution, i.e. the solver stopped before</span>
+0440     <span class="comment">%reaching optimality. The solution is still returned, but must not be</span>
+0441     <span class="comment">%reported as optimal: it may use more fluxes than the minimum.</span>
+0442     <span class="comment">%Not every solver reports this in its status, gurobi for one presents a</span>
+0443     <span class="comment">%MILP solution found before the limit as optimal, so res.hitTimeLimit is</span>
+0444     <span class="comment">%consulted as well.</span>
+0445     exitFlag=-2;
+0446 <span class="keyword">end</span>
+0447 
+0448 <span class="keyword">if</span> resolveTies
+0449     <span class="comment">%This MILP is highly degenerate: many reaction subsets reach the same</span>
+0450     <span class="comment">%score optimum, and the solver returns an arbitrary one -- reproducible</span>
+0451     <span class="comment">%for a fixed solver build + Seed, but fragile to a solver version bump</span>
+0452     <span class="comment">%or an unrelated change upstream of the MILP (see raven-gecko-parity#104,</span>
+0453     <span class="comment">%where this was demonstrated on genome-scale Human-GEM: the same Seed,</span>
+0454     <span class="comment">%same problem, but a different MILP construction path flipped a tied</span>
+0455     <span class="comment">%pair of reactions). This runs a lexicographic phase 2, holding the</span>
+0456     <span class="comment">%score objective at its optimum with a floor constraint: first minimise</span>
+0457     <span class="comment">%the count of &quot;on&quot; reactions (the sparsest optimum), then, among the</span>
+0458     <span class="comment">%sparsest, minimise their summed reaction-id rank (prefer lower ids).</span>
+0459     <span class="comment">%Ports raven-toolbox's _resolve_ties_fill (raven-toolbox#114).</span>
+0460     <span class="comment">%</span>
+0461     <span class="comment">%intCols identifies the int/binary variable columns directly from the</span>
+0462     <span class="comment">%block layout (prob.c = [zeros(rxns); zeros(2*revIndexes); scores(:);</span>
+0463     <span class="comment">%zeros(mets+indexes)]) rather than via find(prob.c~=0): a zero-scored</span>
+0464     <span class="comment">%reaction would otherwise silently drop out of the column count and</span>
+0465     <span class="comment">%misalign every later index into &quot;indexes&quot;.</span>
+0466     intCols = numel(model.rxns) + 2*numel(revIndexes) + (1:numel(indexes));
+0467     primaryObj = full(prob.c(intCols)' * res.full(intCols));
+0468     tol = max(abs(primaryObj)*1e-7, 1e-7);
 0469 
-0470     <span class="comment">%An integer objective needs only a cheap absolute-gap proof, not a tiny</span>
-0471     <span class="comment">%relative one -- RAVEN's own MIPGap default (1e-12) can be slow to prove</span>
-0472     <span class="comment">%on a genome-scale problem where a gap below 1 already proves optimality</span>
-0473     <span class="comment">%exactly (mirrors raven-toolbox's own MIPGap=0/MIPGapAbs=0.4 for the same</span>
-0474     <span class="comment">%two phases).</span>
-0475     tieParams = params;
-0476     tieParams.MIPGap = 0;
-0477     tieParams.MIPGapAbs = 0.4;
-0478 
-0479     unproven = {};
-0480 
-0481     <span class="comment">%Phase 2a: fewest &quot;on&quot; reactions among the score-optimal solutions.</span>
-0482     countObj = zeros(size(prob.c));
-0483     countObj(intCols) = 1;
-0484     tieProb.c = countObj;
-0485     res2a = <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>(tieProb,tieParams,verbose);
-0486     [isFeasible2a, isOptimal2a] = <a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>(res2a);
-0487     <span class="keyword">if</span> ~isOptimal2a
-0488         unproven{end+1} = <span class="string">'phase2a-parsimony'</span>;
-0489     <span class="keyword">end</span>
-0490     <span class="keyword">if</span> isFeasible2a
-0491         kmin = full(countObj'*res2a.full);
-0492 
-0493         <span class="comment">%Phase 2b: among the sparsest, prefer lower reaction ids -- a</span>
-0494         <span class="comment">%deterministic tie-break independent of solver/seed.</span>
-0495         countRow = sparse(1,size(tieProb.A,2));
-0496         countRow(intCols) = 1;
-0497         tieProb2b = tieProb;
-0498         tieProb2b.A = [tieProb.A; countRow];
-0499         tieProb2b.a = tieProb2b.A;
-0500         tieProb2b.b = [tieProb.b; kmin+0.5];
-0501         tieProb2b.csense = [tieProb.csense <span class="string">'L'</span>];
-0502 
-0503         [~, sortOrder] = sort(model.rxns(indexes));
-0504         ranks = zeros(numel(indexes),1);
-0505         ranks(sortOrder) = (1:numel(indexes))';
-0506         idObj = zeros(size(prob.c));
-0507         idObj(intCols) = ranks;
-0508         tieProb2b.c = idObj;
-0509         res2b = <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>(tieProb2b,tieParams,verbose);
-0510         [isFeasible2b, isOptimal2b] = <a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>(res2b);
-0511         <span class="keyword">if</span> ~isOptimal2b
-0512             unproven{end+1} = <span class="string">'phase2b-idrank'</span>;
-0513         <span class="keyword">end</span>
-0514         <span class="keyword">if</span> isFeasible2b
-0515             <span class="comment">%Adopt the tie-resolved solution; exitFlag still reflects</span>
-0516             <span class="comment">%whether the *primary* (scores) objective was proven optimal,</span>
-0517             <span class="comment">%same as without resolveTies.</span>
-0518             res = res2b;
-0519         <span class="keyword">end</span>
-0520     <span class="keyword">end</span>
-0521     <span class="keyword">if</span> ~isempty(unproven)
-0522         EM = [<span class="string">'getMinNrFluxes tie resolution did not converge ('</span> strjoin(unproven,<span class="string">', '</span>) <span class="string">'): the selection among equally score-optimal solutions is itself an unproven incumbent, so resolveTies has reduced but not removed the run-to-run spread. Raise params.TimeLimit for a proven tie-break.'</span>];
-0523         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
-0524     <span class="keyword">end</span>
-0525 <span class="keyword">end</span>
-0526 
-0527 x=res.full(1:numel(model.rxns));<span class="comment">%the fluxes</span>
-0528 
-0529 ints = res.full(intsIndexes);
-0530 <span class="comment">%The margin for integers in gurobi is 10^-5; use 10^-3 to have some margin.</span>
-0531 I=ismember(toMinimize, model.rxns(indexes(ints &gt; 10^-3)));
-0532 
-0533 sel = (ints &gt; 10^-12) &amp; (ints &lt; 0.5);
-0534 <span class="keyword">if</span> sum(sel) &gt; 0
-0535     <span class="comment">%This may indicate that there is a problem with the tolerances in the solver</span>
-0536     disp([<span class="string">'getMinNrFluxes: Some variables meant to be boolean in the MILP have intermediate values. Num vars: '</span> num2str(sum(sel))])
-0537 <span class="keyword">end</span>
-0538 
-0539 <span class="keyword">end</span></pre></div>
+0470     floorRow = sparse(1,size(prob.A,2));
+0471     floorRow(intCols) = prob.c(intCols)';
+0472     tieProb = prob;
+0473     tieProb.A = [prob.A; floorRow];
+0474     tieProb.a = tieProb.A;
+0475     tieProb.b = [prob.b; primaryObj+tol];
+0476     tieProb.csense = [prob.csense <span class="string">'L'</span>];
+0477 
+0478     <span class="comment">%An integer objective needs only a cheap absolute-gap proof, not a tiny</span>
+0479     <span class="comment">%relative one -- RAVEN's own MIPGap default (1e-12) can be slow to prove</span>
+0480     <span class="comment">%on a genome-scale problem where a gap below 1 already proves optimality</span>
+0481     <span class="comment">%exactly (mirrors raven-toolbox's own MIPGap=0/MIPGapAbs=0.4 for the same</span>
+0482     <span class="comment">%two phases).</span>
+0483     tieParams = params;
+0484     tieParams.MIPGap = 0;
+0485     tieParams.MIPGapAbs = 0.4;
+0486 
+0487     unproven = {};
+0488 
+0489     <span class="comment">%Phase 2a: fewest &quot;on&quot; reactions among the score-optimal solutions.</span>
+0490     countObj = zeros(size(prob.c));
+0491     countObj(intCols) = 1;
+0492     tieProb.c = countObj;
+0493     res2a = <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>(tieProb,tieParams,verbose);
+0494     [isFeasible2a, isOptimal2a] = <a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>(res2a);
+0495     <span class="keyword">if</span> ~isOptimal2a
+0496         unproven{end+1} = <span class="string">'phase2a-parsimony'</span>;
+0497     <span class="keyword">end</span>
+0498     <span class="keyword">if</span> isFeasible2a
+0499         kmin = full(countObj'*res2a.full);
+0500 
+0501         <span class="comment">%Phase 2b: among the sparsest, prefer lower reaction ids -- a</span>
+0502         <span class="comment">%deterministic tie-break independent of solver/seed.</span>
+0503         countRow = sparse(1,size(tieProb.A,2));
+0504         countRow(intCols) = 1;
+0505         tieProb2b = tieProb;
+0506         tieProb2b.A = [tieProb.A; countRow];
+0507         tieProb2b.a = tieProb2b.A;
+0508         tieProb2b.b = [tieProb.b; kmin+0.5];
+0509         tieProb2b.csense = [tieProb.csense <span class="string">'L'</span>];
+0510 
+0511         [~, sortOrder] = sort(model.rxns(indexes));
+0512         ranks = zeros(numel(indexes),1);
+0513         ranks(sortOrder) = (1:numel(indexes))';
+0514         idObj = zeros(size(prob.c));
+0515         idObj(intCols) = ranks;
+0516         tieProb2b.c = idObj;
+0517         res2b = <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>(tieProb2b,tieParams,verbose);
+0518         [isFeasible2b, isOptimal2b] = <a href="checkSolution.html" class="code" title="function [isFeasible, isOptimal]=checkSolution(res)">checkSolution</a>(res2b);
+0519         <span class="keyword">if</span> ~isOptimal2b
+0520             unproven{end+1} = <span class="string">'phase2b-idrank'</span>;
+0521         <span class="keyword">end</span>
+0522         <span class="keyword">if</span> isFeasible2b
+0523             <span class="comment">%Adopt the tie-resolved solution; exitFlag still reflects</span>
+0524             <span class="comment">%whether the *primary* (scores) objective was proven optimal,</span>
+0525             <span class="comment">%same as without resolveTies.</span>
+0526             res = res2b;
+0527         <span class="keyword">end</span>
+0528     <span class="keyword">end</span>
+0529     <span class="keyword">if</span> ~isempty(unproven)
+0530         EM = [<span class="string">'getMinNrFluxes tie resolution did not converge ('</span> strjoin(unproven,<span class="string">', '</span>) <span class="string">'): the selection among equally score-optimal solutions is itself an unproven incumbent, so resolveTies has reduced but not removed the run-to-run spread. Raise params.TimeLimit for a proven tie-break.'</span>];
+0531         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0532     <span class="keyword">end</span>
+0533 <span class="keyword">end</span>
+0534 
+0535 x=res.full(1:numel(model.rxns));<span class="comment">%the fluxes</span>
+0536 
+0537 ints = res.full(intsIndexes);
+0538 <span class="comment">%The margin for integers in gurobi is 10^-5; use 10^-3 to have some margin.</span>
+0539 I=ismember(toMinimize, model.rxns(indexes(ints &gt; 10^-3)));
+0540 
+0541 sel = (ints &gt; 10^-12) &amp; (ints &lt; 0.5);
+0542 <span class="keyword">if</span> sum(sel) &gt; 0
+0543     <span class="comment">%This may indicate that there is a problem with the tolerances in the solver</span>
+0544     disp([<span class="string">'getMinNrFluxes: Some variables meant to be boolean in the MILP have intermediate values. Num vars: '</span> num2str(sum(sel))])
+0545 <span class="keyword">end</span>
+0546 
+0547 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

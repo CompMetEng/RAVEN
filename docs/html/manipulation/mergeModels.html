@@ -29,10 +29,11 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> mergeModels  Merge models into one model structure.
 
- Merges models into one model structure. Reactions are added without any
- checks, so duplicate reactions might appear. Metabolites are matched by
- their name and compartment (metaboliteName[comp]), while genes are matched
- by their name.
+ Merges models into one model structure. Reactions are added without a check for
+ duplicate reactions, so duplicates can appear. A reaction id that already exists in
+ the merged model is renamed by appending &quot;_&quot; and the id of its source model.
+ Metabolites are matched by name and compartment (metaboliteName[comp]) and genes by
+ name.
 
  Parameters
  ----------
@@ -42,23 +43,22 @@
  Name-Value Arguments
  --------------------
  metParam : char
-     string, metabolite name (&quot;metNames&quot;) or ID (&quot;mets&quot;) are used for
-     matching (default &quot;metNames&quot;).
+     the metabolite field used for matching: &quot;metNames&quot; (name and compartment) or
+     &quot;mets&quot; (id) (default &quot;metNames&quot;).
  supressWarnings : logical
-     whether warnings should be supressed (default false).
+     true to suppress warnings (default false).
  copyToComps : logical
-     internal flag used by copyToComps.m when it calls mergeModels to
-     duplicate a model into a new compartment; leave at default when
-     calling mergeModels directly (default false).
+     internal flag set by copyToComps when it calls mergeModels to duplicate a model into
+     a new compartment. Left at the default when calling mergeModels directly
+     (default false).
 
  Returns
  -------
  model : struct
-     a model structure with the merged model. Follows the structure of
-     normal models but also has &quot;rxnFrom/metFrom/geneFrom&quot; fields to
-     indicate from which model each reaction/metabolite/gene was taken. If
-     the model already has &quot;rxnFrom/metFrom/geneFrom&quot; fields, then these
-     fields are not modified.
+     the merged model structure. In addition to the usual fields, it has the fields
+     rxnFrom, metFrom and geneFrom, which hold the id of the model that each reaction,
+     metabolite and gene was taken from. If a model already has these fields, its
+     entries are not modified.
 
  Examples
  --------
@@ -68,7 +68,7 @@
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 This function calls:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="copyToComps.html" class="code" title="function model=copyToComps(model,toComps,varargin)">copyToComps</a>	copyToComps  Copy reactions to new compartment(s).</li><li><a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>	standardizeGrRules  Standardize gene-reaction rules in a model.</li></ul>
+<li><a href="copyToComps.html" class="code" title="function model=copyToComps(model,toComps,varargin)">copyToComps</a>	copyToComps  Copy reactions to new compartment(s).</li><li><a href="standardizeGrRules.html" class="code" title="function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)">standardizeGrRules</a>	standardizeGrRules  Standardise gene-reaction rules in a model.</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
 <li><a href="copyToComps.html" class="code" title="function model=copyToComps(model,toComps,varargin)">copyToComps</a>	copyToComps  Copy reactions to new compartment(s).</li></ul>
@@ -80,36 +80,36 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function model=mergeModels(models,varargin)</a>
 0002 <span class="comment">% mergeModels  Merge models into one model structure.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Merges models into one model structure. Reactions are added without any</span>
-0005 <span class="comment">% checks, so duplicate reactions might appear. Metabolites are matched by</span>
-0006 <span class="comment">% their name and compartment (metaboliteName[comp]), while genes are matched</span>
-0007 <span class="comment">% by their name.</span>
-0008 <span class="comment">%</span>
-0009 <span class="comment">% Parameters</span>
-0010 <span class="comment">% ----------</span>
-0011 <span class="comment">% models : cell</span>
-0012 <span class="comment">%     a cell array with model structures.</span>
-0013 <span class="comment">%</span>
-0014 <span class="comment">% Name-Value Arguments</span>
-0015 <span class="comment">% --------------------</span>
-0016 <span class="comment">% metParam : char</span>
-0017 <span class="comment">%     string, metabolite name (&quot;metNames&quot;) or ID (&quot;mets&quot;) are used for</span>
-0018 <span class="comment">%     matching (default &quot;metNames&quot;).</span>
-0019 <span class="comment">% supressWarnings : logical</span>
-0020 <span class="comment">%     whether warnings should be supressed (default false).</span>
-0021 <span class="comment">% copyToComps : logical</span>
-0022 <span class="comment">%     internal flag used by copyToComps.m when it calls mergeModels to</span>
-0023 <span class="comment">%     duplicate a model into a new compartment; leave at default when</span>
-0024 <span class="comment">%     calling mergeModels directly (default false).</span>
-0025 <span class="comment">%</span>
-0026 <span class="comment">% Returns</span>
-0027 <span class="comment">% -------</span>
-0028 <span class="comment">% model : struct</span>
-0029 <span class="comment">%     a model structure with the merged model. Follows the structure of</span>
-0030 <span class="comment">%     normal models but also has &quot;rxnFrom/metFrom/geneFrom&quot; fields to</span>
-0031 <span class="comment">%     indicate from which model each reaction/metabolite/gene was taken. If</span>
-0032 <span class="comment">%     the model already has &quot;rxnFrom/metFrom/geneFrom&quot; fields, then these</span>
-0033 <span class="comment">%     fields are not modified.</span>
+0004 <span class="comment">% Merges models into one model structure. Reactions are added without a check for</span>
+0005 <span class="comment">% duplicate reactions, so duplicates can appear. A reaction id that already exists in</span>
+0006 <span class="comment">% the merged model is renamed by appending &quot;_&quot; and the id of its source model.</span>
+0007 <span class="comment">% Metabolites are matched by name and compartment (metaboliteName[comp]) and genes by</span>
+0008 <span class="comment">% name.</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">% Parameters</span>
+0011 <span class="comment">% ----------</span>
+0012 <span class="comment">% models : cell</span>
+0013 <span class="comment">%     a cell array with model structures.</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">% Name-Value Arguments</span>
+0016 <span class="comment">% --------------------</span>
+0017 <span class="comment">% metParam : char</span>
+0018 <span class="comment">%     the metabolite field used for matching: &quot;metNames&quot; (name and compartment) or</span>
+0019 <span class="comment">%     &quot;mets&quot; (id) (default &quot;metNames&quot;).</span>
+0020 <span class="comment">% supressWarnings : logical</span>
+0021 <span class="comment">%     true to suppress warnings (default false).</span>
+0022 <span class="comment">% copyToComps : logical</span>
+0023 <span class="comment">%     internal flag set by copyToComps when it calls mergeModels to duplicate a model into</span>
+0024 <span class="comment">%     a new compartment. Left at the default when calling mergeModels directly</span>
+0025 <span class="comment">%     (default false).</span>
+0026 <span class="comment">%</span>
+0027 <span class="comment">% Returns</span>
+0028 <span class="comment">% -------</span>
+0029 <span class="comment">% model : struct</span>
+0030 <span class="comment">%     the merged model structure. In addition to the usual fields, it has the fields</span>
+0031 <span class="comment">%     rxnFrom, metFrom and geneFrom, which hold the id of the model that each reaction,</span>
+0032 <span class="comment">%     metabolite and gene was taken from. If a model already has these fields, its</span>
+0033 <span class="comment">%     entries are not modified.</span>
 0034 <span class="comment">%</span>
 0035 <span class="comment">% Examples</span>
 0036 <span class="comment">% --------</span>

@@ -30,12 +30,14 @@
 <div class="fragment"><pre class="comment"> canExchange  Check which metabolites a model can produce or consume.
 
  Adds an exchange reaction for each of the specified metabolites and
- checks which of them can carry a flux. This is the unified replacement
- for canProduce ('produce') and canConsume ('consume').
+ checks which of them can carry an absolute flux above 1e-5. The direction
+ 'produce' corresponds to the deprecated function canProduce and 'consume'
+ to canConsume.
 
- This is a less advanced but faster version of checkProduction, which
- additionally reports which metabolites must be connected in order to make
- the remaining ones producible.
+ canExchange only tests whether each added exchange reaction can carry flux.
+ checkProduction also reports which metabolites must be connected in order
+ to make the remaining ones producible, which requires further problems to be
+ solved.
 
  Parameters
  ----------
@@ -74,7 +76,7 @@ This function calls:
 <li><a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>	canExchange  Check which metabolites a model can produce or consume.</li></ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>	canExchange  Check which metabolites a model can produce or consume.</li><li><a href="gapReport.html" class="code" title="function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnect,neededForProductionMat, canProduceWithoutInput, canConsumeWithoutOutput,connectedFromTemplates, addedFromTemplates]=gapReport(model, varargin)">gapReport</a>	gapReport  Perform a gap analysis and summarize the results.</li></ul>
+<li><a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>	canExchange  Check which metabolites a model can produce or consume.</li><li><a href="gapReport.html" class="code" title="function [noFluxRxns, noFluxRxnsRelaxed, subGraphs, notProducedMets, minToConnect,neededForProductionMat, canProduceWithoutInput, canConsumeWithoutOutput,connectedFromTemplates, addedFromTemplates]=gapReport(model, varargin)">gapReport</a>	gapReport  Perform a gap analysis and summarise the results.</li></ul>
 <!-- crossreference -->
 
 
@@ -84,66 +86,68 @@ This function is called by:
 0002 <span class="comment">% canExchange  Check which metabolites a model can produce or consume.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Adds an exchange reaction for each of the specified metabolites and</span>
-0005 <span class="comment">% checks which of them can carry a flux. This is the unified replacement</span>
-0006 <span class="comment">% for canProduce ('produce') and canConsume ('consume').</span>
-0007 <span class="comment">%</span>
-0008 <span class="comment">% This is a less advanced but faster version of checkProduction, which</span>
-0009 <span class="comment">% additionally reports which metabolites must be connected in order to make</span>
-0010 <span class="comment">% the remaining ones producible.</span>
-0011 <span class="comment">%</span>
-0012 <span class="comment">% Parameters</span>
-0013 <span class="comment">% ----------</span>
-0014 <span class="comment">% model : struct</span>
-0015 <span class="comment">%     a model structure.</span>
-0016 <span class="comment">% direction : char</span>
-0017 <span class="comment">%     'produce' to check for net production of each metabolite, or</span>
-0018 <span class="comment">%     'consume' to check for net consumption.</span>
-0019 <span class="comment">%</span>
-0020 <span class="comment">% Name-Value Arguments</span>
-0021 <span class="comment">% --------------------</span>
-0022 <span class="comment">% mets : cell or logical or double</span>
-0023 <span class="comment">%     either a cell array of metabolite IDs, a logical vector with the same</span>
-0024 <span class="comment">%     number of elements as metabolites in the model, or a vector of</span>
-0025 <span class="comment">%     indexes to check for (default model.mets).</span>
-0026 <span class="comment">%</span>
-0027 <span class="comment">% Returns</span>
-0028 <span class="comment">% -------</span>
-0029 <span class="comment">% canExchange : logical</span>
-0030 <span class="comment">%     vector with true if the corresponding metabolite could be produced</span>
-0031 <span class="comment">%     (direction 'produce') or consumed (direction 'consume').</span>
-0032 <span class="comment">%</span>
-0033 <span class="comment">% Examples</span>
-0034 <span class="comment">% --------</span>
-0035 <span class="comment">%     produced = canExchange(model, 'produce');</span>
-0036 <span class="comment">%     consumed = canExchange(model, 'consume', mets);</span>
-0037 <span class="comment">%</span>
-0038 <span class="comment">% See also</span>
-0039 <span class="comment">% --------</span>
-0040 <span class="comment">% checkProduction, findLeakMetabolite</span>
-0041 
-0042 direction=char(direction);
-0043 <span class="keyword">if</span> ~any(strcmp(direction,{<span class="string">'produce'</span>,<span class="string">'consume'</span>}))
-0044     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'direction must be ''produce'' or ''consume'''</span>);
-0045 <span class="keyword">end</span>
-0046 
-0047 p=parseRAVENargs(varargin, {<span class="string">'mets'</span>,[]});
-0048 mets=p.mets;
-0049 
-0050 <span class="keyword">if</span> isempty(mets)
-0051     mets=model.mets;
-0052 <span class="keyword">elseif</span> ~islogical(mets) &amp;&amp; ~isnumeric(mets)
-0053     mets=convertCharArray(mets);
-0054 <span class="keyword">end</span>
-0055 
-0056 <span class="keyword">if</span> strcmp(direction,<span class="string">'produce'</span>)
-0057     exchangeDir=<span class="string">'out'</span>;
-0058 <span class="keyword">else</span>
-0059     exchangeDir=<span class="string">'in'</span>;
-0060 <span class="keyword">end</span>
-0061 
-0062 [model, rxns]=addExchangeRxns(model,exchangeDir,mets);
-0063 <a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>=haveFlux(model,10^-5,rxns);
-0064 <span class="keyword">end</span></pre></div>
+0005 <span class="comment">% checks which of them can carry an absolute flux above 1e-5. The direction</span>
+0006 <span class="comment">% 'produce' corresponds to the deprecated function canProduce and 'consume'</span>
+0007 <span class="comment">% to canConsume.</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">% canExchange only tests whether each added exchange reaction can carry flux.</span>
+0010 <span class="comment">% checkProduction also reports which metabolites must be connected in order</span>
+0011 <span class="comment">% to make the remaining ones producible, which requires further problems to be</span>
+0012 <span class="comment">% solved.</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Parameters</span>
+0015 <span class="comment">% ----------</span>
+0016 <span class="comment">% model : struct</span>
+0017 <span class="comment">%     a model structure.</span>
+0018 <span class="comment">% direction : char</span>
+0019 <span class="comment">%     'produce' to check for net production of each metabolite, or</span>
+0020 <span class="comment">%     'consume' to check for net consumption.</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% Name-Value Arguments</span>
+0023 <span class="comment">% --------------------</span>
+0024 <span class="comment">% mets : cell or logical or double</span>
+0025 <span class="comment">%     either a cell array of metabolite IDs, a logical vector with the same</span>
+0026 <span class="comment">%     number of elements as metabolites in the model, or a vector of</span>
+0027 <span class="comment">%     indexes to check for (default model.mets).</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">% Returns</span>
+0030 <span class="comment">% -------</span>
+0031 <span class="comment">% canExchange : logical</span>
+0032 <span class="comment">%     vector with true if the corresponding metabolite could be produced</span>
+0033 <span class="comment">%     (direction 'produce') or consumed (direction 'consume').</span>
+0034 <span class="comment">%</span>
+0035 <span class="comment">% Examples</span>
+0036 <span class="comment">% --------</span>
+0037 <span class="comment">%     produced = canExchange(model, 'produce');</span>
+0038 <span class="comment">%     consumed = canExchange(model, 'consume', mets);</span>
+0039 <span class="comment">%</span>
+0040 <span class="comment">% See also</span>
+0041 <span class="comment">% --------</span>
+0042 <span class="comment">% checkProduction, findLeakMetabolite</span>
+0043 
+0044 direction=char(direction);
+0045 <span class="keyword">if</span> ~any(strcmp(direction,{<span class="string">'produce'</span>,<span class="string">'consume'</span>}))
+0046     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'direction must be ''produce'' or ''consume'''</span>);
+0047 <span class="keyword">end</span>
+0048 
+0049 p=parseRAVENargs(varargin, {<span class="string">'mets'</span>,[]});
+0050 mets=p.mets;
+0051 
+0052 <span class="keyword">if</span> isempty(mets)
+0053     mets=model.mets;
+0054 <span class="keyword">elseif</span> ~islogical(mets) &amp;&amp; ~isnumeric(mets)
+0055     mets=convertCharArray(mets);
+0056 <span class="keyword">end</span>
+0057 
+0058 <span class="keyword">if</span> strcmp(direction,<span class="string">'produce'</span>)
+0059     exchangeDir=<span class="string">'out'</span>;
+0060 <span class="keyword">else</span>
+0061     exchangeDir=<span class="string">'in'</span>;
+0062 <span class="keyword">end</span>
+0063 
+0064 [model, rxns]=addExchangeRxns(model,exchangeDir,mets);
+0065 <a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a>=haveFlux(model,10^-5,rxns);
+0066 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

@@ -31,9 +31,9 @@
 
  Fills gaps in a model by including reactions from a reference model, so
  that the resulting model can perform all the tasks in a task list. The
- gap-filling is done in a task-by-task manner, rather than solving for
- all tasks at once. This means that the order of the tasks could
- influence the result.
+ tasks are gap-filled one at a time in list order, and the reactions added
+ for one task are kept for the following tasks. The order of the tasks can
+ therefore influence the result.
 
  Parameters
  ----------
@@ -43,7 +43,7 @@
      reference model from which to include reactions.
  inputFile : char, optional
      a task list in Excel format. See the function parseTaskList for
-     details (optional if taskStructure is supplied).
+     details. Optional if taskStructure is supplied.
 
  Name-Value Arguments
  --------------------
@@ -51,17 +51,16 @@
      true if the results of the test should be displayed (default true).
  rxnScores : double
      scores for each of the reactions in the reference model. Only
-     negative scores are allowed. The solver will try to maximize the sum
-     of the scores for the included reactions (default is -1 for all
-     reactions).
+     negative scores are allowed. The solver maximises the sum of the
+     scores of the included reactions (default is -1 for all reactions).
  taskStructure : struct
-     structure with the tasks, as from parseTaskList. If supplied then
+     structure with the tasks, as returned by parseTaskList. If supplied,
      inputFile is ignored.
  params : struct
-     solver parameters, forwarded to the gap-filling back-end and from there
-     to optimizeProb for each per-task MILP (default []).
+     solver parameters, passed to the gap-filling function and from there to
+     optimizeProb for each per-task MILP (default []).
  gapFillMode : char
-     which gap-filling back-end to use (default 'merge'):
+     which gap-filling function to use (default 'merge'):
 
      - 'merge' : refModel holds only the candidate reactions, and fillGaps
        merges it with the model for every task.
@@ -69,12 +68,13 @@
        so no merge is needed per task. The task constraints are written
        into refModel as well, and ftINITFillGaps does the gap-filling.
  verbose : logical
-     if true, the MILP progression will be shown. Only read when
-     gapFillMode is 'preMerged' (default false).
+     true to show the MILP progression. Only read when gapFillMode is
+     'preMerged' (default false).
  resolveTies : logical
-     if true, pin the gap-fill MILP's degenerate optimum to a canonical answer
-     instead of relying on the solver Seed alone. Only read when gapFillMode is
-     'preMerged' -- see ftINITFillGaps' resolveTies (default false).
+     true to fix the degenerate optimum of the gap-fill MILP to a canonical
+     answer, which otherwise depends on the solver Seed. Only read when
+     gapFillMode is 'preMerged'. See resolveTies of ftINITFillGaps
+     (default false).
 
  Returns
  -------
@@ -88,8 +88,8 @@
  failedTasks : logical
      Nx1, true for each task that could not be gap-filled, either because
      no feasible solution exists using the reference model or because the
-     attempt threw. Such tasks add no reactions, so they are otherwise
-     indistinguishable from tasks that already worked.
+     attempt raised an error. Such tasks add no reactions, and the same
+     holds for tasks that are feasible without gap-filling.
 
  Examples
  --------
@@ -116,9 +116,9 @@ This function is called by:
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Fills gaps in a model by including reactions from a reference model, so</span>
 0005 <span class="comment">% that the resulting model can perform all the tasks in a task list. The</span>
-0006 <span class="comment">% gap-filling is done in a task-by-task manner, rather than solving for</span>
-0007 <span class="comment">% all tasks at once. This means that the order of the tasks could</span>
-0008 <span class="comment">% influence the result.</span>
+0006 <span class="comment">% tasks are gap-filled one at a time in list order, and the reactions added</span>
+0007 <span class="comment">% for one task are kept for the following tasks. The order of the tasks can</span>
+0008 <span class="comment">% therefore influence the result.</span>
 0009 <span class="comment">%</span>
 0010 <span class="comment">% Parameters</span>
 0011 <span class="comment">% ----------</span>
@@ -128,7 +128,7 @@ This function is called by:
 0015 <span class="comment">%     reference model from which to include reactions.</span>
 0016 <span class="comment">% inputFile : char, optional</span>
 0017 <span class="comment">%     a task list in Excel format. See the function parseTaskList for</span>
-0018 <span class="comment">%     details (optional if taskStructure is supplied).</span>
+0018 <span class="comment">%     details. Optional if taskStructure is supplied.</span>
 0019 <span class="comment">%</span>
 0020 <span class="comment">% Name-Value Arguments</span>
 0021 <span class="comment">% --------------------</span>
@@ -136,30 +136,30 @@ This function is called by:
 0023 <span class="comment">%     true if the results of the test should be displayed (default true).</span>
 0024 <span class="comment">% rxnScores : double</span>
 0025 <span class="comment">%     scores for each of the reactions in the reference model. Only</span>
-0026 <span class="comment">%     negative scores are allowed. The solver will try to maximize the sum</span>
-0027 <span class="comment">%     of the scores for the included reactions (default is -1 for all</span>
-0028 <span class="comment">%     reactions).</span>
-0029 <span class="comment">% taskStructure : struct</span>
-0030 <span class="comment">%     structure with the tasks, as from parseTaskList. If supplied then</span>
-0031 <span class="comment">%     inputFile is ignored.</span>
-0032 <span class="comment">% params : struct</span>
-0033 <span class="comment">%     solver parameters, forwarded to the gap-filling back-end and from there</span>
-0034 <span class="comment">%     to optimizeProb for each per-task MILP (default []).</span>
-0035 <span class="comment">% gapFillMode : char</span>
-0036 <span class="comment">%     which gap-filling back-end to use (default 'merge'):</span>
-0037 <span class="comment">%</span>
-0038 <span class="comment">%     - 'merge' : refModel holds only the candidate reactions, and fillGaps</span>
-0039 <span class="comment">%       merges it with the model for every task.</span>
-0040 <span class="comment">%     - 'preMerged' : refModel already contains the model's own reactions,</span>
-0041 <span class="comment">%       so no merge is needed per task. The task constraints are written</span>
-0042 <span class="comment">%       into refModel as well, and ftINITFillGaps does the gap-filling.</span>
-0043 <span class="comment">% verbose : logical</span>
-0044 <span class="comment">%     if true, the MILP progression will be shown. Only read when</span>
-0045 <span class="comment">%     gapFillMode is 'preMerged' (default false).</span>
-0046 <span class="comment">% resolveTies : logical</span>
-0047 <span class="comment">%     if true, pin the gap-fill MILP's degenerate optimum to a canonical answer</span>
-0048 <span class="comment">%     instead of relying on the solver Seed alone. Only read when gapFillMode is</span>
-0049 <span class="comment">%     'preMerged' -- see ftINITFillGaps' resolveTies (default false).</span>
+0026 <span class="comment">%     negative scores are allowed. The solver maximises the sum of the</span>
+0027 <span class="comment">%     scores of the included reactions (default is -1 for all reactions).</span>
+0028 <span class="comment">% taskStructure : struct</span>
+0029 <span class="comment">%     structure with the tasks, as returned by parseTaskList. If supplied,</span>
+0030 <span class="comment">%     inputFile is ignored.</span>
+0031 <span class="comment">% params : struct</span>
+0032 <span class="comment">%     solver parameters, passed to the gap-filling function and from there to</span>
+0033 <span class="comment">%     optimizeProb for each per-task MILP (default []).</span>
+0034 <span class="comment">% gapFillMode : char</span>
+0035 <span class="comment">%     which gap-filling function to use (default 'merge'):</span>
+0036 <span class="comment">%</span>
+0037 <span class="comment">%     - 'merge' : refModel holds only the candidate reactions, and fillGaps</span>
+0038 <span class="comment">%       merges it with the model for every task.</span>
+0039 <span class="comment">%     - 'preMerged' : refModel already contains the model's own reactions,</span>
+0040 <span class="comment">%       so no merge is needed per task. The task constraints are written</span>
+0041 <span class="comment">%       into refModel as well, and ftINITFillGaps does the gap-filling.</span>
+0042 <span class="comment">% verbose : logical</span>
+0043 <span class="comment">%     true to show the MILP progression. Only read when gapFillMode is</span>
+0044 <span class="comment">%     'preMerged' (default false).</span>
+0045 <span class="comment">% resolveTies : logical</span>
+0046 <span class="comment">%     true to fix the degenerate optimum of the gap-fill MILP to a canonical</span>
+0047 <span class="comment">%     answer, which otherwise depends on the solver Seed. Only read when</span>
+0048 <span class="comment">%     gapFillMode is 'preMerged'. See resolveTies of ftINITFillGaps</span>
+0049 <span class="comment">%     (default false).</span>
 0050 <span class="comment">%</span>
 0051 <span class="comment">% Returns</span>
 0052 <span class="comment">% -------</span>
@@ -173,8 +173,8 @@ This function is called by:
 0060 <span class="comment">% failedTasks : logical</span>
 0061 <span class="comment">%     Nx1, true for each task that could not be gap-filled, either because</span>
 0062 <span class="comment">%     no feasible solution exists using the reference model or because the</span>
-0063 <span class="comment">%     attempt threw. Such tasks add no reactions, so they are otherwise</span>
-0064 <span class="comment">%     indistinguishable from tasks that already worked.</span>
+0063 <span class="comment">%     attempt raised an error. Such tasks add no reactions, and the same</span>
+0064 <span class="comment">%     holds for tasks that are feasible without gap-filling.</span>
 0065 <span class="comment">%</span>
 0066 <span class="comment">% Examples</span>
 0067 <span class="comment">% --------</span>

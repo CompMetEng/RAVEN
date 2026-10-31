@@ -39,9 +39,9 @@
  Returns
  -------
  subGraphs : logical
-     a boolean matrix where the rows correspond to the metabolites and
-     the columns to which subgraph they are assigned to. The columns are
-     ordered so that larger subgraphs come first.
+     a logical matrix with one row per metabolite and one column per
+     subgraph. An element is true if the metabolite belongs to the
+     subgraph. The columns are ordered by decreasing subgraph size.
 
  Examples
  --------
@@ -73,9 +73,9 @@ This function is called by:
 0011 <span class="comment">% Returns</span>
 0012 <span class="comment">% -------</span>
 0013 <span class="comment">% subGraphs : logical</span>
-0014 <span class="comment">%     a boolean matrix where the rows correspond to the metabolites and</span>
-0015 <span class="comment">%     the columns to which subgraph they are assigned to. The columns are</span>
-0016 <span class="comment">%     ordered so that larger subgraphs come first.</span>
+0014 <span class="comment">%     a logical matrix with one row per metabolite and one column per</span>
+0015 <span class="comment">%     subgraph. An element is true if the metabolite belongs to the</span>
+0016 <span class="comment">%     subgraph. The columns are ordered by decreasing subgraph size.</span>
 0017 <span class="comment">%</span>
 0018 <span class="comment">% Examples</span>
 0019 <span class="comment">% --------</span>

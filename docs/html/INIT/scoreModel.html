@@ -30,11 +30,8 @@
 <div class="fragment"><pre class="comment"> scoreModel  Score reactions and genes in a model with complex gene rules.
 
  Scores the reactions and genes in a model containing complex gene rules
- based on expression data from HPA and/or gene arrays.
-
- It is highly recommended that the model grRules are &quot;cleaned&quot; and verified by
- the &quot;cleanModelGeneRules&quot; function prior to scoring the model with
- scoreModel.
+ based on expression data from HPA, gene arrays or both. The model grRules
+ should be standardised with standardizeGrRules before scoring.
 
  Parameters
  ----------
@@ -48,26 +45,27 @@
      []). With fields:
 
      - genes : cell array with the unique gene names.
-     - tissues : cell array with the tissue names. The list may not be unique,
-       as there can be multiple cell types per tissue.
+     - tissues : cell array with the tissue names. The list can contain
+       duplicates, as there can be multiple cell types per tissue.
      - celltypes : cell array with the cell type names for each tissue.
      - levels : GENESxTISSUES array with the expression level for each gene in
-       each tissue/celltype. NaN should be used when no measurement was
-       performed.
+       each tissue and cell type. NaN marks a gene that was not measured.
      - threshold : a single value or a vector of gene expression thresholds,
-       above which genes are considered to be &quot;expressed&quot;. (optional, by
-       default, the mean expression levels of each gene across all tissues in
-       arrayData will be used as the threshold values).
+       above which genes are considered to be &quot;expressed&quot;. If omitted, the
+       mean expression level of each gene across all tissues in arrayData
+       is used as the threshold.
  tissue : char
-     tissue to score for. Should exist in either hpaData.tissues or
-     arrayData.tissues.
+     tissue to score for. Must exist in either hpaData.tissues or
+     arrayData.tissues (matched without regard to case); otherwise an error
+     is raised.
 
  Name-Value Arguments
  --------------------
  celltype : char
-     cell type to score for. Should exist in either hpaData.celltypes or
-     arrayData.celltypes for this tissue (default is to use the max values
-     among all the cell types for the tissue).
+     cell type to score for. Must exist in either hpaData.celltypes or
+     arrayData.celltypes (matched without regard to case); otherwise an error
+     is raised (default [], which uses all cell types of the tissue,
+     combined as set by multipleCellScoring).
  noGeneScore : double
      score for reactions without genes (default -2).
  isozymeScoring : char
@@ -83,8 +81,9 @@
      (&quot;max&quot; or &quot;average&quot;) (default &quot;max&quot;).
  hpaLevelScores : struct
      structure with numerical scores for the expression level categories from
-     HPA. The structure should have a &quot;names&quot; and a &quot;scores&quot; field (default,
-     see code for default scores).
+     HPA. The structure has a &quot;names&quot; and a &quot;scores&quot; field. The default names
+     are High, Medium, Low, None, Strong, Moderate, Weak, Negative and Not
+     detected, with the scores 20, 15, 10, -8, 20, 15, 10, -8 and -8.
  dataPrecedence : char
      how hpaData takes precedence over arrayData when both are supplied
      (default &quot;gene&quot;):
@@ -101,8 +100,9 @@
      scores for each of the reactions in model.
  geneScores : double
      scores for each of the genes in model. Genes which are not in the
-     dataset(s) have NaN as scores, which removeLowScoreGenes reads as &quot;no
-     evidence&quot; and leaves in place, where a negative score would be pruned.
+     dataset(s) have NaN as scores. removeLowScoreGenes reads NaN as &quot;no
+     evidence&quot; and leaves the gene in place, and prunes genes with a
+     negative score.
  hpaScores : double
      scores for each of the genes in model if only taking hpaData into
      account. Genes which are not in the dataset(s) have -Inf as scores.
@@ -129,79 +129,79 @@ This function is called by:
 0002 <span class="comment">% scoreModel  Score reactions and genes in a model with complex gene rules.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Scores the reactions and genes in a model containing complex gene rules</span>
-0005 <span class="comment">% based on expression data from HPA and/or gene arrays.</span>
-0006 <span class="comment">%</span>
-0007 <span class="comment">% It is highly recommended that the model grRules are &quot;cleaned&quot; and verified by</span>
-0008 <span class="comment">% the &quot;cleanModelGeneRules&quot; function prior to scoring the model with</span>
-0009 <span class="comment">% scoreModel.</span>
-0010 <span class="comment">%</span>
-0011 <span class="comment">% Parameters</span>
-0012 <span class="comment">% ----------</span>
-0013 <span class="comment">% model : struct</span>
-0014 <span class="comment">%     a model structure.</span>
-0015 <span class="comment">% hpaData : struct</span>
-0016 <span class="comment">%     HPA data structure from parseHPA (optional if arrayData is supplied,</span>
-0017 <span class="comment">%     default []).</span>
-0018 <span class="comment">% arrayData : struct</span>
-0019 <span class="comment">%     gene expression data structure (optional if hpaData is supplied, default</span>
-0020 <span class="comment">%     []). With fields:</span>
-0021 <span class="comment">%</span>
-0022 <span class="comment">%     - genes : cell array with the unique gene names.</span>
-0023 <span class="comment">%     - tissues : cell array with the tissue names. The list may not be unique,</span>
-0024 <span class="comment">%       as there can be multiple cell types per tissue.</span>
-0025 <span class="comment">%     - celltypes : cell array with the cell type names for each tissue.</span>
-0026 <span class="comment">%     - levels : GENESxTISSUES array with the expression level for each gene in</span>
-0027 <span class="comment">%       each tissue/celltype. NaN should be used when no measurement was</span>
-0028 <span class="comment">%       performed.</span>
-0029 <span class="comment">%     - threshold : a single value or a vector of gene expression thresholds,</span>
-0030 <span class="comment">%       above which genes are considered to be &quot;expressed&quot;. (optional, by</span>
-0031 <span class="comment">%       default, the mean expression levels of each gene across all tissues in</span>
-0032 <span class="comment">%       arrayData will be used as the threshold values).</span>
-0033 <span class="comment">% tissue : char</span>
-0034 <span class="comment">%     tissue to score for. Should exist in either hpaData.tissues or</span>
-0035 <span class="comment">%     arrayData.tissues.</span>
-0036 <span class="comment">%</span>
-0037 <span class="comment">% Name-Value Arguments</span>
-0038 <span class="comment">% --------------------</span>
-0039 <span class="comment">% celltype : char</span>
-0040 <span class="comment">%     cell type to score for. Should exist in either hpaData.celltypes or</span>
-0041 <span class="comment">%     arrayData.celltypes for this tissue (default is to use the max values</span>
-0042 <span class="comment">%     among all the cell types for the tissue).</span>
-0043 <span class="comment">% noGeneScore : double</span>
-0044 <span class="comment">%     score for reactions without genes (default -2).</span>
-0045 <span class="comment">% isozymeScoring : char</span>
-0046 <span class="comment">%     determines how scores are calculated for reactions with multiple genes</span>
-0047 <span class="comment">%     joined by &quot;OR&quot; expression(s) (&quot;min&quot;, &quot;max&quot;, &quot;median&quot;, &quot;average&quot;)</span>
-0048 <span class="comment">%     (default &quot;max&quot;).</span>
-0049 <span class="comment">% complexScoring : char</span>
-0050 <span class="comment">%     determines how scores are calculated for reactions with multiple genes</span>
-0051 <span class="comment">%     joined by &quot;AND&quot; expression(s) (&quot;min&quot;, &quot;max&quot;, &quot;median&quot;, &quot;average&quot;)</span>
-0052 <span class="comment">%     (default &quot;min&quot;).</span>
-0053 <span class="comment">% multipleCellScoring : char</span>
-0054 <span class="comment">%     determines how scores are calculated when several cell types are used</span>
-0055 <span class="comment">%     (&quot;max&quot; or &quot;average&quot;) (default &quot;max&quot;).</span>
-0056 <span class="comment">% hpaLevelScores : struct</span>
-0057 <span class="comment">%     structure with numerical scores for the expression level categories from</span>
-0058 <span class="comment">%     HPA. The structure should have a &quot;names&quot; and a &quot;scores&quot; field (default,</span>
-0059 <span class="comment">%     see code for default scores).</span>
-0060 <span class="comment">% dataPrecedence : char</span>
-0061 <span class="comment">%     how hpaData takes precedence over arrayData when both are supplied</span>
-0062 <span class="comment">%     (default &quot;gene&quot;):</span>
-0063 <span class="comment">%</span>
-0064 <span class="comment">%     - &quot;gene&quot; : per gene. A gene with HPA data is scored from it, a gene</span>
-0065 <span class="comment">%       without is scored from arrayData, and a rule can mix the two.</span>
-0066 <span class="comment">%     - &quot;reaction&quot; : per rule. As soon as any one gene in a rule has HPA data,</span>
-0067 <span class="comment">%       the whole rule is scored from HPA alone and its array-only genes count</span>
-0068 <span class="comment">%       as unmeasured.</span>
-0069 <span class="comment">%</span>
-0070 <span class="comment">% Returns</span>
-0071 <span class="comment">% -------</span>
-0072 <span class="comment">% rxnScores : double</span>
-0073 <span class="comment">%     scores for each of the reactions in model.</span>
-0074 <span class="comment">% geneScores : double</span>
-0075 <span class="comment">%     scores for each of the genes in model. Genes which are not in the</span>
-0076 <span class="comment">%     dataset(s) have NaN as scores, which removeLowScoreGenes reads as &quot;no</span>
-0077 <span class="comment">%     evidence&quot; and leaves in place, where a negative score would be pruned.</span>
+0005 <span class="comment">% based on expression data from HPA, gene arrays or both. The model grRules</span>
+0006 <span class="comment">% should be standardised with standardizeGrRules before scoring.</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">% Parameters</span>
+0009 <span class="comment">% ----------</span>
+0010 <span class="comment">% model : struct</span>
+0011 <span class="comment">%     a model structure.</span>
+0012 <span class="comment">% hpaData : struct</span>
+0013 <span class="comment">%     HPA data structure from parseHPA (optional if arrayData is supplied,</span>
+0014 <span class="comment">%     default []).</span>
+0015 <span class="comment">% arrayData : struct</span>
+0016 <span class="comment">%     gene expression data structure (optional if hpaData is supplied, default</span>
+0017 <span class="comment">%     []). With fields:</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">%     - genes : cell array with the unique gene names.</span>
+0020 <span class="comment">%     - tissues : cell array with the tissue names. The list can contain</span>
+0021 <span class="comment">%       duplicates, as there can be multiple cell types per tissue.</span>
+0022 <span class="comment">%     - celltypes : cell array with the cell type names for each tissue.</span>
+0023 <span class="comment">%     - levels : GENESxTISSUES array with the expression level for each gene in</span>
+0024 <span class="comment">%       each tissue and cell type. NaN marks a gene that was not measured.</span>
+0025 <span class="comment">%     - threshold : a single value or a vector of gene expression thresholds,</span>
+0026 <span class="comment">%       above which genes are considered to be &quot;expressed&quot;. If omitted, the</span>
+0027 <span class="comment">%       mean expression level of each gene across all tissues in arrayData</span>
+0028 <span class="comment">%       is used as the threshold.</span>
+0029 <span class="comment">% tissue : char</span>
+0030 <span class="comment">%     tissue to score for. Must exist in either hpaData.tissues or</span>
+0031 <span class="comment">%     arrayData.tissues (matched without regard to case); otherwise an error</span>
+0032 <span class="comment">%     is raised.</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">% Name-Value Arguments</span>
+0035 <span class="comment">% --------------------</span>
+0036 <span class="comment">% celltype : char</span>
+0037 <span class="comment">%     cell type to score for. Must exist in either hpaData.celltypes or</span>
+0038 <span class="comment">%     arrayData.celltypes (matched without regard to case); otherwise an error</span>
+0039 <span class="comment">%     is raised (default [], which uses all cell types of the tissue,</span>
+0040 <span class="comment">%     combined as set by multipleCellScoring).</span>
+0041 <span class="comment">% noGeneScore : double</span>
+0042 <span class="comment">%     score for reactions without genes (default -2).</span>
+0043 <span class="comment">% isozymeScoring : char</span>
+0044 <span class="comment">%     determines how scores are calculated for reactions with multiple genes</span>
+0045 <span class="comment">%     joined by &quot;OR&quot; expression(s) (&quot;min&quot;, &quot;max&quot;, &quot;median&quot;, &quot;average&quot;)</span>
+0046 <span class="comment">%     (default &quot;max&quot;).</span>
+0047 <span class="comment">% complexScoring : char</span>
+0048 <span class="comment">%     determines how scores are calculated for reactions with multiple genes</span>
+0049 <span class="comment">%     joined by &quot;AND&quot; expression(s) (&quot;min&quot;, &quot;max&quot;, &quot;median&quot;, &quot;average&quot;)</span>
+0050 <span class="comment">%     (default &quot;min&quot;).</span>
+0051 <span class="comment">% multipleCellScoring : char</span>
+0052 <span class="comment">%     determines how scores are calculated when several cell types are used</span>
+0053 <span class="comment">%     (&quot;max&quot; or &quot;average&quot;) (default &quot;max&quot;).</span>
+0054 <span class="comment">% hpaLevelScores : struct</span>
+0055 <span class="comment">%     structure with numerical scores for the expression level categories from</span>
+0056 <span class="comment">%     HPA. The structure has a &quot;names&quot; and a &quot;scores&quot; field. The default names</span>
+0057 <span class="comment">%     are High, Medium, Low, None, Strong, Moderate, Weak, Negative and Not</span>
+0058 <span class="comment">%     detected, with the scores 20, 15, 10, -8, 20, 15, 10, -8 and -8.</span>
+0059 <span class="comment">% dataPrecedence : char</span>
+0060 <span class="comment">%     how hpaData takes precedence over arrayData when both are supplied</span>
+0061 <span class="comment">%     (default &quot;gene&quot;):</span>
+0062 <span class="comment">%</span>
+0063 <span class="comment">%     - &quot;gene&quot; : per gene. A gene with HPA data is scored from it, a gene</span>
+0064 <span class="comment">%       without is scored from arrayData, and a rule can mix the two.</span>
+0065 <span class="comment">%     - &quot;reaction&quot; : per rule. As soon as any one gene in a rule has HPA data,</span>
+0066 <span class="comment">%       the whole rule is scored from HPA alone and its array-only genes count</span>
+0067 <span class="comment">%       as unmeasured.</span>
+0068 <span class="comment">%</span>
+0069 <span class="comment">% Returns</span>
+0070 <span class="comment">% -------</span>
+0071 <span class="comment">% rxnScores : double</span>
+0072 <span class="comment">%     scores for each of the reactions in model.</span>
+0073 <span class="comment">% geneScores : double</span>
+0074 <span class="comment">%     scores for each of the genes in model. Genes which are not in the</span>
+0075 <span class="comment">%     dataset(s) have NaN as scores. removeLowScoreGenes reads NaN as &quot;no</span>
+0076 <span class="comment">%     evidence&quot; and leaves the gene in place, and prunes genes with a</span>
+0077 <span class="comment">%     negative score.</span>
 0078 <span class="comment">% hpaScores : double</span>
 0079 <span class="comment">%     scores for each of the genes in model if only taking hpaData into</span>
 0080 <span class="comment">%     account. Genes which are not in the dataset(s) have -Inf as scores.</span>

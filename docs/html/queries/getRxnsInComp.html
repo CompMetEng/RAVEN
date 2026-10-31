@@ -34,20 +34,21 @@
  model : struct
      a model structure.
  comp : char
-     string with the compartment id.
+     the compartment id (case insensitive). An error is thrown if the id
+     does not match exactly one compartment.
 
  Name-Value Arguments
  --------------------
  includePartial : logical
-     true if reactions with metabolites in several compartments (normally
-     transport reactions) should be included (default false).
+     true if reactions with metabolites in several compartments (for
+     example transport reactions) are included (default false).
 
  Returns
  -------
  I : double
-     boolean vector of the reactions.
+     indexes of the reactions in the compartment.
  rxnNames : cell
-     the names of the reactions.
+     the names of these reactions.
 
  Examples
  --------
@@ -74,50 +75,51 @@ This function is called by:
 0006 <span class="comment">% model : struct</span>
 0007 <span class="comment">%     a model structure.</span>
 0008 <span class="comment">% comp : char</span>
-0009 <span class="comment">%     string with the compartment id.</span>
-0010 <span class="comment">%</span>
-0011 <span class="comment">% Name-Value Arguments</span>
-0012 <span class="comment">% --------------------</span>
-0013 <span class="comment">% includePartial : logical</span>
-0014 <span class="comment">%     true if reactions with metabolites in several compartments (normally</span>
-0015 <span class="comment">%     transport reactions) should be included (default false).</span>
-0016 <span class="comment">%</span>
-0017 <span class="comment">% Returns</span>
-0018 <span class="comment">% -------</span>
-0019 <span class="comment">% I : double</span>
-0020 <span class="comment">%     boolean vector of the reactions.</span>
-0021 <span class="comment">% rxnNames : cell</span>
-0022 <span class="comment">%     the names of the reactions.</span>
-0023 <span class="comment">%</span>
-0024 <span class="comment">% Examples</span>
-0025 <span class="comment">% --------</span>
-0026 <span class="comment">%     [I, rxnNames] = getRxnsInComp(model, comp, includePartial);</span>
-0027 
-0028 comp=char(comp);
-0029 p=parseRAVENargs(varargin, {<span class="string">'includePartial'</span>,false});
-0030 includePartial=p.includePartial;
-0031 
-0032 J=find(ismember(upper(model.comps),upper(comp)));
-0033 
-0034 <span class="keyword">if</span> numel(J)~=1
-0035     EM=[<span class="string">'No unique match to compartment &quot;'</span> comp{1} <span class="string">'&quot;'</span>];
-0036     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
-0037 <span class="keyword">end</span>
-0038 
-0039 K=model.metComps==J; <span class="comment">%Get all metabolites in the compartment</span>
-0040 
-0041 S=model.S~=0;
-0042 
-0043 <span class="comment">%Find the reactions which involve any of the mets</span>
-0044 [~, I]=find(S(K,:));
-0045 I=unique(I);
-0046 
-0047 <span class="comment">%Then remove the ones which also include metabolites in other comps</span>
-0048 <span class="keyword">if</span> includePartial==false
-0049     I=I(sum(S(:,I))==sum(S(K,I)));
-0050 <span class="keyword">end</span>
-0051 rxnNames=model.rxnNames(I);
-0052 <span class="keyword">end</span></pre></div>
+0009 <span class="comment">%     the compartment id (case insensitive). An error is thrown if the id</span>
+0010 <span class="comment">%     does not match exactly one compartment.</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">% Name-Value Arguments</span>
+0013 <span class="comment">% --------------------</span>
+0014 <span class="comment">% includePartial : logical</span>
+0015 <span class="comment">%     true if reactions with metabolites in several compartments (for</span>
+0016 <span class="comment">%     example transport reactions) are included (default false).</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">% Returns</span>
+0019 <span class="comment">% -------</span>
+0020 <span class="comment">% I : double</span>
+0021 <span class="comment">%     indexes of the reactions in the compartment.</span>
+0022 <span class="comment">% rxnNames : cell</span>
+0023 <span class="comment">%     the names of these reactions.</span>
+0024 <span class="comment">%</span>
+0025 <span class="comment">% Examples</span>
+0026 <span class="comment">% --------</span>
+0027 <span class="comment">%     [I, rxnNames] = getRxnsInComp(model, comp, includePartial);</span>
+0028 
+0029 comp=char(comp);
+0030 p=parseRAVENargs(varargin, {<span class="string">'includePartial'</span>,false});
+0031 includePartial=p.includePartial;
+0032 
+0033 J=find(ismember(upper(model.comps),upper(comp)));
+0034 
+0035 <span class="keyword">if</span> numel(J)~=1
+0036     EM=[<span class="string">'No unique match to compartment &quot;'</span> comp{1} <span class="string">'&quot;'</span>];
+0037     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0038 <span class="keyword">end</span>
+0039 
+0040 K=model.metComps==J; <span class="comment">%Get all metabolites in the compartment</span>
+0041 
+0042 S=model.S~=0;
+0043 
+0044 <span class="comment">%Find the reactions which involve any of the mets</span>
+0045 [~, I]=find(S(K,:));
+0046 I=unique(I);
+0047 
+0048 <span class="comment">%Then remove the ones which also include metabolites in other comps</span>
+0049 <span class="keyword">if</span> includePartial==false
+0050     I=I(sum(S(:,I))==sum(S(K,I)));
+0051 <span class="keyword">end</span>
+0052 rxnNames=model.rxnNames(I);
+0053 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

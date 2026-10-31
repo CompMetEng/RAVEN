@@ -29,38 +29,36 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> getINITSteps  Define the steps used as input to ftINIT.
 
- Defines the steps in the way ftINIT is run. Note that all combinations of
- steps will not work. Avoid &quot;exclude&quot; if you want to define new
- ways to run the algorithm.
+ Defines the steps in the way ftINIT is run. Not all combinations of steps
+ work. A new series that sets the HowToUsePrevResults option to &quot;exclude&quot;,
+ which no predefined series uses, may not work.
 
  Name-Value Arguments
  --------------------
  metsToIgnore : struct
      structure describing mets that can be removed from the model before
-     running ftINIT, such as water etc. With fields:
+     running ftINIT, such as water and other ubiquitous metabolites. With fields:
 
      - simpleMets.mets : names of metabolites to remove.
      - simpleMets.compsToKeep : compartments for which metabolites are kept.
 
-     (default []).
+     (default []). Ignored for series &quot;full&quot;.
  series : char
      describes the way to run ftINIT (default &quot;1+1&quot;):
 
-     - &quot;1+1&quot; : standard behavior. Step 1 and 2 described in the paper are
+     - &quot;1+1&quot; : standard behaviour. Step 1 and 2 described in the paper are
        merged into 1.
      - &quot;2+1&quot; : the 3-step procedure described in the paper. Faster and
-       slightly less accurate than &quot;1+1 steps&quot;.
-     - &quot;1+0&quot; : same as &quot;1+1 steps&quot;, but skips step 3 described in the paper.
-       This will result in a model including a lot of reactions without GPRs.
-       It is particularly useful for structural comparison, since the
-       reactions removed in step 3 may be a bit random and does not really add
-       any extra information. Faster than &quot;1+1 steps&quot;.
-     - &quot;2+0&quot; : same as &quot;2+1 steps&quot;, but skips step 3 described in the paper.
-       Faster and slightly less accurate than &quot;1+0 steps&quot;, but will yield
-       similar results.
-     - &quot;full&quot; : 1-step run - similar to the old tINIT version but without
-       simplifications. Accurate, but very slow. This is mainly used for
-       testing purposes.
+       slightly less accurate than &quot;1+1&quot;.
+     - &quot;1+0&quot; : same as &quot;1+1&quot;, but skips step 3 described in the paper.
+       The model includes many reactions without GPRs. The series suits
+       structural comparison, because the reactions removed in step 3 can
+       be arbitrary and add no information. Faster than &quot;1+1&quot;.
+     - &quot;2+0&quot; : same as &quot;2+1&quot;, but skips step 3 described in the paper.
+       Faster and slightly less accurate than &quot;1+0&quot;, with similar results.
+     - &quot;full&quot; : 1-step run, similar to tINIT, without the model
+       simplifications that ftINIT applies in the other series. Accurate, but
+       slow. This series is used for testing.
 
  Returns
  -------
@@ -83,128 +81,126 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function steps = getINITSteps(varargin)</a>
 0002 <span class="comment">% getINITSteps  Define the steps used as input to ftINIT.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Defines the steps in the way ftINIT is run. Note that all combinations of</span>
-0005 <span class="comment">% steps will not work. Avoid &quot;exclude&quot; if you want to define new</span>
-0006 <span class="comment">% ways to run the algorithm.</span>
+0004 <span class="comment">% Defines the steps in the way ftINIT is run. Not all combinations of steps</span>
+0005 <span class="comment">% work. A new series that sets the HowToUsePrevResults option to &quot;exclude&quot;,</span>
+0006 <span class="comment">% which no predefined series uses, may not work.</span>
 0007 <span class="comment">%</span>
 0008 <span class="comment">% Name-Value Arguments</span>
 0009 <span class="comment">% --------------------</span>
 0010 <span class="comment">% metsToIgnore : struct</span>
 0011 <span class="comment">%     structure describing mets that can be removed from the model before</span>
-0012 <span class="comment">%     running ftINIT, such as water etc. With fields:</span>
+0012 <span class="comment">%     running ftINIT, such as water and other ubiquitous metabolites. With fields:</span>
 0013 <span class="comment">%</span>
 0014 <span class="comment">%     - simpleMets.mets : names of metabolites to remove.</span>
 0015 <span class="comment">%     - simpleMets.compsToKeep : compartments for which metabolites are kept.</span>
 0016 <span class="comment">%</span>
-0017 <span class="comment">%     (default []).</span>
+0017 <span class="comment">%     (default []). Ignored for series &quot;full&quot;.</span>
 0018 <span class="comment">% series : char</span>
 0019 <span class="comment">%     describes the way to run ftINIT (default &quot;1+1&quot;):</span>
 0020 <span class="comment">%</span>
-0021 <span class="comment">%     - &quot;1+1&quot; : standard behavior. Step 1 and 2 described in the paper are</span>
+0021 <span class="comment">%     - &quot;1+1&quot; : standard behaviour. Step 1 and 2 described in the paper are</span>
 0022 <span class="comment">%       merged into 1.</span>
 0023 <span class="comment">%     - &quot;2+1&quot; : the 3-step procedure described in the paper. Faster and</span>
-0024 <span class="comment">%       slightly less accurate than &quot;1+1 steps&quot;.</span>
-0025 <span class="comment">%     - &quot;1+0&quot; : same as &quot;1+1 steps&quot;, but skips step 3 described in the paper.</span>
-0026 <span class="comment">%       This will result in a model including a lot of reactions without GPRs.</span>
-0027 <span class="comment">%       It is particularly useful for structural comparison, since the</span>
-0028 <span class="comment">%       reactions removed in step 3 may be a bit random and does not really add</span>
-0029 <span class="comment">%       any extra information. Faster than &quot;1+1 steps&quot;.</span>
-0030 <span class="comment">%     - &quot;2+0&quot; : same as &quot;2+1 steps&quot;, but skips step 3 described in the paper.</span>
-0031 <span class="comment">%       Faster and slightly less accurate than &quot;1+0 steps&quot;, but will yield</span>
-0032 <span class="comment">%       similar results.</span>
-0033 <span class="comment">%     - &quot;full&quot; : 1-step run - similar to the old tINIT version but without</span>
-0034 <span class="comment">%       simplifications. Accurate, but very slow. This is mainly used for</span>
-0035 <span class="comment">%       testing purposes.</span>
-0036 <span class="comment">%</span>
-0037 <span class="comment">% Returns</span>
-0038 <span class="comment">% -------</span>
-0039 <span class="comment">% steps : cell</span>
-0040 <span class="comment">%     cell array of steps, used as input to ftINIT.</span>
-0041 p=parseRAVENargs(varargin, {<span class="string">'metsToIgnore'</span>,[]; <span class="string">'series'</span>,<span class="string">'1+1'</span>});
-0042 metsToIgnore=p.metsToIgnore;
-0043 series=p.series;
-0044 
-0045 <span class="keyword">if</span> strcmp(series,<span class="string">'1+1'</span>) <span class="comment">%step 1 and 2 are joined</span>
-0046     params1 = struct();
-0047     params1.MIPGap = 0.0004;
-0048     params1.TimeLimit = 120;
-0049     params2 = struct();
-0050     params2.MIPGap = 0.0030;
-0051     params2.TimeLimit = 5000;
-0052     params = {params1;params2};
-0053     params3 = struct();
-0054     params3.MIPGap = 0.0004;
-0055     params3.TimeLimit = 5;
-0056     paramsStep3 = {params3;params1;params2};
-0057     <span class="comment">%The paramsStep3 involves a quick first run. The objective value is often</span>
-0058     <span class="comment">%small in the third step (~800), and 0.0004 of that is a very small number</span>
-0059     <span class="comment">%With this first step, the rough value of the objective function will be</span>
-0060     <span class="comment">%estimated, which will generate an absolute MIPGap limit that is much larger</span>
-0061     <span class="comment">%for the second iteration.</span>
-0062     
-0063     steps = { <span class="keyword">...</span>
-0064         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'ignore'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
-0065         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'essential'</span>, [1,0,0,0,1,0,0,0], metsToIgnore, paramsStep3, {10;10;20}); <span class="keyword">...</span>
-0066         };
-0067 <span class="keyword">elseif</span> strcmp(series,<span class="string">'2+1'</span>) <span class="comment">%the 3 step process described in the ftINIT paper</span>
-0068     params1 = struct();
-0069     params1.MIPGap = 0.0004;
-0070     params1.TimeLimit = 120;
-0071     params2 = struct();
-0072     params2.MIPGap = 0.0030;
-0073     params2.TimeLimit = 5000;
-0074     params = {params1;params2};
-0075     params3 = struct();
-0076     params3.MIPGap = 0.0004;
-0077     params3.TimeLimit = 5;
-0078     paramsStep3 = {params3;params1;params2};
-0079     <span class="comment">%The paramsStep3 involves a quick first run. The objective value is often</span>
-0080     <span class="comment">%small in the third step (~800), and 0.0004 of that is a very small number</span>
-0081     <span class="comment">%With this first step, the rough value of the objective function will be</span>
-0082     <span class="comment">%estimated, which will generate an absolute MIPGap limit that is much larger</span>
-0083     <span class="comment">%for the second iteration.</span>
-0084     
-0085     steps = { <span class="keyword">...</span>
-0086         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(true, true, <span class="string">'ignore'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
-0087         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'essential'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
-0088         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'essential'</span>, [1,0,0,0,1,0,0,0], metsToIgnore, paramsStep3, {10;10;20}); <span class="keyword">...</span>
-0089         };
-0090 <span class="keyword">elseif</span> strcmp(series,<span class="string">'1+0'</span>) <span class="comment">%Joins step 1 and 2, skips step 3</span>
-0091     params1 = struct();
-0092     params1.MIPGap = 0.0004;
-0093     params1.TimeLimit = 120;
-0094     params2 = struct();
-0095     params2.MIPGap = 0.0030;
-0096     params2.TimeLimit = 5000;
-0097     params = {params1;params2};
-0098     steps = { <span class="keyword">...</span>
-0099         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'ignore'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
-0100         };
-0101 <span class="keyword">elseif</span> strcmp(series,<span class="string">'2+0'</span>) <span class="comment">%Skips step 3</span>
-0102     params1 = struct();
-0103     params1.MIPGap = 0.0004;
-0104     params1.TimeLimit = 120;
-0105     params2 = struct();
-0106     params2.MIPGap = 0.0030;
-0107     params2.TimeLimit = 5000;
-0108     params = {params1;params2};
-0109     steps = { <span class="keyword">...</span>
-0110         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(true, true, <span class="string">'ignore'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
-0111         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'essential'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
-0112         };
-0113 <span class="keyword">elseif</span> strcmp(series,<span class="string">'full'</span>) <span class="comment">%Just one run, slow on large models, but this is the 'perfect' setup</span>
-0114     params1 = struct();
-0115     params1.MIPGap = 0.0004;
-0116     params1.TimeLimit = 10000;
-0117     params = {params1};
-0118     steps = { <span class="keyword">...</span>
-0119         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'ignore'</span>, [0,0,0,0,0,0,0,0], [], params) <span class="keyword">...</span>
-0120         };
-0121 <span class="keyword">else</span>
-0122     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, [<span class="string">'Invalid series in getINITSteps: '</span> series])
-0123 <span class="keyword">end</span>
-0124 
-0125 <span class="keyword">end</span></pre></div>
+0024 <span class="comment">%       slightly less accurate than &quot;1+1&quot;.</span>
+0025 <span class="comment">%     - &quot;1+0&quot; : same as &quot;1+1&quot;, but skips step 3 described in the paper.</span>
+0026 <span class="comment">%       The model includes many reactions without GPRs. The series suits</span>
+0027 <span class="comment">%       structural comparison, because the reactions removed in step 3 can</span>
+0028 <span class="comment">%       be arbitrary and add no information. Faster than &quot;1+1&quot;.</span>
+0029 <span class="comment">%     - &quot;2+0&quot; : same as &quot;2+1&quot;, but skips step 3 described in the paper.</span>
+0030 <span class="comment">%       Faster and slightly less accurate than &quot;1+0&quot;, with similar results.</span>
+0031 <span class="comment">%     - &quot;full&quot; : 1-step run, similar to tINIT, without the model</span>
+0032 <span class="comment">%       simplifications that ftINIT applies in the other series. Accurate, but</span>
+0033 <span class="comment">%       slow. This series is used for testing.</span>
+0034 <span class="comment">%</span>
+0035 <span class="comment">% Returns</span>
+0036 <span class="comment">% -------</span>
+0037 <span class="comment">% steps : cell</span>
+0038 <span class="comment">%     cell array of steps, used as input to ftINIT.</span>
+0039 p=parseRAVENargs(varargin, {<span class="string">'metsToIgnore'</span>,[]; <span class="string">'series'</span>,<span class="string">'1+1'</span>});
+0040 metsToIgnore=p.metsToIgnore;
+0041 series=p.series;
+0042 
+0043 <span class="keyword">if</span> strcmp(series,<span class="string">'1+1'</span>) <span class="comment">%step 1 and 2 are joined</span>
+0044     params1 = struct();
+0045     params1.MIPGap = 0.0004;
+0046     params1.TimeLimit = 120;
+0047     params2 = struct();
+0048     params2.MIPGap = 0.0030;
+0049     params2.TimeLimit = 5000;
+0050     params = {params1;params2};
+0051     params3 = struct();
+0052     params3.MIPGap = 0.0004;
+0053     params3.TimeLimit = 5;
+0054     paramsStep3 = {params3;params1;params2};
+0055     <span class="comment">%The paramsStep3 involves a quick first run. The objective value is often</span>
+0056     <span class="comment">%small in the third step (~800), and 0.0004 of that is a very small number</span>
+0057     <span class="comment">%With this first step, the rough value of the objective function will be</span>
+0058     <span class="comment">%estimated, which will generate an absolute MIPGap limit that is much larger</span>
+0059     <span class="comment">%for the second iteration.</span>
+0060     
+0061     steps = { <span class="keyword">...</span>
+0062         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'ignore'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
+0063         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'essential'</span>, [1,0,0,0,1,0,0,0], metsToIgnore, paramsStep3, {10;10;20}); <span class="keyword">...</span>
+0064         };
+0065 <span class="keyword">elseif</span> strcmp(series,<span class="string">'2+1'</span>) <span class="comment">%the 3 step process described in the ftINIT paper</span>
+0066     params1 = struct();
+0067     params1.MIPGap = 0.0004;
+0068     params1.TimeLimit = 120;
+0069     params2 = struct();
+0070     params2.MIPGap = 0.0030;
+0071     params2.TimeLimit = 5000;
+0072     params = {params1;params2};
+0073     params3 = struct();
+0074     params3.MIPGap = 0.0004;
+0075     params3.TimeLimit = 5;
+0076     paramsStep3 = {params3;params1;params2};
+0077     <span class="comment">%The paramsStep3 involves a quick first run. The objective value is often</span>
+0078     <span class="comment">%small in the third step (~800), and 0.0004 of that is a very small number</span>
+0079     <span class="comment">%With this first step, the rough value of the objective function will be</span>
+0080     <span class="comment">%estimated, which will generate an absolute MIPGap limit that is much larger</span>
+0081     <span class="comment">%for the second iteration.</span>
+0082     
+0083     steps = { <span class="keyword">...</span>
+0084         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(true, true, <span class="string">'ignore'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
+0085         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'essential'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
+0086         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'essential'</span>, [1,0,0,0,1,0,0,0], metsToIgnore, paramsStep3, {10;10;20}); <span class="keyword">...</span>
+0087         };
+0088 <span class="keyword">elseif</span> strcmp(series,<span class="string">'1+0'</span>) <span class="comment">%Joins step 1 and 2, skips step 3</span>
+0089     params1 = struct();
+0090     params1.MIPGap = 0.0004;
+0091     params1.TimeLimit = 120;
+0092     params2 = struct();
+0093     params2.MIPGap = 0.0030;
+0094     params2.TimeLimit = 5000;
+0095     params = {params1;params2};
+0096     steps = { <span class="keyword">...</span>
+0097         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'ignore'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
+0098         };
+0099 <span class="keyword">elseif</span> strcmp(series,<span class="string">'2+0'</span>) <span class="comment">%Skips step 3</span>
+0100     params1 = struct();
+0101     params1.MIPGap = 0.0004;
+0102     params1.TimeLimit = 120;
+0103     params2 = struct();
+0104     params2.MIPGap = 0.0030;
+0105     params2.TimeLimit = 5000;
+0106     params = {params1;params2};
+0107     steps = { <span class="keyword">...</span>
+0108         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(true, true, <span class="string">'ignore'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
+0109         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'essential'</span>, [1,1,1,1,1,1,1,0], metsToIgnore, params, {10;20}); <span class="keyword">...</span>
+0110         };
+0111 <span class="keyword">elseif</span> strcmp(series,<span class="string">'full'</span>) <span class="comment">%Just one run, slow on large models, but this is the 'perfect' setup</span>
+0112     params1 = struct();
+0113     params1.MIPGap = 0.0004;
+0114     params1.TimeLimit = 10000;
+0115     params = {params1};
+0116     steps = { <span class="keyword">...</span>
+0117         <a href="INITStepDesc.html" class="code" title="">INITStepDesc</a>(false, false, <span class="string">'ignore'</span>, [0,0,0,0,0,0,0,0], [], params) <span class="keyword">...</span>
+0118         };
+0119 <span class="keyword">else</span>
+0120     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, [<span class="string">'Invalid series in getINITSteps: '</span> series])
+0121 <span class="keyword">end</span>
+0122 
+0123 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

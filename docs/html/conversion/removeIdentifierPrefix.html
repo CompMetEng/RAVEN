@@ -31,15 +31,15 @@
 
  Removes identifier prefixes:
 
-     &quot;R_&quot; for model.rxns, model.rxnNames and model.id,
-     &quot;M_&quot; for model.mets and model.metNames,
+     &quot;R_&quot; for model.rxns and model.rxnNames,
+     &quot;M_&quot; for model.mets, model.metNames and model.id,
      &quot;C_&quot; for model.comps;
      &quot;G_&quot; for model.genes (and also represented in model.grRules).
 
  By default, the prefixes are only removed if all entries in a particular
- field have the prefix. The prefixes might have been present because one
- or more identifiers do not start with a letter or _, which conflicts
- with SBML specifications.
+ field have the prefix. The prefixes are required when one or more
+ identifiers do not start with a letter or _, which conflicts with SBML
+ specifications.
 
  Parameters
  ----------
@@ -49,20 +49,20 @@
  Name-Value Arguments
  --------------------
  fields : cell
-     cell array with model field names from which the identifiers should
-     be removed, possible values: 'rxns', 'mets', 'comps', 'genes',
-     'metNames', 'rxnNames', 'id' (default all listed model fields will
-     be checked).
+     cell array with the names of the model fields from which the prefix
+     is removed, possible values: 'rxns', 'mets', 'comps', 'genes',
+     'metNames', 'rxnNames', 'id' (default all of these fields).
  forceRemove : logical
-     if prefixes should be removed even if not all entries in a model
-     field have the prefix (default false).
+     true to remove the prefix from the entries that have it when not all
+     entries in a model field have the prefix (default false).
 
  Returns
  -------
  model : struct
      modified model.
  hasChanged : cell
-     cell array with fields and prefixes that are removed.
+     cell array of char with one entry per field from which a prefix is
+     removed, for example 'model.rxns (R_ prefix)'.
 
  Examples
  --------
@@ -86,15 +86,15 @@ This function is called by:
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Removes identifier prefixes:</span>
 0005 <span class="comment">%</span>
-0006 <span class="comment">%     &quot;R_&quot; for model.rxns, model.rxnNames and model.id,</span>
-0007 <span class="comment">%     &quot;M_&quot; for model.mets and model.metNames,</span>
+0006 <span class="comment">%     &quot;R_&quot; for model.rxns and model.rxnNames,</span>
+0007 <span class="comment">%     &quot;M_&quot; for model.mets, model.metNames and model.id,</span>
 0008 <span class="comment">%     &quot;C_&quot; for model.comps;</span>
 0009 <span class="comment">%     &quot;G_&quot; for model.genes (and also represented in model.grRules).</span>
 0010 <span class="comment">%</span>
 0011 <span class="comment">% By default, the prefixes are only removed if all entries in a particular</span>
-0012 <span class="comment">% field have the prefix. The prefixes might have been present because one</span>
-0013 <span class="comment">% or more identifiers do not start with a letter or _, which conflicts</span>
-0014 <span class="comment">% with SBML specifications.</span>
+0012 <span class="comment">% field have the prefix. The prefixes are required when one or more</span>
+0013 <span class="comment">% identifiers do not start with a letter or _, which conflicts with SBML</span>
+0014 <span class="comment">% specifications.</span>
 0015 <span class="comment">%</span>
 0016 <span class="comment">% Parameters</span>
 0017 <span class="comment">% ----------</span>
@@ -104,20 +104,20 @@ This function is called by:
 0021 <span class="comment">% Name-Value Arguments</span>
 0022 <span class="comment">% --------------------</span>
 0023 <span class="comment">% fields : cell</span>
-0024 <span class="comment">%     cell array with model field names from which the identifiers should</span>
-0025 <span class="comment">%     be removed, possible values: 'rxns', 'mets', 'comps', 'genes',</span>
-0026 <span class="comment">%     'metNames', 'rxnNames', 'id' (default all listed model fields will</span>
-0027 <span class="comment">%     be checked).</span>
-0028 <span class="comment">% forceRemove : logical</span>
-0029 <span class="comment">%     if prefixes should be removed even if not all entries in a model</span>
-0030 <span class="comment">%     field have the prefix (default false).</span>
-0031 <span class="comment">%</span>
-0032 <span class="comment">% Returns</span>
-0033 <span class="comment">% -------</span>
-0034 <span class="comment">% model : struct</span>
-0035 <span class="comment">%     modified model.</span>
-0036 <span class="comment">% hasChanged : cell</span>
-0037 <span class="comment">%     cell array with fields and prefixes that are removed.</span>
+0024 <span class="comment">%     cell array with the names of the model fields from which the prefix</span>
+0025 <span class="comment">%     is removed, possible values: 'rxns', 'mets', 'comps', 'genes',</span>
+0026 <span class="comment">%     'metNames', 'rxnNames', 'id' (default all of these fields).</span>
+0027 <span class="comment">% forceRemove : logical</span>
+0028 <span class="comment">%     true to remove the prefix from the entries that have it when not all</span>
+0029 <span class="comment">%     entries in a model field have the prefix (default false).</span>
+0030 <span class="comment">%</span>
+0031 <span class="comment">% Returns</span>
+0032 <span class="comment">% -------</span>
+0033 <span class="comment">% model : struct</span>
+0034 <span class="comment">%     modified model.</span>
+0035 <span class="comment">% hasChanged : cell</span>
+0036 <span class="comment">%     cell array of char with one entry per field from which a prefix is</span>
+0037 <span class="comment">%     removed, for example 'model.rxns (R_ prefix)'.</span>
 0038 <span class="comment">%</span>
 0039 <span class="comment">% Examples</span>
 0040 <span class="comment">% --------</span>

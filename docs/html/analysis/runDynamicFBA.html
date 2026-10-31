@@ -4,7 +4,7 @@
 <head>
   <title>Description of runDynamicFBA</title>
   <meta name="keywords" content="runDynamicFBA">
-  <meta name="description" content="runDynamicFBA  Perform dynamic FBA using the static optimization approach.">
+  <meta name="description" content="runDynamicFBA  Perform dynamic FBA using the static optimisation approach.">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,13 +21,13 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>runDynamicFBA  Perform dynamic FBA using the static optimization approach.</strong></div>
+<div class="box"><strong>runDynamicFBA  Perform dynamic FBA using the static optimisation approach.</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function [concentrationMatrix, excRxnNames, timeVec, biomassVec] = runDynamicFBA(model, substrateRxns, initConcentrations, initBiomass, timeStep, nSteps, plotRxns, exclUptakeRxns) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> runDynamicFBA  Perform dynamic FBA using the static optimization approach.
+<div class="fragment"><pre class="comment"> runDynamicFBA  Perform dynamic FBA using the static optimisation approach.
 
  Parameters
  ----------
@@ -35,8 +35,8 @@
      a model structure.
  substrateRxns : cell
      cell array with exchange reaction identifiers for substrates that are
-     initially in the media, whose concentration may change (e.g. not h2o
-     or co2).
+     initially in the media, whose concentration may change (for example
+     not h2o or co2).
  initConcentrations : double
      initial concentrations of substrates (matching substrateRxns).
  initBiomass : double
@@ -50,7 +50,7 @@
      concentration should be plotted.
  exclUptakeRxns : cell
      cell array with exchange reaction identifiers for substrates whose
-     concentration does not change (e.g. co2, o2, h2o, h).
+     concentration does not change (for example co2, o2, h2o, h).
 
  Returns
  -------
@@ -73,12 +73,11 @@
  Notes
  -----
  If no initial concentration is given for a substrate that has an open
- uptake in the model (i.e. model.lb &lt; 0) the concentration is assumed to
- be high enough to not be limiting. If the uptake rate for a nutrient is
- calculated to exceed the maximum uptake rate for that nutrient specified
- in the model and the max uptake rate specified is &gt; 0, the maximum uptake
- rate specified in the model is used instead of the calculated uptake
- rate.
+ uptake in the model (that is, model.lb &lt; 0), the initial concentration is set
+ to 1000. If the uptake bound calculated from the concentration exceeds
+ the maximum uptake rate specified in the model for that nutrient, and the
+ maximum uptake rate specified is &gt; 0, the maximum uptake rate specified
+ in the model is used as the uptake bound.
 
  Modified from COBRA Toolbox dynamicFBA.m.</pre></div>
 
@@ -96,7 +95,7 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [concentrationMatrix, excRxnNames, timeVec, biomassVec] = runDynamicFBA(model, substrateRxns, initConcentrations, initBiomass, timeStep, nSteps, plotRxns, exclUptakeRxns)</a>
-0002 <span class="comment">% runDynamicFBA  Perform dynamic FBA using the static optimization approach.</span>
+0002 <span class="comment">% runDynamicFBA  Perform dynamic FBA using the static optimisation approach.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Parameters</span>
 0005 <span class="comment">% ----------</span>
@@ -104,8 +103,8 @@ This function is called by:
 0007 <span class="comment">%     a model structure.</span>
 0008 <span class="comment">% substrateRxns : cell</span>
 0009 <span class="comment">%     cell array with exchange reaction identifiers for substrates that are</span>
-0010 <span class="comment">%     initially in the media, whose concentration may change (e.g. not h2o</span>
-0011 <span class="comment">%     or co2).</span>
+0010 <span class="comment">%     initially in the media, whose concentration may change (for example</span>
+0011 <span class="comment">%     not h2o or co2).</span>
 0012 <span class="comment">% initConcentrations : double</span>
 0013 <span class="comment">%     initial concentrations of substrates (matching substrateRxns).</span>
 0014 <span class="comment">% initBiomass : double</span>
@@ -119,7 +118,7 @@ This function is called by:
 0022 <span class="comment">%     concentration should be plotted.</span>
 0023 <span class="comment">% exclUptakeRxns : cell</span>
 0024 <span class="comment">%     cell array with exchange reaction identifiers for substrates whose</span>
-0025 <span class="comment">%     concentration does not change (e.g. co2, o2, h2o, h).</span>
+0025 <span class="comment">%     concentration does not change (for example co2, o2, h2o, h).</span>
 0026 <span class="comment">%</span>
 0027 <span class="comment">% Returns</span>
 0028 <span class="comment">% -------</span>
@@ -142,107 +141,106 @@ This function is called by:
 0045 <span class="comment">% Notes</span>
 0046 <span class="comment">% -----</span>
 0047 <span class="comment">% If no initial concentration is given for a substrate that has an open</span>
-0048 <span class="comment">% uptake in the model (i.e. model.lb &lt; 0) the concentration is assumed to</span>
-0049 <span class="comment">% be high enough to not be limiting. If the uptake rate for a nutrient is</span>
-0050 <span class="comment">% calculated to exceed the maximum uptake rate for that nutrient specified</span>
-0051 <span class="comment">% in the model and the max uptake rate specified is &gt; 0, the maximum uptake</span>
-0052 <span class="comment">% rate specified in the model is used instead of the calculated uptake</span>
-0053 <span class="comment">% rate.</span>
-0054 <span class="comment">%</span>
-0055 <span class="comment">% Modified from COBRA Toolbox dynamicFBA.m.</span>
-0056 
-0057 <span class="comment">% Find exchange rxns</span>
-0058 excRxnNames = getExchangeRxns(model);
-0059 excRxnNames(ismember(excRxnNames,exclUptakeRxns))=[];
-0060 excInd = getIndexes(model,excRxnNames,<span class="string">'rxns'</span>);
-0061 <span class="comment">% Figure out if substrate reactions are correct</span>
-0062 missingInd = find(~ismember(substrateRxns,excRxnNames));
-0063 <span class="keyword">if</span> (~isempty(missingInd))
-0064     <span class="keyword">for</span> i = 1:length(missingInd)
-0065         fprintf(<span class="string">'%s\n'</span>,substrateRxns{missingInd(i)});
-0066     <span class="keyword">end</span>
-0067     error(<span class="string">'Invalid substrate uptake reaction!'</span>);
-0068 <span class="keyword">end</span>
-0069 
-0070 <span class="comment">% Initialize concentrations</span>
-0071 [~, substrateMatchInd] = ismember(substrateRxns,excRxnNames);
-0072 concentrations = zeros(length(excRxnNames),1);
-0073 concentrations(substrateMatchInd) = initConcentrations;
-0074 
-0075 <span class="comment">% Deal with reactions for which there are no initial concentrations</span>
-0076 originalBound = -model.lb(excInd);
-0077 noInitConcentration = (concentrations == 0 &amp; originalBound &gt; 0);
-0078 concentrations(noInitConcentration) = 1000;
-0079 
-0080 biomass = initBiomass;
-0081 
-0082 <span class="comment">% Initialize bounds</span>
-0083 uptakeBound =  concentrations/(biomass*timeStep);
-0084 
-0085 <span class="comment">% Make sure bounds are not higher than what are specified in the model</span>
-0086 aboveOriginal = (uptakeBound &gt; originalBound) &amp; (originalBound &gt; 0);
-0087 uptakeBound(aboveOriginal) = originalBound(aboveOriginal);
-0088 model.lb(excInd) = -uptakeBound;
-0089 
-0090 concentrationMatrix = concentrations;
-0091 biomassVec = biomass;
-0092 timeVec(1) = 0;
-0093 [~,hsSol]=solveLP(model,1);
-0094 PB = progressReport(nSteps,<span class="string">'Running dynamic FBA analysis'</span>);
-0095 <span class="keyword">for</span> stepNo = 1:nSteps
-0096     <span class="comment">% Run FBA</span>
-0097     [sol,hsSol] = solveLP(model,1,[],hsSol);
-0098     mu = sol.f;
-0099     <span class="keyword">if</span> (sol.stat ~= 1 || mu == 0)
-0100         fprintf(<span class="string">'\nNo feasible solution - nutrients exhausted. Biomass:\t %f\n'</span>, biomass);
-0101         <span class="keyword">break</span>;
-0102     <span class="keyword">end</span>
-0103     uptakeFlux = sol.x(excInd);
-0104     biomass = biomass*exp(mu*timeStep);
-0105     biomassVec(end+1) = biomass;
-0106 
-0107     <span class="comment">% Update concentrations</span>
-0108     concentrations = concentrations - uptakeFlux/mu*biomass*(1-exp(mu*timeStep));
-0109     concentrations(concentrations &lt;= 0) = 0;
-0110     concentrationMatrix(:,end+1) = concentrations;
-0111 
-0112     <span class="comment">% Update bounds for uptake reactions</span>
-0113     uptakeBound =  concentrations/(biomass*timeStep);
-0114     <span class="comment">% This is to avoid any numerical issues</span>
-0115     uptakeBound(uptakeBound &gt; 1000) = 1000;
-0116     <span class="comment">% Figure out if the computed bounds were above the original bounds</span>
-0117     aboveOriginal = (uptakeBound &gt; originalBound) &amp; (originalBound &gt; 0);
-0118     <span class="comment">% Revert to original bounds if the rate was too high</span>
-0119     uptakeBound(aboveOriginal) = originalBound(aboveOriginal);
-0120     uptakeBound(abs(uptakeBound) &lt; 1e-9) = 0;
-0121 
-0122     model.lb(excInd) = -uptakeBound;
-0123     timeVec(stepNo+1) = stepNo*timeStep;
-0124 
-0125     count(PB);
-0126 <span class="keyword">end</span>
-0127 
-0128 selNonZero = any(concentrationMatrix&gt;0,2);
-0129 concentrationMatrix = concentrationMatrix(selNonZero,:);
-0130 excRxnNames = excRxnNames(selNonZero);
-0131 selPlot = ismember(excRxnNames,plotRxns);
-0132 
-0133 <span class="comment">% Plot concentrations as a function of time</span>
-0134 clf
-0135 subplot(1,2,1);
-0136 plot(timeVec,biomassVec);
-0137 axis tight
-0138 title(<span class="string">'Biomass'</span>);
-0139 xlabel(<span class="string">'Time (h)'</span>);
-0140 ylabel(<span class="string">'Concentration (g/L)'</span>);
-0141 subplot(1,2,2);
-0142 plot(timeVec,concentrationMatrix(selPlot,:));
-0143 axis tight
-0144 title(<span class="string">'Substrates and/or products'</span>);
-0145 xlabel(<span class="string">'Time (h)'</span>);
-0146 ylabel(<span class="string">'Concentration (mmol/L)'</span>);
-0147 legend(strrep(excRxnNames(selPlot),<span class="string">'EX_'</span>,<span class="string">''</span>));
-0148 <span class="keyword">end</span></pre></div>
+0048 <span class="comment">% uptake in the model (that is, model.lb &lt; 0), the initial concentration is set</span>
+0049 <span class="comment">% to 1000. If the uptake bound calculated from the concentration exceeds</span>
+0050 <span class="comment">% the maximum uptake rate specified in the model for that nutrient, and the</span>
+0051 <span class="comment">% maximum uptake rate specified is &gt; 0, the maximum uptake rate specified</span>
+0052 <span class="comment">% in the model is used as the uptake bound.</span>
+0053 <span class="comment">%</span>
+0054 <span class="comment">% Modified from COBRA Toolbox dynamicFBA.m.</span>
+0055 
+0056 <span class="comment">% Find exchange rxns</span>
+0057 excRxnNames = getExchangeRxns(model);
+0058 excRxnNames(ismember(excRxnNames,exclUptakeRxns))=[];
+0059 excInd = getIndexes(model,excRxnNames,<span class="string">'rxns'</span>);
+0060 <span class="comment">% Figure out if substrate reactions are correct</span>
+0061 missingInd = find(~ismember(substrateRxns,excRxnNames));
+0062 <span class="keyword">if</span> (~isempty(missingInd))
+0063     <span class="keyword">for</span> i = 1:length(missingInd)
+0064         fprintf(<span class="string">'%s\n'</span>,substrateRxns{missingInd(i)});
+0065     <span class="keyword">end</span>
+0066     error(<span class="string">'Invalid substrate uptake reaction!'</span>);
+0067 <span class="keyword">end</span>
+0068 
+0069 <span class="comment">% Initialize concentrations</span>
+0070 [~, substrateMatchInd] = ismember(substrateRxns,excRxnNames);
+0071 concentrations = zeros(length(excRxnNames),1);
+0072 concentrations(substrateMatchInd) = initConcentrations;
+0073 
+0074 <span class="comment">% Deal with reactions for which there are no initial concentrations</span>
+0075 originalBound = -model.lb(excInd);
+0076 noInitConcentration = (concentrations == 0 &amp; originalBound &gt; 0);
+0077 concentrations(noInitConcentration) = 1000;
+0078 
+0079 biomass = initBiomass;
+0080 
+0081 <span class="comment">% Initialize bounds</span>
+0082 uptakeBound =  concentrations/(biomass*timeStep);
+0083 
+0084 <span class="comment">% Make sure bounds are not higher than what are specified in the model</span>
+0085 aboveOriginal = (uptakeBound &gt; originalBound) &amp; (originalBound &gt; 0);
+0086 uptakeBound(aboveOriginal) = originalBound(aboveOriginal);
+0087 model.lb(excInd) = -uptakeBound;
+0088 
+0089 concentrationMatrix = concentrations;
+0090 biomassVec = biomass;
+0091 timeVec(1) = 0;
+0092 [~,hsSol]=solveLP(model,1);
+0093 PB = progressReport(nSteps,<span class="string">'Running dynamic FBA analysis'</span>);
+0094 <span class="keyword">for</span> stepNo = 1:nSteps
+0095     <span class="comment">% Run FBA</span>
+0096     [sol,hsSol] = solveLP(model,1,[],hsSol);
+0097     mu = sol.f;
+0098     <span class="keyword">if</span> (sol.stat ~= 1 || mu == 0)
+0099         fprintf(<span class="string">'\nNo feasible solution - nutrients exhausted. Biomass:\t %f\n'</span>, biomass);
+0100         <span class="keyword">break</span>;
+0101     <span class="keyword">end</span>
+0102     uptakeFlux = sol.x(excInd);
+0103     biomass = biomass*exp(mu*timeStep);
+0104     biomassVec(end+1) = biomass;
+0105 
+0106     <span class="comment">% Update concentrations</span>
+0107     concentrations = concentrations - uptakeFlux/mu*biomass*(1-exp(mu*timeStep));
+0108     concentrations(concentrations &lt;= 0) = 0;
+0109     concentrationMatrix(:,end+1) = concentrations;
+0110 
+0111     <span class="comment">% Update bounds for uptake reactions</span>
+0112     uptakeBound =  concentrations/(biomass*timeStep);
+0113     <span class="comment">% This is to avoid any numerical issues</span>
+0114     uptakeBound(uptakeBound &gt; 1000) = 1000;
+0115     <span class="comment">% Figure out if the computed bounds were above the original bounds</span>
+0116     aboveOriginal = (uptakeBound &gt; originalBound) &amp; (originalBound &gt; 0);
+0117     <span class="comment">% Revert to original bounds if the rate was too high</span>
+0118     uptakeBound(aboveOriginal) = originalBound(aboveOriginal);
+0119     uptakeBound(abs(uptakeBound) &lt; 1e-9) = 0;
+0120 
+0121     model.lb(excInd) = -uptakeBound;
+0122     timeVec(stepNo+1) = stepNo*timeStep;
+0123 
+0124     count(PB);
+0125 <span class="keyword">end</span>
+0126 
+0127 selNonZero = any(concentrationMatrix&gt;0,2);
+0128 concentrationMatrix = concentrationMatrix(selNonZero,:);
+0129 excRxnNames = excRxnNames(selNonZero);
+0130 selPlot = ismember(excRxnNames,plotRxns);
+0131 
+0132 <span class="comment">% Plot concentrations as a function of time</span>
+0133 clf
+0134 subplot(1,2,1);
+0135 plot(timeVec,biomassVec);
+0136 axis tight
+0137 title(<span class="string">'Biomass'</span>);
+0138 xlabel(<span class="string">'Time (h)'</span>);
+0139 ylabel(<span class="string">'Concentration (g/L)'</span>);
+0140 subplot(1,2,2);
+0141 plot(timeVec,concentrationMatrix(selPlot,:));
+0142 axis tight
+0143 title(<span class="string">'Substrates and/or products'</span>);
+0144 xlabel(<span class="string">'Time (h)'</span>);
+0145 ylabel(<span class="string">'Concentration (mmol/L)'</span>);
+0146 legend(strrep(excRxnNames(selPlot),<span class="string">'EX_'</span>,<span class="string">''</span>));
+0147 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

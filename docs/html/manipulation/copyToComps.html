@@ -34,26 +34,22 @@
  model : struct
      a model structure.
  toComps : cell
-     cell array of compartment ids. If there is no match to model.comps
-     then it is added as a new compartment (see compNames and
-     compOutside).
+     cell array of compartment ids. An id that is not in model.comps is added as a
+     new compartment (see compNames and compOutside).
 
  Name-Value Arguments
  --------------------
  rxns : cell or logical or double
-     either a cell array of reaction IDs, a logical vector with the same
-     number of elements as reactions in the model, or a vector of indexes
-     to copy (default model.rxns).
+     a cell array of reaction ids, a logical vector with one element per reaction of
+     the model, or a vector of reaction indexes to copy (default model.rxns).
  deleteOriginal : logical
-     true if the original reactions should be removed, making it move the
-     reactions instead (default false).
+     true to remove the original reactions, which moves the reactions (default false).
  compNames : cell
-     cell array of compartment names. Used if new compartments should be
-     added (default toComps).
+     cell array of compartment names. Used when new compartments are added
+     (default toComps).
  compOutside : cell
-     cell array of the id (as in comps) for the compartment surrounding
-     each of the compartments. Used if new compartments should be added
-     (default all {''}).
+     cell array with the id (as in comps) of the compartment that surrounds each new
+     compartment. Used when new compartments are added (default all {''}).
 
  Returns
  -------
@@ -66,7 +62,7 @@
 
  Notes
  -----
- New reactions and metabolites will be named as &quot;id_toComps(i)&quot;.</pre></div>
+ New reactions and metabolites have the ids &quot;id_toComps(i)&quot;.</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -89,122 +85,118 @@ This function is called by:
 0006 <span class="comment">% model : struct</span>
 0007 <span class="comment">%     a model structure.</span>
 0008 <span class="comment">% toComps : cell</span>
-0009 <span class="comment">%     cell array of compartment ids. If there is no match to model.comps</span>
-0010 <span class="comment">%     then it is added as a new compartment (see compNames and</span>
-0011 <span class="comment">%     compOutside).</span>
-0012 <span class="comment">%</span>
-0013 <span class="comment">% Name-Value Arguments</span>
-0014 <span class="comment">% --------------------</span>
-0015 <span class="comment">% rxns : cell or logical or double</span>
-0016 <span class="comment">%     either a cell array of reaction IDs, a logical vector with the same</span>
-0017 <span class="comment">%     number of elements as reactions in the model, or a vector of indexes</span>
-0018 <span class="comment">%     to copy (default model.rxns).</span>
-0019 <span class="comment">% deleteOriginal : logical</span>
-0020 <span class="comment">%     true if the original reactions should be removed, making it move the</span>
-0021 <span class="comment">%     reactions instead (default false).</span>
-0022 <span class="comment">% compNames : cell</span>
-0023 <span class="comment">%     cell array of compartment names. Used if new compartments should be</span>
-0024 <span class="comment">%     added (default toComps).</span>
-0025 <span class="comment">% compOutside : cell</span>
-0026 <span class="comment">%     cell array of the id (as in comps) for the compartment surrounding</span>
-0027 <span class="comment">%     each of the compartments. Used if new compartments should be added</span>
-0028 <span class="comment">%     (default all {''}).</span>
-0029 <span class="comment">%</span>
-0030 <span class="comment">% Returns</span>
-0031 <span class="comment">% -------</span>
-0032 <span class="comment">% model : struct</span>
-0033 <span class="comment">%     an updated model structure.</span>
+0009 <span class="comment">%     cell array of compartment ids. An id that is not in model.comps is added as a</span>
+0010 <span class="comment">%     new compartment (see compNames and compOutside).</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">% Name-Value Arguments</span>
+0013 <span class="comment">% --------------------</span>
+0014 <span class="comment">% rxns : cell or logical or double</span>
+0015 <span class="comment">%     a cell array of reaction ids, a logical vector with one element per reaction of</span>
+0016 <span class="comment">%     the model, or a vector of reaction indexes to copy (default model.rxns).</span>
+0017 <span class="comment">% deleteOriginal : logical</span>
+0018 <span class="comment">%     true to remove the original reactions, which moves the reactions (default false).</span>
+0019 <span class="comment">% compNames : cell</span>
+0020 <span class="comment">%     cell array of compartment names. Used when new compartments are added</span>
+0021 <span class="comment">%     (default toComps).</span>
+0022 <span class="comment">% compOutside : cell</span>
+0023 <span class="comment">%     cell array with the id (as in comps) of the compartment that surrounds each new</span>
+0024 <span class="comment">%     compartment. Used when new compartments are added (default all {''}).</span>
+0025 <span class="comment">%</span>
+0026 <span class="comment">% Returns</span>
+0027 <span class="comment">% -------</span>
+0028 <span class="comment">% model : struct</span>
+0029 <span class="comment">%     an updated model structure.</span>
+0030 <span class="comment">%</span>
+0031 <span class="comment">% Examples</span>
+0032 <span class="comment">% --------</span>
+0033 <span class="comment">%     model=copyToComps(model,toComps,rxns,deleteOriginal,compNames,compOutside);</span>
 0034 <span class="comment">%</span>
-0035 <span class="comment">% Examples</span>
-0036 <span class="comment">% --------</span>
-0037 <span class="comment">%     model=copyToComps(model,toComps,rxns,deleteOriginal,compNames,compOutside);</span>
-0038 <span class="comment">%</span>
-0039 <span class="comment">% Notes</span>
-0040 <span class="comment">% -----</span>
-0041 <span class="comment">% New reactions and metabolites will be named as &quot;id_toComps(i)&quot;.</span>
-0042 
-0043 p=parseRAVENargs(varargin, {<span class="string">'rxns'</span>,[]; <span class="string">'deleteOriginal'</span>,false; <span class="string">'compNames'</span>,[]; <span class="string">'compOutside'</span>,[]});
-0044 rxns=p.rxns;
-0045 <span class="keyword">if</span> isempty(rxns)
-0046     rxns=model.rxns;
-0047 <span class="keyword">elseif</span> ~islogical(rxns) &amp;&amp; ~isnumeric(rxns)
-0048     rxns=convertCharArray(rxns);
-0049 <span class="keyword">end</span>
-0050 deleteOriginal=p.deleteOriginal;
-0051 compNames=p.compNames;
-0052 <span class="keyword">if</span> isempty(compNames)
-0053     compNames=toComps;
-0054 <span class="keyword">else</span>
-0055     compNames=convertCharArray(compNames);
-0056 <span class="keyword">end</span>
-0057 compOutside=p.compOutside;
-0058 <span class="keyword">if</span> isempty(compOutside)
-0059     <span class="comment">% Default is {''} for every new compartment, not '': compOutside(i)</span>
-0060     <span class="comment">% below indexes into it once per new compartment, which a bare ''</span>
-0061     <span class="comment">% cannot support.</span>
-0062     compOutside=repmat({<span class="string">''</span>},size(compNames));
-0063 <span class="keyword">else</span>
-0064     compOutside=convertCharArray(compOutside);
-0065     <span class="keyword">if</span> length(compOutside) ~= length(compNames)
-0066         error(<span class="string">'compOutside and compNames should be of equal size.'</span>);
-0067     <span class="keyword">end</span>
-0068 <span class="keyword">end</span>
-0069 
-0070 originalID=model.id;
-0071 originalName=model.name;
-0072 
-0073 rxns=getIndexes(model,rxns,<span class="string">'rxns'</span>);
-0074 
-0075 <span class="keyword">for</span> i=1:numel(toComps)
-0076     <span class="comment">%Check if the compartment exists, otherwise add it</span>
-0077     [I,J]=ismember(toComps(i),model.comps);
-0078     <span class="keyword">if</span> I==false
-0079         model.comps=[model.comps;toComps(i)];
-0080         model.compNames=[model.compNames;compNames(i)];
-0081         <span class="keyword">if</span> isfield(model,<span class="string">'compOutside'</span>)
-0082             model.compOutside=[model.compOutside;compOutside(i)];
-0083         <span class="keyword">end</span>
-0084         <span class="keyword">if</span> isfield(model,<span class="string">'compMiriams'</span>)
-0085             model.compMiriams=[model.compMiriams;cell(1,1)];
-0086         <span class="keyword">end</span>
-0087         J=numel(model.comps);
-0088     <span class="keyword">end</span>
-0089     <span class="comment">%Copy the reactions by making a model structure with only them, then</span>
-0090     <span class="comment">%change the localization, and finally merge with the original model</span>
-0091     modelToAdd=model;
-0092     modelToAdd=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(modelToAdd,setdiff(1:numel(model.rxns),rxns),true,true);
-0093     modelToAdd.rxns=strcat(modelToAdd.rxns,<span class="string">'_'</span>,toComps(i));
-0094     modelToAdd.mets=strcat(modelToAdd.mets,<span class="string">'_'</span>,toComps(i));
-0095     modelToAdd.comps=modelToAdd.comps(J);
-0096     modelToAdd.compNames=modelToAdd.compNames(J);
-0097     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'compOutside'</span>)
-0098         modelToAdd.compOutside=modelToAdd.compOutside(J);
-0099     <span class="keyword">end</span>
-0100     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'compMiriams'</span>)
-0101         modelToAdd.compMiriams=modelToAdd.compMiriams(J);
+0035 <span class="comment">% Notes</span>
+0036 <span class="comment">% -----</span>
+0037 <span class="comment">% New reactions and metabolites have the ids &quot;id_toComps(i)&quot;.</span>
+0038 
+0039 p=parseRAVENargs(varargin, {<span class="string">'rxns'</span>,[]; <span class="string">'deleteOriginal'</span>,false; <span class="string">'compNames'</span>,[]; <span class="string">'compOutside'</span>,[]});
+0040 rxns=p.rxns;
+0041 <span class="keyword">if</span> isempty(rxns)
+0042     rxns=model.rxns;
+0043 <span class="keyword">elseif</span> ~islogical(rxns) &amp;&amp; ~isnumeric(rxns)
+0044     rxns=convertCharArray(rxns);
+0045 <span class="keyword">end</span>
+0046 deleteOriginal=p.deleteOriginal;
+0047 compNames=p.compNames;
+0048 <span class="keyword">if</span> isempty(compNames)
+0049     compNames=toComps;
+0050 <span class="keyword">else</span>
+0051     compNames=convertCharArray(compNames);
+0052 <span class="keyword">end</span>
+0053 compOutside=p.compOutside;
+0054 <span class="keyword">if</span> isempty(compOutside)
+0055     <span class="comment">% Default is {''} for every new compartment, not '': compOutside(i)</span>
+0056     <span class="comment">% below indexes into it once per new compartment, which a bare ''</span>
+0057     <span class="comment">% cannot support.</span>
+0058     compOutside=repmat({<span class="string">''</span>},size(compNames));
+0059 <span class="keyword">else</span>
+0060     compOutside=convertCharArray(compOutside);
+0061     <span class="keyword">if</span> length(compOutside) ~= length(compNames)
+0062         error(<span class="string">'compOutside and compNames should be of equal size.'</span>);
+0063     <span class="keyword">end</span>
+0064 <span class="keyword">end</span>
+0065 
+0066 originalID=model.id;
+0067 originalName=model.name;
+0068 
+0069 rxns=getIndexes(model,rxns,<span class="string">'rxns'</span>);
+0070 
+0071 <span class="keyword">for</span> i=1:numel(toComps)
+0072     <span class="comment">%Check if the compartment exists, otherwise add it</span>
+0073     [I,J]=ismember(toComps(i),model.comps);
+0074     <span class="keyword">if</span> I==false
+0075         model.comps=[model.comps;toComps(i)];
+0076         model.compNames=[model.compNames;compNames(i)];
+0077         <span class="keyword">if</span> isfield(model,<span class="string">'compOutside'</span>)
+0078             model.compOutside=[model.compOutside;compOutside(i)];
+0079         <span class="keyword">end</span>
+0080         <span class="keyword">if</span> isfield(model,<span class="string">'compMiriams'</span>)
+0081             model.compMiriams=[model.compMiriams;cell(1,1)];
+0082         <span class="keyword">end</span>
+0083         J=numel(model.comps);
+0084     <span class="keyword">end</span>
+0085     <span class="comment">%Copy the reactions by making a model structure with only them, then</span>
+0086     <span class="comment">%change the localization, and finally merge with the original model</span>
+0087     modelToAdd=model;
+0088     modelToAdd=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(modelToAdd,setdiff(1:numel(model.rxns),rxns),true,true);
+0089     modelToAdd.rxns=strcat(modelToAdd.rxns,<span class="string">'_'</span>,toComps(i));
+0090     modelToAdd.mets=strcat(modelToAdd.mets,<span class="string">'_'</span>,toComps(i));
+0091     modelToAdd.comps=modelToAdd.comps(J);
+0092     modelToAdd.compNames=modelToAdd.compNames(J);
+0093     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'compOutside'</span>)
+0094         modelToAdd.compOutside=modelToAdd.compOutside(J);
+0095     <span class="keyword">end</span>
+0096     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'compMiriams'</span>)
+0097         modelToAdd.compMiriams=modelToAdd.compMiriams(J);
+0098     <span class="keyword">end</span>
+0099     modelToAdd.metComps=ones(numel(modelToAdd.mets),1);
+0100     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'metFrom'</span>)
+0101         modelToAdd = rmfield(modelToAdd,<span class="string">'metFrom'</span>);
 0102     <span class="keyword">end</span>
-0103     modelToAdd.metComps=ones(numel(modelToAdd.mets),1);
-0104     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'metFrom'</span>)
-0105         modelToAdd = rmfield(modelToAdd,<span class="string">'metFrom'</span>);
-0106     <span class="keyword">end</span>
-0107     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'rxnFrom'</span>)
-0108         modelToAdd = rmfield(modelToAdd,<span class="string">'rxnFrom'</span>);
-0109     <span class="keyword">end</span>
-0110     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'geneFrom'</span>)
-0111         modelToAdd = rmfield(modelToAdd,<span class="string">'geneFrom'</span>);
-0112     <span class="keyword">end</span>
-0113   
-0114     <span class="comment">%Merge the models</span>
-0115     model=<a href="mergeModels.html" class="code" title="function model=mergeModels(models,varargin)">mergeModels</a>({model;modelToAdd},<span class="string">'metNames'</span>,[],true);
+0103     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'rxnFrom'</span>)
+0104         modelToAdd = rmfield(modelToAdd,<span class="string">'rxnFrom'</span>);
+0105     <span class="keyword">end</span>
+0106     <span class="keyword">if</span> isfield(modelToAdd,<span class="string">'geneFrom'</span>)
+0107         modelToAdd = rmfield(modelToAdd,<span class="string">'geneFrom'</span>);
+0108     <span class="keyword">end</span>
+0109   
+0110     <span class="comment">%Merge the models</span>
+0111     model=<a href="mergeModels.html" class="code" title="function model=mergeModels(models,varargin)">mergeModels</a>({model;modelToAdd},<span class="string">'metNames'</span>,[],true);
+0112 <span class="keyword">end</span>
+0113 
+0114 <span class="keyword">if</span> deleteOriginal==true
+0115     model=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(model,rxns,true,true,true); <span class="comment">%Also delete unused compartments</span>
 0116 <span class="keyword">end</span>
 0117 
-0118 <span class="keyword">if</span> deleteOriginal==true
-0119     model=<a href="removeReactions.html" class="code" title="function reducedModel=removeReactions(model,rxnsToRemove,varargin)">removeReactions</a>(model,rxns,true,true,true); <span class="comment">%Also delete unused compartments</span>
-0120 <span class="keyword">end</span>
-0121 
-0122 model.id=originalID;
-0123 model.name=originalName;
-0124 <span class="keyword">end</span></pre></div>
+0118 model.id=originalID;
+0119 model.name=originalName;
+0120 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

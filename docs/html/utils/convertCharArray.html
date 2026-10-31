@@ -29,9 +29,9 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> convertCharArray  Ensure input is a cell array of character vectors.
 
- Converts input to make sure it is a cell array of character vectors.
- String arrays are transformed into character vectors. Output is always a
- cell array, also if only one character vector is given as input.
+ Converts the input to a cell array of character vectors. String arrays
+ are transformed into character vectors. A single character vector gives
+ a cell array with one element. An empty input gives [].
 
  Parameters
  ----------
@@ -41,7 +41,7 @@
  Returns
  -------
  inputConverted : cell
-     cell array of character vectors.
+     cell array of character vectors, or [] if funcInput is empty.
 
  Examples
  --------
@@ -54,7 +54,7 @@ This function calls:
 </ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="ravenList.html" class="code" title="function msg = ravenList(header, items, trim)">ravenList</a>	ravenList  Format a header and item list for warning() or error().</li></ul>
+<li><a href="ravenList.html" class="code" title="function msg = ravenList(header, items, trim)">ravenList</a>	ravenList  Format a header and a list of items for warning() or error().</li></ul>
 <!-- crossreference -->
 
 
@@ -63,9 +63,9 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function inputConverted = convertCharArray(funcInput)</a>
 0002 <span class="comment">% convertCharArray  Ensure input is a cell array of character vectors.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Converts input to make sure it is a cell array of character vectors.</span>
-0005 <span class="comment">% String arrays are transformed into character vectors. Output is always a</span>
-0006 <span class="comment">% cell array, also if only one character vector is given as input.</span>
+0004 <span class="comment">% Converts the input to a cell array of character vectors. String arrays</span>
+0005 <span class="comment">% are transformed into character vectors. A single character vector gives</span>
+0006 <span class="comment">% a cell array with one element. An empty input gives [].</span>
 0007 <span class="comment">%</span>
 0008 <span class="comment">% Parameters</span>
 0009 <span class="comment">% ----------</span>
@@ -75,7 +75,7 @@ This function is called by:
 0013 <span class="comment">% Returns</span>
 0014 <span class="comment">% -------</span>
 0015 <span class="comment">% inputConverted : cell</span>
-0016 <span class="comment">%     cell array of character vectors.</span>
+0016 <span class="comment">%     cell array of character vectors, or [] if funcInput is empty.</span>
 0017 <span class="comment">%</span>
 0018 <span class="comment">% Examples</span>
 0019 <span class="comment">% --------</span>

@@ -30,10 +30,10 @@
 <div class="fragment"><pre class="comment"> findLeakMetabolite  Find a metabolite that can be freely made or consumed.
 
  Tests whether the model can produce (excrete) or consume (take up) any
- metabolite without balanced stoichiometric constraints — a sign that the
- model contains a stoichiometric leak, futile cycle, or unconstrained
- exchange. This is the unified replacement for makeSomething ('produce')
- and consumeSomething ('consume').
+ metabolite without balanced stoichiometric constraints. A positive result
+ indicates that the model contains a stoichiometric leak, a futile cycle or
+ an unconstrained exchange. The direction 'produce' corresponds to the
+ deprecated function makeSomething and 'consume' to consumeSomething.
 
  Parameters
  ----------
@@ -50,33 +50,33 @@
      number of elements as metabolites in the model, or a vector of indexes
      for metabolites to exclude from this analysis (default []).
  isNames : logical
-     true if the supplied mets represent metabolite names (as opposed to
-     IDs). This is a way to delete metabolites in several compartments at
-     once without knowing the exact IDs. This only works if ignoreMets is a
+     true if the supplied mets are metabolite names and false if they are
+     IDs. Names exclude the metabolites of all compartments that carry the
+     name, so the exact IDs are not needed. Only works if ignoreMets is a
      cell array (default false).
  minNrFluxes : logical
-     solves the MILP problem of minimizing the number of fluxes instead of
-     the sum. Slower, but can be used if the sum gives too many fluxes
-     (default false).
+     true to solve the MILP problem of minimising the number of fluxes. If
+     false, the sum of fluxes is minimised. The MILP is slower and applies
+     when the sum gives too many fluxes (default false).
  allowExcretion : logical
-     allow for excretion of all metabolites. Only used when direction is
+     true to allow excretion of all metabolites. Only used when direction is
      'produce' (default true).
  params : struct
-     *obsolete option*.
+     solver parameters, passed to solveLP when minNrFluxes is true (default
+     a structure with relGap 0.8).
  ignoreIntBounds : logical
-     true if internal bounds (including reversibility) should be ignored.
-     Exchange reactions are not affected. This can be used to find
-     unbalanced solutions which are not possible using the default
-     constraints (default false).
+     true to ignore internal bounds (including reversibility). Exchange
+     reactions are not affected. Finds unbalanced solutions that the
+     default constraints do not allow (default false).
 
  Returns
  -------
  solution : double
      flux vector for the solution.
  metabolite : double
-     the index of the metabolite(s) which was produced or consumed. If
-     possible only one metabolite is reported, but there are situations
-     where metabolites can only be exchanged in pairs (or more).
+     the index of the metabolite(s) produced or consumed. A single
+     metabolite is reported when one suffices; some metabolites can only be
+     exchanged in pairs or larger groups.
 
  Examples
  --------
@@ -85,12 +85,12 @@
 
  Notes
  -----
- Works by forcing at least 1 unit of &quot;any metabolite&quot; to be produced or
- consumed, then minimising for the sum of fluxes. If more than one
- metabolite is produced/consumed, it tries to find a single metabolite
- that satisfies the constraint on its own.
+ The function forces a flux of at least 1 through a pooled exchange of all
+ metabolites, then minimises the sum of fluxes. If more than one metabolite
+ is produced or consumed, it searches for a single metabolite that
+ satisfies the constraint on its own.
 
- See Also
+ See also
  --------
  <a href="canExchange.html" class="code" title="function canExchange=canExchange(model,direction,varargin)">canExchange</a></pre></div>
 
@@ -111,10 +111,10 @@ This function is called by:
 0002 <span class="comment">% findLeakMetabolite  Find a metabolite that can be freely made or consumed.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Tests whether the model can produce (excrete) or consume (take up) any</span>
-0005 <span class="comment">% metabolite without balanced stoichiometric constraints — a sign that the</span>
-0006 <span class="comment">% model contains a stoichiometric leak, futile cycle, or unconstrained</span>
-0007 <span class="comment">% exchange. This is the unified replacement for makeSomething ('produce')</span>
-0008 <span class="comment">% and consumeSomething ('consume').</span>
+0005 <span class="comment">% metabolite without balanced stoichiometric constraints. A positive result</span>
+0006 <span class="comment">% indicates that the model contains a stoichiometric leak, a futile cycle or</span>
+0007 <span class="comment">% an unconstrained exchange. The direction 'produce' corresponds to the</span>
+0008 <span class="comment">% deprecated function makeSomething and 'consume' to consumeSomething.</span>
 0009 <span class="comment">%</span>
 0010 <span class="comment">% Parameters</span>
 0011 <span class="comment">% ----------</span>
@@ -131,33 +131,33 @@ This function is called by:
 0022 <span class="comment">%     number of elements as metabolites in the model, or a vector of indexes</span>
 0023 <span class="comment">%     for metabolites to exclude from this analysis (default []).</span>
 0024 <span class="comment">% isNames : logical</span>
-0025 <span class="comment">%     true if the supplied mets represent metabolite names (as opposed to</span>
-0026 <span class="comment">%     IDs). This is a way to delete metabolites in several compartments at</span>
-0027 <span class="comment">%     once without knowing the exact IDs. This only works if ignoreMets is a</span>
+0025 <span class="comment">%     true if the supplied mets are metabolite names and false if they are</span>
+0026 <span class="comment">%     IDs. Names exclude the metabolites of all compartments that carry the</span>
+0027 <span class="comment">%     name, so the exact IDs are not needed. Only works if ignoreMets is a</span>
 0028 <span class="comment">%     cell array (default false).</span>
 0029 <span class="comment">% minNrFluxes : logical</span>
-0030 <span class="comment">%     solves the MILP problem of minimizing the number of fluxes instead of</span>
-0031 <span class="comment">%     the sum. Slower, but can be used if the sum gives too many fluxes</span>
-0032 <span class="comment">%     (default false).</span>
+0030 <span class="comment">%     true to solve the MILP problem of minimising the number of fluxes. If</span>
+0031 <span class="comment">%     false, the sum of fluxes is minimised. The MILP is slower and applies</span>
+0032 <span class="comment">%     when the sum gives too many fluxes (default false).</span>
 0033 <span class="comment">% allowExcretion : logical</span>
-0034 <span class="comment">%     allow for excretion of all metabolites. Only used when direction is</span>
+0034 <span class="comment">%     true to allow excretion of all metabolites. Only used when direction is</span>
 0035 <span class="comment">%     'produce' (default true).</span>
 0036 <span class="comment">% params : struct</span>
-0037 <span class="comment">%     *obsolete option*.</span>
-0038 <span class="comment">% ignoreIntBounds : logical</span>
-0039 <span class="comment">%     true if internal bounds (including reversibility) should be ignored.</span>
-0040 <span class="comment">%     Exchange reactions are not affected. This can be used to find</span>
-0041 <span class="comment">%     unbalanced solutions which are not possible using the default</span>
-0042 <span class="comment">%     constraints (default false).</span>
+0037 <span class="comment">%     solver parameters, passed to solveLP when minNrFluxes is true (default</span>
+0038 <span class="comment">%     a structure with relGap 0.8).</span>
+0039 <span class="comment">% ignoreIntBounds : logical</span>
+0040 <span class="comment">%     true to ignore internal bounds (including reversibility). Exchange</span>
+0041 <span class="comment">%     reactions are not affected. Finds unbalanced solutions that the</span>
+0042 <span class="comment">%     default constraints do not allow (default false).</span>
 0043 <span class="comment">%</span>
 0044 <span class="comment">% Returns</span>
 0045 <span class="comment">% -------</span>
 0046 <span class="comment">% solution : double</span>
 0047 <span class="comment">%     flux vector for the solution.</span>
 0048 <span class="comment">% metabolite : double</span>
-0049 <span class="comment">%     the index of the metabolite(s) which was produced or consumed. If</span>
-0050 <span class="comment">%     possible only one metabolite is reported, but there are situations</span>
-0051 <span class="comment">%     where metabolites can only be exchanged in pairs (or more).</span>
+0049 <span class="comment">%     the index of the metabolite(s) produced or consumed. A single</span>
+0050 <span class="comment">%     metabolite is reported when one suffices; some metabolites can only be</span>
+0051 <span class="comment">%     exchanged in pairs or larger groups.</span>
 0052 <span class="comment">%</span>
 0053 <span class="comment">% Examples</span>
 0054 <span class="comment">% --------</span>
@@ -166,12 +166,12 @@ This function is called by:
 0057 <span class="comment">%</span>
 0058 <span class="comment">% Notes</span>
 0059 <span class="comment">% -----</span>
-0060 <span class="comment">% Works by forcing at least 1 unit of &quot;any metabolite&quot; to be produced or</span>
-0061 <span class="comment">% consumed, then minimising for the sum of fluxes. If more than one</span>
-0062 <span class="comment">% metabolite is produced/consumed, it tries to find a single metabolite</span>
-0063 <span class="comment">% that satisfies the constraint on its own.</span>
+0060 <span class="comment">% The function forces a flux of at least 1 through a pooled exchange of all</span>
+0061 <span class="comment">% metabolites, then minimises the sum of fluxes. If more than one metabolite</span>
+0062 <span class="comment">% is produced or consumed, it searches for a single metabolite that</span>
+0063 <span class="comment">% satisfies the constraint on its own.</span>
 0064 <span class="comment">%</span>
-0065 <span class="comment">% See Also</span>
+0065 <span class="comment">% See also</span>
 0066 <span class="comment">% --------</span>
 0067 <span class="comment">% canExchange</span>
 0068 

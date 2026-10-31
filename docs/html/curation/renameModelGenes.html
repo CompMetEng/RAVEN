@@ -29,34 +29,35 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> renameModelGenes  Replace gene identifiers in a RAVEN model.
 
- Updates model.genes and model.grRules by substituting the identifiers
- currently used in the model (fromCol) with new identifiers (toCol) from
- a mapping table produced by getGeneData or supplied manually. After
- renaming, model.rxnGeneMat is rebuilt automatically.
+ Replaces the identifiers in model.genes and model.grRules that are listed
+ in column fromCol of a mapping table with the identifiers in column
+ toCol. The table is produced by getGeneData or supplied manually. After
+ renaming, model.rxnGeneMat is rebuilt.
 
  Parameters
  ----------
  model : struct
-     RAVEN model struct. Must contain model.genes and model.grRules;
-     model.rxnGeneMat is rebuilt automatically.
+     RAVEN model struct. It must contain model.genes and model.grRules.
  geneTable : table | char
-     Gene-mapping table. Can be supplied as:
-       (a) A MATLAB table variable already loaded in the workspace, or
-       (b) A path to a tab-delimited .tsv file — loaded automatically.
+     Gene-mapping table, either
+       (a) a MATLAB table variable, or
+       (b) the path to a tab-delimited .tsv file, which is read with
+           readtable.
  fromCol : char
-     Column in geneTable whose values match the identifiers currently in
-     model.genes (e.g. 'locus_tag').
+     Name of the column in geneTable whose values match the identifiers
+     in model.genes (for example 'locus_tag').
  toCol : char
-     Column in geneTable whose values will replace the current
-     identifiers (e.g. 'gene_name').
+     Name of the column in geneTable with the new identifiers (for
+     example 'gene_name').
 
  Returns
  -------
  model : struct
-     Updated model struct with:
-       model.genes      — renamed gene list.
-       model.grRules    — gene-reaction rules using new identifiers.
-       model.rxnGeneMat — rebuilt sparse matrix matching the new gene list.
+     Model struct with these fields changed:
+
+     - model.genes : gene list with the new identifiers.
+     - model.grRules : gene-reaction rules with the new identifiers.
+     - model.rxnGeneMat : sparse matrix rebuilt for the new gene list.
 
  Examples
  --------
@@ -70,11 +71,17 @@
  Notes
  -----
  * Genes with no entry in fromCol, or whose toCol value is empty, are left
-   unchanged; a warning lists them for investigation.
- * Word-boundary matching prevents partial substitution (e.g. 'gene1'
-   is not replaced inside 'gene10').
- * grRules are standardized via standardizeGrRules before and after
-   renaming to ensure consistent formatting.</pre></div>
+   unchanged, and a warning lists them.
+ * If a fromCol value occurs in several rows, the first row with a
+   non-empty toCol value is used. Values are trimmed of surrounding
+   whitespace.
+ * An identifier is replaced only where it is delimited by whitespace,
+   parentheses or the start or end of the rule, so 'gene1' is not
+   replaced inside 'gene10'.
+ * Unnecessary outer parentheses are removed from the grRules and the
+   grRules are standardised with standardizeGrRules before and after
+   renaming. A warning is issued when standardizeGrRules reports rules
+   with potential issues.</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -94,239 +101,246 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function model = renameModelGenes(model, geneTable, fromCol, toCol)</a>
 0002 <span class="comment">% renameModelGenes  Replace gene identifiers in a RAVEN model.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Updates model.genes and model.grRules by substituting the identifiers</span>
-0005 <span class="comment">% currently used in the model (fromCol) with new identifiers (toCol) from</span>
-0006 <span class="comment">% a mapping table produced by getGeneData or supplied manually. After</span>
-0007 <span class="comment">% renaming, model.rxnGeneMat is rebuilt automatically.</span>
+0004 <span class="comment">% Replaces the identifiers in model.genes and model.grRules that are listed</span>
+0005 <span class="comment">% in column fromCol of a mapping table with the identifiers in column</span>
+0006 <span class="comment">% toCol. The table is produced by getGeneData or supplied manually. After</span>
+0007 <span class="comment">% renaming, model.rxnGeneMat is rebuilt.</span>
 0008 <span class="comment">%</span>
 0009 <span class="comment">% Parameters</span>
 0010 <span class="comment">% ----------</span>
 0011 <span class="comment">% model : struct</span>
-0012 <span class="comment">%     RAVEN model struct. Must contain model.genes and model.grRules;</span>
-0013 <span class="comment">%     model.rxnGeneMat is rebuilt automatically.</span>
-0014 <span class="comment">% geneTable : table | char</span>
-0015 <span class="comment">%     Gene-mapping table. Can be supplied as:</span>
-0016 <span class="comment">%       (a) A MATLAB table variable already loaded in the workspace, or</span>
-0017 <span class="comment">%       (b) A path to a tab-delimited .tsv file — loaded automatically.</span>
+0012 <span class="comment">%     RAVEN model struct. It must contain model.genes and model.grRules.</span>
+0013 <span class="comment">% geneTable : table | char</span>
+0014 <span class="comment">%     Gene-mapping table, either</span>
+0015 <span class="comment">%       (a) a MATLAB table variable, or</span>
+0016 <span class="comment">%       (b) the path to a tab-delimited .tsv file, which is read with</span>
+0017 <span class="comment">%           readtable.</span>
 0018 <span class="comment">% fromCol : char</span>
-0019 <span class="comment">%     Column in geneTable whose values match the identifiers currently in</span>
-0020 <span class="comment">%     model.genes (e.g. 'locus_tag').</span>
+0019 <span class="comment">%     Name of the column in geneTable whose values match the identifiers</span>
+0020 <span class="comment">%     in model.genes (for example 'locus_tag').</span>
 0021 <span class="comment">% toCol : char</span>
-0022 <span class="comment">%     Column in geneTable whose values will replace the current</span>
-0023 <span class="comment">%     identifiers (e.g. 'gene_name').</span>
+0022 <span class="comment">%     Name of the column in geneTable with the new identifiers (for</span>
+0023 <span class="comment">%     example 'gene_name').</span>
 0024 <span class="comment">%</span>
 0025 <span class="comment">% Returns</span>
 0026 <span class="comment">% -------</span>
 0027 <span class="comment">% model : struct</span>
-0028 <span class="comment">%     Updated model struct with:</span>
-0029 <span class="comment">%       model.genes      — renamed gene list.</span>
-0030 <span class="comment">%       model.grRules    — gene-reaction rules using new identifiers.</span>
-0031 <span class="comment">%       model.rxnGeneMat — rebuilt sparse matrix matching the new gene list.</span>
-0032 <span class="comment">%</span>
-0033 <span class="comment">% Examples</span>
-0034 <span class="comment">% --------</span>
-0035 <span class="comment">%     model     = readYAMLmodel('iCre1355.yml');</span>
-0036 <span class="comment">%     geneTable = getGeneData('GCF_000002595.2', 'chlamy.tsv');</span>
-0037 <span class="comment">%     model     = renameModelGenes(model, geneTable, 'locus_tag', 'gene_name');</span>
-0038 <span class="comment">%</span>
-0039 <span class="comment">%     % Supply a TSV file path directly</span>
-0040 <span class="comment">%     model = renameModelGenes(model, 'chlamy.tsv', 'locus_tag', 'gene_name');</span>
-0041 <span class="comment">%</span>
-0042 <span class="comment">% Notes</span>
-0043 <span class="comment">% -----</span>
-0044 <span class="comment">% * Genes with no entry in fromCol, or whose toCol value is empty, are left</span>
-0045 <span class="comment">%   unchanged; a warning lists them for investigation.</span>
-0046 <span class="comment">% * Word-boundary matching prevents partial substitution (e.g. 'gene1'</span>
-0047 <span class="comment">%   is not replaced inside 'gene10').</span>
-0048 <span class="comment">% * grRules are standardized via standardizeGrRules before and after</span>
-0049 <span class="comment">%   renaming to ensure consistent formatting.</span>
-0050 
-0051     <span class="keyword">if</span> nargin &lt; 1 || isempty(model)
-0052         error(<span class="string">'renameModelGenes:missingInput'</span>, <span class="keyword">...</span>
-0053             <span class="string">'model is required. Provide a RAVEN model struct.'</span>);
-0054     <span class="keyword">end</span>
-0055 
-0056     <span class="keyword">if</span> nargin &lt; 2 || isempty(geneTable)
-0057         error(<span class="string">'renameModelGenes:missingInput'</span>, <span class="keyword">...</span>
-0058             <span class="string">'geneTable is required. Provide a table variable or a path to a .tsv file.'</span>);
-0059     <span class="keyword">end</span>
-0060 
-0061     <span class="keyword">if</span> nargin &lt; 3 || isempty(fromCol)
-0062         error(<span class="string">'renameModelGenes:missingInput'</span>, <span class="keyword">...</span>
-0063             <span class="string">'fromCol is required. Specify the column in geneTable whose values match model.genes.'</span>);
-0064     <span class="keyword">end</span>
-0065 
-0066     <span class="keyword">if</span> nargin &lt; 4 || isempty(toCol)
-0067         error(<span class="string">'renameModelGenes:missingInput'</span>, <span class="keyword">...</span>
-0068             <span class="string">'toCol is required. Specify the column in geneTable with the replacement identifiers.'</span>);
-0069     <span class="keyword">end</span>
-0070 
-0071     fromCol = char(fromCol);
-0072     toCol   = char(toCol);
-0073 
-0074     <span class="comment">% Load table if a file path was supplied</span>
-0075     <span class="keyword">if</span> ischar(geneTable) || isstring(geneTable)
-0076         <span class="keyword">if</span> ~isfile(geneTable)
-0077             error(<span class="string">'renameModelGenes:fileNotFound'</span>, <span class="keyword">...</span>
-0078                   <span class="string">'Table file not found: %s'</span>, geneTable);
-0079         <span class="keyword">end</span>
-0080         geneTable = readtable(geneTable, <span class="string">'Delimiter'</span>, <span class="string">'\t'</span>, <span class="string">'FileType'</span>, <span class="string">'text'</span>, <span class="keyword">...</span>
-0081                               <span class="string">'TextType'</span>, <span class="string">'char'</span>);
-0082         fprintf(<span class="string">'Loaded gene table from file: %s  (%d rows)\n'</span>, <span class="keyword">...</span>
-0083                 geneTable, height(geneTable));
-0084     <span class="keyword">end</span>
-0085 
-0086     <span class="comment">% Validate column names</span>
-0087     <span class="keyword">if</span> ~ismember(fromCol, geneTable.Properties.VariableNames)
-0088         error(<span class="string">'renameModelGenes:badColumn'</span>, <span class="keyword">...</span>
-0089               <span class="string">'Column &quot;%s&quot; not found in geneTable.\nAvailable columns: %s'</span>, <span class="keyword">...</span>
-0090               fromCol, strjoin(geneTable.Properties.VariableNames, <span class="string">', '</span>));
+0028 <span class="comment">%     Model struct with these fields changed:</span>
+0029 <span class="comment">%</span>
+0030 <span class="comment">%     - model.genes : gene list with the new identifiers.</span>
+0031 <span class="comment">%     - model.grRules : gene-reaction rules with the new identifiers.</span>
+0032 <span class="comment">%     - model.rxnGeneMat : sparse matrix rebuilt for the new gene list.</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">% Examples</span>
+0035 <span class="comment">% --------</span>
+0036 <span class="comment">%     model     = readYAMLmodel('iCre1355.yml');</span>
+0037 <span class="comment">%     geneTable = getGeneData('GCF_000002595.2', 'chlamy.tsv');</span>
+0038 <span class="comment">%     model     = renameModelGenes(model, geneTable, 'locus_tag', 'gene_name');</span>
+0039 <span class="comment">%</span>
+0040 <span class="comment">%     % Supply a TSV file path directly</span>
+0041 <span class="comment">%     model = renameModelGenes(model, 'chlamy.tsv', 'locus_tag', 'gene_name');</span>
+0042 <span class="comment">%</span>
+0043 <span class="comment">% Notes</span>
+0044 <span class="comment">% -----</span>
+0045 <span class="comment">% * Genes with no entry in fromCol, or whose toCol value is empty, are left</span>
+0046 <span class="comment">%   unchanged, and a warning lists them.</span>
+0047 <span class="comment">% * If a fromCol value occurs in several rows, the first row with a</span>
+0048 <span class="comment">%   non-empty toCol value is used. Values are trimmed of surrounding</span>
+0049 <span class="comment">%   whitespace.</span>
+0050 <span class="comment">% * An identifier is replaced only where it is delimited by whitespace,</span>
+0051 <span class="comment">%   parentheses or the start or end of the rule, so 'gene1' is not</span>
+0052 <span class="comment">%   replaced inside 'gene10'.</span>
+0053 <span class="comment">% * Unnecessary outer parentheses are removed from the grRules and the</span>
+0054 <span class="comment">%   grRules are standardised with standardizeGrRules before and after</span>
+0055 <span class="comment">%   renaming. A warning is issued when standardizeGrRules reports rules</span>
+0056 <span class="comment">%   with potential issues.</span>
+0057 
+0058     <span class="keyword">if</span> nargin &lt; 1 || isempty(model)
+0059         error(<span class="string">'renameModelGenes:missingInput'</span>, <span class="keyword">...</span>
+0060             <span class="string">'model is required. Provide a RAVEN model struct.'</span>);
+0061     <span class="keyword">end</span>
+0062 
+0063     <span class="keyword">if</span> nargin &lt; 2 || isempty(geneTable)
+0064         error(<span class="string">'renameModelGenes:missingInput'</span>, <span class="keyword">...</span>
+0065             <span class="string">'geneTable is required. Provide a table variable or a path to a .tsv file.'</span>);
+0066     <span class="keyword">end</span>
+0067 
+0068     <span class="keyword">if</span> nargin &lt; 3 || isempty(fromCol)
+0069         error(<span class="string">'renameModelGenes:missingInput'</span>, <span class="keyword">...</span>
+0070             <span class="string">'fromCol is required. Specify the column in geneTable whose values match model.genes.'</span>);
+0071     <span class="keyword">end</span>
+0072 
+0073     <span class="keyword">if</span> nargin &lt; 4 || isempty(toCol)
+0074         error(<span class="string">'renameModelGenes:missingInput'</span>, <span class="keyword">...</span>
+0075             <span class="string">'toCol is required. Specify the column in geneTable with the replacement identifiers.'</span>);
+0076     <span class="keyword">end</span>
+0077 
+0078     fromCol = char(fromCol);
+0079     toCol   = char(toCol);
+0080 
+0081     <span class="comment">% Load table if a file path was supplied</span>
+0082     <span class="keyword">if</span> ischar(geneTable) || isstring(geneTable)
+0083         <span class="keyword">if</span> ~isfile(geneTable)
+0084             error(<span class="string">'renameModelGenes:fileNotFound'</span>, <span class="keyword">...</span>
+0085                   <span class="string">'Table file not found: %s'</span>, geneTable);
+0086         <span class="keyword">end</span>
+0087         geneTable = readtable(geneTable, <span class="string">'Delimiter'</span>, <span class="string">'\t'</span>, <span class="string">'FileType'</span>, <span class="string">'text'</span>, <span class="keyword">...</span>
+0088                               <span class="string">'TextType'</span>, <span class="string">'char'</span>);
+0089         fprintf(<span class="string">'Loaded gene table from file: %s  (%d rows)\n'</span>, <span class="keyword">...</span>
+0090                 geneTable, height(geneTable));
 0091     <span class="keyword">end</span>
-0092     <span class="keyword">if</span> ~ismember(toCol, geneTable.Properties.VariableNames)
-0093         error(<span class="string">'renameModelGenes:badColumn'</span>, <span class="keyword">...</span>
-0094               <span class="string">'Column &quot;%s&quot; not found in geneTable.\nAvailable columns: %s'</span>, <span class="keyword">...</span>
-0095               toCol, strjoin(geneTable.Properties.VariableNames, <span class="string">', '</span>));
-0096     <span class="keyword">end</span>
-0097 
-0098     <span class="comment">% Build mapping: oldName → newName</span>
-0099     <span class="comment">% Use only rows where both fromCol and toCol are non-empty. If a fromCol value maps to</span>
-0100     <span class="comment">% multiple toCol values (isoforms), take the first non-empty one — gene names are</span>
-0101     <span class="comment">% per-gene, not per-isoform.</span>
-0102 
-0103     fromVals = geneTable.(fromCol);
-0104     toVals   = geneTable.(toCol);
-0105 
-0106     <span class="comment">% Convert to char cell if needed</span>
-0107     <span class="keyword">if</span> ~iscell(fromVals), fromVals = cellstr(fromVals); <span class="keyword">end</span>
-0108     <span class="keyword">if</span> ~iscell(toVals),   toVals   = cellstr(toVals);   <span class="keyword">end</span>
+0092 
+0093     <span class="comment">% Validate column names</span>
+0094     <span class="keyword">if</span> ~ismember(fromCol, geneTable.Properties.VariableNames)
+0095         error(<span class="string">'renameModelGenes:badColumn'</span>, <span class="keyword">...</span>
+0096               <span class="string">'Column &quot;%s&quot; not found in geneTable.\nAvailable columns: %s'</span>, <span class="keyword">...</span>
+0097               fromCol, strjoin(geneTable.Properties.VariableNames, <span class="string">', '</span>));
+0098     <span class="keyword">end</span>
+0099     <span class="keyword">if</span> ~ismember(toCol, geneTable.Properties.VariableNames)
+0100         error(<span class="string">'renameModelGenes:badColumn'</span>, <span class="keyword">...</span>
+0101               <span class="string">'Column &quot;%s&quot; not found in geneTable.\nAvailable columns: %s'</span>, <span class="keyword">...</span>
+0102               toCol, strjoin(geneTable.Properties.VariableNames, <span class="string">', '</span>));
+0103     <span class="keyword">end</span>
+0104 
+0105     <span class="comment">% Build mapping: oldName → newName</span>
+0106     <span class="comment">% Use only rows where both fromCol and toCol are non-empty. If a fromCol value maps to</span>
+0107     <span class="comment">% multiple toCol values (isoforms), take the first non-empty one — gene names are</span>
+0108     <span class="comment">% per-gene, not per-isoform.</span>
 0109 
-0110     <span class="comment">% Build map (first occurrence wins for duplicates). Only genes with a</span>
-0111     <span class="comment">% non-empty toCol value are mapped; the rest are left unchanged.</span>
-0112     nameMap = containers.Map(<span class="string">'KeyType'</span>, <span class="string">'char'</span>, <span class="string">'ValueType'</span>, <span class="string">'char'</span>);
-0113     <span class="keyword">for</span> i = 1:numel(fromVals)
-0114         k = strtrim(fromVals{i});
-0115         v = strtrim(toVals{i});
-0116         <span class="keyword">if</span> ~isempty(k) &amp;&amp; ~isempty(v) &amp;&amp; ~isKey(nameMap, k)
-0117             nameMap(k) = v;
-0118         <span class="keyword">end</span>
-0119     <span class="keyword">end</span>
-0120 
-0121     <span class="comment">% Standardize grRules before renaming to ensure consistent formatting for accurate replacement.</span>
-0122     fprintf(<span class="string">'Removing unnecessary outer parentheses ...\n'</span>);
-0123     model.grRules = <a href="#_sub1" class="code" title="subfunction grRules = removeUnnecessaryParentheses(grRules)">removeUnnecessaryParentheses</a>(model.grRules);
-0124     
-0125     fprintf(<span class="string">'Standardizing grRules ...\n'</span>);
-0126     [model.grRules, ~, indexes2check] = standardizeGrRules(model, true);
-0127     <span class="keyword">if</span> ~isempty(indexes2check)
-0128         warning(<span class="string">'renameModelGenes:potentialErrors'</span>, <span class="keyword">...</span>
-0129             <span class="string">'%d grRules have potential issues. Review them before proceeding.'</span>, <span class="keyword">...</span>
-0130             numel(indexes2check));
-0131     <span class="keyword">end</span>
-0132 
-0133     <span class="comment">% Rename model.genes; genes without a mapping are left unchanged</span>
-0134     nGenes   = numel(model.genes);
-0135     notFound = {};
-0136     <span class="keyword">for</span> i = 1:nGenes
-0137         oldName = model.genes{i};
-0138         <span class="keyword">if</span> isKey(nameMap, oldName)
-0139             model.genes{i} = nameMap(oldName);
-0140         <span class="keyword">else</span>
-0141             notFound{end+1} = oldName; <span class="comment">%#ok&lt;AGROW&gt;</span>
-0142         <span class="keyword">end</span>
-0143     <span class="keyword">end</span>
-0144 
-0145     <span class="comment">% Report genes that had no mapping and were left unchanged</span>
-0146     <span class="keyword">if</span> ~isempty(notFound)
-0147         warning(<span class="string">'renameModelGenes:noMapping'</span>, <span class="keyword">...</span>
-0148             <span class="string">'%d gene(s) in the model had no mapping in column &quot;%s&quot; and were left unchanged:\n  %s'</span>, <span class="keyword">...</span>
-0149             numel(notFound), fromCol, strjoin(unique(notFound), <span class="string">', '</span>));
+0110     fromVals = geneTable.(fromCol);
+0111     toVals   = geneTable.(toCol);
+0112 
+0113     <span class="comment">% Convert to char cell if needed</span>
+0114     <span class="keyword">if</span> ~iscell(fromVals), fromVals = cellstr(fromVals); <span class="keyword">end</span>
+0115     <span class="keyword">if</span> ~iscell(toVals),   toVals   = cellstr(toVals);   <span class="keyword">end</span>
+0116 
+0117     <span class="comment">% Build map (first occurrence wins for duplicates). Only genes with a</span>
+0118     <span class="comment">% non-empty toCol value are mapped; the rest are left unchanged.</span>
+0119     nameMap = containers.Map(<span class="string">'KeyType'</span>, <span class="string">'char'</span>, <span class="string">'ValueType'</span>, <span class="string">'char'</span>);
+0120     <span class="keyword">for</span> i = 1:numel(fromVals)
+0121         k = strtrim(fromVals{i});
+0122         v = strtrim(toVals{i});
+0123         <span class="keyword">if</span> ~isempty(k) &amp;&amp; ~isempty(v) &amp;&amp; ~isKey(nameMap, k)
+0124             nameMap(k) = v;
+0125         <span class="keyword">end</span>
+0126     <span class="keyword">end</span>
+0127 
+0128     <span class="comment">% Standardize grRules before renaming to ensure consistent formatting for accurate replacement.</span>
+0129     fprintf(<span class="string">'Removing unnecessary outer parentheses ...\n'</span>);
+0130     model.grRules = <a href="#_sub1" class="code" title="subfunction grRules = removeUnnecessaryParentheses(grRules)">removeUnnecessaryParentheses</a>(model.grRules);
+0131     
+0132     fprintf(<span class="string">'Standardizing grRules ...\n'</span>);
+0133     [model.grRules, ~, indexes2check] = standardizeGrRules(model, true);
+0134     <span class="keyword">if</span> ~isempty(indexes2check)
+0135         warning(<span class="string">'renameModelGenes:potentialErrors'</span>, <span class="keyword">...</span>
+0136             <span class="string">'%d grRules have potential issues. Review them before proceeding.'</span>, <span class="keyword">...</span>
+0137             numel(indexes2check));
+0138     <span class="keyword">end</span>
+0139 
+0140     <span class="comment">% Rename model.genes; genes without a mapping are left unchanged</span>
+0141     nGenes   = numel(model.genes);
+0142     notFound = {};
+0143     <span class="keyword">for</span> i = 1:nGenes
+0144         oldName = model.genes{i};
+0145         <span class="keyword">if</span> isKey(nameMap, oldName)
+0146             model.genes{i} = nameMap(oldName);
+0147         <span class="keyword">else</span>
+0148             notFound{end+1} = oldName; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0149         <span class="keyword">end</span>
 0150     <span class="keyword">end</span>
 0151 
-0152     <span class="comment">% Rename genes inside grRules Sort keys longest-first to avoid partial substitutions</span>
-0153     <span class="comment">% (e.g. replace 'gene10' before 'gene1').</span>
-0154     allKeys    = keys(nameMap);
-0155     allVals    = values(nameMap);
-0156     [~, order] = sort(cellfun(@numel, allKeys), <span class="string">'descend'</span>);
-0157     allKeys    = allKeys(order);
-0158     allVals    = allVals(order);
-0159     
-0160     nRxns = numel(model.grRules);
-0161     <span class="keyword">for</span> i = 1:nRxns
-0162         rule = model.grRules{i};
-0163         <span class="keyword">if</span> isempty(rule)
-0164             <span class="keyword">continue</span>
-0165         <span class="keyword">end</span>
-0166         <span class="keyword">for</span> j = 1:numel(allKeys)
-0167             oldG = allKeys{j};
-0168             newG = allVals{j};
-0169             <span class="comment">% Use word-boundary replacement: only match oldG when surrounded</span>
-0170             <span class="comment">% by non-word characters (spaces, parentheses, start/end of string)</span>
-0171             <span class="comment">% to avoid replacing 'gene1' inside 'gene10'.</span>
-0172             rule = regexprep(rule, [<span class="string">'(?&lt;![^\s()])'</span> regexptranslate(<span class="string">'escape'</span>, oldG) <span class="keyword">...</span>
-0173                                     <span class="string">'(?![^\s()])'</span>], newG);
-0174         <span class="keyword">end</span>
-0175         model.grRules{i} = rule;
-0176     <span class="keyword">end</span>
-0177 
-0178     <span class="comment">% Rebuild rxnGeneMat to match the updated gene list</span>
-0179     fprintf(<span class="string">'Rebuilding rxnGeneMat ...\n'</span>);
-0180     [model.grRules, model.rxnGeneMat, ~] = standardizeGrRules(model, true);
-0181     
-0182     fprintf(<span class="string">'Done. %d genes renamed, %d left unchanged.\n'</span>, <span class="keyword">...</span>
-0183             nGenes - numel(notFound), numel(notFound));
-0184 <span class="keyword">end</span>
-0185 
-0186 <span class="comment">%--------------------------------------------------------------------------</span>
-0187 <span class="comment">%  Helper functions</span>
-0188 
-0189 <a name="_sub1" href="#_subfunctions" class="code">function grRules = removeUnnecessaryParentheses(grRules)</a>
-0190 <span class="comment">% Remove unnecessary outer parentheses from grRules.</span>
-0191 <span class="comment">% e.g., '(A and (B or C))' → 'A and (B or C)'</span>
-0192 <span class="comment">%       '(A or B)' → 'A or B'</span>
-0193 <span class="comment">% but preserves '(A and B) or C' (outer parens are needed here)</span>
-0194 <span class="comment">%</span>
-0195 <span class="comment">% Checks if the opening parenthesis at position 1 closes before the end</span>
-0196 <span class="comment">% of the string. If yes, outer parens are necessary. If no, they can be</span>
-0197 <span class="comment">% removed recursively.</span>
-0198 
-0199     nRxns = numel(grRules);
-0200     <span class="keyword">for</span> i = 1:nRxns
-0201         rule = grRules{i};
-0202         <span class="keyword">if</span> isempty(rule)
-0203             <span class="keyword">continue</span>
-0204         <span class="keyword">end</span>
-0205     
-0206         <span class="comment">% Recursively remove outer parentheses while they are unnecessary</span>
-0207         <span class="keyword">while</span> length(rule) &gt;= 2 &amp;&amp; rule(1) == <span class="string">'('</span> &amp;&amp; rule(end) == <span class="string">')'</span>
-0208             <span class="comment">% Count brackets to see when the opening paren closes</span>
-0209             parenCount = 0;
-0210             closedEarly = false;
-0211     
-0212             <span class="keyword">for</span> j = 1:length(rule)
-0213                 <span class="keyword">if</span> rule(j) == <span class="string">'('</span>
-0214                     parenCount = parenCount + 1;
-0215                 <span class="keyword">elseif</span> rule(j) == <span class="string">')'</span>
-0216                     parenCount = parenCount - 1;
-0217                     <span class="comment">% If it reaches 0 before the end, outer parens are necessary</span>
-0218                     <span class="keyword">if</span> parenCount == 0 &amp;&amp; j &lt; length(rule)
-0219                         closedEarly = true;
-0220                         <span class="keyword">break</span>
-0221                     <span class="keyword">end</span>
-0222                 <span class="keyword">end</span>
-0223             <span class="keyword">end</span>
-0224     
-0225             <span class="keyword">if</span> closedEarly
-0226                 <span class="comment">% Opening paren closes early → outer parens are needed</span>
-0227                 <span class="keyword">break</span>
-0228             <span class="keyword">else</span>
-0229                 <span class="comment">% Opening paren only closes at the end → they're unnecessary</span>
-0230                 rule = rule(2:end-1);
-0231             <span class="keyword">end</span>
-0232         <span class="keyword">end</span>
-0233     
-0234         grRules{i} = rule;
-0235     <span class="keyword">end</span>
-0236 <span class="keyword">end</span></pre></div>
+0152     <span class="comment">% Report genes that had no mapping and were left unchanged</span>
+0153     <span class="keyword">if</span> ~isempty(notFound)
+0154         warning(<span class="string">'renameModelGenes:noMapping'</span>, <span class="keyword">...</span>
+0155             <span class="string">'%d gene(s) in the model had no mapping in column &quot;%s&quot; and were left unchanged:\n  %s'</span>, <span class="keyword">...</span>
+0156             numel(notFound), fromCol, strjoin(unique(notFound), <span class="string">', '</span>));
+0157     <span class="keyword">end</span>
+0158 
+0159     <span class="comment">% Rename genes inside grRules Sort keys longest-first to avoid partial substitutions</span>
+0160     <span class="comment">% (e.g. replace 'gene10' before 'gene1').</span>
+0161     allKeys    = keys(nameMap);
+0162     allVals    = values(nameMap);
+0163     [~, order] = sort(cellfun(@numel, allKeys), <span class="string">'descend'</span>);
+0164     allKeys    = allKeys(order);
+0165     allVals    = allVals(order);
+0166     
+0167     nRxns = numel(model.grRules);
+0168     <span class="keyword">for</span> i = 1:nRxns
+0169         rule = model.grRules{i};
+0170         <span class="keyword">if</span> isempty(rule)
+0171             <span class="keyword">continue</span>
+0172         <span class="keyword">end</span>
+0173         <span class="keyword">for</span> j = 1:numel(allKeys)
+0174             oldG = allKeys{j};
+0175             newG = allVals{j};
+0176             <span class="comment">% Use word-boundary replacement: only match oldG when surrounded</span>
+0177             <span class="comment">% by non-word characters (spaces, parentheses, start/end of string)</span>
+0178             <span class="comment">% to avoid replacing 'gene1' inside 'gene10'.</span>
+0179             rule = regexprep(rule, [<span class="string">'(?&lt;![^\s()])'</span> regexptranslate(<span class="string">'escape'</span>, oldG) <span class="keyword">...</span>
+0180                                     <span class="string">'(?![^\s()])'</span>], newG);
+0181         <span class="keyword">end</span>
+0182         model.grRules{i} = rule;
+0183     <span class="keyword">end</span>
+0184 
+0185     <span class="comment">% Rebuild rxnGeneMat to match the updated gene list</span>
+0186     fprintf(<span class="string">'Rebuilding rxnGeneMat ...\n'</span>);
+0187     [model.grRules, model.rxnGeneMat, ~] = standardizeGrRules(model, true);
+0188     
+0189     fprintf(<span class="string">'Done. %d genes renamed, %d left unchanged.\n'</span>, <span class="keyword">...</span>
+0190             nGenes - numel(notFound), numel(notFound));
+0191 <span class="keyword">end</span>
+0192 
+0193 <span class="comment">%--------------------------------------------------------------------------</span>
+0194 <span class="comment">%  Helper functions</span>
+0195 
+0196 <a name="_sub1" href="#_subfunctions" class="code">function grRules = removeUnnecessaryParentheses(grRules)</a>
+0197 <span class="comment">% Remove unnecessary outer parentheses from grRules.</span>
+0198 <span class="comment">% e.g., '(A and (B or C))' → 'A and (B or C)'</span>
+0199 <span class="comment">%       '(A or B)' → 'A or B'</span>
+0200 <span class="comment">% but preserves '(A and B) or C' (outer parens are needed here)</span>
+0201 <span class="comment">%</span>
+0202 <span class="comment">% Checks if the opening parenthesis at position 1 closes before the end</span>
+0203 <span class="comment">% of the string. If yes, outer parens are necessary. If no, they can be</span>
+0204 <span class="comment">% removed recursively.</span>
+0205 
+0206     nRxns = numel(grRules);
+0207     <span class="keyword">for</span> i = 1:nRxns
+0208         rule = grRules{i};
+0209         <span class="keyword">if</span> isempty(rule)
+0210             <span class="keyword">continue</span>
+0211         <span class="keyword">end</span>
+0212     
+0213         <span class="comment">% Recursively remove outer parentheses while they are unnecessary</span>
+0214         <span class="keyword">while</span> length(rule) &gt;= 2 &amp;&amp; rule(1) == <span class="string">'('</span> &amp;&amp; rule(end) == <span class="string">')'</span>
+0215             <span class="comment">% Count brackets to see when the opening paren closes</span>
+0216             parenCount = 0;
+0217             closedEarly = false;
+0218     
+0219             <span class="keyword">for</span> j = 1:length(rule)
+0220                 <span class="keyword">if</span> rule(j) == <span class="string">'('</span>
+0221                     parenCount = parenCount + 1;
+0222                 <span class="keyword">elseif</span> rule(j) == <span class="string">')'</span>
+0223                     parenCount = parenCount - 1;
+0224                     <span class="comment">% If it reaches 0 before the end, outer parens are necessary</span>
+0225                     <span class="keyword">if</span> parenCount == 0 &amp;&amp; j &lt; length(rule)
+0226                         closedEarly = true;
+0227                         <span class="keyword">break</span>
+0228                     <span class="keyword">end</span>
+0229                 <span class="keyword">end</span>
+0230             <span class="keyword">end</span>
+0231     
+0232             <span class="keyword">if</span> closedEarly
+0233                 <span class="comment">% Opening paren closes early → outer parens are needed</span>
+0234                 <span class="keyword">break</span>
+0235             <span class="keyword">else</span>
+0236                 <span class="comment">% Opening paren only closes at the end → they're unnecessary</span>
+0237                 rule = rule(2:end-1);
+0238             <span class="keyword">end</span>
+0239         <span class="keyword">end</span>
+0240     
+0241         grRules{i} = rule;
+0242     <span class="keyword">end</span>
+0243 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

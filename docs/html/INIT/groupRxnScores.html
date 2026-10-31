@@ -28,9 +28,9 @@
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> groupRxnScores
- This function sums up the reaction scores for all reactions that were merged 
- into one by the linear merge.
- 
+ Sums the reaction scores of all reactions that were merged into one by the
+ linear merge.
+
  model          The model with linearly merged rxns.
  origRxnScores  The rxnScores from the model before the linear merge.
  origRxnIds     The rxn ids of the model before the linear merge.
@@ -39,10 +39,11 @@
                 the reaction was not merged with any other reaction. A
                 non-zero integer means the reaction was merged with all
                 other rxns sharing the same integer.
- origRxnsToZero A logical vector saying which of the original rxns that should not
+ origRxnsToZero A logical vector saying which of the original rxns should not
                 be part of the problem; the score for these reactions is set to 0.
-                To keep 0 uniquely meaning &quot;excluded&quot;, any genuine rxnScore that is
-                (or sums to) exactly 0 is nudged to 0.01 instead.</pre></div>
+                Since 0 means &quot;excluded&quot;, an original score of 0 and a group
+                score that sums to 0 while at least one score of the group
+                is not 0 are set to 0.01.</pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -59,8 +60,8 @@ This function is called by:
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function newRxnScores = groupRxnScores(model, origRxnScores, origRxnIds, groupIds, origRxnsToZero)</a>
 0002 <span class="comment">% groupRxnScores</span>
-0003 <span class="comment">% This function sums up the reaction scores for all reactions that were merged</span>
-0004 <span class="comment">% into one by the linear merge.</span>
+0003 <span class="comment">% Sums the reaction scores of all reactions that were merged into one by the</span>
+0004 <span class="comment">% linear merge.</span>
 0005 <span class="comment">%</span>
 0006 <span class="comment">% model          The model with linearly merged rxns.</span>
 0007 <span class="comment">% origRxnScores  The rxnScores from the model before the linear merge.</span>
@@ -70,39 +71,40 @@ This function is called by:
 0011 <span class="comment">%                the reaction was not merged with any other reaction. A</span>
 0012 <span class="comment">%                non-zero integer means the reaction was merged with all</span>
 0013 <span class="comment">%                other rxns sharing the same integer.</span>
-0014 <span class="comment">% origRxnsToZero A logical vector saying which of the original rxns that should not</span>
+0014 <span class="comment">% origRxnsToZero A logical vector saying which of the original rxns should not</span>
 0015 <span class="comment">%                be part of the problem; the score for these reactions is set to 0.</span>
-0016 <span class="comment">%                To keep 0 uniquely meaning &quot;excluded&quot;, any genuine rxnScore that is</span>
-0017 <span class="comment">%                (or sums to) exactly 0 is nudged to 0.01 instead.</span>
-0018 
+0016 <span class="comment">%                Since 0 means &quot;excluded&quot;, an original score of 0 and a group</span>
+0017 <span class="comment">%                score that sums to 0 while at least one score of the group</span>
+0018 <span class="comment">%                is not 0 are set to 0.01.</span>
 0019 
-0020 newRxnScores = zeros(length(model.rxns),1);
-0021 [~,ia,ib] = intersect(model.rxns,origRxnIds);
-0022 grpIdsMerged = nan(length(model.rxns),1);
-0023 grpIdsMerged(ia) = groupIds(ib);
-0024 <span class="comment">%check if any of the original scores are 0, in that case change them to 0.01 (unlikely)</span>
-0025 origRxnScores(origRxnScores == 0) = 0.01;
-0026 <span class="comment">%Then set the rxn scores for rxns to zero to 0</span>
-0027 origRxnScores(origRxnsToZero) = 0;
-0028 
-0029 <span class="comment">%fill in original scores</span>
-0030 newRxnScores(ia) = origRxnScores(ib);
-0031 
-0032 <span class="keyword">for</span> i = 1:length(model.rxns)
-0033     <span class="comment">%for reactions that are not merged with anything, just keep score as it is</span>
-0034     <span class="keyword">if</span> grpIdsMerged(i) ~= 0
-0035         <span class="comment">%find all original rxns in the group</span>
-0036         sel = groupIds == grpIdsMerged(i);
-0037         newRxnScores(i) = sum(origRxnScores(sel));
-0038         <span class="keyword">if</span> (newRxnScores(i) == 0 &amp;&amp; any(origRxnScores(sel) ~= 0))
-0039            <span class="comment">%special unfortunate case, where the reactions happen to sum to 0 while some of them are nonzero</span>
-0040            <span class="comment">%set to 0.01 in this case (proabably pretty unusual)</span>
-0041            newRxnScores(i) = 0.01;
-0042         <span class="keyword">end</span>
-0043     <span class="keyword">end</span>
-0044 <span class="keyword">end</span>
-0045 
-0046 <span class="keyword">end</span></pre></div>
+0020 
+0021 newRxnScores = zeros(length(model.rxns),1);
+0022 [~,ia,ib] = intersect(model.rxns,origRxnIds);
+0023 grpIdsMerged = nan(length(model.rxns),1);
+0024 grpIdsMerged(ia) = groupIds(ib);
+0025 <span class="comment">%check if any of the original scores are 0, in that case change them to 0.01 (unlikely)</span>
+0026 origRxnScores(origRxnScores == 0) = 0.01;
+0027 <span class="comment">%Then set the rxn scores for rxns to zero to 0</span>
+0028 origRxnScores(origRxnsToZero) = 0;
+0029 
+0030 <span class="comment">%fill in original scores</span>
+0031 newRxnScores(ia) = origRxnScores(ib);
+0032 
+0033 <span class="keyword">for</span> i = 1:length(model.rxns)
+0034     <span class="comment">%for reactions that are not merged with anything, just keep score as it is</span>
+0035     <span class="keyword">if</span> grpIdsMerged(i) ~= 0
+0036         <span class="comment">%find all original rxns in the group</span>
+0037         sel = groupIds == grpIdsMerged(i);
+0038         newRxnScores(i) = sum(origRxnScores(sel));
+0039         <span class="keyword">if</span> (newRxnScores(i) == 0 &amp;&amp; any(origRxnScores(sel) ~= 0))
+0040            <span class="comment">%special unfortunate case, where the reactions happen to sum to 0 while some of them are nonzero</span>
+0041            <span class="comment">%set to 0.01 in this case (proabably pretty unusual)</span>
+0042            newRxnScores(i) = 0.01;
+0043         <span class="keyword">end</span>
+0044     <span class="keyword">end</span>
+0045 <span class="keyword">end</span>
+0046 
+0047 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

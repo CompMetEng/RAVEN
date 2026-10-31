@@ -41,12 +41,11 @@
      number of elements as reactions in the model, or a vector of
      reaction indexes (default model.rxns).
  runParallel : logical
-     speed up calculations by parallel processing. This is not beneficial
-     if allowed bounds are calculated for only a few reactions, as the
-     overhead of parallel processing will take longer. It requires MATLAB
-     Parallel Computing Toolbox. If this is not installed, the
-     calculations will not be parallelized, regardless of what is
-     indicated as runParallel (default true).
+     run the calculations in parallel (default true). Parallel processing
+     requires the MATLAB Parallel Computing Toolbox; without it, the
+     calculations run serially regardless of this setting. For a few
+     reactions, the overhead of parallel processing exceeds the time it
+     saves.
 
  Returns
  -------
@@ -55,8 +54,9 @@
  maxFluxes : double
      maximal allowed fluxes.
  exitFlags : double
-     exit flags for min/max for each of the reactions. True if it was
-     possible to calculate a flux.
+     a matrix with one row per reaction. Column 1 holds the solver status
+     of the minimisation and column 2 the status of the maximisation
+     (1 if a flux could be calculated).
 
  Notes
  -----
@@ -94,22 +94,22 @@ This function is called by:
 0013 <span class="comment">%     number of elements as reactions in the model, or a vector of</span>
 0014 <span class="comment">%     reaction indexes (default model.rxns).</span>
 0015 <span class="comment">% runParallel : logical</span>
-0016 <span class="comment">%     speed up calculations by parallel processing. This is not beneficial</span>
-0017 <span class="comment">%     if allowed bounds are calculated for only a few reactions, as the</span>
-0018 <span class="comment">%     overhead of parallel processing will take longer. It requires MATLAB</span>
-0019 <span class="comment">%     Parallel Computing Toolbox. If this is not installed, the</span>
-0020 <span class="comment">%     calculations will not be parallelized, regardless of what is</span>
-0021 <span class="comment">%     indicated as runParallel (default true).</span>
-0022 <span class="comment">%</span>
-0023 <span class="comment">% Returns</span>
-0024 <span class="comment">% -------</span>
-0025 <span class="comment">% minFluxes : double</span>
-0026 <span class="comment">%     minimal allowed fluxes.</span>
-0027 <span class="comment">% maxFluxes : double</span>
-0028 <span class="comment">%     maximal allowed fluxes.</span>
-0029 <span class="comment">% exitFlags : double</span>
-0030 <span class="comment">%     exit flags for min/max for each of the reactions. True if it was</span>
-0031 <span class="comment">%     possible to calculate a flux.</span>
+0016 <span class="comment">%     run the calculations in parallel (default true). Parallel processing</span>
+0017 <span class="comment">%     requires the MATLAB Parallel Computing Toolbox; without it, the</span>
+0018 <span class="comment">%     calculations run serially regardless of this setting. For a few</span>
+0019 <span class="comment">%     reactions, the overhead of parallel processing exceeds the time it</span>
+0020 <span class="comment">%     saves.</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% Returns</span>
+0023 <span class="comment">% -------</span>
+0024 <span class="comment">% minFluxes : double</span>
+0025 <span class="comment">%     minimal allowed fluxes.</span>
+0026 <span class="comment">% maxFluxes : double</span>
+0027 <span class="comment">%     maximal allowed fluxes.</span>
+0028 <span class="comment">% exitFlags : double</span>
+0029 <span class="comment">%     a matrix with one row per reaction. Column 1 holds the solver status</span>
+0030 <span class="comment">%     of the minimisation and column 2 the status of the maximisation</span>
+0031 <span class="comment">%     (1 if a flux could be calculated).</span>
 0032 <span class="comment">%</span>
 0033 <span class="comment">% Notes</span>
 0034 <span class="comment">% -----</span>

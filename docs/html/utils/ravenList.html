@@ -4,7 +4,7 @@
 <head>
   <title>Description of ravenList</title>
   <meta name="keywords" content="ravenList">
-  <meta name="description" content="ravenList  Format a header and item list for warning() or error().">
+  <meta name="description" content="ravenList  Format a header and a list of items for warning() or error().">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,28 +21,31 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>ravenList  Format a header and item list for warning() or error().</strong></div>
+<div class="box"><strong>ravenList  Format a header and a list of items for warning() or error().</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function msg = ravenList(header, items, trim) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> ravenList  Format a header and item list for warning() or error().
+<div class="fragment"><pre class="comment"> ravenList  Format a header and a list of items for warning() or error().
 
  Parameters
  ----------
  header : char
      message header string.
  items : cell
-     cell array of items to list below the header.
+     cell array of items, listed one per line after the header.
  trim : logical
-     cap the list at 10 items (default true).
+     true to limit the list to 10 lines (default true). When the list has more
+     than 10 items, the tenth line reads '...and N more' and replaces items
+     10 to the end, with N the number of replaced items.
 
  Returns
  -------
  msg : char
-     header + newline + tab-indented items, ready to pass to warning() or
-     error() as the format string.
+     header, a newline, and the items separated by newlines with a tab before
+     each item. If items is empty, msg is header. Passed to warning() or
+     error() as an argument after the format '%s'.
 
  Examples
  --------
@@ -63,44 +66,47 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function msg = ravenList(header, items, trim)</a>
-0002 <span class="comment">% ravenList  Format a header and item list for warning() or error().</span>
+0002 <span class="comment">% ravenList  Format a header and a list of items for warning() or error().</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Parameters</span>
 0005 <span class="comment">% ----------</span>
 0006 <span class="comment">% header : char</span>
 0007 <span class="comment">%     message header string.</span>
 0008 <span class="comment">% items : cell</span>
-0009 <span class="comment">%     cell array of items to list below the header.</span>
+0009 <span class="comment">%     cell array of items, listed one per line after the header.</span>
 0010 <span class="comment">% trim : logical</span>
-0011 <span class="comment">%     cap the list at 10 items (default true).</span>
-0012 <span class="comment">%</span>
-0013 <span class="comment">% Returns</span>
-0014 <span class="comment">% -------</span>
-0015 <span class="comment">% msg : char</span>
-0016 <span class="comment">%     header + newline + tab-indented items, ready to pass to warning() or</span>
-0017 <span class="comment">%     error() as the format string.</span>
-0018 <span class="comment">%</span>
-0019 <span class="comment">% Examples</span>
-0020 <span class="comment">% --------</span>
-0021 <span class="comment">%     warning(&quot;RAVEN:warning&quot;, &quot;%s&quot;, ravenList(&quot;Missing metabolites:&quot;, badMets));</span>
-0022 <span class="comment">%     error(&quot;RAVEN:badInput&quot;, &quot;%s&quot;, ravenList(&quot;Invalid reactions:&quot;, badRxns, false));</span>
-0023 
-0024 <span class="keyword">if</span> nargin &lt; 3; trim = true; <span class="keyword">end</span>
-0025 items = <a href="convertCharArray.html" class="code" title="function inputConverted = convertCharArray(funcInput)">convertCharArray</a>(items);
-0026 <span class="keyword">if</span> isempty(items)
-0027     msg = header;
-0028     <span class="keyword">return</span>
-0029 <span class="keyword">end</span>
-0030 <span class="keyword">if</span> trim &amp;&amp; numel(items) &gt; 10
-0031     items{10} = sprintf(<span class="string">'...and %d more'</span>, numel(items)-9);
-0032     items(11:end) = [];
-0033 <span class="keyword">end</span>
-0034 <span class="comment">% {char(9)} rather than char(9): strcat strips trailing whitespace from a</span>
-0035 <span class="comment">% plain char argument, and a lone tab is entirely trailing whitespace, so</span>
-0036 <span class="comment">% every item's indent was silently dropped. Wrapped in a cell, strcat</span>
-0037 <span class="comment">% treats it as a cell-array input instead, which it does not trim.</span>
-0038 msg = [header, newline, strjoin(strcat({char(9)}, items), newline)];
-0039 <span class="keyword">end</span></pre></div>
+0011 <span class="comment">%     true to limit the list to 10 lines (default true). When the list has more</span>
+0012 <span class="comment">%     than 10 items, the tenth line reads '...and N more' and replaces items</span>
+0013 <span class="comment">%     10 to the end, with N the number of replaced items.</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">% Returns</span>
+0016 <span class="comment">% -------</span>
+0017 <span class="comment">% msg : char</span>
+0018 <span class="comment">%     header, a newline, and the items separated by newlines with a tab before</span>
+0019 <span class="comment">%     each item. If items is empty, msg is header. Passed to warning() or</span>
+0020 <span class="comment">%     error() as an argument after the format '%s'.</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% Examples</span>
+0023 <span class="comment">% --------</span>
+0024 <span class="comment">%     warning(&quot;RAVEN:warning&quot;, &quot;%s&quot;, ravenList(&quot;Missing metabolites:&quot;, badMets));</span>
+0025 <span class="comment">%     error(&quot;RAVEN:badInput&quot;, &quot;%s&quot;, ravenList(&quot;Invalid reactions:&quot;, badRxns, false));</span>
+0026 
+0027 <span class="keyword">if</span> nargin &lt; 3; trim = true; <span class="keyword">end</span>
+0028 items = <a href="convertCharArray.html" class="code" title="function inputConverted = convertCharArray(funcInput)">convertCharArray</a>(items);
+0029 <span class="keyword">if</span> isempty(items)
+0030     msg = header;
+0031     <span class="keyword">return</span>
+0032 <span class="keyword">end</span>
+0033 <span class="keyword">if</span> trim &amp;&amp; numel(items) &gt; 10
+0034     items{10} = sprintf(<span class="string">'...and %d more'</span>, numel(items)-9);
+0035     items(11:end) = [];
+0036 <span class="keyword">end</span>
+0037 <span class="comment">% {char(9)} rather than char(9): strcat strips trailing whitespace from a</span>
+0038 <span class="comment">% plain char argument, and a lone tab is entirely trailing whitespace, so</span>
+0039 <span class="comment">% every item's indent was silently dropped. Wrapped in a cell, strcat</span>
+0040 <span class="comment">% treats it as a cell-array input instead, which it does not trim.</span>
+0041 msg = [header, newline, strjoin(strcat({char(9)}, items), newline)];
+0042 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

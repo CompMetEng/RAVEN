@@ -4,7 +4,7 @@
 <head>
   <title>Description of checkModelStruct</title>
   <meta name="keywords" content="checkModelStruct">
-  <meta name="description" content="checkModelStruct  Perform a number of checks to ensure a model structure is ok.">
+  <meta name="description" content="checkModelStruct  Check a model structure for errors and inconsistencies.">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,13 +21,13 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>checkModelStruct  Perform a number of checks to ensure a model structure is ok.</strong></div>
+<div class="box"><strong>checkModelStruct  Check a model structure for errors and inconsistencies.</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function issues=checkModelStruct(model,varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> checkModelStruct  Perform a number of checks to ensure a model structure is ok.
+<div class="fragment"><pre class="comment"> checkModelStruct  Check a model structure for errors and inconsistencies.
 
  Parameters
  ----------
@@ -38,32 +38,33 @@
  --------------------
  throwErrors : logical
      true if structural problems (wrong types, missing required fields,
-     duplicate IDs, etc.) should throw an error. Advisory notices such as
+     duplicate IDs and other problems of structure) should throw an error. Advisory notices such as
      unused elements and bound inconsistencies are always reported as
      warnings regardless of this flag (default true).
  trimWarnings : logical
-     true if only a maximum of 10 items should be displayed in a given
-     warning or error (default true).
+     true if a given warning or error lists at most 10 items, the last of
+     which reports the number of remaining items (default true).
 
  Returns
  -------
  issues : struct
-     When called with an output argument, returns a struct array with one
-     element per finding (does not throw or print) instead of the default
-     print/throw behaviour. Fields:
+     When called with an output argument, the function returns a struct
+     array with one element per finding and neither throws nor prints. The
+     default behaviour without an output argument is to print warnings and
+     throw errors. Fields:
 
-     - category : char — type of issue: &quot;missing_field&quot;, &quot;wrong_type&quot;,
-       &quot;empty_id&quot;, &quot;duplicate&quot;, &quot;invalid_id&quot;, &quot;invalid_bounds&quot;,
-       &quot;unused&quot;, &quot;objective&quot;, &quot;gpr&quot;, &quot;invalid_formula&quot;,
-       &quot;cross_reference&quot;, or &quot;other&quot;.
-     - target : char — the specific item involved (field name, reaction
-       ID, metabolite ID, etc.), or &quot;&quot; when not applicable.
-     - message : char — the full diagnostic text.
+     - category (char): type of issue, one of &quot;missing_field&quot;,
+       &quot;wrong_type&quot;, &quot;empty_id&quot;, &quot;duplicate&quot;, &quot;invalid_id&quot;,
+       &quot;invalid_bounds&quot;, &quot;unused&quot;, &quot;objective&quot;, &quot;gpr&quot;, &quot;invalid_formula&quot;,
+       &quot;cross_reference&quot; or &quot;other&quot;.
+     - target (char): the item involved (field name, reaction ID,
+       metabolite ID or another item), or &quot;&quot; when not applicable.
+     - message (char): the full diagnostic text.
 
  Notes
  -----
- This is typically performed after importing or constructing a model, or
- before attempting to export a model to SBML format.
+ The check is intended for use after importing or constructing a model and
+ before exporting a model to SBML format.
 
  Examples
  --------
@@ -87,7 +88,7 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function issues=checkModelStruct(model,varargin)</a>
-0002 <span class="comment">% checkModelStruct  Perform a number of checks to ensure a model structure is ok.</span>
+0002 <span class="comment">% checkModelStruct  Check a model structure for errors and inconsistencies.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Parameters</span>
 0005 <span class="comment">% ----------</span>
@@ -98,565 +99,566 @@ This function is called by:
 0010 <span class="comment">% --------------------</span>
 0011 <span class="comment">% throwErrors : logical</span>
 0012 <span class="comment">%     true if structural problems (wrong types, missing required fields,</span>
-0013 <span class="comment">%     duplicate IDs, etc.) should throw an error. Advisory notices such as</span>
+0013 <span class="comment">%     duplicate IDs and other problems of structure) should throw an error. Advisory notices such as</span>
 0014 <span class="comment">%     unused elements and bound inconsistencies are always reported as</span>
 0015 <span class="comment">%     warnings regardless of this flag (default true).</span>
 0016 <span class="comment">% trimWarnings : logical</span>
-0017 <span class="comment">%     true if only a maximum of 10 items should be displayed in a given</span>
-0018 <span class="comment">%     warning or error (default true).</span>
+0017 <span class="comment">%     true if a given warning or error lists at most 10 items, the last of</span>
+0018 <span class="comment">%     which reports the number of remaining items (default true).</span>
 0019 <span class="comment">%</span>
 0020 <span class="comment">% Returns</span>
 0021 <span class="comment">% -------</span>
 0022 <span class="comment">% issues : struct</span>
-0023 <span class="comment">%     When called with an output argument, returns a struct array with one</span>
-0024 <span class="comment">%     element per finding (does not throw or print) instead of the default</span>
-0025 <span class="comment">%     print/throw behaviour. Fields:</span>
-0026 <span class="comment">%</span>
-0027 <span class="comment">%     - category : char — type of issue: &quot;missing_field&quot;, &quot;wrong_type&quot;,</span>
-0028 <span class="comment">%       &quot;empty_id&quot;, &quot;duplicate&quot;, &quot;invalid_id&quot;, &quot;invalid_bounds&quot;,</span>
-0029 <span class="comment">%       &quot;unused&quot;, &quot;objective&quot;, &quot;gpr&quot;, &quot;invalid_formula&quot;,</span>
-0030 <span class="comment">%       &quot;cross_reference&quot;, or &quot;other&quot;.</span>
-0031 <span class="comment">%     - target : char — the specific item involved (field name, reaction</span>
-0032 <span class="comment">%       ID, metabolite ID, etc.), or &quot;&quot; when not applicable.</span>
-0033 <span class="comment">%     - message : char — the full diagnostic text.</span>
-0034 <span class="comment">%</span>
-0035 <span class="comment">% Notes</span>
-0036 <span class="comment">% -----</span>
-0037 <span class="comment">% This is typically performed after importing or constructing a model, or</span>
-0038 <span class="comment">% before attempting to export a model to SBML format.</span>
-0039 <span class="comment">%</span>
-0040 <span class="comment">% Examples</span>
-0041 <span class="comment">% --------</span>
-0042 <span class="comment">%     checkModelStruct(model);</span>
-0043 <span class="comment">%     checkModelStruct(model, &quot;throwErrors&quot;, false);</span>
-0044 <span class="comment">%     issues = checkModelStruct(model);</span>
-0045 
-0046 p=parseRAVENargs(varargin, {<span class="string">'throwErrors'</span>,true; <span class="string">'trimWarnings'</span>,true});
-0047 throwErrors=p.throwErrors;
-0048 trimWarnings=p.trimWarnings;
-0049 
-0050 collecting = nargout &gt; 0;
-0051 issues = struct(<span class="string">'category'</span>,{},<span class="string">'target'</span>,{},<span class="string">'message'</span>,{});
-0052 
-0053     <a name="_sub1" href="#_subfunctions" class="code">function reportIssue(severity, msg, items)</a>
-0054         <span class="comment">% Report one issue: accumulate in collect mode, or warn/error.</span>
-0055         <span class="comment">% severity: &quot;error&quot; | &quot;warning&quot;</span>
-0056         <span class="comment">% When items is supplied (3 args) but is empty, silently do nothing.</span>
-0057         listProvided = nargin &gt;= 3;
-0058         <span class="keyword">if</span> nargin &lt; 3; items = {}; <span class="keyword">end</span>
-0059         <span class="keyword">if</span> ~isempty(items)
-0060             items = convertCharArray(items);
-0061         <span class="keyword">end</span>
-0062         <span class="keyword">if</span> listProvided &amp;&amp; isempty(items); <span class="keyword">return</span>; <span class="keyword">end</span>
-0063         <span class="keyword">if</span> trimWarnings &amp;&amp; numel(items) &gt; 10
-0064             items{10} = sprintf(<span class="string">'...and %d more'</span>, numel(items)-9);
-0065             items(11:end) = [];
-0066         <span class="keyword">end</span>
-0067         cat = <a href="#_sub3" class="code" title="subfunction cat=issueCategory(msg)">issueCategory</a>(msg);
-0068         <span class="keyword">if</span> collecting
-0069             <span class="keyword">if</span> isempty(items)
-0070                 issues(end+1,1) = struct(<span class="string">'category'</span>,cat,<span class="string">'target'</span>,<span class="string">''</span>,<span class="string">'message'</span>,msg);
-0071             <span class="keyword">else</span>
-0072                 <span class="keyword">for</span> ki_ = 1:numel(items)
-0073                     issues(end+1,1) = struct(<span class="string">'category'</span>,cat,<span class="string">'target'</span>,items{ki_},<span class="string">'message'</span>,msg); <span class="comment">%#ok&lt;AGROW&gt;</span>
-0074                 <span class="keyword">end</span>
-0075             <span class="keyword">end</span>
-0076             <span class="keyword">return</span>
-0077         <span class="keyword">end</span>
-0078         isErr = strcmp(severity,<span class="string">'error'</span>) &amp;&amp; throwErrors;
-0079         <span class="keyword">if</span> isErr
-0080             <span class="keyword">if</span> isempty(items)
-0081                 error(<span class="string">'RAVEN:modelError'</span>, <span class="string">'%s'</span>, msg);
-0082             <span class="keyword">else</span>
-0083                 error(<span class="string">'RAVEN:modelError'</span>, <span class="string">'%s'</span>, ravenList(msg, items, false));
-0084             <span class="keyword">end</span>
-0085         <span class="keyword">else</span>
-0086             <span class="keyword">if</span> isempty(items)
-0087                 warning(<span class="string">'RAVEN:modelError'</span>, <span class="string">'%s'</span>, msg);
-0088             <span class="keyword">else</span>
-0089                 warning(<span class="string">'RAVEN:modelError'</span>, <span class="string">'%s'</span>, ravenList(msg, items, false));
-0090             <span class="keyword">end</span>
-0091         <span class="keyword">end</span>
-0092     <span class="keyword">end</span>
-0093 
-0094 <span class="comment">%Missing elements — checked inline so missing fields do not cause cascading</span>
-0095 <span class="comment">%errors in the rest of the body</span>
-0096 fields={<span class="string">'id'</span>;<span class="string">'name'</span>;<span class="string">'rxns'</span>;<span class="string">'mets'</span>;<span class="string">'S'</span>;<span class="string">'lb'</span>;<span class="string">'ub'</span>;<span class="string">'rev'</span>;<span class="string">'c'</span>;<span class="string">'b'</span>;<span class="string">'comps'</span>;<span class="string">'metComps'</span>};
-0097 missingField=false;
-0098 <span class="keyword">for</span> i=1:numel(fields)
-0099     <span class="keyword">if</span> ~isfield(model,fields{i})
-0100         EM=[<span class="string">'The model is missing the &quot;'</span> fields{i} <span class="string">'&quot; field'</span>];
-0101         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0102         missingField=true;
-0103     <span class="keyword">end</span>
-0104 <span class="keyword">end</span>
-0105 <span class="keyword">if</span> missingField
-0106     <span class="keyword">return</span>  <span class="comment">% missing required fields would cause access errors below; this</span>
-0107             <span class="comment">% must fire whenever a field is missing, not only when</span>
-0108             <span class="comment">% collecting -- throwErrors=false otherwise warns here and</span>
-0109             <span class="comment">% then crashes on the very field it just warned about</span>
-0110 <span class="keyword">end</span>
-0111 
-0112 <span class="comment">%Type check</span>
-0113 <span class="keyword">if</span> ~ischar(model.id)
-0114     EM=<span class="string">'The &quot;id&quot; field must be a string'</span>;
-0115     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0116 <span class="keyword">end</span>
-0117 <span class="keyword">if</span> ~ischar(model.name)
-0118     EM=<span class="string">'The &quot;name&quot; field must be a string'</span>;
-0119     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0120 <span class="keyword">end</span>
-0121 <span class="keyword">if</span> ~iscellstr(model.rxns)
-0122     EM=<span class="string">'The &quot;rxns&quot; field must be a cell array of strings'</span>;
-0123     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0124 <span class="keyword">end</span>
-0125 <span class="keyword">if</span> ~iscellstr(model.mets)
-0126     EM=<span class="string">'The &quot;mets&quot; field must be a cell array of strings'</span>;
-0127     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0128 <span class="keyword">end</span>
-0129 <span class="keyword">if</span> ~isnumeric(model.S)
-0130     EM=<span class="string">'The &quot;S&quot; field must be of type &quot;double&quot;'</span>;
-0131     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0132 <span class="keyword">end</span>
-0133 <span class="keyword">if</span> ~isnumeric(model.lb)
-0134     EM=<span class="string">'The &quot;lb&quot; field must be of type &quot;double&quot;'</span>;
-0135     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0136 <span class="keyword">end</span>
-0137 <span class="keyword">if</span> ~isnumeric(model.ub)
-0138     EM=<span class="string">'The &quot;ub&quot; field must be of type &quot;double&quot;'</span>;
-0139     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0140 <span class="keyword">end</span>
-0141 <span class="keyword">if</span> ~isnumeric(model.rev)
-0142     EM=<span class="string">'The &quot;rev&quot; field must be of type &quot;double&quot;'</span>;
-0143     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0144 <span class="keyword">end</span>
-0145 <span class="keyword">if</span> ~isnumeric(model.c)
-0146     EM=<span class="string">'The &quot;c&quot; field must be of type &quot;double&quot;'</span>;
-0147     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0148 <span class="keyword">end</span>
-0149 <span class="keyword">if</span> ~isnumeric(model.b)
-0150     EM=<span class="string">'The &quot;b&quot; field must be of type &quot;double&quot;'</span>;
-0151     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0152 <span class="keyword">end</span>
-0153 <span class="keyword">if</span> ~iscellstr(model.comps)
-0154     EM=<span class="string">'The &quot;comps&quot; field must be a cell array of strings'</span>;
-0155     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0156 <span class="keyword">end</span>
-0157 <span class="keyword">if</span> ~isnumeric(model.metComps)
-0158     EM=<span class="string">'The &quot;metComps&quot; field must be of type &quot;double&quot;'</span>;
-0159     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0160 <span class="keyword">end</span>
-0161 <span class="keyword">if</span> isfield(model,<span class="string">'compNames'</span>)
-0162     <span class="keyword">if</span> ~iscellstr(model.compNames)
-0163         EM=<span class="string">'The &quot;compNames&quot; field must be a cell array of strings'</span>;
-0164         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0165     <span class="keyword">end</span>
-0166 <span class="keyword">end</span>
-0167 <span class="keyword">if</span> isfield(model,<span class="string">'compOutside'</span>)
-0168     <span class="keyword">if</span> ~iscellstr(model.compOutside)
-0169         EM=<span class="string">'The &quot;compOutside&quot; field must be a cell array of strings'</span>;
-0170         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0171     <span class="keyword">end</span>
-0172 <span class="keyword">end</span>
-0173 <span class="keyword">if</span> isfield(model,<span class="string">'rxnNames'</span>)
-0174     <span class="keyword">if</span> ~iscellstr(model.rxnNames)
-0175         EM=<span class="string">'The &quot;rxnNames&quot; field must be a cell array of strings'</span>;
-0176         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0177     <span class="keyword">end</span>
-0178 <span class="keyword">end</span>
-0179 <span class="keyword">if</span> isfield(model,<span class="string">'metNames'</span>)
-0180     <span class="keyword">if</span> ~iscellstr(model.metNames)
-0181         EM=<span class="string">'The &quot;metNames&quot; field must be a cell array of strings'</span>;
-0182         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0183     <span class="keyword">end</span>
-0184 <span class="keyword">end</span>
-0185 <span class="keyword">if</span> isfield(model,<span class="string">'genes'</span>)
-0186     <span class="keyword">if</span> ~iscellstr(model.genes)
-0187         EM=<span class="string">'The &quot;genes&quot; field must be a cell array of strings'</span>;
-0188         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0189     <span class="keyword">end</span>
-0190 <span class="keyword">end</span>
-0191 <span class="keyword">if</span> isfield(model,<span class="string">'rxnGeneMat'</span>)
-0192     <span class="keyword">if</span> ~isnumeric(model.rxnGeneMat)
-0193         EM=<span class="string">'The &quot;rxnGeneMat&quot; field must be of type &quot;double&quot;'</span>;
-0194         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0195     <span class="keyword">end</span>
-0196 <span class="keyword">end</span>
-0197 <span class="keyword">if</span> isfield(model,<span class="string">'grRules'</span>)
-0198     <span class="keyword">if</span> ~iscellstr(model.grRules)
-0199         EM=<span class="string">'The &quot;grRules&quot; field must be a cell array of strings'</span>;
-0200         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0201     <span class="keyword">end</span>
-0202     <span class="keyword">if</span> ~isfield(model,<span class="string">'genes'</span>)
-0203         EM=<span class="string">'If &quot;grRules&quot; field exists, the model should also contain a &quot;genes&quot; field'</span>;
-0204         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0205     <span class="keyword">else</span>
-0206         <span class="comment">%Erroneous grRules that start/end with OR/AND</span>
-0207         EM=<span class="string">'The following reaction(s) have grRules that start or end with ''OR'' or ''AND'':'</span>;
-0208         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.rxns(startsWith(model.grRules,{<span class="string">'or '</span>,<span class="string">'and '</span>}) | endsWith(model.grRules,{<span class="string">' or'</span>,<span class="string">' and'</span>})));
-0209         <span class="comment">%grRules that are not in genes field</span>
-0210         geneList = <a href="getGenesFromGrRules.html" class="code" title="function [genes,rxnGeneMat] = getGenesFromGrRules(grRules, varargin)">getGenesFromGrRules</a>(model.grRules);
-0211         geneList = setdiff(unique(geneList),model.genes);
-0212         <span class="keyword">if</span> ~isempty(geneList)
-0213             problemGrRules = model.rxns(contains(model.grRules,geneList));
-0214             problemGrRules = strjoin(problemGrRules(:),<span class="string">'; '</span>);
-0215             EM=[<span class="string">'The reaction(s) &quot;'</span> problemGrRules <span class="string">'&quot; contain the following genes in its &quot;grRules&quot; field, but these are not in the &quot;genes&quot; field:'</span>];
-0216             <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,geneList);
-0217         <span class="keyword">end</span>
-0218     <span class="keyword">end</span>
-0219 <span class="keyword">end</span>
-0220 <span class="keyword">if</span> isfield(model,<span class="string">'rxnComps'</span>)
-0221     <span class="keyword">if</span> ~isnumeric(model.rxnComps)
-0222         EM=<span class="string">'The &quot;rxnComps&quot; field must be of type &quot;double&quot;'</span>;
-0223         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0224     <span class="keyword">end</span>
-0225 <span class="keyword">end</span>
-0226 <span class="keyword">if</span> isfield(model,<span class="string">'inchis'</span>)
-0227     <span class="keyword">if</span> ~iscellstr(model.inchis)
-0228         EM=<span class="string">'The &quot;inchis&quot; field must be a cell array of strings'</span>;
-0229         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0230     <span class="keyword">end</span>
-0231 <span class="keyword">end</span>
-0232 <span class="keyword">if</span> isfield(model,<span class="string">'metSmiles'</span>)
-0233     <span class="keyword">if</span> ~iscellstr(model.metSmiles)
-0234         EM=<span class="string">'The &quot;metSmiles&quot; field must be a cell array of strings'</span>;
-0235         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0236     <span class="keyword">end</span>
-0237 <span class="keyword">end</span>
-0238 <span class="keyword">if</span> isfield(model,<span class="string">'metFormulas'</span>)
-0239     <span class="keyword">if</span> ~iscellstr(model.metFormulas)
-0240         EM=<span class="string">'The &quot;metFormulas&quot; field must be a cell array of strings'</span>;
-0241         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0242     <span class="keyword">end</span>
-0243 <span class="keyword">end</span>
-0244 <span class="keyword">if</span> isfield(model,<span class="string">'metCharges'</span>)
-0245     <span class="keyword">if</span> ~isnumeric(model.metCharges)
-0246         EM=<span class="string">'The &quot;metCharges&quot; field must be a double'</span>;
-0247         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0248     <span class="keyword">end</span>
-0249 <span class="keyword">end</span>
-0250 <span class="keyword">if</span> isfield(model,<span class="string">'metDeltaG'</span>)
-0251     <span class="keyword">if</span> ~isnumeric(model.metDeltaG)
-0252         EM=<span class="string">'The &quot;metDeltaG&quot; field must be a double'</span>;
-0253         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0254     <span class="keyword">end</span>
-0255 <span class="keyword">end</span>
-0256 <span class="keyword">if</span> isfield(model,<span class="string">'subSystems'</span>)
-0257     isNested  = any(cellfun(@(x) iscell(x), model.subSystems));
-0258     isCellStr = any(cellfun(@(x) ischar(x), model.subSystems));
-0259     <span class="keyword">if</span> ~xor(isNested,isCellStr)
-0260         EM=<span class="string">'The &quot;subSystems&quot; field must be a cell array of chars, *or* a cell array of cell arrays of chars'</span>;
-0261         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0262     <span class="keyword">end</span>
-0263 <span class="keyword">end</span>
-0264 <span class="keyword">if</span> isfield(model,<span class="string">'eccodes'</span>)
-0265     <span class="keyword">if</span> ~iscellstr(model.eccodes)
-0266         EM=<span class="string">'The &quot;eccodes&quot; field must be a cell array of strings'</span>;
-0267         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0268     <span class="keyword">end</span>
-0269 <span class="keyword">end</span>
-0270 <span class="keyword">if</span> isfield(model,<span class="string">'unconstrained'</span>)
-0271     <span class="keyword">if</span> ~isnumeric(model.unconstrained)
-0272         EM=<span class="string">'The &quot;unconstrained&quot; field must be of type &quot;double&quot;'</span>;
-0273         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0274     <span class="keyword">end</span>
-0275 <span class="keyword">end</span>
-0276 <span class="keyword">if</span> isfield(model,<span class="string">'rxnNotes'</span>)
-0277     <span class="keyword">if</span> ~iscellstr(model.rxnNotes)
-0278         EM=<span class="string">'The &quot;rxnNotes&quot; field must be a cell array of strings'</span>;
-0279         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0280     <span class="keyword">end</span>
-0281 <span class="keyword">end</span>
-0282 <span class="keyword">if</span> isfield(model,<span class="string">'rxnReferences'</span>)
-0283     <span class="keyword">if</span> ~iscellstr(model.rxnReferences)
-0284         EM=<span class="string">'The &quot;rxnReferences&quot; field must be a cell array of strings'</span>;
-0285         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0286     <span class="keyword">end</span>
-0287 <span class="keyword">end</span>
-0288 <span class="keyword">if</span> isfield(model,<span class="string">'rxnConfidenceScores'</span>)
-0289     <span class="keyword">if</span> ~isnumeric(model.rxnConfidenceScores)
-0290         EM=<span class="string">'The &quot;rxnConfidenceScores&quot; field must be a double'</span>;
-0291         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0292     <span class="keyword">end</span>
-0293 <span class="keyword">end</span>
-0294 <span class="keyword">if</span> isfield(model,<span class="string">'rxnDeltaG'</span>)
-0295     <span class="keyword">if</span> ~isnumeric(model.rxnDeltaG)
-0296         EM=<span class="string">'The &quot;rxnDeltaG&quot; field must be a double'</span>;
-0297         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0298     <span class="keyword">end</span>
-0299 <span class="keyword">end</span>
-0300 
-0301 <span class="comment">%Empty strings</span>
-0302 <span class="keyword">if</span> isempty(model.id)
-0303     EM=<span class="string">'The &quot;id&quot; field cannot be empty'</span>;
-0304     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0305 <span class="keyword">end</span>
-0306 <span class="keyword">if</span> any(cellfun(@isempty,model.rxns))
-0307     EM=<span class="string">'The model contains empty reaction IDs'</span>;
-0308     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0309 <span class="keyword">end</span>
-0310 <span class="keyword">if</span> any(cellfun(@isempty,model.mets))
-0311     EM=<span class="string">'The model contains empty metabolite IDs'</span>;
-0312     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0313 <span class="keyword">end</span>
-0314 <span class="keyword">if</span> any(cellfun(@isempty,model.comps))
-0315     EM=<span class="string">'The model contains empty compartment IDs'</span>;
-0316     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0317 <span class="keyword">end</span>
-0318 <span class="keyword">if</span> isfield(model,<span class="string">'metNames'</span>)
-0319     EM=<span class="string">'The following metabolites have empty names:'</span>;
-0320     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.mets(cellfun(@isempty,model.metNames)));
-0321 <span class="keyword">end</span>
-0322 
-0323 <span class="keyword">if</span> isfield(model,<span class="string">'genes'</span>)
-0324     <span class="keyword">if</span> any(cellfun(@isempty,model.genes))
-0325         EM=<span class="string">'The model contains empty gene IDs'</span>;
-0326         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
-0327     <span class="keyword">end</span>
-0328 <span class="keyword">end</span>
-0329 
-0330 <span class="comment">%Validate format of ids</span>
-0331 fields      = {<span class="string">'rxns'</span>;<span class="string">'mets'</span>;<span class="string">'comps'</span>;<span class="string">'genes'</span>};
-0332 fieldNames  = {<span class="string">'reaction'</span>;<span class="string">'metabolite'</span>;<span class="string">'compartment'</span>;<span class="string">'gene'</span>};
-0333 fieldPrefix = {<span class="string">'R_'</span>;<span class="string">'M_'</span>;<span class="string">'C_'</span>;<span class="string">'G_'</span>};
-0334 <span class="keyword">for</span> i=1:numel(fields)
-0335     <span class="keyword">try</span>
-0336         numIDs = ~startsWith(model.(fields{i}),regexpPattern(<span class="string">'^[a-zA-Z_]'</span>));
-0337     <span class="keyword">catch</span>
-0338         numIDs = [];
-0339     <span class="keyword">end</span>
-0340     <span class="keyword">if</span> any(numIDs)
-0341         EM = [<span class="string">'The following '</span> fieldNames{i} <span class="string">' identifiers do not start '</span><span class="keyword">...</span>
-0342             <span class="string">'with a letter or _ (conflicting with SBML specifications). '</span><span class="keyword">...</span>
-0343             <span class="string">'This does not impact RAVEN functionality, but be aware that '</span><span class="keyword">...</span>
-0344             <span class="string">'exportModel will automatically add '</span> fieldPrefix{i} <span class="keyword">...</span>
-0345             <span class="string">' prefixes to all '</span> fieldNames{i} <span class="string">' identifiers:'</span>];
-0346         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,{model.(fields{i}){numIDs}});
-0347     <span class="keyword">end</span>
-0348 <span class="keyword">end</span>
-0349 
-0350 <span class="comment">%Duplicates</span>
-0351 EM=<span class="string">'The following reaction IDs are duplicates:'</span>;
-0352 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.rxns(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(model.rxns)));
-0353 EM=<span class="string">'The following metabolite IDs are duplicates:'</span>;
-0354 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.mets(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(model.mets)));
-0355 EM=<span class="string">'The following compartment IDs are duplicates:'</span>;
-0356 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.comps(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(model.comps)));
-0357 <span class="keyword">if</span> isfield(model,<span class="string">'genes'</span>)
-0358     EM=<span class="string">'The following genes are duplicates:'</span>;
-0359     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.genes(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(model.genes)));
-0360 <span class="keyword">end</span>
-0361 <span class="keyword">if</span> isfield(model,<span class="string">'metNames'</span>)
-0362     metInComp=strcat(model.metNames,<span class="string">'['</span>,model.comps(model.metComps),<span class="string">']'</span>);
-0363     EM=<span class="string">'The following metabolites already exist in the same compartment:'</span>;
-0364     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,metInComp(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(metInComp)));
-0365 <span class="keyword">end</span>
-0366 
-0367 <span class="comment">%Elements never used (always reported as warnings)</span>
-0368 EM=<span class="string">'The following reactions are empty (no involved metabolites):'</span>;
-0369 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.rxns(~any(model.S,1)));
-0370 EM=<span class="string">'The following metabolites are never used in a reaction:'</span>;
-0371 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.mets(~any(model.S,2)));
-0372 <span class="keyword">if</span> isfield(model,<span class="string">'genes'</span>)
-0373     EM=<span class="string">'The following genes are not associated to a reaction:'</span>;
-0374     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.genes(~any(model.rxnGeneMat,1)));
-0375 <span class="keyword">end</span>
-0376 I=true(numel(model.comps),1);
-0377 I(model.metComps)=false;
-0378 EM=<span class="string">'The following compartments contain no metabolites:'</span>;
-0379 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.comps(I));
-0380 
-0381 <span class="comment">%Contradicting bounds</span>
-0382 EM=<span class="string">'The following reactions have contradicting bounds (lower bound is higher than upper bound):'</span>;
-0383 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.rxns(model.lb&gt;model.ub));
-0384 EM=<span class="string">'The following reactions have lower and upper bounds that indicate reversibility, but are indicated as irreversible in model.rev:'</span>;
-0385 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.rxns(model.lb &lt; 0 &amp; model.ub &gt; 0 &amp; model.rev==0));
-0386 
-0387 <span class="comment">%Multiple or no objective functions not allowed in SBML L3V1 FBCv2</span>
-0388 <span class="keyword">if</span> numel(find(model.c))&gt;1
-0389     EM=<span class="string">'Multiple objective functions found. This might be intended, but results in FBCv2 non-compliant SBML file when exported'</span>;
-0390     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.rxns(find(model.c)));
-0391 <span class="keyword">elseif</span> ~any(model.c)
-0392     EM=<span class="string">'No objective function found. This might be intended, but results in FBCv2 non-compliant SBML file when exported'</span>;
-0393     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM);
-0394 <span class="keyword">end</span>
-0395 
-0396 <span class="comment">%Mapping of compartments</span>
-0397 <span class="keyword">if</span> isfield(model,<span class="string">'compOutside'</span>)
-0398     EM=<span class="string">'The following compartments are in &quot;compOutside&quot; but not in &quot;comps&quot;:'</span>;
-0399     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,setdiff(model.compOutside,[{<span class="string">''</span>};model.comps]));
-0400 <span class="keyword">end</span>
-0401 
-0402 <span class="comment">%Met names which start with number</span>
-0403 <span class="keyword">if</span> isfield(model,<span class="string">'metNames'</span>)
-0404     I=false(numel(model.metNames),1);
-0405     <span class="keyword">for</span> i=1:numel(model.metNames)
-0406         index=strfind(model.metNames{i},<span class="string">' '</span>);
-0407         <span class="keyword">if</span> any(index)
-0408             <span class="keyword">if</span> ~isnan(str2double(model.metNames{i}(1:index(1)-1)))
-0409                 I(i)=true;
-0410             <span class="keyword">end</span>
-0411         <span class="keyword">end</span>
-0412     <span class="keyword">end</span>
-0413     EM=<span class="string">'The following metabolite names begin with a number directly followed by space, which could potentially cause problems:'</span>;
-0414     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.metNames(I));
-0415 <span class="keyword">end</span>
-0416 
-0417 <span class="comment">%Non-parseable composition</span>
-0418 <span class="keyword">if</span> isfield(model,<span class="string">'metFormulas'</span>)
-0419     [~, ~, exitFlag]=<a href="parseFormulas.html" class="code" title="function [elements, useMat, exitFlag, MW]=parseFormulas(formulas, varargin)">parseFormulas</a>(model.metFormulas,true,false);
-0420     EM=<span class="string">'The composition for the following metabolites could not be parsed:'</span>;
-0421     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.mets(exitFlag==-1));
-0422 <span class="keyword">end</span>
-0423 
-0424 <span class="comment">%Check if there are metabolites with different names but the same MIRIAM</span>
-0425 <span class="comment">%codes</span>
-0426 <span class="keyword">if</span> isfield(model,<span class="string">'metMiriams'</span>)
-0427     miriams=containers.Map();
-0428     <span class="keyword">for</span> i=1:numel(model.mets)
-0429         <span class="keyword">if</span> ~isempty(model.metMiriams{i})
-0430             <span class="comment">%Loop through and add for each miriam</span>
-0431             <span class="keyword">for</span> j=1:numel(model.metMiriams{i}.name)
-0432                 <span class="comment">%Get existing metabolite indexes</span>
-0433                 current=strcat(model.metMiriams{i}.name{j},<span class="string">'/'</span>,model.metMiriams{i}.value{j});
-0434                 <span class="keyword">if</span> isKey(miriams,current)
-0435                     existing=miriams(current);
-0436                 <span class="keyword">else</span>
-0437                     existing=[];
-0438                 <span class="keyword">end</span>
-0439                 miriams(current)=[existing;i];
-0440             <span class="keyword">end</span>
-0441         <span class="keyword">end</span>
-0442     <span class="keyword">end</span>
-0443 
-0444     <span class="comment">%Get all keys</span>
-0445     allMiriams=keys(miriams);
-0446 
-0447     hasMultiple=false(numel(allMiriams),1);
-0448     <span class="keyword">for</span> i=1:numel(allMiriams)
-0449         <span class="keyword">if</span> numel(miriams(allMiriams{i}))&gt;1
-0450             <span class="comment">%Check if they all have the same name</span>
-0451             <span class="keyword">if</span> numel(unique(model.metNames(miriams(allMiriams{i}))))&gt;1
-0452                 <span class="comment">% regexp returns [] (not a false-like 0) when there is no</span>
-0453                 <span class="comment">% match, and ~[] is [] too, so the negation itself is</span>
-0454                 <span class="comment">% never true: use isempty to actually test for &quot;no match&quot;</span>
-0455                 <span class="keyword">if</span> isempty(regexp(allMiriams{i},<span class="string">'^sbo\/SBO:'</span>,<span class="string">'once'</span>)) <span class="comment">% SBO terms are expected to be multiple</span>
-0456                     hasMultiple(i)=true;
-0457                 <span class="keyword">end</span>
-0458             <span class="keyword">end</span>
-0459         <span class="keyword">end</span>
-0460     <span class="keyword">end</span>
-0461 
-0462     <span class="comment">%Print output</span>
-0463     EM=<span class="string">'The following MIRIAM strings are associated to more than one unique metabolite name:'</span>;
-0464     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,allMiriams(hasMultiple));
-0465 <span class="keyword">end</span>
-0466 
-0467 <span class="comment">%Check if there are metabolites with different names but the same InChI</span>
-0468 <span class="comment">%codes</span>
-0469 <span class="keyword">if</span> isfield(model,<span class="string">'inchis'</span>)
-0470     inchis=containers.Map();
-0471     <span class="keyword">for</span> i=1:numel(model.mets)
-0472         <span class="keyword">if</span> ~isempty(model.inchis{i})
-0473             <span class="comment">%Get existing metabolite indexes</span>
-0474             <span class="keyword">if</span> isKey(inchis,model.inchis{i})
-0475                 existing=inchis(model.inchis{i});
-0476             <span class="keyword">else</span>
-0477                 existing=[];
-0478             <span class="keyword">end</span>
-0479             inchis(model.inchis{i})=[existing;i];
-0480         <span class="keyword">end</span>
-0481     <span class="keyword">end</span>
-0482 
-0483     <span class="comment">%Get all keys</span>
-0484     allInchis=keys(inchis);
-0485 
-0486     hasMultiple=false(numel(allInchis),1);
-0487     <span class="keyword">for</span> i=1:numel(allInchis)
-0488         <span class="keyword">if</span> numel(inchis(allInchis{i}))&gt;1
-0489             <span class="comment">%Check if they all have the same name</span>
-0490             <span class="keyword">if</span> numel(unique(model.metNames(inchis(allInchis{i}))))&gt;1
-0491                 hasMultiple(i)=true;
-0492             <span class="keyword">end</span>
-0493         <span class="keyword">end</span>
-0494     <span class="keyword">end</span>
-0495 
-0496     <span class="comment">%Print output</span>
-0497     EM=<span class="string">'The following InChI strings are associated to more than one unique metabolite name:'</span>;
-0498     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,allInchis(hasMultiple));
-0499 <span class="keyword">end</span>
-0500 
-0501 <span class="comment">% %Check if there are metabolites with different names but the same SMILES</span>
-0502 <span class="comment">% if isfield(model,&quot;metSmiles&quot;)</span>
-0503 <span class="comment">%     metSmiles=containers.Map();</span>
-0504 <span class="comment">%     for i=1:numel(model.mets)</span>
-0505 <span class="comment">%         if ~isempty(model.metSmiles{i})</span>
-0506 <span class="comment">%             %Get existing metabolite indexes</span>
-0507 <span class="comment">%             if isKey(metSmiles,model.metSmiles{i})</span>
-0508 <span class="comment">%                 existing=metSmiles(model.metSmiles{i});</span>
-0509 <span class="comment">%             else</span>
-0510 <span class="comment">%                 existing=[];</span>
-0511 <span class="comment">%             end</span>
-0512 <span class="comment">%             metSmiles(model.metSmiles{i})=[existing;i];</span>
-0513 <span class="comment">%         end</span>
-0514 <span class="comment">%     end</span>
-0515 <span class="comment">%</span>
-0516 <span class="comment">%     %Get all keys</span>
-0517 <span class="comment">%     allmetSmiles=keys(metSmiles);</span>
-0518 <span class="comment">%</span>
-0519 <span class="comment">%     hasMultiple=false(numel(metSmiles),1);</span>
-0520 <span class="comment">%     for i=1:numel(metSmiles)</span>
-0521 <span class="comment">%         if numel(metSmiles(metSmiles{i}))&gt;1</span>
-0522 <span class="comment">%             %Check if they all have the same name</span>
-0523 <span class="comment">%             if numel(unique(model.metNames(metSmiles(allmetSmiles{i}))))&gt;1</span>
-0524 <span class="comment">%                 hasMultiple(i)=true;</span>
-0525 <span class="comment">%             end</span>
-0526 <span class="comment">%         end</span>
-0527 <span class="comment">%     end</span>
-0528 <span class="comment">%</span>
-0529 <span class="comment">%     %Print output</span>
-0530 <span class="comment">%     EM=&quot;The following metSmiles strings are associated to more than one unique metabolite name:&quot;;</span>
-0531 <span class="comment">%     reportIssue(&quot;warning&quot;,EM,allmetSmiles(hasMultiple));</span>
-0532 <span class="comment">% end</span>
-0533 <span class="keyword">end</span>
-0534 
-0535 <a name="_sub2" href="#_subfunctions" class="code">function I=duplicates(strings)</a>
-0536 I=false(numel(strings),1);
-0537 [J, K]=unique(strings);
-0538 <span class="keyword">if</span> numel(J)~=numel(strings)
-0539     L=1:numel(strings);
-0540     L(K)=[];
-0541     I(L)=true;
-0542 <span class="keyword">end</span>
+0023 <span class="comment">%     When called with an output argument, the function returns a struct</span>
+0024 <span class="comment">%     array with one element per finding and neither throws nor prints. The</span>
+0025 <span class="comment">%     default behaviour without an output argument is to print warnings and</span>
+0026 <span class="comment">%     throw errors. Fields:</span>
+0027 <span class="comment">%</span>
+0028 <span class="comment">%     - category (char): type of issue, one of &quot;missing_field&quot;,</span>
+0029 <span class="comment">%       &quot;wrong_type&quot;, &quot;empty_id&quot;, &quot;duplicate&quot;, &quot;invalid_id&quot;,</span>
+0030 <span class="comment">%       &quot;invalid_bounds&quot;, &quot;unused&quot;, &quot;objective&quot;, &quot;gpr&quot;, &quot;invalid_formula&quot;,</span>
+0031 <span class="comment">%       &quot;cross_reference&quot; or &quot;other&quot;.</span>
+0032 <span class="comment">%     - target (char): the item involved (field name, reaction ID,</span>
+0033 <span class="comment">%       metabolite ID or another item), or &quot;&quot; when not applicable.</span>
+0034 <span class="comment">%     - message (char): the full diagnostic text.</span>
+0035 <span class="comment">%</span>
+0036 <span class="comment">% Notes</span>
+0037 <span class="comment">% -----</span>
+0038 <span class="comment">% The check is intended for use after importing or constructing a model and</span>
+0039 <span class="comment">% before exporting a model to SBML format.</span>
+0040 <span class="comment">%</span>
+0041 <span class="comment">% Examples</span>
+0042 <span class="comment">% --------</span>
+0043 <span class="comment">%     checkModelStruct(model);</span>
+0044 <span class="comment">%     checkModelStruct(model, &quot;throwErrors&quot;, false);</span>
+0045 <span class="comment">%     issues = checkModelStruct(model);</span>
+0046 
+0047 p=parseRAVENargs(varargin, {<span class="string">'throwErrors'</span>,true; <span class="string">'trimWarnings'</span>,true});
+0048 throwErrors=p.throwErrors;
+0049 trimWarnings=p.trimWarnings;
+0050 
+0051 collecting = nargout &gt; 0;
+0052 issues = struct(<span class="string">'category'</span>,{},<span class="string">'target'</span>,{},<span class="string">'message'</span>,{});
+0053 
+0054     <a name="_sub1" href="#_subfunctions" class="code">function reportIssue(severity, msg, items)</a>
+0055         <span class="comment">% Report one issue: accumulate in collect mode, or warn/error.</span>
+0056         <span class="comment">% severity: &quot;error&quot; | &quot;warning&quot;</span>
+0057         <span class="comment">% When items is supplied (3 args) but is empty, silently do nothing.</span>
+0058         listProvided = nargin &gt;= 3;
+0059         <span class="keyword">if</span> nargin &lt; 3; items = {}; <span class="keyword">end</span>
+0060         <span class="keyword">if</span> ~isempty(items)
+0061             items = convertCharArray(items);
+0062         <span class="keyword">end</span>
+0063         <span class="keyword">if</span> listProvided &amp;&amp; isempty(items); <span class="keyword">return</span>; <span class="keyword">end</span>
+0064         <span class="keyword">if</span> trimWarnings &amp;&amp; numel(items) &gt; 10
+0065             items{10} = sprintf(<span class="string">'...and %d more'</span>, numel(items)-9);
+0066             items(11:end) = [];
+0067         <span class="keyword">end</span>
+0068         cat = <a href="#_sub3" class="code" title="subfunction cat=issueCategory(msg)">issueCategory</a>(msg);
+0069         <span class="keyword">if</span> collecting
+0070             <span class="keyword">if</span> isempty(items)
+0071                 issues(end+1,1) = struct(<span class="string">'category'</span>,cat,<span class="string">'target'</span>,<span class="string">''</span>,<span class="string">'message'</span>,msg);
+0072             <span class="keyword">else</span>
+0073                 <span class="keyword">for</span> ki_ = 1:numel(items)
+0074                     issues(end+1,1) = struct(<span class="string">'category'</span>,cat,<span class="string">'target'</span>,items{ki_},<span class="string">'message'</span>,msg); <span class="comment">%#ok&lt;AGROW&gt;</span>
+0075                 <span class="keyword">end</span>
+0076             <span class="keyword">end</span>
+0077             <span class="keyword">return</span>
+0078         <span class="keyword">end</span>
+0079         isErr = strcmp(severity,<span class="string">'error'</span>) &amp;&amp; throwErrors;
+0080         <span class="keyword">if</span> isErr
+0081             <span class="keyword">if</span> isempty(items)
+0082                 error(<span class="string">'RAVEN:modelError'</span>, <span class="string">'%s'</span>, msg);
+0083             <span class="keyword">else</span>
+0084                 error(<span class="string">'RAVEN:modelError'</span>, <span class="string">'%s'</span>, ravenList(msg, items, false));
+0085             <span class="keyword">end</span>
+0086         <span class="keyword">else</span>
+0087             <span class="keyword">if</span> isempty(items)
+0088                 warning(<span class="string">'RAVEN:modelError'</span>, <span class="string">'%s'</span>, msg);
+0089             <span class="keyword">else</span>
+0090                 warning(<span class="string">'RAVEN:modelError'</span>, <span class="string">'%s'</span>, ravenList(msg, items, false));
+0091             <span class="keyword">end</span>
+0092         <span class="keyword">end</span>
+0093     <span class="keyword">end</span>
+0094 
+0095 <span class="comment">%Missing elements — checked inline so missing fields do not cause cascading</span>
+0096 <span class="comment">%errors in the rest of the body</span>
+0097 fields={<span class="string">'id'</span>;<span class="string">'name'</span>;<span class="string">'rxns'</span>;<span class="string">'mets'</span>;<span class="string">'S'</span>;<span class="string">'lb'</span>;<span class="string">'ub'</span>;<span class="string">'rev'</span>;<span class="string">'c'</span>;<span class="string">'b'</span>;<span class="string">'comps'</span>;<span class="string">'metComps'</span>};
+0098 missingField=false;
+0099 <span class="keyword">for</span> i=1:numel(fields)
+0100     <span class="keyword">if</span> ~isfield(model,fields{i})
+0101         EM=[<span class="string">'The model is missing the &quot;'</span> fields{i} <span class="string">'&quot; field'</span>];
+0102         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0103         missingField=true;
+0104     <span class="keyword">end</span>
+0105 <span class="keyword">end</span>
+0106 <span class="keyword">if</span> missingField
+0107     <span class="keyword">return</span>  <span class="comment">% missing required fields would cause access errors below; this</span>
+0108             <span class="comment">% must fire whenever a field is missing, not only when</span>
+0109             <span class="comment">% collecting -- throwErrors=false otherwise warns here and</span>
+0110             <span class="comment">% then crashes on the very field it just warned about</span>
+0111 <span class="keyword">end</span>
+0112 
+0113 <span class="comment">%Type check</span>
+0114 <span class="keyword">if</span> ~ischar(model.id)
+0115     EM=<span class="string">'The &quot;id&quot; field must be a string'</span>;
+0116     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0117 <span class="keyword">end</span>
+0118 <span class="keyword">if</span> ~ischar(model.name)
+0119     EM=<span class="string">'The &quot;name&quot; field must be a string'</span>;
+0120     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0121 <span class="keyword">end</span>
+0122 <span class="keyword">if</span> ~iscellstr(model.rxns)
+0123     EM=<span class="string">'The &quot;rxns&quot; field must be a cell array of strings'</span>;
+0124     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0125 <span class="keyword">end</span>
+0126 <span class="keyword">if</span> ~iscellstr(model.mets)
+0127     EM=<span class="string">'The &quot;mets&quot; field must be a cell array of strings'</span>;
+0128     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0129 <span class="keyword">end</span>
+0130 <span class="keyword">if</span> ~isnumeric(model.S)
+0131     EM=<span class="string">'The &quot;S&quot; field must be of type &quot;double&quot;'</span>;
+0132     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0133 <span class="keyword">end</span>
+0134 <span class="keyword">if</span> ~isnumeric(model.lb)
+0135     EM=<span class="string">'The &quot;lb&quot; field must be of type &quot;double&quot;'</span>;
+0136     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0137 <span class="keyword">end</span>
+0138 <span class="keyword">if</span> ~isnumeric(model.ub)
+0139     EM=<span class="string">'The &quot;ub&quot; field must be of type &quot;double&quot;'</span>;
+0140     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0141 <span class="keyword">end</span>
+0142 <span class="keyword">if</span> ~isnumeric(model.rev)
+0143     EM=<span class="string">'The &quot;rev&quot; field must be of type &quot;double&quot;'</span>;
+0144     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0145 <span class="keyword">end</span>
+0146 <span class="keyword">if</span> ~isnumeric(model.c)
+0147     EM=<span class="string">'The &quot;c&quot; field must be of type &quot;double&quot;'</span>;
+0148     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0149 <span class="keyword">end</span>
+0150 <span class="keyword">if</span> ~isnumeric(model.b)
+0151     EM=<span class="string">'The &quot;b&quot; field must be of type &quot;double&quot;'</span>;
+0152     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0153 <span class="keyword">end</span>
+0154 <span class="keyword">if</span> ~iscellstr(model.comps)
+0155     EM=<span class="string">'The &quot;comps&quot; field must be a cell array of strings'</span>;
+0156     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0157 <span class="keyword">end</span>
+0158 <span class="keyword">if</span> ~isnumeric(model.metComps)
+0159     EM=<span class="string">'The &quot;metComps&quot; field must be of type &quot;double&quot;'</span>;
+0160     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0161 <span class="keyword">end</span>
+0162 <span class="keyword">if</span> isfield(model,<span class="string">'compNames'</span>)
+0163     <span class="keyword">if</span> ~iscellstr(model.compNames)
+0164         EM=<span class="string">'The &quot;compNames&quot; field must be a cell array of strings'</span>;
+0165         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0166     <span class="keyword">end</span>
+0167 <span class="keyword">end</span>
+0168 <span class="keyword">if</span> isfield(model,<span class="string">'compOutside'</span>)
+0169     <span class="keyword">if</span> ~iscellstr(model.compOutside)
+0170         EM=<span class="string">'The &quot;compOutside&quot; field must be a cell array of strings'</span>;
+0171         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0172     <span class="keyword">end</span>
+0173 <span class="keyword">end</span>
+0174 <span class="keyword">if</span> isfield(model,<span class="string">'rxnNames'</span>)
+0175     <span class="keyword">if</span> ~iscellstr(model.rxnNames)
+0176         EM=<span class="string">'The &quot;rxnNames&quot; field must be a cell array of strings'</span>;
+0177         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0178     <span class="keyword">end</span>
+0179 <span class="keyword">end</span>
+0180 <span class="keyword">if</span> isfield(model,<span class="string">'metNames'</span>)
+0181     <span class="keyword">if</span> ~iscellstr(model.metNames)
+0182         EM=<span class="string">'The &quot;metNames&quot; field must be a cell array of strings'</span>;
+0183         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0184     <span class="keyword">end</span>
+0185 <span class="keyword">end</span>
+0186 <span class="keyword">if</span> isfield(model,<span class="string">'genes'</span>)
+0187     <span class="keyword">if</span> ~iscellstr(model.genes)
+0188         EM=<span class="string">'The &quot;genes&quot; field must be a cell array of strings'</span>;
+0189         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0190     <span class="keyword">end</span>
+0191 <span class="keyword">end</span>
+0192 <span class="keyword">if</span> isfield(model,<span class="string">'rxnGeneMat'</span>)
+0193     <span class="keyword">if</span> ~isnumeric(model.rxnGeneMat)
+0194         EM=<span class="string">'The &quot;rxnGeneMat&quot; field must be of type &quot;double&quot;'</span>;
+0195         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0196     <span class="keyword">end</span>
+0197 <span class="keyword">end</span>
+0198 <span class="keyword">if</span> isfield(model,<span class="string">'grRules'</span>)
+0199     <span class="keyword">if</span> ~iscellstr(model.grRules)
+0200         EM=<span class="string">'The &quot;grRules&quot; field must be a cell array of strings'</span>;
+0201         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0202     <span class="keyword">end</span>
+0203     <span class="keyword">if</span> ~isfield(model,<span class="string">'genes'</span>)
+0204         EM=<span class="string">'If &quot;grRules&quot; field exists, the model should also contain a &quot;genes&quot; field'</span>;
+0205         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0206     <span class="keyword">else</span>
+0207         <span class="comment">%Erroneous grRules that start/end with OR/AND</span>
+0208         EM=<span class="string">'The following reaction(s) have grRules that start or end with ''OR'' or ''AND'':'</span>;
+0209         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.rxns(startsWith(model.grRules,{<span class="string">'or '</span>,<span class="string">'and '</span>}) | endsWith(model.grRules,{<span class="string">' or'</span>,<span class="string">' and'</span>})));
+0210         <span class="comment">%grRules that are not in genes field</span>
+0211         geneList = <a href="getGenesFromGrRules.html" class="code" title="function [genes,rxnGeneMat] = getGenesFromGrRules(grRules, varargin)">getGenesFromGrRules</a>(model.grRules);
+0212         geneList = setdiff(unique(geneList),model.genes);
+0213         <span class="keyword">if</span> ~isempty(geneList)
+0214             problemGrRules = model.rxns(contains(model.grRules,geneList));
+0215             problemGrRules = strjoin(problemGrRules(:),<span class="string">'; '</span>);
+0216             EM=[<span class="string">'The reaction(s) &quot;'</span> problemGrRules <span class="string">'&quot; contain the following genes in its &quot;grRules&quot; field, but these are not in the &quot;genes&quot; field:'</span>];
+0217             <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,geneList);
+0218         <span class="keyword">end</span>
+0219     <span class="keyword">end</span>
+0220 <span class="keyword">end</span>
+0221 <span class="keyword">if</span> isfield(model,<span class="string">'rxnComps'</span>)
+0222     <span class="keyword">if</span> ~isnumeric(model.rxnComps)
+0223         EM=<span class="string">'The &quot;rxnComps&quot; field must be of type &quot;double&quot;'</span>;
+0224         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0225     <span class="keyword">end</span>
+0226 <span class="keyword">end</span>
+0227 <span class="keyword">if</span> isfield(model,<span class="string">'inchis'</span>)
+0228     <span class="keyword">if</span> ~iscellstr(model.inchis)
+0229         EM=<span class="string">'The &quot;inchis&quot; field must be a cell array of strings'</span>;
+0230         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0231     <span class="keyword">end</span>
+0232 <span class="keyword">end</span>
+0233 <span class="keyword">if</span> isfield(model,<span class="string">'metSmiles'</span>)
+0234     <span class="keyword">if</span> ~iscellstr(model.metSmiles)
+0235         EM=<span class="string">'The &quot;metSmiles&quot; field must be a cell array of strings'</span>;
+0236         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0237     <span class="keyword">end</span>
+0238 <span class="keyword">end</span>
+0239 <span class="keyword">if</span> isfield(model,<span class="string">'metFormulas'</span>)
+0240     <span class="keyword">if</span> ~iscellstr(model.metFormulas)
+0241         EM=<span class="string">'The &quot;metFormulas&quot; field must be a cell array of strings'</span>;
+0242         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0243     <span class="keyword">end</span>
+0244 <span class="keyword">end</span>
+0245 <span class="keyword">if</span> isfield(model,<span class="string">'metCharges'</span>)
+0246     <span class="keyword">if</span> ~isnumeric(model.metCharges)
+0247         EM=<span class="string">'The &quot;metCharges&quot; field must be a double'</span>;
+0248         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0249     <span class="keyword">end</span>
+0250 <span class="keyword">end</span>
+0251 <span class="keyword">if</span> isfield(model,<span class="string">'metDeltaG'</span>)
+0252     <span class="keyword">if</span> ~isnumeric(model.metDeltaG)
+0253         EM=<span class="string">'The &quot;metDeltaG&quot; field must be a double'</span>;
+0254         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0255     <span class="keyword">end</span>
+0256 <span class="keyword">end</span>
+0257 <span class="keyword">if</span> isfield(model,<span class="string">'subSystems'</span>)
+0258     isNested  = any(cellfun(@(x) iscell(x), model.subSystems));
+0259     isCellStr = any(cellfun(@(x) ischar(x), model.subSystems));
+0260     <span class="keyword">if</span> ~xor(isNested,isCellStr)
+0261         EM=<span class="string">'The &quot;subSystems&quot; field must be a cell array of chars, *or* a cell array of cell arrays of chars'</span>;
+0262         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0263     <span class="keyword">end</span>
+0264 <span class="keyword">end</span>
+0265 <span class="keyword">if</span> isfield(model,<span class="string">'eccodes'</span>)
+0266     <span class="keyword">if</span> ~iscellstr(model.eccodes)
+0267         EM=<span class="string">'The &quot;eccodes&quot; field must be a cell array of strings'</span>;
+0268         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0269     <span class="keyword">end</span>
+0270 <span class="keyword">end</span>
+0271 <span class="keyword">if</span> isfield(model,<span class="string">'unconstrained'</span>)
+0272     <span class="keyword">if</span> ~isnumeric(model.unconstrained)
+0273         EM=<span class="string">'The &quot;unconstrained&quot; field must be of type &quot;double&quot;'</span>;
+0274         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0275     <span class="keyword">end</span>
+0276 <span class="keyword">end</span>
+0277 <span class="keyword">if</span> isfield(model,<span class="string">'rxnNotes'</span>)
+0278     <span class="keyword">if</span> ~iscellstr(model.rxnNotes)
+0279         EM=<span class="string">'The &quot;rxnNotes&quot; field must be a cell array of strings'</span>;
+0280         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0281     <span class="keyword">end</span>
+0282 <span class="keyword">end</span>
+0283 <span class="keyword">if</span> isfield(model,<span class="string">'rxnReferences'</span>)
+0284     <span class="keyword">if</span> ~iscellstr(model.rxnReferences)
+0285         EM=<span class="string">'The &quot;rxnReferences&quot; field must be a cell array of strings'</span>;
+0286         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0287     <span class="keyword">end</span>
+0288 <span class="keyword">end</span>
+0289 <span class="keyword">if</span> isfield(model,<span class="string">'rxnConfidenceScores'</span>)
+0290     <span class="keyword">if</span> ~isnumeric(model.rxnConfidenceScores)
+0291         EM=<span class="string">'The &quot;rxnConfidenceScores&quot; field must be a double'</span>;
+0292         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0293     <span class="keyword">end</span>
+0294 <span class="keyword">end</span>
+0295 <span class="keyword">if</span> isfield(model,<span class="string">'rxnDeltaG'</span>)
+0296     <span class="keyword">if</span> ~isnumeric(model.rxnDeltaG)
+0297         EM=<span class="string">'The &quot;rxnDeltaG&quot; field must be a double'</span>;
+0298         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0299     <span class="keyword">end</span>
+0300 <span class="keyword">end</span>
+0301 
+0302 <span class="comment">%Empty strings</span>
+0303 <span class="keyword">if</span> isempty(model.id)
+0304     EM=<span class="string">'The &quot;id&quot; field cannot be empty'</span>;
+0305     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0306 <span class="keyword">end</span>
+0307 <span class="keyword">if</span> any(cellfun(@isempty,model.rxns))
+0308     EM=<span class="string">'The model contains empty reaction IDs'</span>;
+0309     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0310 <span class="keyword">end</span>
+0311 <span class="keyword">if</span> any(cellfun(@isempty,model.mets))
+0312     EM=<span class="string">'The model contains empty metabolite IDs'</span>;
+0313     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0314 <span class="keyword">end</span>
+0315 <span class="keyword">if</span> any(cellfun(@isempty,model.comps))
+0316     EM=<span class="string">'The model contains empty compartment IDs'</span>;
+0317     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0318 <span class="keyword">end</span>
+0319 <span class="keyword">if</span> isfield(model,<span class="string">'metNames'</span>)
+0320     EM=<span class="string">'The following metabolites have empty names:'</span>;
+0321     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.mets(cellfun(@isempty,model.metNames)));
+0322 <span class="keyword">end</span>
+0323 
+0324 <span class="keyword">if</span> isfield(model,<span class="string">'genes'</span>)
+0325     <span class="keyword">if</span> any(cellfun(@isempty,model.genes))
+0326         EM=<span class="string">'The model contains empty gene IDs'</span>;
+0327         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM);
+0328     <span class="keyword">end</span>
+0329 <span class="keyword">end</span>
+0330 
+0331 <span class="comment">%Validate format of ids</span>
+0332 fields      = {<span class="string">'rxns'</span>;<span class="string">'mets'</span>;<span class="string">'comps'</span>;<span class="string">'genes'</span>};
+0333 fieldNames  = {<span class="string">'reaction'</span>;<span class="string">'metabolite'</span>;<span class="string">'compartment'</span>;<span class="string">'gene'</span>};
+0334 fieldPrefix = {<span class="string">'R_'</span>;<span class="string">'M_'</span>;<span class="string">'C_'</span>;<span class="string">'G_'</span>};
+0335 <span class="keyword">for</span> i=1:numel(fields)
+0336     <span class="keyword">try</span>
+0337         numIDs = ~startsWith(model.(fields{i}),regexpPattern(<span class="string">'^[a-zA-Z_]'</span>));
+0338     <span class="keyword">catch</span>
+0339         numIDs = [];
+0340     <span class="keyword">end</span>
+0341     <span class="keyword">if</span> any(numIDs)
+0342         EM = [<span class="string">'The following '</span> fieldNames{i} <span class="string">' identifiers do not start '</span><span class="keyword">...</span>
+0343             <span class="string">'with a letter or _ (conflicting with SBML specifications). '</span><span class="keyword">...</span>
+0344             <span class="string">'This does not impact RAVEN functionality, but be aware that '</span><span class="keyword">...</span>
+0345             <span class="string">'exportModel will automatically add '</span> fieldPrefix{i} <span class="keyword">...</span>
+0346             <span class="string">' prefixes to all '</span> fieldNames{i} <span class="string">' identifiers:'</span>];
+0347         <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,{model.(fields{i}){numIDs}});
+0348     <span class="keyword">end</span>
+0349 <span class="keyword">end</span>
+0350 
+0351 <span class="comment">%Duplicates</span>
+0352 EM=<span class="string">'The following reaction IDs are duplicates:'</span>;
+0353 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.rxns(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(model.rxns)));
+0354 EM=<span class="string">'The following metabolite IDs are duplicates:'</span>;
+0355 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.mets(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(model.mets)));
+0356 EM=<span class="string">'The following compartment IDs are duplicates:'</span>;
+0357 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.comps(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(model.comps)));
+0358 <span class="keyword">if</span> isfield(model,<span class="string">'genes'</span>)
+0359     EM=<span class="string">'The following genes are duplicates:'</span>;
+0360     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.genes(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(model.genes)));
+0361 <span class="keyword">end</span>
+0362 <span class="keyword">if</span> isfield(model,<span class="string">'metNames'</span>)
+0363     metInComp=strcat(model.metNames,<span class="string">'['</span>,model.comps(model.metComps),<span class="string">']'</span>);
+0364     EM=<span class="string">'The following metabolites already exist in the same compartment:'</span>;
+0365     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,metInComp(<a href="#_sub2" class="code" title="subfunction I=duplicates(strings)">duplicates</a>(metInComp)));
+0366 <span class="keyword">end</span>
+0367 
+0368 <span class="comment">%Elements never used (always reported as warnings)</span>
+0369 EM=<span class="string">'The following reactions are empty (no involved metabolites):'</span>;
+0370 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.rxns(~any(model.S,1)));
+0371 EM=<span class="string">'The following metabolites are never used in a reaction:'</span>;
+0372 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.mets(~any(model.S,2)));
+0373 <span class="keyword">if</span> isfield(model,<span class="string">'genes'</span>)
+0374     EM=<span class="string">'The following genes are not associated to a reaction:'</span>;
+0375     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.genes(~any(model.rxnGeneMat,1)));
+0376 <span class="keyword">end</span>
+0377 I=true(numel(model.comps),1);
+0378 I(model.metComps)=false;
+0379 EM=<span class="string">'The following compartments contain no metabolites:'</span>;
+0380 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.comps(I));
+0381 
+0382 <span class="comment">%Contradicting bounds</span>
+0383 EM=<span class="string">'The following reactions have contradicting bounds (lower bound is higher than upper bound):'</span>;
+0384 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,model.rxns(model.lb&gt;model.ub));
+0385 EM=<span class="string">'The following reactions have lower and upper bounds that indicate reversibility, but are indicated as irreversible in model.rev:'</span>;
+0386 <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.rxns(model.lb &lt; 0 &amp; model.ub &gt; 0 &amp; model.rev==0));
+0387 
+0388 <span class="comment">%Multiple or no objective functions not allowed in SBML L3V1 FBCv2</span>
+0389 <span class="keyword">if</span> numel(find(model.c))&gt;1
+0390     EM=<span class="string">'Multiple objective functions found. This might be intended, but results in FBCv2 non-compliant SBML file when exported'</span>;
+0391     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.rxns(find(model.c)));
+0392 <span class="keyword">elseif</span> ~any(model.c)
+0393     EM=<span class="string">'No objective function found. This might be intended, but results in FBCv2 non-compliant SBML file when exported'</span>;
+0394     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM);
+0395 <span class="keyword">end</span>
+0396 
+0397 <span class="comment">%Mapping of compartments</span>
+0398 <span class="keyword">if</span> isfield(model,<span class="string">'compOutside'</span>)
+0399     EM=<span class="string">'The following compartments are in &quot;compOutside&quot; but not in &quot;comps&quot;:'</span>;
+0400     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'error'</span>,EM,setdiff(model.compOutside,[{<span class="string">''</span>};model.comps]));
+0401 <span class="keyword">end</span>
+0402 
+0403 <span class="comment">%Met names which start with number</span>
+0404 <span class="keyword">if</span> isfield(model,<span class="string">'metNames'</span>)
+0405     I=false(numel(model.metNames),1);
+0406     <span class="keyword">for</span> i=1:numel(model.metNames)
+0407         index=strfind(model.metNames{i},<span class="string">' '</span>);
+0408         <span class="keyword">if</span> any(index)
+0409             <span class="keyword">if</span> ~isnan(str2double(model.metNames{i}(1:index(1)-1)))
+0410                 I(i)=true;
+0411             <span class="keyword">end</span>
+0412         <span class="keyword">end</span>
+0413     <span class="keyword">end</span>
+0414     EM=<span class="string">'The following metabolite names begin with a number directly followed by space, which could potentially cause problems:'</span>;
+0415     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.metNames(I));
+0416 <span class="keyword">end</span>
+0417 
+0418 <span class="comment">%Non-parseable composition</span>
+0419 <span class="keyword">if</span> isfield(model,<span class="string">'metFormulas'</span>)
+0420     [~, ~, exitFlag]=<a href="parseFormulas.html" class="code" title="function [elements, useMat, exitFlag, MW]=parseFormulas(formulas, varargin)">parseFormulas</a>(model.metFormulas,true,false);
+0421     EM=<span class="string">'The composition for the following metabolites could not be parsed:'</span>;
+0422     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,model.mets(exitFlag==-1));
+0423 <span class="keyword">end</span>
+0424 
+0425 <span class="comment">%Check if there are metabolites with different names but the same MIRIAM</span>
+0426 <span class="comment">%codes</span>
+0427 <span class="keyword">if</span> isfield(model,<span class="string">'metMiriams'</span>)
+0428     miriams=containers.Map();
+0429     <span class="keyword">for</span> i=1:numel(model.mets)
+0430         <span class="keyword">if</span> ~isempty(model.metMiriams{i})
+0431             <span class="comment">%Loop through and add for each miriam</span>
+0432             <span class="keyword">for</span> j=1:numel(model.metMiriams{i}.name)
+0433                 <span class="comment">%Get existing metabolite indexes</span>
+0434                 current=strcat(model.metMiriams{i}.name{j},<span class="string">'/'</span>,model.metMiriams{i}.value{j});
+0435                 <span class="keyword">if</span> isKey(miriams,current)
+0436                     existing=miriams(current);
+0437                 <span class="keyword">else</span>
+0438                     existing=[];
+0439                 <span class="keyword">end</span>
+0440                 miriams(current)=[existing;i];
+0441             <span class="keyword">end</span>
+0442         <span class="keyword">end</span>
+0443     <span class="keyword">end</span>
+0444 
+0445     <span class="comment">%Get all keys</span>
+0446     allMiriams=keys(miriams);
+0447 
+0448     hasMultiple=false(numel(allMiriams),1);
+0449     <span class="keyword">for</span> i=1:numel(allMiriams)
+0450         <span class="keyword">if</span> numel(miriams(allMiriams{i}))&gt;1
+0451             <span class="comment">%Check if they all have the same name</span>
+0452             <span class="keyword">if</span> numel(unique(model.metNames(miriams(allMiriams{i}))))&gt;1
+0453                 <span class="comment">% regexp returns [] (not a false-like 0) when there is no</span>
+0454                 <span class="comment">% match, and ~[] is [] too, so the negation itself is</span>
+0455                 <span class="comment">% never true: use isempty to actually test for &quot;no match&quot;</span>
+0456                 <span class="keyword">if</span> isempty(regexp(allMiriams{i},<span class="string">'^sbo\/SBO:'</span>,<span class="string">'once'</span>)) <span class="comment">% SBO terms are expected to be multiple</span>
+0457                     hasMultiple(i)=true;
+0458                 <span class="keyword">end</span>
+0459             <span class="keyword">end</span>
+0460         <span class="keyword">end</span>
+0461     <span class="keyword">end</span>
+0462 
+0463     <span class="comment">%Print output</span>
+0464     EM=<span class="string">'The following MIRIAM strings are associated to more than one unique metabolite name:'</span>;
+0465     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,allMiriams(hasMultiple));
+0466 <span class="keyword">end</span>
+0467 
+0468 <span class="comment">%Check if there are metabolites with different names but the same InChI</span>
+0469 <span class="comment">%codes</span>
+0470 <span class="keyword">if</span> isfield(model,<span class="string">'inchis'</span>)
+0471     inchis=containers.Map();
+0472     <span class="keyword">for</span> i=1:numel(model.mets)
+0473         <span class="keyword">if</span> ~isempty(model.inchis{i})
+0474             <span class="comment">%Get existing metabolite indexes</span>
+0475             <span class="keyword">if</span> isKey(inchis,model.inchis{i})
+0476                 existing=inchis(model.inchis{i});
+0477             <span class="keyword">else</span>
+0478                 existing=[];
+0479             <span class="keyword">end</span>
+0480             inchis(model.inchis{i})=[existing;i];
+0481         <span class="keyword">end</span>
+0482     <span class="keyword">end</span>
+0483 
+0484     <span class="comment">%Get all keys</span>
+0485     allInchis=keys(inchis);
+0486 
+0487     hasMultiple=false(numel(allInchis),1);
+0488     <span class="keyword">for</span> i=1:numel(allInchis)
+0489         <span class="keyword">if</span> numel(inchis(allInchis{i}))&gt;1
+0490             <span class="comment">%Check if they all have the same name</span>
+0491             <span class="keyword">if</span> numel(unique(model.metNames(inchis(allInchis{i}))))&gt;1
+0492                 hasMultiple(i)=true;
+0493             <span class="keyword">end</span>
+0494         <span class="keyword">end</span>
+0495     <span class="keyword">end</span>
+0496 
+0497     <span class="comment">%Print output</span>
+0498     EM=<span class="string">'The following InChI strings are associated to more than one unique metabolite name:'</span>;
+0499     <a href="#_sub1" class="code" title="subfunction reportIssue(severity, msg, items)">reportIssue</a>(<span class="string">'warning'</span>,EM,allInchis(hasMultiple));
+0500 <span class="keyword">end</span>
+0501 
+0502 <span class="comment">% %Check if there are metabolites with different names but the same SMILES</span>
+0503 <span class="comment">% if isfield(model,&quot;metSmiles&quot;)</span>
+0504 <span class="comment">%     metSmiles=containers.Map();</span>
+0505 <span class="comment">%     for i=1:numel(model.mets)</span>
+0506 <span class="comment">%         if ~isempty(model.metSmiles{i})</span>
+0507 <span class="comment">%             %Get existing metabolite indexes</span>
+0508 <span class="comment">%             if isKey(metSmiles,model.metSmiles{i})</span>
+0509 <span class="comment">%                 existing=metSmiles(model.metSmiles{i});</span>
+0510 <span class="comment">%             else</span>
+0511 <span class="comment">%                 existing=[];</span>
+0512 <span class="comment">%             end</span>
+0513 <span class="comment">%             metSmiles(model.metSmiles{i})=[existing;i];</span>
+0514 <span class="comment">%         end</span>
+0515 <span class="comment">%     end</span>
+0516 <span class="comment">%</span>
+0517 <span class="comment">%     %Get all keys</span>
+0518 <span class="comment">%     allmetSmiles=keys(metSmiles);</span>
+0519 <span class="comment">%</span>
+0520 <span class="comment">%     hasMultiple=false(numel(metSmiles),1);</span>
+0521 <span class="comment">%     for i=1:numel(metSmiles)</span>
+0522 <span class="comment">%         if numel(metSmiles(metSmiles{i}))&gt;1</span>
+0523 <span class="comment">%             %Check if they all have the same name</span>
+0524 <span class="comment">%             if numel(unique(model.metNames(metSmiles(allmetSmiles{i}))))&gt;1</span>
+0525 <span class="comment">%                 hasMultiple(i)=true;</span>
+0526 <span class="comment">%             end</span>
+0527 <span class="comment">%         end</span>
+0528 <span class="comment">%     end</span>
+0529 <span class="comment">%</span>
+0530 <span class="comment">%     %Print output</span>
+0531 <span class="comment">%     EM=&quot;The following metSmiles strings are associated to more than one unique metabolite name:&quot;;</span>
+0532 <span class="comment">%     reportIssue(&quot;warning&quot;,EM,allmetSmiles(hasMultiple));</span>
+0533 <span class="comment">% end</span>
+0534 <span class="keyword">end</span>
+0535 
+0536 <a name="_sub2" href="#_subfunctions" class="code">function I=duplicates(strings)</a>
+0537 I=false(numel(strings),1);
+0538 [J, K]=unique(strings);
+0539 <span class="keyword">if</span> numel(J)~=numel(strings)
+0540     L=1:numel(strings);
+0541     L(K)=[];
+0542     I(L)=true;
 0543 <span class="keyword">end</span>
-0544 
-0545 <a name="_sub3" href="#_subfunctions" class="code">function cat=issueCategory(msg)</a>
-0546 <span class="keyword">if</span> contains(msg,<span class="string">'missing'</span>)
-0547     cat=<span class="string">'missing_field'</span>;
-0548 <span class="keyword">elseif</span> contains(msg,<span class="string">'must be'</span>) || contains(msg,<span class="string">'should'</span>)
-0549     cat=<span class="string">'wrong_type'</span>;
-0550 <span class="keyword">elseif</span> contains(msg,<span class="string">'empty'</span>)
-0551     cat=<span class="string">'empty_id'</span>;
-0552 <span class="keyword">elseif</span> contains(msg,<span class="string">'duplicate'</span>) || contains(msg,<span class="string">'already exist in the same'</span>)
-0553     cat=<span class="string">'duplicate'</span>;
-0554 <span class="keyword">elseif</span> contains(msg,<span class="string">'bound'</span>)
-0555     cat=<span class="string">'invalid_bounds'</span>;
-0556 <span class="keyword">elseif</span> contains(msg,<span class="string">'SBML'</span>) || contains(msg,<span class="string">'identifier'</span>) || contains(msg,<span class="string">'do not start with'</span>)
-0557     cat=<span class="string">'invalid_id'</span>;
-0558 <span class="keyword">elseif</span> contains(msg,<span class="string">'never used'</span>) || contains(msg,<span class="string">'not associated'</span>) || contains(msg,<span class="string">'contain no metabolites'</span>) || contains(msg,<span class="string">'are empty (no'</span>)
-0559     cat=<span class="string">'unused'</span>;
-0560 <span class="keyword">elseif</span> contains(msg,<span class="string">'objective'</span>)
-0561     cat=<span class="string">'objective'</span>;
-0562 <span class="keyword">elseif</span> contains(msg,<span class="string">'grRule'</span>) || contains(msg,<span class="string">'start or end with'</span>) || contains(msg,<span class="string">'&quot;genes&quot;'</span>)
-0563     cat=<span class="string">'gpr'</span>;
-0564 <span class="keyword">elseif</span> contains(msg,<span class="string">'could not be parsed'</span>) || contains(msg,<span class="string">'composition'</span>)
-0565     cat=<span class="string">'invalid_formula'</span>;
-0566 <span class="keyword">elseif</span> contains(msg,<span class="string">'MIRIAM'</span>) || contains(msg,<span class="string">'InChI'</span>) || contains(msg,<span class="string">'SMILES'</span>)
-0567     cat=<span class="string">'cross_reference'</span>;
-0568 <span class="keyword">else</span>
-0569     cat=<span class="string">'other'</span>;
-0570 <span class="keyword">end</span>
-0571 <span class="keyword">end</span></pre></div>
+0544 <span class="keyword">end</span>
+0545 
+0546 <a name="_sub3" href="#_subfunctions" class="code">function cat=issueCategory(msg)</a>
+0547 <span class="keyword">if</span> contains(msg,<span class="string">'missing'</span>)
+0548     cat=<span class="string">'missing_field'</span>;
+0549 <span class="keyword">elseif</span> contains(msg,<span class="string">'must be'</span>) || contains(msg,<span class="string">'should'</span>)
+0550     cat=<span class="string">'wrong_type'</span>;
+0551 <span class="keyword">elseif</span> contains(msg,<span class="string">'empty'</span>)
+0552     cat=<span class="string">'empty_id'</span>;
+0553 <span class="keyword">elseif</span> contains(msg,<span class="string">'duplicate'</span>) || contains(msg,<span class="string">'already exist in the same'</span>)
+0554     cat=<span class="string">'duplicate'</span>;
+0555 <span class="keyword">elseif</span> contains(msg,<span class="string">'bound'</span>)
+0556     cat=<span class="string">'invalid_bounds'</span>;
+0557 <span class="keyword">elseif</span> contains(msg,<span class="string">'SBML'</span>) || contains(msg,<span class="string">'identifier'</span>) || contains(msg,<span class="string">'do not start with'</span>)
+0558     cat=<span class="string">'invalid_id'</span>;
+0559 <span class="keyword">elseif</span> contains(msg,<span class="string">'never used'</span>) || contains(msg,<span class="string">'not associated'</span>) || contains(msg,<span class="string">'contain no metabolites'</span>) || contains(msg,<span class="string">'are empty (no'</span>)
+0560     cat=<span class="string">'unused'</span>;
+0561 <span class="keyword">elseif</span> contains(msg,<span class="string">'objective'</span>)
+0562     cat=<span class="string">'objective'</span>;
+0563 <span class="keyword">elseif</span> contains(msg,<span class="string">'grRule'</span>) || contains(msg,<span class="string">'start or end with'</span>) || contains(msg,<span class="string">'&quot;genes&quot;'</span>)
+0564     cat=<span class="string">'gpr'</span>;
+0565 <span class="keyword">elseif</span> contains(msg,<span class="string">'could not be parsed'</span>) || contains(msg,<span class="string">'composition'</span>)
+0566     cat=<span class="string">'invalid_formula'</span>;
+0567 <span class="keyword">elseif</span> contains(msg,<span class="string">'MIRIAM'</span>) || contains(msg,<span class="string">'InChI'</span>) || contains(msg,<span class="string">'SMILES'</span>)
+0568     cat=<span class="string">'cross_reference'</span>;
+0569 <span class="keyword">else</span>
+0570     cat=<span class="string">'other'</span>;
+0571 <span class="keyword">end</span>
+0572 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

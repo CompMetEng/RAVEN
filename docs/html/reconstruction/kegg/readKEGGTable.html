@@ -4,7 +4,7 @@
 <head>
   <title>Description of readKEGGTable</title>
   <meta name="keywords" content="readKEGGTable">
-  <meta name="description" content="readKEGGTable  Read a gzipped KEGG relational table into a table with">
+  <meta name="description" content="readKEGGTable  Read a gzipped KEGG relational table into a table of cellstr columns.">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,21 +21,21 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
-<div class="box"><strong>readKEGGTable  Read a gzipped KEGG relational table into a table with</strong></div>
+<div class="box"><strong>readKEGGTable  Read a gzipped KEGG relational table into a table of cellstr columns.</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
 <div class="box"><strong>function tbl=readKEGGTable(gzFile) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> readKEGGTable  Read a gzipped KEGG relational table into a table with
- every column forced to char cellstr (matching RAVEN's own
- cell-array-of-char convention, regardless of the caller's default
- text-import type).
+<div class="fragment"><pre class="comment"> readKEGGTable  Read a gzipped KEGG relational table into a table of cellstr columns.
+
+ Every column is a cellstr (RAVEN's cell-array-of-char convention), whatever the
+ default text-import type of the caller.
 
  Parameters
  ----------
  gzFile : char
-     path to the gzipped TSV file, e.g. '.../kegg118_ko_reaction.tsv.gz'.
+     path to the gzipped TSV file, for example '.../kegg118_ko_reaction.tsv.gz'.
 
  Returns
  -------
@@ -56,15 +56,15 @@ This function is called by:
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function tbl=readKEGGTable(gzFile)</a>
-0002 <span class="comment">% readKEGGTable  Read a gzipped KEGG relational table into a table with</span>
-0003 <span class="comment">% every column forced to char cellstr (matching RAVEN's own</span>
-0004 <span class="comment">% cell-array-of-char convention, regardless of the caller's default</span>
-0005 <span class="comment">% text-import type).</span>
+0002 <span class="comment">% readKEGGTable  Read a gzipped KEGG relational table into a table of cellstr columns.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Every column is a cellstr (RAVEN's cell-array-of-char convention), whatever the</span>
+0005 <span class="comment">% default text-import type of the caller.</span>
 0006 <span class="comment">%</span>
 0007 <span class="comment">% Parameters</span>
 0008 <span class="comment">% ----------</span>
 0009 <span class="comment">% gzFile : char</span>
-0010 <span class="comment">%     path to the gzipped TSV file, e.g. '.../kegg118_ko_reaction.tsv.gz'.</span>
+0010 <span class="comment">%     path to the gzipped TSV file, for example '.../kegg118_ko_reaction.tsv.gz'.</span>
 0011 <span class="comment">%</span>
 0012 <span class="comment">% Returns</span>
 0013 <span class="comment">% -------</span>

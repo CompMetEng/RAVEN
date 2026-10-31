@@ -33,25 +33,25 @@
  ----------
  grRules : cell
      a cell array of model grRules, from which a list of genes is to be
-     extracted. NOTE: Boolean operators can be text (&quot;and&quot;, &quot;or&quot;) or
-     symbolic (&quot;&amp;&quot;, &quot;|&quot;), but there must be a space between operators and
-     gene names/IDs.
+     extracted. Boolean operators can be text (&quot;and&quot;, &quot;or&quot;) or symbolic
+     (&quot;&amp;&quot;, &quot;|&quot;), with a space between operators and gene names or IDs.
 
  Name-Value Arguments
  --------------------
  originalGenes : cell
      the original gene list from the model. If supplied, the genes parsed
-     from grRules must match it exactly (as a set), an error is thrown
-     otherwise, and the returned genes list follows originalGenes' order.
+     from grRules must match it as a set, otherwise an error is thrown, and
+     the returned genes list follows the order of originalGenes.
 
  Returns
  -------
  genes : cell
-     a unique list of all gene IDs that appear in grRules.
+     a unique, sorted list of all gene IDs that appear in grRules (in the
+     order of originalGenes when supplied).
  rxnGeneMat : double
-     (optional) a binary matrix indicating which genes participate in each
-     reaction, where rows correspond to reactions (entries in grRules) and
-     columns correspond to genes.
+     (optional) a sparse binary matrix indicating which genes participate in
+     each reaction, where rows correspond to reactions (entries in grRules)
+     and columns correspond to genes. Only computed when requested.
 
  Examples
  --------
@@ -64,7 +64,7 @@ This function calls:
 </ul>
 This function is called by:
 <ul style="list-style-image:url(../matlabicon.gif)">
-<li><a href="checkModelStruct.html" class="code" title="function issues=checkModelStruct(model,varargin)">checkModelStruct</a>	checkModelStruct  Perform a number of checks to ensure a model structure is ok.</li></ul>
+<li><a href="checkModelStruct.html" class="code" title="function issues=checkModelStruct(model,varargin)">checkModelStruct</a>	checkModelStruct  Check a model structure for errors and inconsistencies.</li></ul>
 <!-- crossreference -->
 
 
@@ -77,25 +77,25 @@ This function is called by:
 0005 <span class="comment">% ----------</span>
 0006 <span class="comment">% grRules : cell</span>
 0007 <span class="comment">%     a cell array of model grRules, from which a list of genes is to be</span>
-0008 <span class="comment">%     extracted. NOTE: Boolean operators can be text (&quot;and&quot;, &quot;or&quot;) or</span>
-0009 <span class="comment">%     symbolic (&quot;&amp;&quot;, &quot;|&quot;), but there must be a space between operators and</span>
-0010 <span class="comment">%     gene names/IDs.</span>
-0011 <span class="comment">%</span>
-0012 <span class="comment">% Name-Value Arguments</span>
-0013 <span class="comment">% --------------------</span>
-0014 <span class="comment">% originalGenes : cell</span>
-0015 <span class="comment">%     the original gene list from the model. If supplied, the genes parsed</span>
-0016 <span class="comment">%     from grRules must match it exactly (as a set), an error is thrown</span>
-0017 <span class="comment">%     otherwise, and the returned genes list follows originalGenes' order.</span>
-0018 <span class="comment">%</span>
-0019 <span class="comment">% Returns</span>
-0020 <span class="comment">% -------</span>
-0021 <span class="comment">% genes : cell</span>
-0022 <span class="comment">%     a unique list of all gene IDs that appear in grRules.</span>
+0008 <span class="comment">%     extracted. Boolean operators can be text (&quot;and&quot;, &quot;or&quot;) or symbolic</span>
+0009 <span class="comment">%     (&quot;&amp;&quot;, &quot;|&quot;), with a space between operators and gene names or IDs.</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">% Name-Value Arguments</span>
+0012 <span class="comment">% --------------------</span>
+0013 <span class="comment">% originalGenes : cell</span>
+0014 <span class="comment">%     the original gene list from the model. If supplied, the genes parsed</span>
+0015 <span class="comment">%     from grRules must match it as a set, otherwise an error is thrown, and</span>
+0016 <span class="comment">%     the returned genes list follows the order of originalGenes.</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">% Returns</span>
+0019 <span class="comment">% -------</span>
+0020 <span class="comment">% genes : cell</span>
+0021 <span class="comment">%     a unique, sorted list of all gene IDs that appear in grRules (in the</span>
+0022 <span class="comment">%     order of originalGenes when supplied).</span>
 0023 <span class="comment">% rxnGeneMat : double</span>
-0024 <span class="comment">%     (optional) a binary matrix indicating which genes participate in each</span>
-0025 <span class="comment">%     reaction, where rows correspond to reactions (entries in grRules) and</span>
-0026 <span class="comment">%     columns correspond to genes.</span>
+0024 <span class="comment">%     (optional) a sparse binary matrix indicating which genes participate in</span>
+0025 <span class="comment">%     each reaction, where rows correspond to reactions (entries in grRules)</span>
+0026 <span class="comment">%     and columns correspond to genes. Only computed when requested.</span>
 0027 <span class="comment">%</span>
 0028 <span class="comment">% Examples</span>
 0029 <span class="comment">% --------</span>

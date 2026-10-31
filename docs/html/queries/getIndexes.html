@@ -35,15 +35,19 @@
      a model structure.
  objects : cell or logical or double
      either a cell array of IDs, a logical vector with the same number of
-     elements as metabolites in the model, or a vector of indexes.
+     elements as objects of the given type in the model, or a vector of
+     indexes. An error is raised if an ID is not found in the model, except
+     for type 'metnames', where a name that is not found gives an empty
+     index vector.
  type : char
-     'rxns', 'mets', or 'genes' depending on what to retrieve. 'metnames'
-     queries metabolite names, while 'metcomps' allows providing specific
+     'rxns', 'mets' or 'genes', depending on what to retrieve. 'metnames'
+     queries metabolite names and returns, for each name, the indexes of all
+     metabolites with that name. 'metcomps' queries specific
      metabolites and their compartments in the format metaboliteName[comp].
      An error is raised if such a name matches no metabolite, or more than
      one.
-     If a model.ec structure exists (GECKO 3), then also 'ecenzymes',
-     'ecrxns' and 'ecgenes' are allowed.
+     If a model.ec structure exists (GECKO 3), 'ecenzymes', 'ecrxns' and
+     'ecgenes' are also allowed.
 
  Name-Value Arguments
  --------------------
@@ -54,8 +58,8 @@
  Returns
  -------
  indexes : logical or double
-     can be a logical array or a double array depending on the value of
-     returnLogical.
+     a logical array if returnLogical is true, otherwise a double array. For
+     'metnames' with several names, a cell array of double vectors.
 
  Notes
  -----
@@ -89,145 +93,149 @@ This function is called by:
 0007 <span class="comment">%     a model structure.</span>
 0008 <span class="comment">% objects : cell or logical or double</span>
 0009 <span class="comment">%     either a cell array of IDs, a logical vector with the same number of</span>
-0010 <span class="comment">%     elements as metabolites in the model, or a vector of indexes.</span>
-0011 <span class="comment">% type : char</span>
-0012 <span class="comment">%     'rxns', 'mets', or 'genes' depending on what to retrieve. 'metnames'</span>
-0013 <span class="comment">%     queries metabolite names, while 'metcomps' allows providing specific</span>
-0014 <span class="comment">%     metabolites and their compartments in the format metaboliteName[comp].</span>
-0015 <span class="comment">%     An error is raised if such a name matches no metabolite, or more than</span>
-0016 <span class="comment">%     one.</span>
-0017 <span class="comment">%     If a model.ec structure exists (GECKO 3), then also 'ecenzymes',</span>
-0018 <span class="comment">%     'ecrxns' and 'ecgenes' are allowed.</span>
-0019 <span class="comment">%</span>
-0020 <span class="comment">% Name-Value Arguments</span>
-0021 <span class="comment">% --------------------</span>
-0022 <span class="comment">% returnLogical : logical</span>
-0023 <span class="comment">%     sets whether to return a logical array or an array with the indexes</span>
-0024 <span class="comment">%     (default false).</span>
-0025 <span class="comment">%</span>
-0026 <span class="comment">% Returns</span>
-0027 <span class="comment">% -------</span>
-0028 <span class="comment">% indexes : logical or double</span>
-0029 <span class="comment">%     can be a logical array or a double array depending on the value of</span>
-0030 <span class="comment">%     returnLogical.</span>
-0031 <span class="comment">%</span>
-0032 <span class="comment">% Notes</span>
-0033 <span class="comment">% -----</span>
-0034 <span class="comment">% If 'ecenzymes', 'ecrxns' or 'ecgenes' are used with a GECKO 3 model, then</span>
-0035 <span class="comment">% the indexes are from the model.ec.enzymes, model.ec.rxns or model.ec.genes</span>
-0036 <span class="comment">% fields, respectively.</span>
-0037 <span class="comment">%</span>
-0038 <span class="comment">% Examples</span>
-0039 <span class="comment">% --------</span>
-0040 <span class="comment">%     indexes = getIndexes(model, objects, type, returnLogical);</span>
-0041 
-0042 p=parseRAVENargs(varargin, {<span class="string">'returnLogical'</span>, false});
-0043 returnLogical=p.returnLogical;
-0044 
-0045 <span class="keyword">if</span> ~islogical(objects) &amp;&amp; ~isnumeric(objects)
-0046     objects=convertCharArray(objects);
-0047 <span class="keyword">end</span>
-0048 type=char(type);
-0049 
-0050 indexes=[];
-0051 
-0052 <span class="keyword">switch</span> type
-0053     <span class="keyword">case</span> <span class="string">'rxns'</span>
-0054         searchIn=model.rxns;
-0055     <span class="keyword">case</span> <span class="string">'mets'</span>
-0056         searchIn=model.mets;
-0057     <span class="keyword">case</span> <span class="string">'genes'</span>
-0058         searchIn=model.genes;
-0059     <span class="keyword">case</span> <span class="string">'metnames'</span>
-0060         searchIn=model.metNames;
-0061     <span class="keyword">case</span> <span class="string">'metcomps'</span>
-0062         <span class="comment">% If provided as metaboliteName[comp], then index search is quite</span>
-0063         <span class="comment">% different from general approach, and therefore coded separately.</span>
-0064         mets=regexprep(objects,<span class="string">'(^.+)\[(.+)\]$'</span>,<span class="string">'$1'</span>);
-0065         comps=regexprep(objects,<span class="string">'(^.+)\[(.+)\]$'</span>,<span class="string">'$2'</span>);
-0066         indexes=zeros(1,numel(objects));
-0067         <span class="keyword">for</span> i=1:numel(objects)
-0068             index=find(strcmp(mets(i),model.metNames));
-0069             index=index(strcmp(comps(i),model.comps(model.metComps(index))));
-0070             <span class="keyword">if</span> isscalar(index)
-0071                 indexes(i)=index;
-0072             <span class="keyword">elseif</span> isempty(index)
-0073                 error([<span class="string">'Could not find object '''</span> objects{i} <span class="string">''' in the model'</span>]);
-0074             <span class="keyword">else</span>
-0075                 error([<span class="string">''''</span> objects{i} <span class="string">''' is ambiguous: it matches the '</span> <span class="keyword">...</span>
-0076                     <span class="string">'metabolites '</span> strjoin(model.mets(index),<span class="string">', '</span>) <span class="keyword">...</span>
-0077                     <span class="string">'. Use metabolite ids (type ''mets'') instead.'</span>]);
-0078             <span class="keyword">end</span>
-0079         <span class="keyword">end</span>
-0080         indexes=indexes(:);
-0081         <span class="keyword">if</span> returnLogical==true
-0082             tempIndexes=false(numel(model.mets),1);
-0083             tempIndexes(indexes)=true;
-0084             indexes=tempIndexes;
-0085         <span class="keyword">end</span>
-0086         <span class="keyword">return</span> <span class="comment">%None of the remaining function needs to run if metcomps</span>
-0087     <span class="keyword">case</span> <span class="string">'ecrxns'</span>
-0088         <span class="keyword">if</span> ~isfield(model,<span class="string">'ec'</span>)
-0089             error(<span class="string">'Type %s cannot be used if no model.ec structure is present.'</span>,type)
-0090         <span class="keyword">end</span>
-0091         searchIn=model.ec.rxns;
-0092     <span class="keyword">case</span> <span class="string">'ecenzymes'</span>
-0093         <span class="keyword">if</span> ~isfield(model,<span class="string">'ec'</span>)
-0094             error(<span class="string">'Type %s cannot be used if no model.ec structure is present.'</span>,type)
-0095         <span class="keyword">end</span>
-0096         searchIn=model.ec.enzymes;
-0097     <span class="keyword">case</span> <span class="string">'ecgenes'</span>
-0098         <span class="keyword">if</span> ~isfield(model,<span class="string">'ec'</span>)
-0099             error(<span class="string">'Type %s cannot be used if no model.ec structure is present.'</span>,type)
-0100         <span class="keyword">end</span>
-0101         searchIn=model.ec.genes;
-0102     <span class="keyword">otherwise</span>
-0103         <span class="keyword">if</span> contains(objects,{<span class="string">'rxns'</span>,<span class="string">'mets'</span>,<span class="string">'metnames'</span>,<span class="string">'metcomps'</span>,<span class="string">'genes'</span>,<span class="string">'ecgenes'</span>,<span class="string">'ecenzymes'</span>,<span class="string">'ecrxns'</span>})
-0104             error(<span class="string">'The second and third parameter provided to run getIndexes are likely switched. Note that the second parameter is the object to find the index for, while the third parameter is the object type (''rxns'', ''mets'', ''metnames'', ''metcomps'', ''genes'', ''ecgenes'', ''ecenzymes'' or ''ecrxns'').'</span>)
-0105         <span class="keyword">else</span>
-0106             error(<span class="string">'Incorrect value of the ''type'' parameter. Allowed values are ''rxns'', ''mets'', ''metnames'', ''metcomps'', ''genes'', ''ecgenes'', ''ecenzymes'' or ''ecrxns''.'</span>);
-0107        <span class="keyword">end</span>
-0108 <span class="keyword">end</span>
-0109 
-0110 <span class="keyword">if</span> iscell(objects)
-0111     <span class="keyword">if</span> strcmpi(type,<span class="string">'metnames'</span>)
-0112         <span class="comment">% metnames allows multiple matches per name (same metabolite in different</span>
-0113         <span class="comment">% compartments), so return a cell array of index vectors.</span>
-0114         <span class="keyword">for</span> i=1:numel(objects)
-0115             indexes{i}=find(strcmp(objects(i),searchIn));
-0116         <span class="keyword">end</span>
-0117     <span class="keyword">else</span>
-0118         <span class="comment">% Build a hash map once (O(m)) for O(1) per-object lookup instead of</span>
-0119         <span class="comment">% O(m) strcmp per object.</span>
-0120         searchMap = containers.Map(searchIn, 1:numel(searchIn));
-0121         <span class="keyword">for</span> i=1:numel(objects)
-0122             <span class="keyword">if</span> isKey(searchMap, objects{i})
-0123                 indexes(i) = searchMap(objects{i});
-0124             <span class="keyword">else</span>
-0125                 error([<span class="string">'Could not find object '''</span> objects{i} <span class="string">''' in the model'</span>]);
-0126             <span class="keyword">end</span>
-0127         <span class="keyword">end</span>
-0128     <span class="keyword">end</span>
-0129 <span class="keyword">else</span>
-0130     <span class="comment">%Now it's either a logical mask or an array with indexes. We want indexes.</span>
-0131     <span class="keyword">if</span> islogical(objects)
-0132         indexes=find(objects);
-0133     <span class="keyword">else</span>
-0134         indexes=objects;
-0135     <span class="keyword">end</span>
-0136 <span class="keyword">end</span>
-0137 
-0138 <span class="keyword">if</span> returnLogical==true
-0139     tempIndexes=false(numel(searchIn),1);
-0140     tempIndexes(indexes)=true;
-0141     indexes=tempIndexes;
-0142 <span class="keyword">end</span>
-0143 
-0144 indexes=indexes(:);
-0145 <span class="keyword">if</span> iscell(indexes) &amp;&amp; length(indexes)==1
-0146     indexes=indexes{1};
-0147 <span class="keyword">end</span>
-0148 <span class="keyword">end</span></pre></div>
+0010 <span class="comment">%     elements as objects of the given type in the model, or a vector of</span>
+0011 <span class="comment">%     indexes. An error is raised if an ID is not found in the model, except</span>
+0012 <span class="comment">%     for type 'metnames', where a name that is not found gives an empty</span>
+0013 <span class="comment">%     index vector.</span>
+0014 <span class="comment">% type : char</span>
+0015 <span class="comment">%     'rxns', 'mets' or 'genes', depending on what to retrieve. 'metnames'</span>
+0016 <span class="comment">%     queries metabolite names and returns, for each name, the indexes of all</span>
+0017 <span class="comment">%     metabolites with that name. 'metcomps' queries specific</span>
+0018 <span class="comment">%     metabolites and their compartments in the format metaboliteName[comp].</span>
+0019 <span class="comment">%     An error is raised if such a name matches no metabolite, or more than</span>
+0020 <span class="comment">%     one.</span>
+0021 <span class="comment">%     If a model.ec structure exists (GECKO 3), 'ecenzymes', 'ecrxns' and</span>
+0022 <span class="comment">%     'ecgenes' are also allowed.</span>
+0023 <span class="comment">%</span>
+0024 <span class="comment">% Name-Value Arguments</span>
+0025 <span class="comment">% --------------------</span>
+0026 <span class="comment">% returnLogical : logical</span>
+0027 <span class="comment">%     sets whether to return a logical array or an array with the indexes</span>
+0028 <span class="comment">%     (default false).</span>
+0029 <span class="comment">%</span>
+0030 <span class="comment">% Returns</span>
+0031 <span class="comment">% -------</span>
+0032 <span class="comment">% indexes : logical or double</span>
+0033 <span class="comment">%     a logical array if returnLogical is true, otherwise a double array. For</span>
+0034 <span class="comment">%     'metnames' with several names, a cell array of double vectors.</span>
+0035 <span class="comment">%</span>
+0036 <span class="comment">% Notes</span>
+0037 <span class="comment">% -----</span>
+0038 <span class="comment">% If 'ecenzymes', 'ecrxns' or 'ecgenes' are used with a GECKO 3 model, then</span>
+0039 <span class="comment">% the indexes are from the model.ec.enzymes, model.ec.rxns or model.ec.genes</span>
+0040 <span class="comment">% fields, respectively.</span>
+0041 <span class="comment">%</span>
+0042 <span class="comment">% Examples</span>
+0043 <span class="comment">% --------</span>
+0044 <span class="comment">%     indexes = getIndexes(model, objects, type, returnLogical);</span>
+0045 
+0046 p=parseRAVENargs(varargin, {<span class="string">'returnLogical'</span>, false});
+0047 returnLogical=p.returnLogical;
+0048 
+0049 <span class="keyword">if</span> ~islogical(objects) &amp;&amp; ~isnumeric(objects)
+0050     objects=convertCharArray(objects);
+0051 <span class="keyword">end</span>
+0052 type=char(type);
+0053 
+0054 indexes=[];
+0055 
+0056 <span class="keyword">switch</span> type
+0057     <span class="keyword">case</span> <span class="string">'rxns'</span>
+0058         searchIn=model.rxns;
+0059     <span class="keyword">case</span> <span class="string">'mets'</span>
+0060         searchIn=model.mets;
+0061     <span class="keyword">case</span> <span class="string">'genes'</span>
+0062         searchIn=model.genes;
+0063     <span class="keyword">case</span> <span class="string">'metnames'</span>
+0064         searchIn=model.metNames;
+0065     <span class="keyword">case</span> <span class="string">'metcomps'</span>
+0066         <span class="comment">% If provided as metaboliteName[comp], then index search is quite</span>
+0067         <span class="comment">% different from general approach, and therefore coded separately.</span>
+0068         mets=regexprep(objects,<span class="string">'(^.+)\[(.+)\]$'</span>,<span class="string">'$1'</span>);
+0069         comps=regexprep(objects,<span class="string">'(^.+)\[(.+)\]$'</span>,<span class="string">'$2'</span>);
+0070         indexes=zeros(1,numel(objects));
+0071         <span class="keyword">for</span> i=1:numel(objects)
+0072             index=find(strcmp(mets(i),model.metNames));
+0073             index=index(strcmp(comps(i),model.comps(model.metComps(index))));
+0074             <span class="keyword">if</span> isscalar(index)
+0075                 indexes(i)=index;
+0076             <span class="keyword">elseif</span> isempty(index)
+0077                 error([<span class="string">'Could not find object '''</span> objects{i} <span class="string">''' in the model'</span>]);
+0078             <span class="keyword">else</span>
+0079                 error([<span class="string">''''</span> objects{i} <span class="string">''' is ambiguous: it matches the '</span> <span class="keyword">...</span>
+0080                     <span class="string">'metabolites '</span> strjoin(model.mets(index),<span class="string">', '</span>) <span class="keyword">...</span>
+0081                     <span class="string">'. Use metabolite ids (type ''mets'') instead.'</span>]);
+0082             <span class="keyword">end</span>
+0083         <span class="keyword">end</span>
+0084         indexes=indexes(:);
+0085         <span class="keyword">if</span> returnLogical==true
+0086             tempIndexes=false(numel(model.mets),1);
+0087             tempIndexes(indexes)=true;
+0088             indexes=tempIndexes;
+0089         <span class="keyword">end</span>
+0090         <span class="keyword">return</span> <span class="comment">%None of the remaining function needs to run if metcomps</span>
+0091     <span class="keyword">case</span> <span class="string">'ecrxns'</span>
+0092         <span class="keyword">if</span> ~isfield(model,<span class="string">'ec'</span>)
+0093             error(<span class="string">'Type %s cannot be used if no model.ec structure is present.'</span>,type)
+0094         <span class="keyword">end</span>
+0095         searchIn=model.ec.rxns;
+0096     <span class="keyword">case</span> <span class="string">'ecenzymes'</span>
+0097         <span class="keyword">if</span> ~isfield(model,<span class="string">'ec'</span>)
+0098             error(<span class="string">'Type %s cannot be used if no model.ec structure is present.'</span>,type)
+0099         <span class="keyword">end</span>
+0100         searchIn=model.ec.enzymes;
+0101     <span class="keyword">case</span> <span class="string">'ecgenes'</span>
+0102         <span class="keyword">if</span> ~isfield(model,<span class="string">'ec'</span>)
+0103             error(<span class="string">'Type %s cannot be used if no model.ec structure is present.'</span>,type)
+0104         <span class="keyword">end</span>
+0105         searchIn=model.ec.genes;
+0106     <span class="keyword">otherwise</span>
+0107         <span class="keyword">if</span> contains(objects,{<span class="string">'rxns'</span>,<span class="string">'mets'</span>,<span class="string">'metnames'</span>,<span class="string">'metcomps'</span>,<span class="string">'genes'</span>,<span class="string">'ecgenes'</span>,<span class="string">'ecenzymes'</span>,<span class="string">'ecrxns'</span>})
+0108             error(<span class="string">'The second and third parameter provided to run getIndexes are likely switched. Note that the second parameter is the object to find the index for, while the third parameter is the object type (''rxns'', ''mets'', ''metnames'', ''metcomps'', ''genes'', ''ecgenes'', ''ecenzymes'' or ''ecrxns'').'</span>)
+0109         <span class="keyword">else</span>
+0110             error(<span class="string">'Incorrect value of the ''type'' parameter. Allowed values are ''rxns'', ''mets'', ''metnames'', ''metcomps'', ''genes'', ''ecgenes'', ''ecenzymes'' or ''ecrxns''.'</span>);
+0111        <span class="keyword">end</span>
+0112 <span class="keyword">end</span>
+0113 
+0114 <span class="keyword">if</span> iscell(objects)
+0115     <span class="keyword">if</span> strcmpi(type,<span class="string">'metnames'</span>)
+0116         <span class="comment">% metnames allows multiple matches per name (same metabolite in different</span>
+0117         <span class="comment">% compartments), so return a cell array of index vectors.</span>
+0118         <span class="keyword">for</span> i=1:numel(objects)
+0119             indexes{i}=find(strcmp(objects(i),searchIn));
+0120         <span class="keyword">end</span>
+0121     <span class="keyword">else</span>
+0122         <span class="comment">% Build a hash map once (O(m)) for O(1) per-object lookup instead of</span>
+0123         <span class="comment">% O(m) strcmp per object.</span>
+0124         searchMap = containers.Map(searchIn, 1:numel(searchIn));
+0125         <span class="keyword">for</span> i=1:numel(objects)
+0126             <span class="keyword">if</span> isKey(searchMap, objects{i})
+0127                 indexes(i) = searchMap(objects{i});
+0128             <span class="keyword">else</span>
+0129                 error([<span class="string">'Could not find object '''</span> objects{i} <span class="string">''' in the model'</span>]);
+0130             <span class="keyword">end</span>
+0131         <span class="keyword">end</span>
+0132     <span class="keyword">end</span>
+0133 <span class="keyword">else</span>
+0134     <span class="comment">%Now it's either a logical mask or an array with indexes. We want indexes.</span>
+0135     <span class="keyword">if</span> islogical(objects)
+0136         indexes=find(objects);
+0137     <span class="keyword">else</span>
+0138         indexes=objects;
+0139     <span class="keyword">end</span>
+0140 <span class="keyword">end</span>
+0141 
+0142 <span class="keyword">if</span> returnLogical==true
+0143     tempIndexes=false(numel(searchIn),1);
+0144     tempIndexes(indexes)=true;
+0145     indexes=tempIndexes;
+0146 <span class="keyword">end</span>
+0147 
+0148 indexes=indexes(:);
+0149 <span class="keyword">if</span> iscell(indexes) &amp;&amp; length(indexes)==1
+0150     indexes=indexes{1};
+0151 <span class="keyword">end</span>
+0152 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

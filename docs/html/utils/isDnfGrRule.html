@@ -29,11 +29,11 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> isDnfGrRule  Test whether a grRule is in disjunctive normal form.
 
- DNF (&quot;OR of AND-complexes&quot;) means no AND operator has an OR anywhere
- beneath it, i.e. the rule is a single gene, a pure AND-complex, or an OR
- of those. Standard RAVEN format requires DNF: subunits that must all be
- present are ANDed into a complex, and the reaction is catalysed by at
- least one such complex.
+ A rule in disjunctive normal form (DNF, an OR of AND-complexes) has no OR
+ operator beneath an AND operator. It is a single gene, an AND-complex, or an
+ OR of genes and AND-complexes. The standard RAVEN format requires DNF: the
+ subunits that must all be present are joined by AND into a complex, and the
+ reaction is catalysed by at least one such complex.
 
  Parameters
  ----------
@@ -70,11 +70,11 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function tf=isDnfGrRule(rule)</a>
 0002 <span class="comment">% isDnfGrRule  Test whether a grRule is in disjunctive normal form.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% DNF (&quot;OR of AND-complexes&quot;) means no AND operator has an OR anywhere</span>
-0005 <span class="comment">% beneath it, i.e. the rule is a single gene, a pure AND-complex, or an OR</span>
-0006 <span class="comment">% of those. Standard RAVEN format requires DNF: subunits that must all be</span>
-0007 <span class="comment">% present are ANDed into a complex, and the reaction is catalysed by at</span>
-0008 <span class="comment">% least one such complex.</span>
+0004 <span class="comment">% A rule in disjunctive normal form (DNF, an OR of AND-complexes) has no OR</span>
+0005 <span class="comment">% operator beneath an AND operator. It is a single gene, an AND-complex, or an</span>
+0006 <span class="comment">% OR of genes and AND-complexes. The standard RAVEN format requires DNF: the</span>
+0007 <span class="comment">% subunits that must all be present are joined by AND into a complex, and the</span>
+0008 <span class="comment">% reaction is catalysed by at least one such complex.</span>
 0009 <span class="comment">%</span>
 0010 <span class="comment">% Parameters</span>
 0011 <span class="comment">% ----------</span>

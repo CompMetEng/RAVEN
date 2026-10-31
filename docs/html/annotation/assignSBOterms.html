@@ -29,26 +29,26 @@
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre class="comment"> assignSBOterms  Assign SBO terms to metabolites and reactions.
 
- Assign SBO terms to metabolites and reactions following a generic rule
- set. The MATLAB counterpart of yeast-GEM's legacy addSBOterms;
- organism-agnostic, parameterised entirely by opts.
+ Assigns SBO terms to metabolites and reactions following a generic rule
+ set that opts parameterises. The function is the MATLAB counterpart of
+ yeast-GEM's addSBOterms.
 
- SBO is written via editMiriam(..., 'fill') so pre-existing SBO
- annotations are preserved. The terms are stored in model.metMiriams and
+ SBO is written via editMiriam(..., 'fill'), which preserves pre-existing
+ SBO annotations. The terms are stored in model.metMiriams and
  model.rxnMiriams under the namespace 'sbo' (there is no separate SBO
- field); read them with extractMiriam(model.rxnMiriams, 'sbo').
+ field); they can be read with extractMiriam(model.rxnMiriams, 'sbo').
  exportModel writes them as the SBML sboTerm attribute.
 
  Parameters
  ----------
  model : struct
-     RAVEN model struct.
+     a model structure.
 
  Name-Value Arguments
  --------------------
  opts : struct
-     Struct with any of the following fields. Missing fields take the
-     defaults shown:
+     structure with any of the following fields. Missing or empty fields
+     take the defaults shown:
 
      - biomassMetNames : {'biomass','DNA','RNA','protein','carbohydrate',
        'lipid','cofactor','ion'}
@@ -56,15 +56,19 @@
      - biomassRxnName : 'biomass pseudoreaction'
      - ngamRxnName : 'non-growth associated maintenance reaction'
      - pseudoreactionSubstrings : {'pseudoreaction','SLIME rxn'}
-     - onlyLastReactionForPseudo : false. yeast-GEM bug-compat flag that
-       replicates the legacy `for i=numel(...)` typo (pseudoreaction SBOs
-       applied only to the last reaction). Off by default; turn ON for
-       byte-equivalent yeast-GEM output.
+     - onlyLastReactionForPseudo : false. If true, the biomass, NGAM and
+       pseudoreaction terms are applied only to the last reaction of the
+       model. This reproduces yeast-GEM's addSBOterms.m, which applies the
+       pseudoreaction rule to the last reaction only, because of a typo in
+       the loop header (for i=numel(...)).
+     - transportRxnIdxs : indexes of the transport reactions (default:
+       the reactions identified by getTransportRxns).
 
  Returns
  -------
  model : struct
-     Modified model.
+     model structure with the SBO terms added to model.metMiriams and
+     model.rxnMiriams.
 
  Examples
  --------
@@ -75,22 +79,21 @@
  -----
  Metabolites:
 
-     SBO:0000649 (Biomass) when met.name is in opts.biomassMetNames, or
-     ends with any of opts.biomassMetSuffixes. Otherwise SBO:0000247
-     (Simple chemical).
+     SBO:0000649 (Biomass) when the metabolite name is in
+     opts.biomassMetNames, or ends with any of opts.biomassMetSuffixes.
+     Otherwise SBO:0000247 (Simple chemical).
 
  Reactions (default → override → pseudoreaction override):
 
      SBO:0000176 (Metabolic reaction) default.
      Single-reactant reactions become:
          SBO:0000627 (exchange) if the lone metabolite is extracellular
-             (compartment 'e' or compartment name containing
-             'extracellular'),
+             (compartment 'e' or compartment name 'extracellular'),
          SBO:0000632 (sink) if coef &lt; 0,
          SBO:0000628 (demand) otherwise.
-     Transport reactions (detected by opts.transportDetector or the
-         default heuristic: same metName in ≥ 2 compartments in a single
-         reaction) → SBO:0000655.
+     Transport reactions (opts.transportRxnIdxs or, by default, the
+         reactions identified by getTransportRxns: the same metabolite
+         name more than once in a single reaction) → SBO:0000655.
      Reactions whose name matches opts.biomassRxnName → SBO:0000629.
      Reactions whose name matches opts.ngamRxnName → SBO:0000630.
      Reactions whose name contains any of opts.pseudoreactionSubstrings
@@ -114,26 +117,26 @@ This function is called by:
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function model = assignSBOterms(model, varargin)</a>
 0002 <span class="comment">% assignSBOterms  Assign SBO terms to metabolites and reactions.</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Assign SBO terms to metabolites and reactions following a generic rule</span>
-0005 <span class="comment">% set. The MATLAB counterpart of yeast-GEM's legacy addSBOterms;</span>
-0006 <span class="comment">% organism-agnostic, parameterised entirely by opts.</span>
+0004 <span class="comment">% Assigns SBO terms to metabolites and reactions following a generic rule</span>
+0005 <span class="comment">% set that opts parameterises. The function is the MATLAB counterpart of</span>
+0006 <span class="comment">% yeast-GEM's addSBOterms.</span>
 0007 <span class="comment">%</span>
-0008 <span class="comment">% SBO is written via editMiriam(..., 'fill') so pre-existing SBO</span>
-0009 <span class="comment">% annotations are preserved. The terms are stored in model.metMiriams and</span>
+0008 <span class="comment">% SBO is written via editMiriam(..., 'fill'), which preserves pre-existing</span>
+0009 <span class="comment">% SBO annotations. The terms are stored in model.metMiriams and</span>
 0010 <span class="comment">% model.rxnMiriams under the namespace 'sbo' (there is no separate SBO</span>
-0011 <span class="comment">% field); read them with extractMiriam(model.rxnMiriams, 'sbo').</span>
+0011 <span class="comment">% field); they can be read with extractMiriam(model.rxnMiriams, 'sbo').</span>
 0012 <span class="comment">% exportModel writes them as the SBML sboTerm attribute.</span>
 0013 <span class="comment">%</span>
 0014 <span class="comment">% Parameters</span>
 0015 <span class="comment">% ----------</span>
 0016 <span class="comment">% model : struct</span>
-0017 <span class="comment">%     RAVEN model struct.</span>
+0017 <span class="comment">%     a model structure.</span>
 0018 <span class="comment">%</span>
 0019 <span class="comment">% Name-Value Arguments</span>
 0020 <span class="comment">% --------------------</span>
 0021 <span class="comment">% opts : struct</span>
-0022 <span class="comment">%     Struct with any of the following fields. Missing fields take the</span>
-0023 <span class="comment">%     defaults shown:</span>
+0022 <span class="comment">%     structure with any of the following fields. Missing or empty fields</span>
+0023 <span class="comment">%     take the defaults shown:</span>
 0024 <span class="comment">%</span>
 0025 <span class="comment">%     - biomassMetNames : {'biomass','DNA','RNA','protein','carbohydrate',</span>
 0026 <span class="comment">%       'lipid','cofactor','ion'}</span>
@@ -141,147 +144,150 @@ This function is called by:
 0028 <span class="comment">%     - biomassRxnName : 'biomass pseudoreaction'</span>
 0029 <span class="comment">%     - ngamRxnName : 'non-growth associated maintenance reaction'</span>
 0030 <span class="comment">%     - pseudoreactionSubstrings : {'pseudoreaction','SLIME rxn'}</span>
-0031 <span class="comment">%     - onlyLastReactionForPseudo : false. yeast-GEM bug-compat flag that</span>
-0032 <span class="comment">%       replicates the legacy `for i=numel(...)` typo (pseudoreaction SBOs</span>
-0033 <span class="comment">%       applied only to the last reaction). Off by default; turn ON for</span>
-0034 <span class="comment">%       byte-equivalent yeast-GEM output.</span>
-0035 <span class="comment">%</span>
-0036 <span class="comment">% Returns</span>
-0037 <span class="comment">% -------</span>
-0038 <span class="comment">% model : struct</span>
-0039 <span class="comment">%     Modified model.</span>
-0040 <span class="comment">%</span>
-0041 <span class="comment">% Examples</span>
-0042 <span class="comment">% --------</span>
-0043 <span class="comment">%     model = assignSBOterms(model);</span>
-0044 <span class="comment">%     model = assignSBOterms(model, struct('onlyLastReactionForPseudo', true));</span>
-0045 <span class="comment">%</span>
-0046 <span class="comment">% Notes</span>
-0047 <span class="comment">% -----</span>
-0048 <span class="comment">% Metabolites:</span>
+0031 <span class="comment">%     - onlyLastReactionForPseudo : false. If true, the biomass, NGAM and</span>
+0032 <span class="comment">%       pseudoreaction terms are applied only to the last reaction of the</span>
+0033 <span class="comment">%       model. This reproduces yeast-GEM's addSBOterms.m, which applies the</span>
+0034 <span class="comment">%       pseudoreaction rule to the last reaction only, because of a typo in</span>
+0035 <span class="comment">%       the loop header (for i=numel(...)).</span>
+0036 <span class="comment">%     - transportRxnIdxs : indexes of the transport reactions (default:</span>
+0037 <span class="comment">%       the reactions identified by getTransportRxns).</span>
+0038 <span class="comment">%</span>
+0039 <span class="comment">% Returns</span>
+0040 <span class="comment">% -------</span>
+0041 <span class="comment">% model : struct</span>
+0042 <span class="comment">%     model structure with the SBO terms added to model.metMiriams and</span>
+0043 <span class="comment">%     model.rxnMiriams.</span>
+0044 <span class="comment">%</span>
+0045 <span class="comment">% Examples</span>
+0046 <span class="comment">% --------</span>
+0047 <span class="comment">%     model = assignSBOterms(model);</span>
+0048 <span class="comment">%     model = assignSBOterms(model, struct('onlyLastReactionForPseudo', true));</span>
 0049 <span class="comment">%</span>
-0050 <span class="comment">%     SBO:0000649 (Biomass) when met.name is in opts.biomassMetNames, or</span>
-0051 <span class="comment">%     ends with any of opts.biomassMetSuffixes. Otherwise SBO:0000247</span>
-0052 <span class="comment">%     (Simple chemical).</span>
+0050 <span class="comment">% Notes</span>
+0051 <span class="comment">% -----</span>
+0052 <span class="comment">% Metabolites:</span>
 0053 <span class="comment">%</span>
-0054 <span class="comment">% Reactions (default → override → pseudoreaction override):</span>
-0055 <span class="comment">%</span>
-0056 <span class="comment">%     SBO:0000176 (Metabolic reaction) default.</span>
-0057 <span class="comment">%     Single-reactant reactions become:</span>
-0058 <span class="comment">%         SBO:0000627 (exchange) if the lone metabolite is extracellular</span>
-0059 <span class="comment">%             (compartment 'e' or compartment name containing</span>
-0060 <span class="comment">%             'extracellular'),</span>
-0061 <span class="comment">%         SBO:0000632 (sink) if coef &lt; 0,</span>
-0062 <span class="comment">%         SBO:0000628 (demand) otherwise.</span>
-0063 <span class="comment">%     Transport reactions (detected by opts.transportDetector or the</span>
-0064 <span class="comment">%         default heuristic: same metName in ≥ 2 compartments in a single</span>
-0065 <span class="comment">%         reaction) → SBO:0000655.</span>
-0066 <span class="comment">%     Reactions whose name matches opts.biomassRxnName → SBO:0000629.</span>
-0067 <span class="comment">%     Reactions whose name matches opts.ngamRxnName → SBO:0000630.</span>
-0068 <span class="comment">%     Reactions whose name contains any of opts.pseudoreactionSubstrings</span>
-0069 <span class="comment">%         → SBO:0000395.</span>
-0070 
-0071 p=parseRAVENargs(varargin, {<span class="string">'opts'</span>,[]});
-0072 opts=p.opts;
-0073 <span class="keyword">if</span> isempty(opts)
-0074     opts = struct();
-0075 <span class="keyword">end</span>
-0076 opts = <a href="#_sub1" class="code" title="subfunction opts = applyDefaults(opts)">applyDefaults</a>(opts);
-0077 
-0078 <span class="comment">% Metabolite SBO ------------------------------------------------------</span>
-0079 metsSBO = cell(size(model.mets));
-0080 <span class="keyword">for</span> i = 1:length(model.mets)
-0081     metName = model.metNames{i};
-0082     <span class="keyword">if</span> any(strcmp(opts.biomassMetNames, metName)) || <a href="#_sub2" class="code" title="subfunction tf = endsWithAny(s, suffixes)">endsWithAny</a>(metName, opts.biomassMetSuffixes)
-0083         metsSBO{i} = <span class="string">'SBO:0000649'</span>;
-0084     <span class="keyword">else</span>
-0085         metsSBO{i} = <span class="string">'SBO:0000247'</span>;
-0086     <span class="keyword">end</span>
-0087 <span class="keyword">end</span>
-0088 
-0089 <span class="comment">% Reaction SBO --------------------------------------------------------</span>
-0090 rxnSBO = cell(size(model.rxns));
-0091 rxnSBO(:) = {<span class="string">'SBO:0000176'</span>};
-0092 
-0093 <span class="comment">% Single-reactant reactions</span>
-0094 reactantNumber = sum(model.S ~= 0, 1);
-0095 singleRxns = find(reactantNumber == 1);
-0096 <span class="keyword">for</span> k = 1:numel(singleRxns)
-0097     idx = singleRxns(k);
-0098     metRow = find(model.S(:, idx));
-0099     compName = model.compNames{model.metComps(metRow)};
-0100     compShort = model.comps{model.metComps(metRow)};
-0101     <span class="keyword">if</span> strcmp(compShort, <span class="string">'e'</span>) || strcmp(compName, <span class="string">'extracellular'</span>)
-0102         rxnSBO{idx} = <span class="string">'SBO:0000627'</span>;
-0103     <span class="keyword">elseif</span> sum(model.S(:, idx)) &lt; 0
-0104         rxnSBO{idx} = <span class="string">'SBO:0000632'</span>;
-0105     <span class="keyword">else</span>
-0106         rxnSBO{idx} = <span class="string">'SBO:0000628'</span>;
-0107     <span class="keyword">end</span>
-0108 <span class="keyword">end</span>
-0109 
-0110 <span class="comment">% Transport reactions</span>
-0111 <span class="keyword">if</span> isfield(opts, <span class="string">'transportRxnIdxs'</span>) &amp;&amp; ~isempty(opts.transportRxnIdxs)
-0112     transportIdxs = opts.transportRxnIdxs;
-0113 <span class="keyword">else</span>
-0114     transportIdxs = getTransportRxns(model);
-0115 <span class="keyword">end</span>
-0116 rxnSBO(transportIdxs) = {<span class="string">'SBO:0000655'</span>};
-0117 
-0118 <span class="comment">% Pseudoreaction overrides</span>
-0119 <span class="keyword">if</span> opts.onlyLastReactionForPseudo
-0120     pseudoTargets = numel(model.rxns);
-0121 <span class="keyword">else</span>
-0122     pseudoTargets = 1:numel(model.rxns);
-0123 <span class="keyword">end</span>
-0124 <span class="keyword">for</span> ii = pseudoTargets
-0125     name = model.rxnNames{ii};
-0126     <span class="keyword">if</span> strcmp(name, opts.biomassRxnName)
-0127         rxnSBO{ii} = <span class="string">'SBO:0000629'</span>;
-0128     <span class="keyword">elseif</span> strcmp(name, opts.ngamRxnName)
-0129         rxnSBO{ii} = <span class="string">'SBO:0000630'</span>;
-0130     <span class="keyword">else</span>
-0131         <span class="keyword">for</span> k = 1:numel(opts.pseudoreactionSubstrings)
-0132             <span class="keyword">if</span> contains(name, opts.pseudoreactionSubstrings{k})
-0133                 rxnSBO{ii} = <span class="string">'SBO:0000395'</span>;
-0134                 <span class="keyword">break</span>;
-0135             <span class="keyword">end</span>
-0136         <span class="keyword">end</span>
-0137     <span class="keyword">end</span>
-0138 <span class="keyword">end</span>
-0139 
-0140 model = <a href="editMiriam.html" class="code" title="function model=editMiriam(model,type,object,miriamName,miriams,keep)">editMiriam</a>(model, <span class="string">'met'</span>, <span class="string">'all'</span>, <span class="string">'sbo'</span>, metsSBO, <span class="string">'fill'</span>);
-0141 model = <a href="editMiriam.html" class="code" title="function model=editMiriam(model,type,object,miriamName,miriams,keep)">editMiriam</a>(model, <span class="string">'rxn'</span>, <span class="string">'all'</span>, <span class="string">'sbo'</span>, rxnSBO, <span class="string">'fill'</span>);
-0142 <span class="keyword">end</span>
-0143 
-0144 
-0145 <a name="_sub1" href="#_subfunctions" class="code">function opts = applyDefaults(opts)</a>
-0146 defaults = struct( <span class="keyword">...</span>
-0147     <span class="string">'biomassMetNames'</span>, {{<span class="string">'biomass'</span>,<span class="string">'DNA'</span>,<span class="string">'RNA'</span>,<span class="string">'protein'</span>,<span class="string">'carbohydrate'</span>,<span class="string">'lipid'</span>,<span class="string">'cofactor'</span>,<span class="string">'ion'</span>}}, <span class="keyword">...</span>
-0148     <span class="string">'biomassMetSuffixes'</span>, {{<span class="string">' backbone'</span>,<span class="string">' chain'</span>}}, <span class="keyword">...</span>
-0149     <span class="string">'biomassRxnName'</span>, <span class="string">'biomass pseudoreaction'</span>, <span class="keyword">...</span>
-0150     <span class="string">'ngamRxnName'</span>, <span class="string">'non-growth associated maintenance reaction'</span>, <span class="keyword">...</span>
-0151     <span class="string">'pseudoreactionSubstrings'</span>, {{<span class="string">'pseudoreaction'</span>,<span class="string">'SLIME rxn'</span>}}, <span class="keyword">...</span>
-0152     <span class="string">'onlyLastReactionForPseudo'</span>, false);
-0153 fields = fieldnames(defaults);
-0154 <span class="keyword">for</span> k = 1:numel(fields)
-0155     f = fields{k};
-0156     <span class="keyword">if</span> ~isfield(opts, f) || isempty(opts.(f))
-0157         opts.(f) = defaults.(f);
-0158     <span class="keyword">end</span>
-0159 <span class="keyword">end</span>
-0160 <span class="keyword">end</span>
-0161 
-0162 
-0163 <a name="_sub2" href="#_subfunctions" class="code">function tf = endsWithAny(s, suffixes)</a>
-0164 tf = false;
-0165 <span class="keyword">for</span> i = 1:numel(suffixes)
-0166     <span class="keyword">if</span> endsWith(s, suffixes{i})
-0167         tf = true;
-0168         <span class="keyword">return</span>;
-0169     <span class="keyword">end</span>
-0170 <span class="keyword">end</span>
-0171 <span class="keyword">end</span></pre></div>
+0054 <span class="comment">%     SBO:0000649 (Biomass) when the metabolite name is in</span>
+0055 <span class="comment">%     opts.biomassMetNames, or ends with any of opts.biomassMetSuffixes.</span>
+0056 <span class="comment">%     Otherwise SBO:0000247 (Simple chemical).</span>
+0057 <span class="comment">%</span>
+0058 <span class="comment">% Reactions (default → override → pseudoreaction override):</span>
+0059 <span class="comment">%</span>
+0060 <span class="comment">%     SBO:0000176 (Metabolic reaction) default.</span>
+0061 <span class="comment">%     Single-reactant reactions become:</span>
+0062 <span class="comment">%         SBO:0000627 (exchange) if the lone metabolite is extracellular</span>
+0063 <span class="comment">%             (compartment 'e' or compartment name 'extracellular'),</span>
+0064 <span class="comment">%         SBO:0000632 (sink) if coef &lt; 0,</span>
+0065 <span class="comment">%         SBO:0000628 (demand) otherwise.</span>
+0066 <span class="comment">%     Transport reactions (opts.transportRxnIdxs or, by default, the</span>
+0067 <span class="comment">%         reactions identified by getTransportRxns: the same metabolite</span>
+0068 <span class="comment">%         name more than once in a single reaction) → SBO:0000655.</span>
+0069 <span class="comment">%     Reactions whose name matches opts.biomassRxnName → SBO:0000629.</span>
+0070 <span class="comment">%     Reactions whose name matches opts.ngamRxnName → SBO:0000630.</span>
+0071 <span class="comment">%     Reactions whose name contains any of opts.pseudoreactionSubstrings</span>
+0072 <span class="comment">%         → SBO:0000395.</span>
+0073 
+0074 p=parseRAVENargs(varargin, {<span class="string">'opts'</span>,[]});
+0075 opts=p.opts;
+0076 <span class="keyword">if</span> isempty(opts)
+0077     opts = struct();
+0078 <span class="keyword">end</span>
+0079 opts = <a href="#_sub1" class="code" title="subfunction opts = applyDefaults(opts)">applyDefaults</a>(opts);
+0080 
+0081 <span class="comment">% Metabolite SBO ------------------------------------------------------</span>
+0082 metsSBO = cell(size(model.mets));
+0083 <span class="keyword">for</span> i = 1:length(model.mets)
+0084     metName = model.metNames{i};
+0085     <span class="keyword">if</span> any(strcmp(opts.biomassMetNames, metName)) || <a href="#_sub2" class="code" title="subfunction tf = endsWithAny(s, suffixes)">endsWithAny</a>(metName, opts.biomassMetSuffixes)
+0086         metsSBO{i} = <span class="string">'SBO:0000649'</span>;
+0087     <span class="keyword">else</span>
+0088         metsSBO{i} = <span class="string">'SBO:0000247'</span>;
+0089     <span class="keyword">end</span>
+0090 <span class="keyword">end</span>
+0091 
+0092 <span class="comment">% Reaction SBO --------------------------------------------------------</span>
+0093 rxnSBO = cell(size(model.rxns));
+0094 rxnSBO(:) = {<span class="string">'SBO:0000176'</span>};
+0095 
+0096 <span class="comment">% Single-reactant reactions</span>
+0097 reactantNumber = sum(model.S ~= 0, 1);
+0098 singleRxns = find(reactantNumber == 1);
+0099 <span class="keyword">for</span> k = 1:numel(singleRxns)
+0100     idx = singleRxns(k);
+0101     metRow = find(model.S(:, idx));
+0102     compName = model.compNames{model.metComps(metRow)};
+0103     compShort = model.comps{model.metComps(metRow)};
+0104     <span class="keyword">if</span> strcmp(compShort, <span class="string">'e'</span>) || strcmp(compName, <span class="string">'extracellular'</span>)
+0105         rxnSBO{idx} = <span class="string">'SBO:0000627'</span>;
+0106     <span class="keyword">elseif</span> sum(model.S(:, idx)) &lt; 0
+0107         rxnSBO{idx} = <span class="string">'SBO:0000632'</span>;
+0108     <span class="keyword">else</span>
+0109         rxnSBO{idx} = <span class="string">'SBO:0000628'</span>;
+0110     <span class="keyword">end</span>
+0111 <span class="keyword">end</span>
+0112 
+0113 <span class="comment">% Transport reactions</span>
+0114 <span class="keyword">if</span> isfield(opts, <span class="string">'transportRxnIdxs'</span>) &amp;&amp; ~isempty(opts.transportRxnIdxs)
+0115     transportIdxs = opts.transportRxnIdxs;
+0116 <span class="keyword">else</span>
+0117     transportIdxs = getTransportRxns(model);
+0118 <span class="keyword">end</span>
+0119 rxnSBO(transportIdxs) = {<span class="string">'SBO:0000655'</span>};
+0120 
+0121 <span class="comment">% Pseudoreaction overrides</span>
+0122 <span class="keyword">if</span> opts.onlyLastReactionForPseudo
+0123     pseudoTargets = numel(model.rxns);
+0124 <span class="keyword">else</span>
+0125     pseudoTargets = 1:numel(model.rxns);
+0126 <span class="keyword">end</span>
+0127 <span class="keyword">for</span> ii = pseudoTargets
+0128     name = model.rxnNames{ii};
+0129     <span class="keyword">if</span> strcmp(name, opts.biomassRxnName)
+0130         rxnSBO{ii} = <span class="string">'SBO:0000629'</span>;
+0131     <span class="keyword">elseif</span> strcmp(name, opts.ngamRxnName)
+0132         rxnSBO{ii} = <span class="string">'SBO:0000630'</span>;
+0133     <span class="keyword">else</span>
+0134         <span class="keyword">for</span> k = 1:numel(opts.pseudoreactionSubstrings)
+0135             <span class="keyword">if</span> contains(name, opts.pseudoreactionSubstrings{k})
+0136                 rxnSBO{ii} = <span class="string">'SBO:0000395'</span>;
+0137                 <span class="keyword">break</span>;
+0138             <span class="keyword">end</span>
+0139         <span class="keyword">end</span>
+0140     <span class="keyword">end</span>
+0141 <span class="keyword">end</span>
+0142 
+0143 model = <a href="editMiriam.html" class="code" title="function model=editMiriam(model,type,object,miriamName,miriams,keep)">editMiriam</a>(model, <span class="string">'met'</span>, <span class="string">'all'</span>, <span class="string">'sbo'</span>, metsSBO, <span class="string">'fill'</span>);
+0144 model = <a href="editMiriam.html" class="code" title="function model=editMiriam(model,type,object,miriamName,miriams,keep)">editMiriam</a>(model, <span class="string">'rxn'</span>, <span class="string">'all'</span>, <span class="string">'sbo'</span>, rxnSBO, <span class="string">'fill'</span>);
+0145 <span class="keyword">end</span>
+0146 
+0147 
+0148 <a name="_sub1" href="#_subfunctions" class="code">function opts = applyDefaults(opts)</a>
+0149 defaults = struct( <span class="keyword">...</span>
+0150     <span class="string">'biomassMetNames'</span>, {{<span class="string">'biomass'</span>,<span class="string">'DNA'</span>,<span class="string">'RNA'</span>,<span class="string">'protein'</span>,<span class="string">'carbohydrate'</span>,<span class="string">'lipid'</span>,<span class="string">'cofactor'</span>,<span class="string">'ion'</span>}}, <span class="keyword">...</span>
+0151     <span class="string">'biomassMetSuffixes'</span>, {{<span class="string">' backbone'</span>,<span class="string">' chain'</span>}}, <span class="keyword">...</span>
+0152     <span class="string">'biomassRxnName'</span>, <span class="string">'biomass pseudoreaction'</span>, <span class="keyword">...</span>
+0153     <span class="string">'ngamRxnName'</span>, <span class="string">'non-growth associated maintenance reaction'</span>, <span class="keyword">...</span>
+0154     <span class="string">'pseudoreactionSubstrings'</span>, {{<span class="string">'pseudoreaction'</span>,<span class="string">'SLIME rxn'</span>}}, <span class="keyword">...</span>
+0155     <span class="string">'onlyLastReactionForPseudo'</span>, false);
+0156 fields = fieldnames(defaults);
+0157 <span class="keyword">for</span> k = 1:numel(fields)
+0158     f = fields{k};
+0159     <span class="keyword">if</span> ~isfield(opts, f) || isempty(opts.(f))
+0160         opts.(f) = defaults.(f);
+0161     <span class="keyword">end</span>
+0162 <span class="keyword">end</span>
+0163 <span class="keyword">end</span>
+0164 
+0165 
+0166 <a name="_sub2" href="#_subfunctions" class="code">function tf = endsWithAny(s, suffixes)</a>
+0167 tf = false;
+0168 <span class="keyword">for</span> i = 1:numel(suffixes)
+0169     <span class="keyword">if</span> endsWith(s, suffixes{i})
+0170         tf = true;
+0171         <span class="keyword">return</span>;
+0172     <span class="keyword">end</span>
+0173 <span class="keyword">end</span>
+0174 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

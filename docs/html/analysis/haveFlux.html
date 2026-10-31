@@ -30,9 +30,10 @@
 <div class="fragment"><pre class="comment"> haveFlux  Check which reactions can carry a flux.
 
  Checks which reactions can carry a (positive or negative) flux under the
- model's current bounds; other media or bounds are not explored. Is used
- as a faster version of getAllowedBounds if it is only interesting whether
- the reactions can carry a flux or not.
+ model's current bounds; other media or bounds are not explored. Unlike
+ getAllowedBounds, which minimises and maximises every reaction, it skips a
+ reaction once an earlier solution has given it a flux, and minimises only
+ reversible reactions that still have none.
 
  Parameters
  ----------
@@ -42,16 +43,16 @@
  Name-Value Arguments
  --------------------
  cutOff : double
-     the flux value that a reaction has to carry to be identified as
-     positive (default 10^-6).
+     the absolute flux value that a reaction has to exceed to be identified
+     as carrying flux (default 10^-6).
  rxns : cell or logical or double
      either a cell array of IDs, a logical vector with the same number of
-     elements as metabolites in the model, or a vector of indexes (default
+     elements as reactions in the model, or a vector of indexes (default
      model.rxns).
  seed : double
-     seed for the random number generator used to shuffle the order in
-     which reactions are tested, so that order is reproducible across
-     runs (default: current rng state is left untouched).
+     seed for the random number generator that shuffles the order in
+     which reactions are tested. The order is then reproducible across
+     runs (default: the current rng state is left untouched).
 
  Returns
  -------
@@ -65,8 +66,7 @@
 
  Notes
  -----
- If a model has +/- Inf bounds then those are replaced with an arbitary
- large value of +/- 10000 prior to solving.
+ Bounds of +/- Inf are replaced with +/- 10000 before solving.
 
  Dead-end reactions are removed (simplifyModel) before solving. A dead-end
  reaction with a forced flux (lb &gt; 0 or ub &lt; 0) makes the model infeasible,
@@ -91,43 +91,43 @@ This function is called by:
 0002 <span class="comment">% haveFlux  Check which reactions can carry a flux.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Checks which reactions can carry a (positive or negative) flux under the</span>
-0005 <span class="comment">% model's current bounds; other media or bounds are not explored. Is used</span>
-0006 <span class="comment">% as a faster version of getAllowedBounds if it is only interesting whether</span>
-0007 <span class="comment">% the reactions can carry a flux or not.</span>
-0008 <span class="comment">%</span>
-0009 <span class="comment">% Parameters</span>
-0010 <span class="comment">% ----------</span>
-0011 <span class="comment">% model : struct</span>
-0012 <span class="comment">%     a model structure.</span>
-0013 <span class="comment">%</span>
-0014 <span class="comment">% Name-Value Arguments</span>
-0015 <span class="comment">% --------------------</span>
-0016 <span class="comment">% cutOff : double</span>
-0017 <span class="comment">%     the flux value that a reaction has to carry to be identified as</span>
-0018 <span class="comment">%     positive (default 10^-6).</span>
-0019 <span class="comment">% rxns : cell or logical or double</span>
-0020 <span class="comment">%     either a cell array of IDs, a logical vector with the same number of</span>
-0021 <span class="comment">%     elements as metabolites in the model, or a vector of indexes (default</span>
-0022 <span class="comment">%     model.rxns).</span>
-0023 <span class="comment">% seed : double</span>
-0024 <span class="comment">%     seed for the random number generator used to shuffle the order in</span>
-0025 <span class="comment">%     which reactions are tested, so that order is reproducible across</span>
-0026 <span class="comment">%     runs (default: current rng state is left untouched).</span>
-0027 <span class="comment">%</span>
-0028 <span class="comment">% Returns</span>
-0029 <span class="comment">% -------</span>
-0030 <span class="comment">% I : logical</span>
-0031 <span class="comment">%     logical array with true if the corresponding reaction can carry a</span>
-0032 <span class="comment">%     flux under the tested bounds.</span>
-0033 <span class="comment">%</span>
-0034 <span class="comment">% Examples</span>
-0035 <span class="comment">% --------</span>
-0036 <span class="comment">%     I = haveFlux(model, cutOff, rxns);</span>
-0037 <span class="comment">%</span>
-0038 <span class="comment">% Notes</span>
-0039 <span class="comment">% -----</span>
-0040 <span class="comment">% If a model has +/- Inf bounds then those are replaced with an arbitary</span>
-0041 <span class="comment">% large value of +/- 10000 prior to solving.</span>
+0005 <span class="comment">% model's current bounds; other media or bounds are not explored. Unlike</span>
+0006 <span class="comment">% getAllowedBounds, which minimises and maximises every reaction, it skips a</span>
+0007 <span class="comment">% reaction once an earlier solution has given it a flux, and minimises only</span>
+0008 <span class="comment">% reversible reactions that still have none.</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">% Parameters</span>
+0011 <span class="comment">% ----------</span>
+0012 <span class="comment">% model : struct</span>
+0013 <span class="comment">%     a model structure.</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">% Name-Value Arguments</span>
+0016 <span class="comment">% --------------------</span>
+0017 <span class="comment">% cutOff : double</span>
+0018 <span class="comment">%     the absolute flux value that a reaction has to exceed to be identified</span>
+0019 <span class="comment">%     as carrying flux (default 10^-6).</span>
+0020 <span class="comment">% rxns : cell or logical or double</span>
+0021 <span class="comment">%     either a cell array of IDs, a logical vector with the same number of</span>
+0022 <span class="comment">%     elements as reactions in the model, or a vector of indexes (default</span>
+0023 <span class="comment">%     model.rxns).</span>
+0024 <span class="comment">% seed : double</span>
+0025 <span class="comment">%     seed for the random number generator that shuffles the order in</span>
+0026 <span class="comment">%     which reactions are tested. The order is then reproducible across</span>
+0027 <span class="comment">%     runs (default: the current rng state is left untouched).</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">% Returns</span>
+0030 <span class="comment">% -------</span>
+0031 <span class="comment">% I : logical</span>
+0032 <span class="comment">%     logical array with true if the corresponding reaction can carry a</span>
+0033 <span class="comment">%     flux under the tested bounds.</span>
+0034 <span class="comment">%</span>
+0035 <span class="comment">% Examples</span>
+0036 <span class="comment">% --------</span>
+0037 <span class="comment">%     I = haveFlux(model, cutOff, rxns);</span>
+0038 <span class="comment">%</span>
+0039 <span class="comment">% Notes</span>
+0040 <span class="comment">% -----</span>
+0041 <span class="comment">% Bounds of +/- Inf are replaced with +/- 10000 before solving.</span>
 0042 <span class="comment">%</span>
 0043 <span class="comment">% Dead-end reactions are removed (simplifyModel) before solving. A dead-end</span>
 0044 <span class="comment">% reaction with a forced flux (lb &gt; 0 or ub &lt; 0) makes the model infeasible,</span>

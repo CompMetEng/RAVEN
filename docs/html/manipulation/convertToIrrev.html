@@ -30,8 +30,8 @@
 <div class="fragment"><pre class="comment"> convertToIrrev  Convert a model to irreversible form.
 
  Reversible reactions are split into one forward and one reverse
- reaction. The reverse reactions are saved as 'rxnID_REV'. A warning is
- shown if some reaction identifiers already end with '_REV'.
+ reaction. The reverse reactions are named 'rxnID_REV'. A warning is
+ shown if some reaction ids already end with '_REV'.
 
  Parameters
  ----------
@@ -41,7 +41,7 @@
  Name-Value Arguments
  --------------------
  rxns : cell
-     cell array with the reactions to split, if reversible (default
+     cell array with the ids of the reactions to split, if reversible (default
      model.rxns).
 
  Returns
@@ -77,8 +77,8 @@ This function is called by:
 0002 <span class="comment">% convertToIrrev  Convert a model to irreversible form.</span>
 0003 <span class="comment">%</span>
 0004 <span class="comment">% Reversible reactions are split into one forward and one reverse</span>
-0005 <span class="comment">% reaction. The reverse reactions are saved as 'rxnID_REV'. A warning is</span>
-0006 <span class="comment">% shown if some reaction identifiers already end with '_REV'.</span>
+0005 <span class="comment">% reaction. The reverse reactions are named 'rxnID_REV'. A warning is</span>
+0006 <span class="comment">% shown if some reaction ids already end with '_REV'.</span>
 0007 <span class="comment">%</span>
 0008 <span class="comment">% Parameters</span>
 0009 <span class="comment">% ----------</span>
@@ -88,7 +88,7 @@ This function is called by:
 0013 <span class="comment">% Name-Value Arguments</span>
 0014 <span class="comment">% --------------------</span>
 0015 <span class="comment">% rxns : cell</span>
-0016 <span class="comment">%     cell array with the reactions to split, if reversible (default</span>
+0016 <span class="comment">%     cell array with the ids of the reactions to split, if reversible (default</span>
 0017 <span class="comment">%     model.rxns).</span>
 0018 <span class="comment">%</span>
 0019 <span class="comment">% Returns</span>
