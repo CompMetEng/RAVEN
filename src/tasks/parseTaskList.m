@@ -5,36 +5,33 @@ function taskStruct=parseTaskList(inputFile)
 % ----------
 % inputFile : char
 %     a task list in either Excel (*.xlsx, with a sheet named TASKS with
-%     all relevant content) or tab-delimited (*.txt) format. The old binary
+%     all relevant content) or tab-delimited (*.txt) format. The binary
 %     *.xls format is not supported. The file may contain the following
-%     column headers (note, all rows starting with a non-empty cell are
-%     removed; the first row after that is considered the headers; the
-%     header row itself must therefore start with an empty cell):
+%     column headers. Rows that start with a non-empty cell are comments
+%     and are removed. The first row that starts with an empty cell is the
+%     header row, so the header row and the task rows must start with an
+%     empty cell:
 %
 %     - ID : the only required header (string or numeric). Ids may repeat,
 %       for example as category codes. A task starts at a row with a
 %       non-empty id and can span multiple rows; only the first row of a task
 %       should have an id
 %     - DESCRIPTION : description of the task
-%     - IN : allowed input(s) for the task. Metabolite names should be on
+%     - IN : allowed input(s) for the task. Metabolite names are written in
 %       the form "model.metName[model.comps]". Several inputs can be
 %       delimited by ";". If so, then the same bounds are used for all
 %       inputs. If that is not wanted, then use several rows for the task
 %     - IN LB : lower bound for the uptake of the metabolites in the row
-%       (optional, default 0 which corresponds to a minimal uptake of 0
-%       units)
+%       (optional, default 0)
 %     - IN UB : upper bound for the uptake of the metabolites in the row
-%       (optional, default 1000 which corresponds to a maximal uptake of
-%       1000 units)
+%       (optional, default 1000)
 %     - OUT : allowed output(s) for the task (see IN)
 %     - OUT LB : lower bound for the production of the metabolites in the
-%       row (optional, default 0 which corresponds to a minimal production
-%       of 0 units)
+%       row (optional, default 0)
 %     - OUT UB : upper bound for the production of the metabolites in the
-%       row (optional, default 1000 which corresponds to a maximal
-%       production of 1000 units)
-%     - EQU : equation to add. The equation should be on the form
-%       "0.4 A + 2 B <=> (or =>) C" and the metabolites should be on the
+%       row (optional, default 1000)
+%     - EQU : equation to add. The equation is written in the form
+%       "0.4 A + 2 B <=> (or =>) C" and the metabolites in the
 %       form "model.metName[model.comps]" (optional)
 %     - EQU LB : lower bound for the equation (optional, default -1000 for
 %       reversible and 0 for irreversible)
@@ -47,13 +44,15 @@ function taskStruct=parseTaskList(inputFile)
 %       of the reaction is left as it is
 %     - CHANGED UB : upper bound for the reaction. If empty, the upper bound
 %       of the reaction is left as it is
-%     - SHOULD FAIL : true if the correct behavior of the model is to not
+%     - SHOULD FAIL : true if the correct behaviour of the model is to not
 %       have a feasible solution given the constraints. Any non-empty value
 %       except 0, false and no (any case) counts as true (optional, default
 %       false)
-%     - PRINT FLUX : true if the function should print the corresponding
-%       flux distribution for a task. Can be useful for testing. Read in
-%       the same way as SHOULD FAIL (optional, default false)
+%     - PRINT FLUX : true if checkTasks should print the corresponding
+%       flux distribution for a task. Read in the same way as SHOULD FAIL
+%       (optional, default false)
+%     - COMMENTS : comments on the task, stored in the field comments
+%       (optional)
 %
 %     Headers are matched ignoring case and surrounding whitespace. In the
 %     ";"-delimited cells, items are trimmed and empty items are dropped.
@@ -90,23 +89,20 @@ function taskStruct=parseTaskList(inputFile)
 %
 % Notes
 % -----
-% This function is used for defining a set of tasks for a model to perform.
-% The tasks are defined by defining constraints on the model, and if the
-% problem is feasible, then the task is considered successful. In general,
-% each row can contain one constraint on uptakes, one constraint on
-% outputs, one new equation, and one change of reaction bounds. If more
-% bounds are needed to define the task, then several rows can be used for
-% each task. To perform the task use checkTasks or fitTasks.
+% The task list defines a set of tasks for a model to perform. A task is
+% defined by constraints on the model, and the task is successful if the
+% problem is feasible. Each row can contain one constraint on uptakes, one
+% constraint on outputs, one new equation, and one change of reaction bounds.
+% If more bounds are needed to define the task, then several rows can be used
+% for each task. To perform the task use checkTasks or fitTasks.
 %
 % The general metabolites "ALLMETS" and "ALLMETSIN[comps]" can be used as
-% inputs or outputs in the similar manner to normal metabolites. This is a
-% convenient way to, for example, allow excretion of all metabolites to
-% check whether it is the synthesis of some metabolite that is limiting or
-% whether it is the degradation of some byproduct. One important difference
-% is that only the upper bounds are used for these general metabolites.
-% That is, you can only say that uptake or excretion is allowed, not that
-% it is required. This is to avoid conflicts where the constraints for the
-% general metabolites overwrite those of the real ones.
+% inputs or outputs in the same manner as normal metabolites. They allow,
+% for example, excretion of all metabolites, to check whether the
+% synthesis of some metabolite or the degradation of some byproduct is
+% limiting. Only the upper bounds are used for these general metabolites,
+% so uptake or excretion can be allowed but not required. A lower bound
+% would overwrite the constraints of the individual metabolites.
 %
 % See also
 % --------

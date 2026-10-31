@@ -3,8 +3,9 @@ function solutions = sampleACHR(model, nSamples, thinning, warmup, seed)
 %
 % Draws nSamples flux vectors approximately uniformly from the flux polytope
 % {v : S*v = 0, lb <= v <= ub}, using the ACHR algorithm (Kaufman & Smith 1998).
-% No rounding is performed, so on strongly elongated polytopes (e.g.
-% enzyme-constrained models) mixing is slower than sampleCHRR; prefer CHRR there.
+% No rounding is performed, so on strongly elongated polytopes (for example
+% enzyme-constrained models) mixing is slower than with sampleCHRR, which
+% rounds the polytope.
 % Reactions whose bounds or warmup values coincide never move. The remaining
 % reactions are corrected towards S*v = 0 every few steps and before each
 % recorded sample, with a sparse Cholesky factor of the row-normalised S*S'
@@ -18,7 +19,7 @@ function solutions = sampleACHR(model, nSamples, thinning, warmup, seed)
 % Parameters
 % ----------
 % model : struct
-%     a RAVEN model structure.
+%     a model structure.
 % nSamples : double
 %     number of flux vectors to return (default 1000).
 % thinning : double

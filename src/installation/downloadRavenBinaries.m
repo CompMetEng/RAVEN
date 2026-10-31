@@ -1,25 +1,27 @@
 function downloadRavenBinaries(tools)
 % downloadRavenBinaries
 %   Download RAVEN's external command-line binaries on demand from the
-%   toolbox-assets repository into RAVEN's src/external/ directory. Only the binary
-%   matching the current platform is fetched, and only when needed.
+%   toolbox-assets repository into the src/external directory of RAVEN. Only
+%   the binary matching the current platform is fetched, and only when it is
+%   missing.
 %
 %   Input:
 %   tools   cell array, subset of {'blast+','diamond','hmmer'} to
 %           download. Defaults to all of them. Tools whose target executable is
 %           already present are skipped.
 %
-%   This requires an internet connection. For an offline / air-gapped install,
-%   download the "*-binaries" RAVEN release (which bundles all binaries) and
-%   unzip it into the RAVEN software/ directory instead.
+%   The download requires an internet connection. An offline installation
+%   uses the offline bundle (RAVEN-<tag>-full.zip) attached to each RAVEN
+%   release, which contains the binaries of all platforms in src/external.
 %
 %   The binaries are hosted as release assets in
 %   https://github.com/CompMetEng/toolbox-assets.
 %
 %   Usage: downloadRavenBinaries({'blast+','diamond'})
 %
-% NOTE: lazily invoked by getBlast/getDiamond/getKEGGModelForOrganism and
-% offered by checkRaven when a binary is missing.
+% getBlast, getDiamond and getKEGGModelForOrganism call this function
+% when a binary is missing. checkRaven calls it for all three tools when its
+% checkBinaries input is true.
 
 if nargin < 1 || isempty(tools)
     tools = {'blast+','diamond','hmmer'};

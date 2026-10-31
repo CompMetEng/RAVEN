@@ -1,11 +1,11 @@
 function saveDeltaGCSV(model, varargin)
 % saveDeltaGCSV  Save metDeltaG and rxnDeltaG to CSV files.
 %
-% Writes a two-column table (identifier, deltaG) per side, one row per
-% entity, in model order. An entity with no value stored is written as
-% NaN, unchanged from whatever the model field holds -- this function does
-% not interpret or substitute values. Pass '' for either metCsv or rxnCsv
-% to skip that side.
+% Writes a two-column table (identifier, deltaG) for metabolites and one for
+% reactions, one row per entity, in model order. Values are written as the
+% model field holds them, so an entity with no value stored is written as
+% NaN. A file is skipped when its path is '' or when the model lacks the
+% corresponding field.
 %
 % Parameters
 % ----------

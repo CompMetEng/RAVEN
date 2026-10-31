@@ -1,15 +1,16 @@
 function addRavenToUserPath(varargin)
 % This function writes a startup.m file in the userpath, adding RAVEN (and
-% all subdirectories) to the path each time Matlab is started.
-% This function is useful if the user has no rights to save paths to the
+% all subdirectories except those with .git or doc in their path) to the
+% path each time MATLAB is started.
+% The function applies when the user has no rights to save paths to the
 % pathdef.m file in the matlabroot, for instance due to a lack of admin
-% rights. As the startup.m file in the userpath automatically runs with
-% each Matlab start, the paths are automatically loaded.
+% rights. The startup.m file in the userpath runs at each MATLAB start and
+% loads the paths.
 %
 % Name-Value Arguments
 % --------------------
-%   overwrite       logical, whether startup.m in the userpath should
-%                   overwritten (otherwise the RAVEN paths are appended)
+%   overwrite       logical, true if startup.m in the userpath is
+%                   overwritten and false if the RAVEN paths are appended
 %                   (default true)
 
 p=parseRAVENargs(varargin, {'overwrite',true});

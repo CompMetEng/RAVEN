@@ -1,29 +1,31 @@
 function nW = parallelWorkersRAVEN(runParallel)
 % parallelWorkersRAVEN  Return the parfor worker count for a given setting.
 %
-% Returns a value for use with the parfor worker-count syntax:
+% Returns the value for the maximum-workers argument of parfor:
 %
 %     nW = parallelWorkersRAVEN(runParallel);
 %     parfor (i = 1:N, nW)
 %         ...
 %     end
 %
-% This avoids mutating global parallel-pool state: nW == 0 forces parfor
-% to run as a plain for loop; nW == Inf lets the Parallel Computing Toolbox
-% manage the pool size and auto-creation.
+% The function leaves the global parallel pool unchanged. With nW == 0, parfor
+% runs as a plain for loop. With nW == Inf, the Parallel Computing Toolbox
+% manages the pool size and creates a pool when none exists. When
+% runParallel is true but the Parallel Computing Toolbox is not installed, the
+% function prints a message and returns 0.
 %
 % Parameters
 % ----------
 % runParallel : logical
-%     whether the caller should use parallel workers.
+%     true to use parallel workers, false for sequential execution.
 %
 % Returns
 % -------
 % nW : double
-%     0   to force sequential execution (parfor behaves as a for loop,
-%         no pool required or created).
-%     Inf to use available pool workers (PCT manages pool size and
-%         auto-creation).
+%     0   sequential execution (parfor behaves as a for loop, no pool is
+%         required or created).
+%     Inf available pool workers (the Parallel Computing Toolbox manages
+%         the pool size and creates a pool when none exists).
 
 if ~runParallel
     nW = 0;

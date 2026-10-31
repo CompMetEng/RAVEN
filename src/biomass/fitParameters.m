@@ -5,10 +5,11 @@ function [parameters, fitnessScore, exitFlag, newModel]=fitParameters(model,xRxn
 % between the fluxes the model predicts and the measured ones, using
 % fminsearch (Nelder-Mead). Each candidate parameter set is written into the
 % S matrix at the positions given by parameterPositions, and the model is
-% solved once per data point.
+% solved once per data point with the xRxns bounds fixed to the values in
+% xValues. The fitted parameters are returned as absolute values.
 %
-% Use this to *derive* a value from measurements; use setGAM to *apply* a
-% known growth-associated maintenance value to a biomass pseudoreaction.
+% The function derives a value from measurements. To apply a known
+% growth-associated maintenance value to a biomass pseudoreaction, use setGAM.
 %
 % Parameters
 % ----------
@@ -32,30 +33,33 @@ function [parameters, fitnessScore, exitFlag, newModel]=fitParameters(model,xRxn
 %     - position : cell array of vectors where each element contains the
 %       positions in the S-matrix for that parameter
 %     - isNegative : cell array of vectors where the elements are true if
-%       that position should be the negative of the fitted value (to
-%       differentiate between production/consumption)
+%       that position is set to the negative of the fitted value (to
+%       distinguish production from consumption)
 %
 % Name-Value Arguments
 % --------------------
 % fitToRatio : logical
-%     if the ratio of simulated to measured values should be fitted
-%     instead of the absolute value. Used to prevent large fluxes from
-%     having too large an impact (default true).
+%     true to fit the ratio of simulated to measured values, false to fit
+%     the absolute difference. The ratio limits the influence of large
+%     fluxes on the residual sum of squares (default true).
 % initialGuess : double
 %     initial guess of the parameters (default ones).
 % plotFitting : logical
-%     true if the resulting fitting should be plotted (default false).
+%     true to plot the measured values and the fitted fluxes against
+%     xValues (default false).
 %
 % Returns
 % -------
 % parameters : double
-%     fitted parameters in the same order as in parameterPositions.
+%     fitted parameters (absolute values) in the same order as in
+%     parameterPositions.
 % fitnessScore : double
 %     the corresponding residual sum of squares.
 % exitFlag : double
 %     exit status returned by fminsearch.
 % newModel : struct
-%     updated model structure with the fitted parameters.
+%     updated model structure with the fitted parameters. It is assigned
+%     only when plotFitting is true.
 %
 % Examples
 % --------

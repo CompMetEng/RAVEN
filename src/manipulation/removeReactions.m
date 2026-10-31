@@ -13,11 +13,12 @@ function reducedModel=removeReactions(model,rxnsToRemove,varargin)
 % Name-Value Arguments
 % --------------------
 % removeUnusedMets : logical
-%     remove metabolites that are no longer in use (default false).
+%     remove metabolites that no remaining reaction uses (default false).
 % removeUnusedGenes : logical
-%     remove genes that are no longer in use (default false).
+%     remove genes that no remaining reaction uses (default false).
 % removeUnusedComps : logical
-%     remove compartments that are no longer in use (default false).
+%     remove compartments that contain no metabolite. Takes effect only when
+%     removeUnusedMets is true (default false).
 %
 % Returns
 % -------

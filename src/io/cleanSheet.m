@@ -1,6 +1,6 @@
 % cleanSheet  Clean up an Excel sheet.
 %
-% Removes empty rows/columns (and performs some other checks).
+% Removes empty rows and columns, and performs further checks.
 %
 % Parameters
 % ----------
@@ -13,16 +13,17 @@
 %     true if commented lines (non-empty first cell in each row) should be
 %     removed (default true).
 % removeOnlyCap : logical
-%     remove columns with captions but no other values (default false).
+%     true to remove columns with captions but no other values (default
+%     false).
 % removeNoCap : logical
-%     remove columns without captions (default true).
+%     true to remove columns without captions (default true).
 % removeEmptyRows : logical
-%     remove rows with no non-empty cells (default true).
+%     true to remove rows with no non-empty cells (default true).
 %
 % Returns
 % -------
 % raw : cell
-%     cleaned version.
+%     the cleaned cell array.
 % keptRows : double
 %     indices of the kept rows in the original structure.
 % keptCols : double

@@ -19,7 +19,8 @@ function transportRxns=getTransportRxns(model)
 % Notes
 % -----
 % Transport reactions are defined as reactions involving (at least) one
-% metabolite name in more than one compartment.
+% metabolite name in more than one compartment. Exchange reactions, as
+% identified by getExchangeRxns, are not transport reactions.
 
 transportRxns=false(numel(model.rxns),1);
 

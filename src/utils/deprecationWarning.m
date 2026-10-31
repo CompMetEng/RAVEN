@@ -2,16 +2,16 @@ function deprecationWarning(oldFunction, replacement)
 % deprecationWarning  Warn once per session that a function is deprecated.
 %
 % Used by the wrappers in the deprecated/ folder. Each function warns the
-% first time it is called in a MATLAB session and stays quiet afterwards,
-% so a loop over thousands of reactions does not bury the console. Call
-% "clear functions" to reset.
+% first time it is called in a MATLAB session and does not warn again, also
+% when it is called repeatedly in a loop. "clear functions" resets the
+% record of functions that have warned.
 %
 % Parameters
 % ----------
 % oldFunction : char
 %     name of the deprecated function.
 % replacement : char
-%     what to call instead, written as it would be typed, e.g.
+%     what to call instead, written as it would be typed, for example
 %     'findLeakMetabolite(model,''produce'',...)'.
 %
 % Examples

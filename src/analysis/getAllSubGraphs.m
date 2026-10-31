@@ -11,9 +11,9 @@ function subGraphs=getAllSubGraphs(model)
 % Returns
 % -------
 % subGraphs : logical
-%     a boolean matrix where the rows correspond to the metabolites and
-%     the columns to which subgraph they are assigned to. The columns are
-%     ordered so that larger subgraphs come first.
+%     a logical matrix with one row per metabolite and one column per
+%     subgraph. An element is true if the metabolite belongs to the
+%     subgraph. The columns are ordered by decreasing subgraph size.
 %
 % Examples
 % --------

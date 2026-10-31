@@ -4,32 +4,34 @@ function [S, mets, badRxns, reversible]=constructS(equations,varargin)
 % Parameters
 % ----------
 % equations : cell
-%     cell array of equations on the form "A + 2 B <=> 3 C", where <=>
+%     cell array of equations in the form "A + 2 B <=> 3 C", where <=>
 %     indicates reversible and => irreversible reactions.
 %
 % Name-Value Arguments
 % --------------------
 % mets : cell
 %     cell array of metabolites. All metabolites in the equations must be
-%     present in the list (default generated from the equations).
+%     present in the list, otherwise an error is thrown (default generated
+%     from the equations).
 % rxns : cell
-%     cell array of reaction ids. This is only used for printing reaction ids
-%     instead of equations in warnings/errors (default []).
+%     cell array of reaction ids. Used to print reaction ids in error
+%     messages in place of equations (default []).
 %
 % Returns
 % -------
 % S : double
 %     the resulting stoichiometric matrix.
 % mets : cell
-%     cell array with metabolites that corresponds to the order in the S
+%     cell array with the metabolites in the order of the rows of the S
 %     matrix.
 % badRxns : logical
-%     boolean vector with the reactions that have one or more metabolites as
-%     both substrate and product. An example would be the phosphotransferase
-%     ATP + ADP <=> ADP + ATP. In the stoichiometric matrix this equals to an
-%     empty reaction which can be problematic.
+%     logical vector with true for the reactions in which one or more
+%     metabolites occur more than once, for example as both substrate and
+%     product. An example is the phosphotransferase reaction
+%     ATP + ADP <=> ADP + ATP, which gives an empty column in the
+%     stoichiometric matrix.
 % reversible : logical
-%     boolean vector with true if the equation is reversible.
+%     logical vector with true if the equation is reversible.
 %
 % Examples
 % --------

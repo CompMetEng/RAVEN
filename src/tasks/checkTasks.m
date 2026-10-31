@@ -1,12 +1,11 @@
 function [taskReport, essentialRxns, taskStructure, essentialFluxes]=checkTasks(model,inputFile,varargin)
 % checkTasks  Perform a set of simulations as defined in a task file.
 %
-% This function is used for defining a set of tasks for a model to perform.
-% The tasks are defined by defining constraints on the model, and if the
-% problem is feasible, then the task is considered successful. In general,
-% each row can contain one constraint on uptakes, one constraint on outputs,
-% one new equation, and one change of reaction bounds. If more bounds are
-% needed to define the task, then several rows can be used for each task.
+% The function runs a set of tasks for a model. Each task is defined by
+% constraints on the model, and the task is successful if the problem is
+% feasible. Each row can contain one constraint on uptakes, one constraint on
+% outputs, one new equation, and one change of reaction bounds. If more bounds
+% are needed to define the task, then several rows can be used for each task.
 %
 % The task inputs and outputs are applied to the boundary metabolites of
 % the model. The model's own exchange reactions are not closed: they keep
@@ -30,17 +29,18 @@ function [taskReport, essentialRxns, taskStructure, essentialFluxes]=checkTasks(
 %     true if only tasks that failed should be displayed (default false).
 % getEssential : logical
 %     true if the essential reactions should be calculated for all the
-%     tasks. This option is used with runINIT (default false).
+%     tasks. This option is used by prepINITModel (ftINIT) and getINITModel
+%     (tINIT) (default false).
 % taskStructure : struct
 %     structure with the tasks, as from parseTaskList. If this is supplied
 %     then inputFile is ignored.
 % runParallel : logical
-%     true to evaluate tasks in parallel workers, since each task is
-%     independent of the others (see parallelWorkersRAVEN). Gurobi is
-%     automatically pinned to one thread per worker by optimizeProb, so
-%     this does not oversubscribe cores. Default false, matching the
-%     previous (serial) behaviour, since checkTasks is often called on
-%     small task lists where starting a pool would only add overhead.
+%     true to evaluate tasks in parallel workers, as each task is
+%     independent of the others (see parallelWorkersRAVEN). In a worker,
+%     optimizeProb sets Gurobi to one thread, so the workers do not use
+%     more cores than assigned. With false the tasks are evaluated in
+%     series, which avoids the overhead of starting a pool for small task
+%     lists (default false).
 %
 % Returns
 % -------
@@ -59,7 +59,9 @@ function [taskReport, essentialRxns, taskStructure, essentialFluxes]=checkTasks(
 % taskStructure : struct
 %     structure with the tasks, as from parseTaskList.
 % essentialFluxes : double
-%     the fluxes of the essential rxns - same structure as essentialRxns.
+%     the fluxes of the model reactions in the solution of each task (NaN
+%     for a task without a solution), with the same dimensions as
+%     essentialRxns.
 %
 % Examples
 % --------

@@ -2,29 +2,30 @@ function model = loadDeltaGCSV(model, varargin)
 % loadDeltaGCSV  Load metDeltaG and rxnDeltaG from CSV files.
 %
 % Each CSV is a two-column table: identifier, deltaG. On load, rows whose
-% identifier is not in the model are silently skipped, and every matched
-% value is stored exactly as it appears in the CSV -- including yeast-GEM's
-% own "no measurement" placeholder (10000000.0). Callers that need to treat
-% a particular value as absent should filter it themselves after loading;
-% this function does not interpret CSV values. Pass '' for either metCsv
-% or rxnCsv to skip that side.
+% identifier is not in the model are skipped without a message, and every
+% matched value is stored as it appears in the CSV, including yeast-GEM's
+% "no measurement" placeholder (10000000.0). The function does not
+% interpret CSV values, so a value that is to be treated as absent has to
+% be filtered after loading. An empty string ('') for metCsv or rxnCsv
+% skips that side.
 %
 % Parameters
 % ----------
 % model : struct
-%     RAVEN model struct.
+%     a model structure.
 %
 % Name-Value Arguments
 % --------------------
 % metCsv : char
-%     Path to the metabolite deltaG CSV, or '' to skip.
+%     path to the metabolite deltaG CSV, or '' to skip (default '').
 % rxnCsv : char
-%     Path to the reaction deltaG CSV, or '' to skip.
+%     path to the reaction deltaG CSV, or '' to skip (default '').
 %
 % Returns
 % -------
 % model : struct
-%     Updated model struct.
+%     model structure. The metDeltaG field is set only if metCsv is given and
+%     the rxnDeltaG field only if rxnCsv is given.
 %
 % Examples
 % --------

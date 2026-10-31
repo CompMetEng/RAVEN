@@ -1,10 +1,14 @@
 function out = runSimpleOptKnock(model, targetRxn, biomassRxn, varargin)
-% runSimpleOptKnock  Simple OptKnock for growth-coupled production.
+% runSimpleOptKnock  Find deletions that couple metabolite production to growth.
 %
-% Simple OptKnock algorithm that checks all gene or reaction deletions for
-% growth-coupled metabolite production, by testing all possible
-% combinations. This is not defined as MILP, and is therefore slow (but
-% simple).
+% Checks all gene or reaction deletions for growth-coupled metabolite
+% production, by testing combinations of up to maxNumKO deletions. It tries
+% a deeper deletion only after a deletion whose growth rate is above
+% minGrowth. A combination is reported if the growth rate exceeds
+% minGrowth and the product of growth rate and production rate exceeds the
+% value without the last added deletion (the wild type for the first
+% deletion) by more than 1 %. The method is not defined as a MILP and is
+% therefore slow.
 %
 % Parameters
 % ----------
@@ -37,6 +41,7 @@ function out = runSimpleOptKnock(model, targetRxn, biomassRxn, varargin)
 %     - KO : cell array with gene(s) or reaction(s) to be deleted.
 %     - growthRate : vector with growth rates after deletion.
 %     - prodRate : vector with production rates after deletion.
+%     - score : vector with the product of growth rate and production rate.
 %
 % Examples
 % --------

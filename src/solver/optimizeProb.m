@@ -1,22 +1,23 @@
 function res = optimizeProb(prob,varargin)
-% optimizeProb  Optimize an LP or MILP formulated in COBRA terms.
+% optimizeProb  Optimise an LP or MILP formulated in COBRA terms.
 %
 % Parameters
 % ----------
 % prob : struct
-%     COBRA-style LP/MILP problem struct to be optimised.
+%     COBRA-style problem struct of an LP or MILP to be optimised.
 %
 % Name-Value Arguments
 % --------------------
 % params : struct
 %     solver-specific parameters. In addition to solver parameters, the
-%     field "maxRatio" can be set to a number > 1 to improve numerical
-%     conditioning: before solving (LP only) any column whose coefficients
-%     span more than maxRatio is split via auxiliary metabolites/variables,
-%     preserving the feasible region. See splitProbForConditioning. The
-%     field is consumed here and not forwarded to the solver.
+%     field "maxRatio" can be set to a finite number > 1 for numerical
+%     conditioning: before solving an LP, any column whose coefficients
+%     span more than maxRatio is split with auxiliary metabolites and
+%     variables, which preserves the feasible region. See
+%     splitProbForConditioning. The field is removed before the parameters
+%     are passed to the solver, and is ignored for MILPs.
 % verbose : logical
-%     if true MILP progress is shown (default true).
+%     if true, MILP progress is shown (default true).
 %
 % Returns
 % -------
@@ -24,16 +25,16 @@ function res = optimizeProb(prob,varargin)
 %     the output structure from the selected solver RAVENSOLVER (COBRA
 %     style). In addition to the fields set by the solver, the logical field
 %     "hitTimeLimit" is true if the solver stopped because it reached its
-%     time limit. Whatever solution is in res is then either absent or not
-%     proven optimal.
+%     time limit. The solution in res is then either absent or not proven
+%     optimal.
 %
 % Notes
 % -----
 % MILPs can be solved with GLPK, either RAVEN's bundled GLPK ('glpk') or
 % the COBRA Toolbox's GLPK interface ('cobra' with GLPK as its MILP solver).
-% A RAVEN:glpkMILP warning then recommends Gurobi, which is much faster and
-% more reliable on larger MILPs (such as ftINIT or getMinNrFluxes on
-% genome-scale models).
+% The RAVEN:glpkMILP warning then states that GLPK works for small problems
+% and that Gurobi is much faster and more reliable for larger ones (such as
+% ftINIT or getMinNrFluxes on genome-scale models).
 %
 % See also
 % --------

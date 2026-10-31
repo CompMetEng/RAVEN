@@ -4,34 +4,32 @@ function model=editMiriam(model,type,object,miriamName,miriams,keep)
 % Parameters
 % ----------
 % model : struct
-%     model structure.
+%     a model structure.
 % type : char
-%     'met', 'rxn', 'gene' or 'comp' dependent on which objects the
-%     annotations should be assigned to.
+%     'met', 'rxn', 'gene' or 'comp', the type of object that the
+%     annotations are assigned to.
 % object : cell or logical or double or char
 %     either a cell array of IDs, a logical vector with the same number of
-%     elements as the type (see above) in the model, a vector of indexes,
+%     elements as objects of that type in the model, a vector of indexes,
 %     or 'all'.
 % miriamName : char
 %     string specifying the namespace of the identifier, for instance
-%     'bigg.metabolite'. Should be a valid prefix from identifiers.org
-%     (e.g. https://registry.identifiers.org/registry/bigg.metabolite).
+%     'bigg.metabolite'. A valid prefix from identifiers.org is expected
+%     (for example https://registry.identifiers.org/registry/bigg.metabolite).
 % miriams : char or cell
-%     string or cell array of strings with annotation identifiers, e.g.
+%     string or cell array of strings with annotation identifiers, for example
 %     '12dgr161'.
 % keep : char
 %     one of the following strings, specifying what should be done if an
 %     object already has existing MIRIAM annotations with the same
 %     miriamName:
 %
-%     - 'replace' : discard all existing annotations, all will be
-%       overwritten, even if the new annotation is an empty field. Should
-%       only be used if you do not want to keep any of the old annotation
-%       with the same miriamName.
-%     - 'fill' : only add annotations to those objects that did not yet
-%       have an annotation with that miriamName. Otherwise, the existing
-%       annotation is kept, even if it is different from the suggested new
-%       annotation.
+%     - 'replace' : discard all existing annotations with the same
+%       miriamName; they are overwritten, even if the new annotation is an
+%       empty field.
+%     - 'fill' : add annotations only to those objects that have no
+%       annotation with that miriamName. Otherwise, the existing annotation
+%       is kept, even if it differs from the new annotation.
 %     - 'add' : keep all existing annotations, and add any new
 %       annotations, after removing duplicates.
 %     - 'remove' : remove all annotations with the given miriamName from

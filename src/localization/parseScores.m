@@ -1,14 +1,14 @@
 function GSS = parseScores(inputFile, varargin)
-% parseScores  Parse predictor / database output into a gene scoring structure (GSS).
+% parseScores  Parse predictor or database output into a gene scoring structure (GSS).
 %
-% Reads the output of a subcellular-localization predictor or evidence database and
+% Reads the output of a subcellular localisation predictor or evidence database and
 % builds the gene scoring structure consumed by predictLocalization. Scores are
-% normalized so the best score for each gene is 1.0.
+% normalised so that the highest score of each gene is 1.0.
 %
 % Parameters
 % ----------
 % inputFile : char
-%     the file with the predictor / database output.
+%     the file with the predictor or database output.
 %
 % Name-Value Arguments
 % --------------------
@@ -18,15 +18,15 @@ function GSS = parseScores(inputFile, varargin)
 %     compartment), 'compartments' (a COMPARTMENTS jensenlab.org channel TSV), or
 %     'uniprot' (a UniProtKB TSV export with a "Subcellular location [CC]" column).
 % compartmentMap : containers.Map
-%     renames the predictor's / database's compartment labels to your model's
-%     compartment ids. Keys are the labels as the predictor writes them, lower
-%     case; values are the compartment ids you want in the GSS. See
-%     Compartment mapping below. Optional for every predictor except 'uniprot',
-%     where it also supplies the location vocabulary and defaults to
-%     defaultCompartmentMap.
+%     maps the compartment labels of the predictor or database to the compartment ids of
+%     the model. Keys are the labels as the predictor writes them, in lower case; values
+%     are the compartment ids in the GSS. Optional for every predictor except 'uniprot',
+%     where the map also supplies the location vocabulary and defaults to
+%     defaultCompartmentMap. See Compartment mapping below.
 % idColumn : char or double
-%     column (name or 1-based index) holding the gene id for 'mulocdeep' / 'uniprot'.
-%     Default: the first column. For yeast-GEM, use the UniProt ordered-locus column.
+%     column (name or 1-based index) holding the gene id for 'mulocdeep' and 'uniprot'
+%     (default: the first column). For yeast-GEM, the UniProt ordered-locus column holds
+%     the matching ids.
 % minConfidence : double
 %     for 'compartments', drop annotations with confidence below this (default 0).
 %
@@ -37,34 +37,31 @@ function GSS = parseScores(inputFile, varargin)
 %
 %     - genes : cell, one entry per gene.
 %     - compartments : cell, one entry per compartment column.
-%     - scores : double, numel(genes)-by-numel(compartments), normalized so
-%       the best score per gene is 1.0.
+%     - scores : double, numel(genes)-by-numel(compartments), normalised so
+%       that the highest score per gene is 1.0.
 %
 % Compartment mapping
 % -------------------
-% Predictors emit their own compartment vocabulary ("Endoplasmic reticulum",
-% "Golgi apparatus", ...), which rarely matches a model's compartment ids.
-% compartmentMap is a containers.Map that translates them, and it is the only
-% place that translation happens - the returned GSS already uses your ids.
-% defaultCompartmentMap returns a worked example, tuned for yeast/fungal
-% models; use it as-is, or as the template for your own. Three rules:
+% Predictors use their own compartment vocabulary ("Endoplasmic reticulum",
+% "Golgi apparatus", ...), which need not match the compartment ids of a model.
+% compartmentMap is a containers.Map that translates the labels; the translation
+% happens only there, so the returned GSS contains the ids of the map values.
+% defaultCompartmentMap returns an example map for yeast and fungal models, which can
+% be used as it is or as a template. Three rules apply:
 %
-% - **A label not in the map is dropped**, together with its whole score
-%   column. This is how you exclude compartments your model does not have
-%   (defaultCompartmentMap has no 'plastid' key, so plastid scores never reach
-%   a fungal model). Passing no map at all keeps every label untouched.
-% - **Several labels may share one compartment id**, which merges their
-%   columns. The merged score for a gene is the *maximum* over the merged
-%   labels, not their sum, so a gene predicted 0.7 cytoplasm and 0.4 cytosol
-%   scores 0.7 for 'c'. Use this for synonyms and for deliberately collapsing
-%   distinct compartments your model does not separate (defaultCompartmentMap
-%   sends both 'vacuole' and 'lysosome' to 'v'). Column order follows the first
-%   appearance of each id.
-% - **One label cannot be split across two compartment ids**: a containers.Map
-%   holds one value per key, and the GSS is what predictLocalization scores
-%   against, so a split has to be an explicit statement about the returned
-%   scores rather than a mapping rule. Duplicate the column afterwards, e.g. to
-%   let a gene predicted "golgi" compete for both 'g' and 'v':
+% - A label that is not in the map is dropped, together with its whole score
+%   column. This excludes compartments that the model does not have
+%   (defaultCompartmentMap has no 'plastid' key, so plastid scores are dropped for a
+%   fungal model). Without a map, every label is kept unchanged.
+% - Several labels may share one compartment id, which merges their
+%   columns. The merged score of a gene is the maximum over the merged labels, not
+%   their sum: a gene predicted 0.7 cytoplasm and 0.4 cytosol scores 0.7 for 'c'.
+%   Sharing an id merges synonyms and collapses compartments that the model does not
+%   separate (defaultCompartmentMap sends both 'vacuole' and 'lysosome' to 'v').
+%   Column order follows the first appearance of each id.
+% - One label cannot map to two compartment ids: a containers.Map holds one
+%   value per key. A split is made on the returned scores. Duplicating the
+%   column afterwards lets a gene predicted "golgi" compete for both 'g' and 'v':
 %
 %       GSS = parseScores(file, 'compartmentMap', map);
 %       g = strcmp(GSS.compartments, 'g');
@@ -72,14 +69,14 @@ function GSS = parseScores(inputFile, varargin)
 %       GSS.scores(:,end+1) = GSS.scores(:,g);
 %
 %   The two columns are then independent: predictLocalization assigns each gene
-%   to exactly one compartment, so it picks whichever of 'g'/'v' keeps the
-%   network better connected. Halve the copied column instead of duplicating it
-%   if the evidence should count for less in the second compartment.
+%   to one compartment, so it picks whichever of 'g' and 'v' keeps the network
+%   better connected. Halving the copied column gives the evidence half the
+%   weight in the second compartment.
 %
-% For 'uniprot' the keys do double duty: they are also the terms searched for
-% in the "Subcellular location [CC]" free text, matched whole-word and case
-% insensitively, so they must be UniProt's own noun forms. A term that is not a
-% key is never looked for.
+% For 'uniprot', the keys are also the terms searched for in the
+% "Subcellular location [CC]" free text, matched as whole words and case
+% insensitively. The keys must be the noun forms used by UniProt. A term that is
+% not a key is not searched.
 %
 % Examples
 % --------

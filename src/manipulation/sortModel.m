@@ -1,8 +1,9 @@
 function model=sortModel(model,varargin)
-% sortModel  Standardize a model's internal ordering: can orient
-% reversible reactions consistently; can also reorder metabolites within
-% reaction equations and/or reactions within each subsystem, depending on
-% which options are enabled.
+% sortModel  Sort the metabolites and reactions of a model.
+%
+% Depending on the options, the function sorts the metabolites by name and
+% compartment, orients reversible reactions consistently, and reorders the
+% reactions within each subsystem.
 %
 % Parameters
 % ----------
@@ -12,21 +13,25 @@ function model=sortModel(model,varargin)
 % Name-Value Arguments
 % --------------------
 % sortReversible : logical
-%     sorts the reversible reactions so that the metabolite that is first
-%     in lexicographical order is a reactant (default false).
+%     orient each reversible reaction by changing the sign of its
+%     stoichiometric coefficients. The metabolite that is first in
+%     lexicographical order (metabolite name followed by compartment ID)
+%     becomes a reactant. Not applied when sortReactionOrder is true
+%     (default false).
 % sortMetName : logical
-%     sort the metabolite names in the equation, also uses compartment
-%     abbreviation (default false).
+%     sort the metabolites of the model by metabolite name followed by
+%     compartment ID (default false).
 % sortReactionOrder : logical
-%     sorts the reaction order within each subsystem so that reactions
-%     consuming some metabolite come after reactions producing it. This
-%     overrides the sortReversible option and reactions are sorted so that
-%     the production direction matches the consumption direction (default
-%     false).
+%     reorder the reactions within each subsystem, such that reactions
+%     consuming a metabolite come after reactions producing it. The order is
+%     found by a random local search that also changes the direction of
+%     reversible reactions to match production and consumption direction.
+%     Requires the subSystems field. Subsystems with fewer than 2 or more
+%     than 250 reactions are not reordered (default false).
 % seed : double
 %     seed for the random number generator used by the sortReactionOrder
-%     local search, so its result is reproducible across runs (default:
-%     current rng state is left untouched).
+%     local search, which makes its result reproducible across runs
+%     (default: the current rng state is not changed).
 %
 % Returns
 % -------

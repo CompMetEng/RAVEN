@@ -1,36 +1,36 @@
 ﻿function [model, metProduction, essentialRxnsForTasks, addedRxnsForTasks, deletedDeadEndRxns, deletedRxnsInINIT, taskReport]=getINITModel(refModel, tissue, varargin)
 % getINITModel  Generate a model using the original tINIT algorithm.
 %
-% Generates a model using the tINIT algorithm, based on proteomics and/or
-% transcriptomics and/or metabolomics and/or metabolic tasks (PLoS Comput Biol.
-% 2012;8(5):e1002518, Mol Syst Biol. 2014;10:721).
+% Generates a model using the tINIT algorithm, from proteomics,
+% transcriptomics, metabolomics and metabolic tasks in any combination (PLoS
+% Comput Biol. 2012;8(5):e1002518, Mol Syst Biol. 2014;10:721).
 %
-% ftINIT is the recommended method for context-specific model extraction. Use
-% this function to reproduce models built with the original tINIT. It remains
-% supported, and issues a RAVEN:legacyMethod notice once per session, which
+% ftINIT replaces this function for context-specific model extraction. This
+% function is kept to reproduce models built with the original tINIT. It
+% issues a RAVEN:legacyMethod notice once per session, which
 % warning('off','RAVEN:legacyMethod') silences.
 %
-% Not all settings are reachable through this function; runINIT and fitTasks
-% can be called individually for the ones that are not.
+% Not all settings are available through this function; runINIT and fitTasks
+% can be called individually to set the others.
 %
 % Parameters
 % ----------
 % refModel : struct
-%     a model structure. The model should be in the closed form (no exchange
-%     reactions open). Import using import(filename,false). If the model is not
-%     loaded using importModel, it might be that there is no "unconstrained"
-%     field. In that case, manually add the field like:
+%     a model structure in the closed form (no exchange reactions open),
+%     imported with importModel(filename,false). A model that is not loaded
+%     with importModel can lack the "unconstrained" field, and the function
+%     then raises RAVEN:badInput. The field can be added with
 %     model.unconstrained=false(numel(model.mets),1).
 % tissue : char
-%     tissue to score for. Should exist in either hpaData.tissues or
-%     arrayData.tissues.
+%     tissue to score for. Must exist in either hpaData.tissues or
+%     arrayData.tissues (scoreModel raises an error otherwise).
 %
 % Name-Value Arguments
 % --------------------
 % celltype : char
-%     cell type to score for. Should exist in either hpaData.celltypes or
-%     arrayData.celltypes for this tissue (default is to use the best values
-%     among all the cell types for the tissue).
+%     cell type to score for. Must exist in either hpaData.celltypes or
+%     arrayData.celltypes (scoreModel raises an error otherwise). The default
+%     is to use the maximum values among all the cell types for the tissue.
 % hpaData : struct
 %     HPA data structure from parseHPA (optional if arrayData is supplied,
 %     default []).
@@ -39,20 +39,19 @@
 %     []). With fields:
 %
 %     - genes : cell array with the unique gene names.
-%     - tissues : cell array with the tissue names. The list may not be unique,
-%       as there can be multiple cell types per tissue.
+%     - tissues : cell array with the tissue names. The list can contain
+%       duplicates, as there can be multiple cell types per tissue.
 %     - celltypes : cell array with the cell type names for each tissue.
 %     - levels : GENESxTISSUES array with the expression level for each gene in
-%       each tissue/celltype. NaN should be used when no measurement was
-%       performed.
+%       each tissue and cell type. NaN marks a gene that was not measured.
 %     - threshold : a single value or a vector of gene expression thresholds,
-%       above which genes are considered to be "expressed". (default, by
-%       default the mean expression levels of each gene across all tissues in
-%       arrayData will be used as the threshold values).
+%       above which genes are considered to be "expressed". If omitted, the
+%       mean expression level of each gene across all tissues in arrayData
+%       is used as the threshold.
 %     - singleCells : binary value selecting whether to use the single-cell
-%       algorithm to identify expressed genes. If used, specify cell
-%       subpopulations in CELLTYPES (default []).
-%     - plotResults : true if single cell probability distributions should be
+%       algorithm to identify expressed genes. If used, the cell
+%       subpopulations are specified in celltypes (default []).
+%     - plotResults : true if single cell probability distributions are
 %       plotted (default false).
 % metabolomicsData : cell
 %     cell array with metabolite names that the model should produce (default
@@ -60,33 +59,32 @@
 % taskFile : char
 %     a task list in Excel format. See parseTaskList for details (default []).
 % useScoresForTasks : logical
-%     true if the calculated reaction scores should be used as weights in the
-%     fitting to tasks (default true).
+%     true if the calculated reaction scores are used as weights in the
+%     fitting to tasks. Scores above -0.1 are set to -0.1 (default true).
 % printReport : logical
-%     true if a report should be printed to the screen (default true).
+%     true if a report is printed to the screen (default true).
 % taskStructure : struct
-%     task structure as from parseTaskList. Can be used as an alternative way
-%     to define tasks when Excel sheets are not suitable. Overrides taskFile
-%     (default []).
+%     task structure as returned by parseTaskList. It defines the tasks when
+%     Excel sheets are not used and overrides taskFile (default []).
 % params : struct
 %     parameter structure for use by the INIT solver (default []).
 % paramsFT : struct
 %     parameter structure for the fitTasks step (default []).
 % seed : double
-%     seed for the random number generator used to break ties among
-%     genes with equally uninformative (-Inf) scores, so which gene is
-%     kept is reproducible across runs (default: current rng state is
-%     left untouched).
+%     seed for the random number generator used to break ties among genes
+%     with equal uninformative (-Inf) scores, which makes the choice of the
+%     kept gene reproducible across runs (default [], which leaves the rng
+%     state unchanged).
 %
 % Returns
 % -------
 % model : struct
 %     the resulting model structure.
 % metProduction : double
-%     array that indicates which of the metabolites in metabolomicsData that
-%     could be produced. Note that this is before the gap-filling process to
-%     enable defined tasks. To see which metabolites that can be produced in
-%     the final model, use canExchange:
+%     array that indicates which of the metabolites in metabolomicsData could
+%     be produced. The array is determined before the gap-filling for the
+%     defined tasks. To see which metabolites can be produced in the final
+%     model, use canExchange:
 %
 %     - -2 : metabolite name not found in model.
 %     - -1 : metabolite found, but it could not be produced.
@@ -114,13 +112,13 @@
 %
 % Notes
 % -----
-% Exchange metabolites should normally not be removed from the model when using
-% this approach, since checkTasks/fitTasks rely on putting specific constraints
-% for each task. The INIT algorithm will remove exchange metabolites if any are
-% present. Use importModel(file,false) to import a model with exchange
-% metabolites remaining.
+% The model keeps its exchange metabolites, since checkTasks
+% and fitTasks put specific constraints on them for each task. The INIT
+% algorithm removes exchange metabolites if any are present. Use
+% importModel(file,false) to import a model with exchange metabolites
+% remaining.
 %
-% See Also
+% See also
 % --------
 % ftINIT, prepINITModel, runINIT, scoreModel
 

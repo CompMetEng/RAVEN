@@ -9,15 +9,16 @@ function [elements, useMat, exitFlag, MW]=parseFormulas(formulas, varargin)
 % Name-Value Arguments
 % --------------------
 % noPolymers : logical
-%     assume that all polymers consist of one element. Corresponds to
-%     counting everything between (...)n as n being equal to one. Only one
-%     set of parentheses is allowed. If this is false then polymers are
-%     returned as "Could not parse formula" (default false).
+%     treat polymers as a single unit: everything between (...)n is counted
+%     with n equal to one. Only one set of parentheses is allowed. If this is
+%     false, polymers get exitFlag -1, "Could not parse formula"
+%     (default false).
 % isInchi : logical
 %     true if the formulas are in the InChI format (default false).
 % ignoreRX : logical
-%     ignore R-groups and bound protein. This can be useful since they are
-%     often used only as intermediates (default false).
+%     set the atomic weight of R-groups and bound protein to 0, which allows
+%     MW to be calculated for formulas that contain them. The atoms are still
+%     counted in useMat (default false).
 %
 % Returns
 % -------
@@ -26,6 +27,8 @@ function [elements, useMat, exitFlag, MW]=parseFormulas(formulas, varargin)
 %
 %     - abbrevs : cell array with abbreviations for all used elements
 %     - names : cell array with the names for all used elements
+%
+%     Elements that occur in none of the formulas are not included.
 % useMat : double
 %     MxN matrix with the number of atoms for each formula (M) and each
 %     element (N).
@@ -36,10 +39,11 @@ function [elements, useMat, exitFlag, MW]=parseFormulas(formulas, varargin)
 %     - 0 : no formula found
 %     - -1 : could not parse formula
 % MW : double
-%     predicted molecular weight (g/mol). This is only returned for
-%     formulas which can be successfully parsed, and its calculation
-%     doesn't affect the exitFlag variable. NaN is returned if the weight
-%     couldn't be calculated.
+%     predicted molecular weight (g/mol). This is only calculated when
+%     requested, and only for formulas which can be successfully parsed;
+%     its calculation does not affect the exitFlag variable. NaN is returned
+%     if the weight cannot be calculated, for example for formulas that
+%     contain R-groups or bound protein while ignoreRX is false.
 %
 % Examples
 % --------

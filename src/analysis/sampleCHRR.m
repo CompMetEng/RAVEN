@@ -3,17 +3,18 @@ function [solutions, info] = sampleCHRR(model, nSamples, thinning, nBurnin, seed
 %
 % Draws nSamples flux vectors approximately uniformly from the flux polytope
 % {v : S*v = 0, lb <= v <= ub}, using the CHRR algorithm (Haraldsdottir et al.
-% 2017, Bioinformatics 33:1741). The polytope is rounded before sampling, so
-% mixing stays fast even on strongly elongated polytopes (e.g.
-% enzyme-constrained models), unlike sampleACHR.
+% 2017, Bioinformatics 33:1741). The polytope is rounded before sampling,
+% which improves mixing on strongly elongated polytopes (for example
+% enzyme-constrained models) in comparison with sampleACHR, which does not
+% round.
 %
-% Set any constraints you want to condition on (e.g. a biomass lower bound or
-% measured exchange fluxes) on the model before calling.
+% Constraints to condition on (for example a biomass lower bound or measured
+% exchange fluxes) are set on the model before the call.
 %
 % Parameters
 % ----------
 % model : struct
-%     a RAVEN model structure.
+%     a model structure.
 % nSamples : double
 %     number of flux vectors to return (default 1000).
 % thinning : double
@@ -24,17 +25,18 @@ function [solutions, info] = sampleCHRR(model, nSamples, thinning, nBurnin, seed
 %     random seed for reproducibility (default: current RNG state).
 % fixedWidthTol : double
 %     a reaction whose allowed flux range is narrower than this is treated as
-%     stoichiometrically fixed and folded into the equality system, keeping the
-%     reduced polytope full-dimensional (default 1e-7).
+%     stoichiometrically fixed and added to the equality system at the middle
+%     of its range, which keeps the reduced polytope full-dimensional
+%     (default 1e-7).
 %
 % Returns
 % -------
 % solutions : double
 %     nRxns-by-nSamples matrix of sampled flux distributions.
 % info : struct
-%     .nDimensions  — dimension of the sampled flux polytope
-%     .mveConverged — whether MVE rounding reached tolerance
-%     .fixedRxns    — IDs of reactions folded in as fixed
+%     .nDimensions  : dimension of the sampled flux polytope
+%     .mveConverged : whether MVE rounding reached tolerance
+%     .fixedRxns    : IDs of reactions added to the equality system as fixed
 %
 % See also
 % --------

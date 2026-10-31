@@ -6,7 +6,8 @@ function printFluxes(model, fluxes, varargin)
 % model : struct
 %     a model structure.
 % fluxes : double
-%     a vector with fluxes.
+%     a vector with fluxes, or a matrix with one row per reaction and one
+%     column per flux distribution.
 %
 % Name-Value Arguments
 % --------------------
@@ -22,8 +23,8 @@ function printFluxes(model, fluxes, varargin)
 %     a string that specifies the output of each reaction (default
 %     "%rxnID\t(%rxnName):\t%flux\n").
 % metaboliteList : cell
-%     cell array of metabolite names. Only reactions involving any of these
-%     metabolites will be printed.
+%     cell array of metabolite names (case insensitive). Only reactions
+%     involving any of these metabolites are printed.
 %
 % Notes
 % -----
@@ -36,12 +37,12 @@ function printFluxes(model, fluxes, varargin)
 % - %obj : objective coefficient
 % - %eqn : equation
 % - %flux : flux
-% - %element : equation using the metabolite formulas rather than metabolite
+% - %element : equation using the metabolite formulas in place of metabolite
 %   names
 % - %unbalanced : "(*)" if the reaction is unbalanced and "(-)" if it could
 %   not be parsed
-% - %lumped : equation where the elemental compositions for the left/right
-%   hand sides are lumped
+% - %lumped : equation where the elemental compositions of the left-hand and
+%   right-hand sides are lumped
 %
 % Examples
 % --------

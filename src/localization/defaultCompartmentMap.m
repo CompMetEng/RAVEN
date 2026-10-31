@@ -1,25 +1,25 @@
 function map = defaultCompartmentMap()
-% defaultCompartmentMap  Default predictor/database compartment label -> model compartment id.
+% defaultCompartmentMap  Default map from compartment labels to model compartment ids.
 %
-% Returns a containers.Map from lower-case predictor / database compartment labels (as used by
-% DeepLoc, MULocDeep, COMPARTMENTS and UniProt) to compartment ids, tuned for yeast/fungal
-% models (e.g. yeast-GEM codes). Pass it (or your own map) to parseScores / getUniProtScores as
+% Returns a containers.Map from lower-case compartment labels of predictors and databases (as
+% used by DeepLoc, MULocDeep, COMPARTMENTS and UniProt) to compartment ids, for yeast and fungal
+% models (for example yeast-GEM codes). The map is passed to parseScores or getUniProtScores as
 % 'compartmentMap'.
 %
-% The table below is also the worked example of how such a map is built, so read it as three
-% deliberate decisions rather than a lookup list:
+% The map holds three decisions:
 %
-% - **Which compartments exist.** A label absent from the map is dropped along with its score
-%   column, so listing only the ids your model has is how unwanted compartments are excluded.
-%   'plastid' is absent because fungi lack one; a plant model would add it.
-% - **Which labels are the same thing.** Predictors disagree on wording, so 'cytoplasm' and
-%   'cytosol' both map to 'c', and 'mitochondrion' / 'mitochondria' / 'mitochondrial' all map
-%   to 'm'. Merged columns are combined by maximum, not sum.
-% - **Which distinct compartments to collapse.** 'lysosome' maps to 'v' not because it is a
-%   vacuole but because a yeast model has no lysosome and the vacuole is its functional
-%   equivalent. Change this if your model separates them.
+% - Compartments present. A label absent from the map is dropped along with its score column, so
+%   the map lists only the compartment ids of the model. 'plastid' is absent because fungi have
+%   no plastid; a plant model adds it.
+% - Labels that name the same compartment. Predictors differ in wording, so 'cytoplasm' and
+%   'cytosol' both map to 'c', and 'mitochondrion', 'mitochondria' and 'mitochondrial' all map
+%   to 'm'. Merged columns are combined by their maximum.
+% - Distinct compartments that are collapsed. 'lysosome' maps to 'v' because a yeast model has
+%   no lysosome and the vacuole is its functional equivalent. A model that separates the two
+%   needs a different mapping.
 %
-% Extend a copy rather than editing this function, e.g.
+% Changes to the mapping go into a copy of the map, which leaves this function unedited, for
+% example:
 %
 %     map = defaultCompartmentMap;
 %     map('cell wall') = 'ce';

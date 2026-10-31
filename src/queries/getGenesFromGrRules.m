@@ -5,25 +5,25 @@ function [genes,rxnGeneMat] = getGenesFromGrRules(grRules, varargin)
 % ----------
 % grRules : cell
 %     a cell array of model grRules, from which a list of genes is to be
-%     extracted. NOTE: Boolean operators can be text ("and", "or") or
-%     symbolic ("&", "|"), but there must be a space between operators and
-%     gene names/IDs.
+%     extracted. Boolean operators can be text ("and", "or") or symbolic
+%     ("&", "|"), with a space between operators and gene names or IDs.
 %
 % Name-Value Arguments
 % --------------------
 % originalGenes : cell
 %     the original gene list from the model. If supplied, the genes parsed
-%     from grRules must match it exactly (as a set), an error is thrown
-%     otherwise, and the returned genes list follows originalGenes' order.
+%     from grRules must match it as a set, otherwise an error is thrown, and
+%     the returned genes list follows the order of originalGenes.
 %
 % Returns
 % -------
 % genes : cell
-%     a unique list of all gene IDs that appear in grRules.
+%     a unique, sorted list of all gene IDs that appear in grRules (in the
+%     order of originalGenes when supplied).
 % rxnGeneMat : double
-%     (optional) a binary matrix indicating which genes participate in each
-%     reaction, where rows correspond to reactions (entries in grRules) and
-%     columns correspond to genes.
+%     (optional) a sparse binary matrix indicating which genes participate in
+%     each reaction, where rows correspond to reactions (entries in grRules)
+%     and columns correspond to genes. Only computed when requested.
 %
 % Examples
 % --------

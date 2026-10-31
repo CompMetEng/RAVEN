@@ -4,19 +4,18 @@ function model=importModel(varargin)
 % Name-Value Arguments
 % --------------------
 % fileName : char
-%     a SBML file to import. A dialog window will open if no file name is
+%     a SBML file to import. A dialog window opens if no file name is
 %     specified.
 % removeExcMets : logical
-%     if true, exchange metabolites are removed from the imported model
-%     (default true).
+%     true to remove exchange metabolites from the imported model (default
+%     true).
 % removePrefix : logical
-%     true if identifier prefixes should be removed when loading the model:
-%     G_ for genes, R_ for reactions, M_ for metabolites, and C_ for
-%     compartments. These are only removed if all identifiers of a certain
-%     type contain the prefix (default true).
+%     true to remove identifier prefixes when loading the model: G_ for
+%     genes, R_ for reactions, M_ for metabolites, and C_ for compartments.
+%     The prefix of a type is removed only if all identifiers of that type
+%     contain it (default true).
 % supressWarnings : logical
-%     true if warnings regarding the model structure should be supressed
-%     (default false).
+%     true to suppress warnings about the model structure (default false).
 %
 % Returns
 % -------
@@ -50,13 +49,13 @@ function model=importModel(varargin)
 %     - rxnNotes : reaction notes
 %     - rxnReferences : reaction references
 %     - rxnConfidenceScores : reaction confidence scores
-%     - rxnDeltaG : reaction Gibbs free energy, from a `deltaG` notes key
-%       (same convention exportModel writes and raven-toolbox reads/writes;
-%       omitted entirely if no reaction has one)
+%     - rxnDeltaG : reaction Gibbs free energy, from the `deltaG` notes
+%       field (the convention that exportModel writes and raven-toolbox
+%       reads and writes; omitted if no reaction has one)
 %     - genes : list of all genes
 %     - geneComps : compartments for genes
 %     - geneMiriams : structure with MIRIAM information about the genes
-%     - geneShortNames : gene alternative names (e.g. ERG10)
+%     - geneShortNames : gene alternative names (for example ERG10)
 %     - proteins : protein associated to each gene
 %     - metNames : metabolite description
 %     - metComps : compartments for metabolites
@@ -64,9 +63,9 @@ function model=importModel(varargin)
 %     - metFormulas : metabolite chemical formula
 %     - metMiriams : structure with MIRIAM information about the metabolites
 %     - metCharges : metabolite charge
-%     - metDeltaG : metabolite Gibbs free energy, from a `deltaG` notes key
-%       (same convention exportModel writes and raven-toolbox reads/writes;
-%       omitted entirely if no metabolite has one)
+%     - metDeltaG : metabolite Gibbs free energy, from the `deltaG` notes
+%       field (the convention that exportModel writes and raven-toolbox
+%       reads and writes; omitted if no metabolite has one)
 %     - unconstrained : true if the metabolite is an exchange metabolite
 %
 % Examples
@@ -75,9 +74,9 @@ function model=importModel(varargin)
 %
 % Notes
 % -----
-% A number of consistency checks are performed to ensure that the model is
-% valid. Take these warnings seriously and modify the model structure to
-% solve them.
+% checkModelStruct checks the consistency of the imported model and raises
+% warnings about problems in the model structure. supressWarnings skips this
+% check.
 
 p=parseRAVENargs(varargin, {'fileName',[]; 'removeExcMets',[]; 'removePrefix',[]; 'supressWarnings',false});
 fileName=p.fileName; removeExcMets=p.removeExcMets; removePrefix=p.removePrefix; supressWarnings=p.supressWarnings;

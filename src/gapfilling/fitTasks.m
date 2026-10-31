@@ -3,9 +3,9 @@ function [outModel, addedRxns, failedTasks]=fitTasks(model,refModel,inputFile,va
 %
 % Fills gaps in a model by including reactions from a reference model, so
 % that the resulting model can perform all the tasks in a task list. The
-% gap-filling is done in a task-by-task manner, rather than solving for
-% all tasks at once. This means that the order of the tasks could
-% influence the result.
+% tasks are gap-filled one at a time in list order, and the reactions added
+% for one task are kept for the following tasks. The order of the tasks can
+% therefore influence the result.
 %
 % Parameters
 % ----------
@@ -15,7 +15,7 @@ function [outModel, addedRxns, failedTasks]=fitTasks(model,refModel,inputFile,va
 %     reference model from which to include reactions.
 % inputFile : char, optional
 %     a task list in Excel format. See the function parseTaskList for
-%     details (optional if taskStructure is supplied).
+%     details. Optional if taskStructure is supplied.
 %
 % Name-Value Arguments
 % --------------------
@@ -23,17 +23,16 @@ function [outModel, addedRxns, failedTasks]=fitTasks(model,refModel,inputFile,va
 %     true if the results of the test should be displayed (default true).
 % rxnScores : double
 %     scores for each of the reactions in the reference model. Only
-%     negative scores are allowed. The solver will try to maximize the sum
-%     of the scores for the included reactions (default is -1 for all
-%     reactions).
+%     negative scores are allowed. The solver maximises the sum of the
+%     scores of the included reactions (default is -1 for all reactions).
 % taskStructure : struct
-%     structure with the tasks, as from parseTaskList. If supplied then
+%     structure with the tasks, as returned by parseTaskList. If supplied,
 %     inputFile is ignored.
 % params : struct
-%     solver parameters, forwarded to the gap-filling back-end and from there
-%     to optimizeProb for each per-task MILP (default []).
+%     solver parameters, passed to the gap-filling function and from there to
+%     optimizeProb for each per-task MILP (default []).
 % gapFillMode : char
-%     which gap-filling back-end to use (default 'merge'):
+%     which gap-filling function to use (default 'merge'):
 %
 %     - 'merge' : refModel holds only the candidate reactions, and fillGaps
 %       merges it with the model for every task.
@@ -41,12 +40,13 @@ function [outModel, addedRxns, failedTasks]=fitTasks(model,refModel,inputFile,va
 %       so no merge is needed per task. The task constraints are written
 %       into refModel as well, and ftINITFillGaps does the gap-filling.
 % verbose : logical
-%     if true, the MILP progression will be shown. Only read when
-%     gapFillMode is 'preMerged' (default false).
+%     true to show the MILP progression. Only read when gapFillMode is
+%     'preMerged' (default false).
 % resolveTies : logical
-%     if true, pin the gap-fill MILP's degenerate optimum to a canonical answer
-%     instead of relying on the solver Seed alone. Only read when gapFillMode is
-%     'preMerged' -- see ftINITFillGaps' resolveTies (default false).
+%     true to fix the degenerate optimum of the gap-fill MILP to a canonical
+%     answer, which otherwise depends on the solver Seed. Only read when
+%     gapFillMode is 'preMerged'. See resolveTies of ftINITFillGaps
+%     (default false).
 %
 % Returns
 % -------
@@ -60,8 +60,8 @@ function [outModel, addedRxns, failedTasks]=fitTasks(model,refModel,inputFile,va
 % failedTasks : logical
 %     Nx1, true for each task that could not be gap-filled, either because
 %     no feasible solution exists using the reference model or because the
-%     attempt threw. Such tasks add no reactions, so they are otherwise
-%     indistinguishable from tasks that already worked.
+%     attempt raised an error. Such tasks add no reactions, and the same
+%     holds for tasks that are feasible without gap-filling.
 %
 % Examples
 % --------

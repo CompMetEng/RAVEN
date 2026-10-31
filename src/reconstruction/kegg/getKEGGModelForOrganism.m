@@ -3,84 +3,83 @@ function model=getKEGGModelForOrganism(organismID,varargin)
 %
 % Reconstructs a genome-scale metabolic model based on protein homology to
 % the orthologies in KEGG. If the target species is not available in KEGG,
-% the user must select a closely related species. It is also possible to
-% circumvent protein homology search (see fastaFile parameter for more
-% details).
+% the function stops with an error; give a closely related species as
+% organismID. Without a fastaFile, the
+% protein homology search is skipped (see the fastaFile parameter).
 %
 % Parameters
 % ----------
 % organismID : char
 %     three or four letter abbreviation of the organism (as used in KEGG).
-%     If not available, use a closely related species. This is used for
-%     determing the phylogenetic distance. Use "eukaryotes" or "prokaryotes"
-%     to get a model for the whole domain. Only applicable if fastaFile is
-%     empty, i.e. no homology search should be performed.
+%     If the organism is not available, a closely related species can be
+%     given. The abbreviation determines the genes that are kept when
+%     fastaFile is empty. "eukaryotes" or "prokaryotes" gives a model for
+%     the whole domain. Only applicable if fastaFile is empty, that is when
+%     no homology search is performed.
 %
 % Name-Value Arguments
 % --------------------
 % fastaFile : char
 %     a FASTA file that contains the protein sequences of the organism for
 %     which to reconstruct a model. If no FASTA file is supplied then a
-%     model is reconstructed based only on the organism abbreviation. This
-%     option ignores all settings except for keepSpontaneous,
-%     keepUndefinedStoich, keepIncomplete and keepGeneral.
+%     model is reconstructed based only on the organism abbreviation. In this
+%     case, cutOff, minScoreRatioKO, minScoreRatioG and dataDir are not
+%     used (default []).
 % dataDir : char
-%     directory for which to retrieve the input data, styled as
-%     kegg118_prokaryotes or kegg118_eukaryotes, indicating the KEGG version
-%     and whether the HMMs were trained on pro- or eukaryotic sequences. The
-%     directory name matches the published HMM library it is paired with. The
-%     prebuilt concatenated KO HMM library (dataDir.hmm) is downloaded here
-%     from the corresponding toolbox-assets release if not already present. This
-%     parameter should ALWAYS be provided.
+%     directory of the HMM library, named kegg118_prokaryotes or
+%     kegg118_eukaryotes. The name gives the KEGG version and whether the
+%     HMMs were trained on pro- or eukaryotic sequences, and matches the
+%     published HMM library it is paired with. The prebuilt concatenated KO
+%     HMM library (dataDir.hmm) is downloaded from the corresponding
+%     toolbox-assets release if it is not already present. Required when
+%     fastaFile is supplied (default []).
 % outDir : char
-%     directory to save the results from the quering of the hidden Markov
-%     models. The output is specific for the input sequences and the
-%     settings used. It is stored in this manner so that the function can
-%     continue if interrupted or if it should run in parallel. Be careful
-%     not to leave output files from different organisms or runs with
-%     different settings in the same folder. They will not be overwritten
-%     (default is a temporary dir where all *.out files are deleted before
-%     and after doing the reconstruction).
+%     directory that is created if it does not exist when fastaFile is
+%     supplied. The function writes no result files to it (default is the
+%     temporary directory, where all *.out files are deleted before the
+%     reconstruction).
 % keepSpontaneous : logical
-%     include reactions labeled as "spontaneous" (default true).
+%     include reactions labelled as "spontaneous" (default true).
 % keepUndefinedStoich : logical
-%     include reactions in the form n A <=> n+1 A. These will be dealt with
-%     as two separate metabolites (default true).
+%     include reactions in the form n A <=> n+1 A. These are treated as
+%     two separate metabolites (default true).
 % keepIncomplete : logical
 %     include reactions which have been labelled as "incomplete",
 %     "erroneous" or "unclear" (default true).
 % keepGeneral : logical
 %     include reactions which have been labelled as "general reaction".
-%     These are reactions on the form "an aldehyde <=> an alcohol", and are
-%     therefore unsuited for modelling purposes. Note that not all reactions
-%     have this type of annotation, and the script will therefore not be
-%     able to remove all such reactions (default false).
+%     These are reactions of the form "an aldehyde <=> an alcohol". Not all
+%     such reactions have this label, so the function cannot remove all of
+%     them (default false).
 % cutOff : double
-%     significance score from HMMer needed to assign genes to a KO (default
-%     10^-30).
+%     maximum full-sequence E-value from HMMER for assigning a gene to a KO
+%     (default 10^-30).
 % minScoreRatioKO : double
-%     ignore genes in a KO if their score is <log(score)/log(best score in
-%     KO). This is to "prune" KOs which have many genes and where some are
-%     clearly a better fit (default 0.3, lower is less strict).
+%     a gene is removed from a KO if log(score)/log(best score in KO) is
+%     below this value, where score is the E-value of the gene. This
+%     removes genes from KOs with many genes where some have a lower
+%     E-value (default 0.3, lower is less strict).
 % minScoreRatioG : double
-%     a gene is only assigned to KOs for which the score is
-%     >=log(score)/log(best score) for that gene. This is to prevent that a
-%     gene which clearly belongs to one KO is assigned also to KOs with much
-%     lower scores (default 0.9, lower is less strict).
+%     a gene is only assigned to KOs for which log(score)/log(best score)
+%     is at least this value, where best score is the lowest E-value of
+%     that gene over its KOs after the minScoreRatioKO step. This removes the
+%     assignment of a gene to KOs with a much higher E-value than its best KO
+%     (default 0.9, lower is less strict).
 % maxPhylDist : double
-%     -1 to only use sequences from the same domain (Prokaryota, Eukaryota);
-%     any other (positive) value to only use sequences for organisms where
-%     the phylogenetic distance is at the most this large (as calculated in
-%     getPhylDist). Only used when reconstructing from KEGG annotations (no
-%     fastaFile) (default Inf, which means that all sequences will be used).
+%     only used when fastaFile is empty and organismID is "eukaryotes" or
+%     "prokaryotes". -1 keeps genes from organisms in the same domain
+%     (Prokaryota, Eukaryota) as H. sapiens ("hsa") or E. coli ("eco"),
+%     respectively. Any other value, including Inf, does not restrict the
+%     domain, and the value is not compared with the distances calculated
+%     in getPhylDist (default Inf).
 % globalModel : struct
 %     structure containing both model and KOModel structures as generated
-%     by getModelFromKEGG. These will otherwise be loaded by via
-%     getModelFromKEGG. Providing globalKEGGmodel can speed up model
-%     generation if getKEGGModelForOrganism is run multiple times for
+%     by getModelFromKEGG. When empty, the global model is loaded with
+%     getModelFromKEGG. Providing globalModel avoids reloading it when
+%     getKEGGModelForOrganism is run several times, for example for
 %     different strains. Example:
 %     [globalModel.model,globalModel.KOModel] = getModelFromKEGG (default
-%     empty, global model is loaded by getModelFromKEGG).
+%     []).
 %
 % Returns
 % -------
@@ -93,19 +92,18 @@ function model=getKEGGModelForOrganism(organismID,varargin)
 %
 %   1. From KEGG annotations (no fastaFile supplied). The reactions
 %      associated with organismID in the local KEGG database are kept;
-%      maxPhylDist controls which organism annotations are considered.
+%      maxPhylDist applies to organismID "eukaryotes" and "prokaryotes".
 %   2. From protein homology (fastaFile supplied). The query proteome is
 %      searched, in a single hmmsearch, against a prebuilt KEGG-version- and
-%      domain-specific concatenated KO HMM library (e.g. kegg118_eukaryotes),
-%      downloaded from the corresponding RAVEN release if not already present
-%      in dataDir. Hits are filtered by cutOff and the minScoreRatioKO /
-%      minScoreRatioG ratios into a KO-gene matrix, from which the model is
-%      built (spontaneous reactions without genes are kept if keepSpontaneous
-%      is true).
+%      domain-specific concatenated KO HMM library (for example
+%      kegg118_eukaryotes), downloaded from the corresponding toolbox-assets
+%      release if not already present in dataDir. Hits are filtered by cutOff,
+%      minScoreRatioKO and minScoreRatioG into a KO-gene matrix, from which the
+%      model is built (spontaneous reactions without genes are kept if
+%      keepSpontaneous is true).
 %
 % The global KEGG model (reaction-KO relationships) is either supplied via
-% globalModel, built from a local KEGG FTP dump in dataDir\keggdb (which
-% requires a KEGG FTP license), or loaded from the internal RAVEN version.
+% globalModel or loaded with getModelFromKEGG.
 %
 % Examples
 % --------

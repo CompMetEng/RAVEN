@@ -1,8 +1,8 @@
 function newRxnScores = groupRxnScores(model, origRxnScores, origRxnIds, groupIds, origRxnsToZero)
 % groupRxnScores
-% This function sums up the reaction scores for all reactions that were merged 
-% into one by the linear merge.
-% 
+% Sums the reaction scores of all reactions that were merged into one by the
+% linear merge.
+%
 % model          The model with linearly merged rxns.
 % origRxnScores  The rxnScores from the model before the linear merge.
 % origRxnIds     The rxn ids of the model before the linear merge.
@@ -11,10 +11,11 @@ function newRxnScores = groupRxnScores(model, origRxnScores, origRxnIds, groupId
 %                the reaction was not merged with any other reaction. A
 %                non-zero integer means the reaction was merged with all
 %                other rxns sharing the same integer.
-% origRxnsToZero A logical vector saying which of the original rxns that should not
+% origRxnsToZero A logical vector saying which of the original rxns should not
 %                be part of the problem; the score for these reactions is set to 0.
-%                To keep 0 uniquely meaning "excluded", any genuine rxnScore that is
-%                (or sums to) exactly 0 is nudged to 0.01 instead.
+%                Since 0 means "excluded", an original score of 0 and a group
+%                score that sums to 0 while at least one score of the group
+%                is not 0 are set to 0.01.
 
 
 newRxnScores = zeros(length(model.rxns),1);

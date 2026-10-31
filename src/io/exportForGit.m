@@ -2,13 +2,13 @@ function out=exportForGit(model,varargin)
 % exportForGit  Export a model for a Git-maintained model repository.
 %
 % Generates a directory structure and populates it with model files, ready
-% to be committed to a Git(Hub) maintained model repository. Writes the
-% model as SBML L3V1 FBCv2 (both XML and YAML), COBRA text, Matlab MAT-file
-% and Microsoft Excel formats.
+% to be committed to a Git or GitHub repository of a model. Writes the
+% model as SBML L3V1 FBCv2 (XML) and YAML, COBRA text, MATLAB MAT-file and
+% Microsoft Excel formats.
 %
 % The flags mainBranchFlag, subDirs, COBRAtext and neverPrefixIDs accept a
-% scalar logical or 0/1, or an empty value for the default. Text and other
-% types raise RAVEN:badInput.
+% scalar logical, the value 0 or 1, or an empty value for the default. Text
+% and other types raise RAVEN:badInput.
 %
 % Parameters
 % ----------
@@ -28,21 +28,20 @@ function out=exportForGit(model,varargin)
 %     should be exported (default all formats as {'mat', 'txt', 'xlsx',
 %     'xml', 'yml'}).
 % mainBranchFlag : logical
-%     if true, function will error if RAVEN (and GECKO for enzyme-
-%     constrained models) is/are not on the main branch (default false).
+%     true to raise an error if RAVEN (and GECKO for enzyme-constrained
+%     models) is not on the main or master branch (default false).
 % subDirs : logical
-%     whether model files for each file format should be written in their
-%     own subdirectory, with 'model' as parent directory, in accordance to
-%     the standard-GEM repository format. If false, all files are stored in
-%     the same folder (default true).
+%     true to write the model files of each file format in their own
+%     subdirectory, with 'model' as parent directory, following the
+%     standard-GEM repository format. If false, all files are stored in the
+%     same folder (default true).
 % COBRAtext : logical
-%     whether the txt file should be in COBRA Toolbox format using
-%     metabolite IDs, instead of metabolite names and compartments
-%     (default false).
+%     true to write the txt file in COBRA Toolbox format, which uses
+%     metabolite IDs. If false, the file uses metabolite names and
+%     compartments (default false).
 % neverPrefixIDs : logical
 %     true if prefixes are never added to identifiers, even if they start
-%     with e.g. digits. This might result in invalid SBML files (default
-%     false).
+%     with digits. This can result in invalid SBML files (default false).
 %
 % Examples
 % --------

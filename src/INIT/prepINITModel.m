@@ -1,16 +1,15 @@
 function prepData = prepINITModel(origRefModel, taskStruct, varargin)
 % prepINITModel  Precompute omics-independent data for ftINIT.
 %
-% Runs time-consuming calculation steps that are not dependent on the RNA-Seq
-% data.
+% Runs the calculation steps that do not depend on the omics data, once per
+% template model.
 %
 % Parameters
 % ----------
 % origRefModel : struct
-%     the model to use. Expected to be something such as Human-GEM, Mouse-GEM,
-%     etc.
+%     the template model, such as Human-GEM or Mouse-GEM.
 % taskStruct : struct
-%     the essential tasks. Can be loaded with for example
+%     the essential tasks, for example loaded with
 %     taskStruct = parseTaskList('../data/metabolicTasks_Essential.txt').
 %     The task ids must be character vectors: a non-text id or a missing id
 %     field raises RAVEN:badInput. Ids may repeat (for example as category
@@ -23,31 +22,34 @@ function prepData = prepINITModel(origRefModel, taskStruct, varargin)
 %     the spontaneous rxns (default {}).
 % convertGenes : logical
 %     if true the genes are converted to gene names (from ENSEMBL). This
-%     relies on translateGrRules, which is distributed with Human-GEM rather
-%     than with RAVEN, so Human-GEM has to be on the MATLAB path (default
-%     false).
+%     uses translateGrRules, which is distributed with Human-GEM and not with
+%     RAVEN, so Human-GEM must be on the MATLAB path (default false).
 % customRxnsToIgnore : cell
-%     these reactions can be ignored in the ignore mask (specifying b7=1)
-%     (default {}).
+%     reactions that are left outside the MILP when bit b7 of the
+%     RxnsToIgnoreMask of INITStepDesc is 1 (default {}).
 % extComp : char
-%     name of the external compartment, typically 's' or 'e'. This is used for
-%     identifying exch and import rxns (default 'e').
+%     name of the external compartment, such as 's' or 'e'. This is used for
+%     identifying exchange and import reactions (default 'e').
 % skipScaling : logical
-%     if true the scaling step is not run on the minimal model. The scaling is
-%     there to remove large differences between the stoichiometric coefficients
-%     within a reaction, since such differences creates numerical issues in the
-%     ftINIT algorithm due to limitations in solver resolution. However, the
-%     current scaling step is also risky and may lead to that some reactions
-%     cannot carry flux, since it changes the stoichiometry of the reactions
-%     with large differences. If you experience problems where the solution is
-%     infeasible, it may be worth trying to turn off the scaling. Note that it
-%     is only the minModel that is scaled, the scaling will not be present in
-%     the final model (default false).
+%     if true the scaling step is not run on the minimal model. The scaling
+%     removes large differences between the stoichiometric coefficients
+%     within a reaction (see rescaleModelForINIT), since such differences
+%     create numerical issues in the ftINIT algorithm due to limitations in
+%     solver resolution. The scaling changes the stoichiometry of the
+%     reactions with large differences, and some reactions can become unable
+%     to carry flux, which can make the solution infeasible. If the solution
+%     is infeasible, turning the scaling off may help; the bounds then stay as in
+%     the template and the MILP caps the per-reaction big-M at 1000 (bigMCap
+%     in ftINITInternalAlg). In raven-toolbox's ftinit on Human-GEM (one cell
+%     line, big_m 1000) the pipeline without scaling was feasible but took
+%     157 s against 83 s with scaling. The bounds of the scaled model are set to 1000 where the upper bound is above 0 and
+%     to -1000 where the lower bound is below 0; zero bounds stay 0. Only the
+%     minModel is scaled; the scaling is not present in the final model
+%     (default false).
 % runParallel : logical
-%     true to run the task-essentiality check in Step 3 (checkTasks) across
-%     parallel workers, since each task is independent of the others (see
-%     parallelWorkersRAVEN). Default false, matching the previous (serial)
-%     behaviour.
+%     true to run the task-essentiality check (checkTasks) across parallel
+%     workers, since each task is independent of the others (see
+%     parallelWorkersRAVEN) (default false, serial).
 %
 % Returns
 % -------

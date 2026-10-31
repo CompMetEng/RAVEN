@@ -1,131 +1,146 @@
 ﻿function [model, metProduction, addedRxnsForTasks, deletedRxnsInINIT, fullMipRes] = ftINIT(prepData, tissue, celltype, hpaData, varargin)
 % ftINIT  Generate a model using the ftINIT algorithm.
 %
-% Main function for generating a model using the ftINIT algorithm, based on
-% proteomics and/or transcriptomics and/or metabolomics and/or metabolic tasks.
-% The algorithm is not designed for running with metabolomics only. The
-% function prepINITModel needs to be run first for the template model (such as
-% the generic Human-GEM), but only needs to be run once. This function
-% precalculates things independent of the omics to speed up the model
-% generation process, and outputs the prepData, which is input to this
+% Generates a model from proteomics, transcriptomics, metabolomics and
+% metabolic tasks, in any combination except metabolomics alone. The function
+% prepINITModel must be run first on the template model (such as the generic
+% Human-GEM). It runs once per template and precalculates the parts that are
+% independent of the omics data. Its output, prepData, is the input to this
 % function.
 %
 % Parameters
 % ----------
 % prepData : struct
-%     the prepData for the model.
+%     the prepData for the model, as returned by prepINITModel.
 % tissue : char
-%     tissue to score for. Should exist in either hpaData.tissues or
+%     tissue to score for. Must exist in hpaData.tissues or
 %     transcrData.tissues.
 % celltype : char
-%     cell type to score for. Should exist in either hpaData.celltypes or
-%     transcrData.celltypes for this tissue (default is to use the max values
-%     among all the cell types for the tissue).
+%     cell type to score for. Must exist in hpaData.celltypes or
+%     transcrData.celltypes for this tissue. If empty, the maximum value
+%     among all the cell types of the tissue is used.
 % hpaData : struct
-%     HPA data structure from parseHPA (optional if transcrData is supplied,
-%     default []).
+%     HPA data structure from parseHPA (required if transcrData is not
+%     supplied, default []).
 %
 % Name-Value Arguments
 % --------------------
 % transcrData : struct
-%     gene expression data structure (optional if hpaData is supplied, default
-%     []). With fields:
+%     gene expression data structure (required if hpaData is not supplied,
+%     default []). With fields:
 %
 %     - genes : cell array with the unique gene names.
-%     - tissues : cell array with the tissue names. The list may not be unique,
-%       as there can be multiple cell types per tissue.
+%     - tissues : cell array with the tissue names. The list can contain
+%       duplicates, as there can be multiple cell types per tissue.
 %     - celltypes : cell array with the cell type names for each tissue.
 %     - levels : GENESxTISSUES array with the expression level for each gene in
-%       each tissue/celltype. NaN should be used when no measurement was
-%       performed.
+%       each tissue and cell type. NaN marks a gene that was not measured.
 %     - threshold : a single value or a vector of gene expression thresholds,
-%       above which genes are considered to be "expressed". (default 1; by
-%       default, the mean expression levels of each gene across all tissues in
-%       transcrData will be used as the threshold values).
-%     - singleCells : binary value selecting whether to use the single-cell
-%       algorithm to identify expressed genes. If used, specify cell
-%       subpopulations in CELLTYPES (default []).
-%     - plotResults : true if single cell probability distributions should be
-%       plotted (default false).
+%       above which genes are considered to be "expressed". If omitted, the
+%       mean expression level of each gene across all tissues in transcrData
+%       is used as the threshold.
 % metabolomicsData : cell
 %     cell array with metabolite names that the model should produce (default
 %     []).
 % INITSteps : cell
 %     specifies the steps in the algorithm. For more info, see INITStepDesc and
-%     getINITSteps (default getINITSteps(), which is the standard ftINIT).
+%     getINITSteps (default getINITSteps([],'1+1'), the standard ftINIT).
 % removeGenes : logical
-%     if true, low-abundance genes will be removed from grRules, unless they
+%     if true, low-score genes are removed from grRules, unless they
 %     are the only gene associated with a reaction, or a subunit of an enzyme
 %     complex (see "removeLowScoreGenes" function for details). If false,
-%     grRules will not be modified; however, genes that were associated only
-%     with removed reactions will not be present in the final model (default
-%     true).
+%     grRules are not modified; genes that were associated only with removed
+%     reactions are not present in the final model (default true).
 % useScoresForTasks : logical
-%     true if the calculated reaction scores should be used as weights when
-%     fitting to tasks (default true).
+%     true if the calculated reaction scores are used as weights when
+%     fitting to tasks. Scores above -0.1 are set to -0.1 for this step
+%     (default true).
 % paramsFT : struct
-%     *obsolete option*.
+%     solver parameters for the gap-filling step that fits the tasks, passed
+%     to fitTasks as params (default []).
 % verbose : logical
-%     if true, the MILP progression will be shown (default false).
+%     if true, the MILP progression is shown (default false).
 % resolveTies : logical
-%     if true, pin each step's degenerate MILP to a canonical answer instead
-%     of relying on the solver Seed alone: hold the score objective at its
-%     optimum, then minimise the count of removable ("on") reactions, then,
-%     among the sparsest, minimise their summed reaction-id rank. This
-%     applies to every main-extraction step and to the final gap-filling
-%     step (fitTasks' resolveTies) -- see raven-gecko-parity#104 and
-%     raven-toolbox's resolve_ties. In each main-extraction step but the
-%     last (ftINITInternalAlg) the fluxes, which set the direction and
-%     magnitude a reaction is forced at in the next step, then come from the
-%     least-total-flux solution for that on/off state and, among those, from
-%     the one with the least id-rank-weighted backward flux (a merged
-%     reaction ranked by the smallest original id in its group). The last
-%     step skips these flux phases, as no step reads its fluxes. A step
-%     whose primary solve stops at the time limit keeps its primary
-%     solution without any of these phases; the count and id-rank phases
-%     get half of the step's TimeLimit each, and a warning
-%     names each phase that does not prove optimal or finds no solution
-%     (default false).
+%     if true, the degenerate MILP of each step is solved to a canonical
+%     answer in addition to the solver Seed: the score objective is held at
+%     its optimum, then the count of removable ("on") reactions is
+%     minimised, then, among the sparsest solutions, their summed
+%     reaction-id rank is minimised. This applies to every main-extraction
+%     step and to the final gap-filling step (resolveTies of fitTasks); see
+%     raven-gecko-parity#104 and resolve_ties in raven-toolbox. In each
+%     main-extraction step except the last (ftINITInternalAlg), the fluxes
+%     set the direction and magnitude at which a reaction is forced in the
+%     next step. They are taken from the least-total-flux solution for that
+%     on/off state and, among those, from the solution with the least
+%     id-rank-weighted backward flux (a merged reaction is ranked by the
+%     smallest original id in its group). The last step skips these flux
+%     phases, as no later step reads its fluxes. A step whose primary solve
+%     stops at the time limit keeps its primary solution without any of
+%     these phases. The count and id-rank phases get half of the step's
+%     TimeLimit each. A warning names each phase that does not prove optimal
+%     or finds no solution. Measured with raven-toolbox's ftinit, whose phase
+%     handling differs from ftINIT, on one cell line (Human-GEM v2.0.0-38,
+%     seeds 1234 and 7, time limit 1800 s): two seeds with the default
+%     escalation differ by 110 reactions and 17 predicted essential genes,
+%     and with resolveTies alone by 41 reactions and 1 gene, at about 3.6
+%     times the run time (about 14 min against 4 min) (default false).
 % proveAbsGap : double
-%     if set, prove each step to this fixed *absolute* MILP gap in a single
-%     solve, instead of the relative-gap escalation below (stp.MILPParams).
-%     The escalation's final near-zero-objective run otherwise accepts an
-%     arbitrary within-gap incumbent -- measured on genome-scale Human-GEM to
-%     return a solution 2.0-4.0 objective units below the true optimum (see
-%     raven-toolbox's prove_abs_gap and the ftINIT reproducibility study on
-%     raven-docs). 1.0 is the recommended value: tighter (down to 0.05)
-%     proves nothing further and costs substantially more runtime. Pairs
-%     naturally with resolveTies (default [], i.e. use the escalation).
+%     if set, each step is proven to this fixed absolute MILP gap in a single
+%     solve, replacing the relative-gap escalation in stp.MILPParams. The
+%     final near-zero-objective run of the escalation accepts an arbitrary
+%     incumbent within the gap. A warning is raised when a step reaches the
+%     time limit before the proof. The figures below were measured with
+%     raven-toolbox's ftinit, whose phase handling differs from ftINIT, on one
+%     cell line (Human-GEM v2.0.0-38, time limit 1800 s) with resolveTies on
+%     and without gap-filling, in a sweep over four seeds (1234, 7, 1 and 2).
+%     The step 1 objective of the escalation ended 4.0 to 12.0 units below the
+%     proven optimum; with seeds 1234 and 7 alone it ended 7.0 and 12.0
+%     below. A value of 5.0 stopped 2.0 below the optimum for one seed (seed
+%     2), and values from 2.0 to 0.05 reached it for all four seeds and gave
+%     the same models. Every primary solve of the steps (48 solves) ended
+%     optimal; the flux phases phase2c-minflux (3 of 4 seeds) and
+%     phase2d-direction (4 of 4 seeds) reached the time limit and were adopted
+%     as unproven incumbents. With 1.0 and resolveTies the models of two seeds
+%     differ by 1 reaction and 0 predicted essential genes, at about 26 times
+%     the run time of the default escalation (about 100 min against 4 min);
+%     the mean of a whole build was 5766 s at 0.05 and 5641 s at 1.0. The
+%     study recommends 1.0 together with resolveTies when the variation of
+%     resolveTies alone is too large and the run time is acceptable. Its
+%     full-pipeline runs used a time limit of 600 s per step and its
+%     determinism builds 1800 s (default [], which uses the escalation).
 %
 % Returns
 % -------
 % model : struct
 %     the resulting model structure.
-% metProduction : double
-%     array that indicates which of the metabolites in metabolomicsData that
-%     could be produced. Note that this is before the gap-filling process to
-%     enable defined tasks. To see which metabolites that can be produced in
-%     the final model, use canExchange:
-%
-%     - -2 : metabolite name not found in model.
-%     - -1 : metabolite found, but it could not be produced.
-%     - 1 : metabolite could be produced.
+% metProduction : logical
+%     array from the last MILP step that indicates which of the metabolites in
+%     metabolomicsData could be produced (true) or not (false). Metabolites
+%     with a producing reaction that is essential are not part of the MILP
+%     and are not in the array. The array is determined before the
+%     gap-filling for the defined tasks. To see which metabolites can be
+%     produced in the final model, use canExchange.
 % addedRxnsForTasks : cell
 %     cell array of the reactions which were added in order to perform the
 %     tasks.
 % deletedRxnsInINIT : cell
-%     cell array of reactions deleted because they could not carry flux (INIT
-%     requires a functional input model).
+%     cell array of the reactions of the template model that are not in the
+%     final model, excluding exchange reactions (these are all kept). It
+%     contains the reactions removed by the MILP steps that gap-filling did
+%     not add back.
 % fullMipRes : struct
 %     the solver results from the last MILP step run.
 %
 % Notes
 % -----
-% Exchange metabolites should normally not be removed from the model when using
-% this approach, since checkTasks/fitTasks rely on putting specific constraints
-% for each task. The INIT algorithm will remove exchange metabolites if any are
+% The template model keeps its exchange metabolites,
+% since checkTasks and fitTasks put specific constraints on them for each
+% task. The INIT algorithm removes exchange metabolites if any are
 % present. Use importModel(file,false) to import a model with exchange
 % metabolites remaining.
+%
+% ftINIT passes a prodWeight of 5 (the reward for each produced metabolite of
+% metabolomicsData) to ftINITInternalAlg, whose own default is 0.5.
 %
 
 p=parseRAVENargs(varargin, {'transcrData',[]; 'metabolomicsData',[]; 'INITSteps',[]; 'removeGenes',[]; 'useScoresForTasks',[]; 'paramsFT',[]; 'verbose',false; 'resolveTies',false; 'proveAbsGap',[]});

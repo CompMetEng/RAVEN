@@ -9,28 +9,29 @@ function [model, deletedRxns, duplicateRxns]=mergeCompartments(model,varargin)
 % Name-Value Arguments
 % --------------------
 % keepUnconstrained : logical
-%     keep metabolites that are unconstrained in a "unconstrained"
-%     compartment. If these are merged the exchange reactions will most often
-%     be deleted (default false).
+%     true to keep the unconstrained metabolites in a separate compartment "b"
+%     (name "Unconstrained"). If they are merged, an exchange reaction between an
+%     unconstrained metabolite and a metabolite of the same name has no net
+%     stoichiometry after merging and is deleted (default false).
 % deleteRxnsWithOneMet : logical
-%     delete reactions with only one metabolite. These reactions come from
-%     reactions such as A[c] + B[c] => A[m]. In some models hydrogen is
-%     balanced around each membrane with reactions like this (default
-%     false).
+%     true to delete reactions that have one metabolite after merging and had more
+%     before. Such reactions arise from reactions such as A[c] + B[c] => A[m]. Some
+%     models balance hydrogen around each membrane with reactions like this
+%     (default false).
 % distReverse : logical
-%     distinguish reactions with same metabolites but different reversibility
-%     as different reactions (default true).
+%     true to treat reactions with the same metabolites but different reversibility as
+%     different reactions (default true).
 %
 % Returns
 % -------
 % model : struct
-%     a model with all reactions located to one compartment.
+%     a model with all reactions in one compartment.
 % deletedRxns : cell
-%     reactions that were deleted because of only having one metabolite
-%     after merging.
+%     the ids of the reactions deleted because they have one metabolite after merging.
 % duplicateRxns : cell
-%     identical reactions that occurred in different compartments and were
-%     deleted because they turned to be duplicated after merging.
+%     one entry per reaction of the returned model: '' when no duplicate was merged
+%     into it, otherwise the ids of the identical reactions from different
+%     compartments that were removed into it, joined by ";".
 %
 % Examples
 % --------
@@ -38,17 +39,16 @@ function [model, deletedRxns, duplicateRxns]=mergeCompartments(model,varargin)
 %
 % Notes
 % -----
-% Merges all compartments into one "s" compartment (for "System"). This can
-% be useful for example to ensure that there are metabolic capabilities to
-% synthesize all metabolites.
+% Merges all compartments into one compartment "s" (name "System"). The merged model
+% can be used to test whether the network can synthesise all metabolites.
 %
 % Metabolites with the same name are merged into one. The merged metabolite
 % keeps the id and the other fields of one of the copies: the copy that is
 % already in compartment "s" if there is one, otherwise the copy whose id
 % comes first in character code order (for example ACCOA_c before ACCOA_m).
 % With keepUnconstrained only the copies that are not unconstrained are
-% candidates. If the metabolite IDs reflect the compartment that they are in
-% the IDs may no longer be representative.
+% candidates. If the metabolite ids contain the compartment, the ids of merged
+% metabolites can name a compartment that no longer exists.
 
 p=parseRAVENargs(varargin, {'keepUnconstrained',false; 'deleteRxnsWithOneMet',false; 'distReverse',true});
 keepUnconstrained=p.keepUnconstrained;

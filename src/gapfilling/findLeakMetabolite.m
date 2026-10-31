@@ -2,10 +2,10 @@ function [solution, metabolite]=findLeakMetabolite(model, direction, varargin)
 % findLeakMetabolite  Find a metabolite that can be freely made or consumed.
 %
 % Tests whether the model can produce (excrete) or consume (take up) any
-% metabolite without balanced stoichiometric constraints — a sign that the
-% model contains a stoichiometric leak, futile cycle, or unconstrained
-% exchange. This is the unified replacement for makeSomething ('produce')
-% and consumeSomething ('consume').
+% metabolite without balanced stoichiometric constraints. A positive result
+% indicates that the model contains a stoichiometric leak, a futile cycle or
+% an unconstrained exchange. The direction 'produce' corresponds to the
+% deprecated function makeSomething and 'consume' to consumeSomething.
 %
 % Parameters
 % ----------
@@ -22,33 +22,33 @@ function [solution, metabolite]=findLeakMetabolite(model, direction, varargin)
 %     number of elements as metabolites in the model, or a vector of indexes
 %     for metabolites to exclude from this analysis (default []).
 % isNames : logical
-%     true if the supplied mets represent metabolite names (as opposed to
-%     IDs). This is a way to delete metabolites in several compartments at
-%     once without knowing the exact IDs. This only works if ignoreMets is a
+%     true if the supplied mets are metabolite names and false if they are
+%     IDs. Names exclude the metabolites of all compartments that carry the
+%     name, so the exact IDs are not needed. Only works if ignoreMets is a
 %     cell array (default false).
 % minNrFluxes : logical
-%     solves the MILP problem of minimizing the number of fluxes instead of
-%     the sum. Slower, but can be used if the sum gives too many fluxes
-%     (default false).
+%     true to solve the MILP problem of minimising the number of fluxes. If
+%     false, the sum of fluxes is minimised. The MILP is slower and applies
+%     when the sum gives too many fluxes (default false).
 % allowExcretion : logical
-%     allow for excretion of all metabolites. Only used when direction is
+%     true to allow excretion of all metabolites. Only used when direction is
 %     'produce' (default true).
 % params : struct
-%     *obsolete option*.
+%     solver parameters, passed to solveLP when minNrFluxes is true (default
+%     a structure with relGap 0.8).
 % ignoreIntBounds : logical
-%     true if internal bounds (including reversibility) should be ignored.
-%     Exchange reactions are not affected. This can be used to find
-%     unbalanced solutions which are not possible using the default
-%     constraints (default false).
+%     true to ignore internal bounds (including reversibility). Exchange
+%     reactions are not affected. Finds unbalanced solutions that the
+%     default constraints do not allow (default false).
 %
 % Returns
 % -------
 % solution : double
 %     flux vector for the solution.
 % metabolite : double
-%     the index of the metabolite(s) which was produced or consumed. If
-%     possible only one metabolite is reported, but there are situations
-%     where metabolites can only be exchanged in pairs (or more).
+%     the index of the metabolite(s) produced or consumed. A single
+%     metabolite is reported when one suffices; some metabolites can only be
+%     exchanged in pairs or larger groups.
 %
 % Examples
 % --------
@@ -57,12 +57,12 @@ function [solution, metabolite]=findLeakMetabolite(model, direction, varargin)
 %
 % Notes
 % -----
-% Works by forcing at least 1 unit of "any metabolite" to be produced or
-% consumed, then minimising for the sum of fluxes. If more than one
-% metabolite is produced/consumed, it tries to find a single metabolite
-% that satisfies the constraint on its own.
+% The function forces a flux of at least 1 through a pooled exchange of all
+% metabolites, then minimises the sum of fluxes. If more than one metabolite
+% is produced or consumed, it searches for a single metabolite that
+% satisfies the constraint on its own.
 %
-% See Also
+% See also
 % --------
 % canExchange
 

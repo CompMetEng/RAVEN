@@ -1,28 +1,39 @@
 function model = applyCondition(model, condition)
 % applyCondition  Apply a deterministic condition to a model.
 %
-% Apply a deterministic "condition" to a model: a prelude that resets
-% exchange bounds, optional metabolite removals + automatic charge
-% rebalancing of a pseudoreaction, optional biomass-stoichiometry delta,
-% and a per-reaction bounds diff. The schema is intentionally narrow so a
-% condition can be reviewed as data.
+% The steps of a condition are applied in this order: a prelude that resets
+% exchange bounds, metabolite removals from a pseudoreaction with automatic
+% charge rebalancing, a change of biomass stoichiometry, and per-reaction
+% bound changes. A final check compares the number of uptake bounds with an
+% expected count. The schema covers only these steps, so a condition can be
+% reviewed as data.
 %
-% The same schema works for any GEM that keeps its condition presets as
-% data rather than as code. Project-specific extensions (e.g. yeast-GEM's amino_acid_ratio step that
-% rewrites a protein pseudoreaction's stoichiometry from a side-car TSV)
-% are handled by the caller before / after this function — kept
-% upstream-narrow on purpose.
+% The schema applies to any GEM whose condition presets are kept as data.
+% Project-specific extensions, for example yeast-GEM's amino_acid_ratio
+% step that rewrites the stoichiometry of a protein pseudoreaction from a
+% separate TSV file, are applied by the caller before or after this
+% function.
 %
 % Parameters
 % ----------
 % model : struct
 %     RAVEN model struct.
 % condition : char or struct
-%     Either a path to a YAML condition file or a struct already produced
-%     by parseYAML. The expected schema (all keys optional):
+%     Path to a YAML condition file, or a struct as produced by parseYAML.
+%     The schema is as follows (all keys optional). reset_exchanges is
+%     passed as the reaction type to getExchangeRxns; the lower bound of
+%     the matching reactions is set to 0 and the upper bound to 1000.
+%     charge_balance_met receives the coefficient that makes the charge of
+%     rxn_id zero, which requires the metCharges field; a participant of
+%     rxn_id other than charge_balance_met with a NaN charge raises
+%     applyCondition:unknownCharge. add entries are
+%     added to the existing coefficients. A bounds entry whose rxn is not
+%     in the model is skipped with a warning. expected_uptake_count is
+%     compared with the number of bounds entries with lb of -1000, and a
+%     warning is issued when they differ.
 %
 %         prelude:
-%           reset_exchanges: out      % truthy -> reset all
+%           reset_exchanges: out
 %
 %         cofactor_pseudoreaction:
 %           rxn_id: r_4598
@@ -47,7 +58,7 @@ function model = applyCondition(model, condition)
 % Returns
 % -------
 % model : struct
-%     Modified model.
+%     Model with the condition applied.
 %
 % Examples
 % --------

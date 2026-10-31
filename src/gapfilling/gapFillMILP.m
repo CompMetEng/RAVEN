@@ -5,14 +5,15 @@ function [addedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, va
 % the model's objective (biomass) >= minGrowth, following the database
 % repair of Kumar et al. 2007 (BMC Bioinformatics 8:212,
 % doi:10.1186/1471-2105-8-212). Reactions already in the draft model keep
-% their bounds: a reaction with the wrong direction is a curation issue and
-% is not changed here.
+% their bounds, including a wrong reaction direction.
 %
-% The universal model should contain all candidate reactions, including
-% exchange and transport reactions if those repair classes are desired.
+% The universal model contains all candidate reactions. Exchange and
+% transport reactions are candidates only if the universal model includes
+% them.
 %
-% This is a single-level MILP. It is computationally more expensive than
-% gapFillFastLP but directly optimises for objective feasibility.
+% The function solves a single-level MILP that minimises the number of added
+% reactions subject to the objective floor. Compared with gapFillFastLP, the
+% MILP takes more computation time.
 %
 % Parameters
 % ----------
@@ -21,19 +22,21 @@ function [addedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, va
 % universalModel : struct
 %     universal reaction database (RAVEN model).
 %
-% Optional name-value parameters
-% --------------------------------
-% 'minGrowth' (default [])
-%     minimum objective value to achieve. If empty, runs FBA on the merged
-%     model and uses 10% of the maximum as the floor.
-% 'bigM' (default 1000)
+% Name-Value Arguments
+% --------------------
+% minGrowth : double
+%     minimum objective value to achieve. If empty, FBA on the merged model
+%     gives the maximum objective value and 10% of it is the floor
+%     (default []).
+% bigM : double
 %     Big-M constant for the coupling constraints of universal reactions
-%     with an infinite bound. A finite bound is used as it is.
-% 'params' (default [])
+%     with an infinite bound. A finite bound is used as it is (default 1000).
+% params : struct
 %     solver parameter struct passed to optimizeProb. Fields such as
-%     params.TimeLimit and params.intTol can be used to tune the MILP.
-% 'verbose' (default true)
-%     print progress messages.
+%     params.TimeLimit and params.intTol tune the MILP. If empty, intTol is
+%     1e-9 and TimeLimit is 600 (default []).
+% verbose : logical
+%     true to print progress messages (default true).
 %
 % Returns
 % -------
@@ -42,13 +45,16 @@ function [addedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, va
 % newModel : struct
 %     model with addedRxns incorporated.
 % exitFlag : double
-%     1 = optimal, -1 = infeasible, -2 = timeout or other failure.
+%     1 = the MILP returned a solution, -1 = no gap-filling result: the FBA
+%     or MILP is infeasible, the objective of the merged model is not
+%     positive, or the solver stops without a solution.
 %
 % Notes
 % -----
-% The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled GLPK solves it for small
-% models (with a RAVEN:glpkMILP warning); for larger models Gurobi is much
-% faster and more reliable (setRavenSolver('gurobi')).
+% The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled
+% GLPK solves it for small models. The RAVEN:glpkMILP warning issued with
+% GLPK states that GLPK works for small problems and that Gurobi is much
+% faster and more reliable for larger ones (setRavenSolver('gurobi')).
 %
 % See also
 % --------

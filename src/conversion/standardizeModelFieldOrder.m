@@ -1,12 +1,15 @@
 function orderedModel=standardizeModelFieldOrder(model)
 % standardizeModelFieldOrder  Order RAVEN model structure fields.
 %
-% Orders fields of a RAVEN model structure as specified at
+% Orders the fields of a RAVEN or COBRA model structure. The RAVEN order is
+% the one listed in orderRavenFields.csv, described at
 % https://raven-docs.readthedocs.io/en/latest/guide/model-structure.html
+% A structure with the field 'rules' is ordered as a COBRA structure, using
+% COBRA_structure_fields.csv. Fields that are not listed in the file are
+% placed last, in alphabetical order.
 %
-% The model fields themselves are not changed, only the order is modified.
-% For changing model fields between RAVEN and COBRA format, use
-% ravenCobraWrapper().
+% The content of the fields is unchanged. To convert model fields between
+% RAVEN and COBRA format, use ravenCobraWrapper().
 %
 % Parameters
 % ----------

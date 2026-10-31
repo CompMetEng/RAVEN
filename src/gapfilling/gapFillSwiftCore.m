@@ -3,14 +3,13 @@ function activeRxns = gapFillSwiftCore(model, coreRxns, epsilon)
 %
 % Single-LP alternative to gapFillFastCore. Maximises the sum of non-core
 % fluxes while enforcing that every core reaction carries at least epsilon
-% flux. Any reaction with non-zero flux in the solution is "consistent"
-% with the core.
+% flux. Any reaction with a flux of at least epsilon / 2 in the solution is
+% "consistent" with the core.
 %
-% Because the maximisation objective makes the LP degenerate (many optima
-% exist that differ only in which non-core reactions carry flux), the
-% returned active set can vary between LP solvers and between runs with
-% slightly different numerical conditions. This is the expected behaviour
-% of SWIFTCORE (Tefagh & Boyd 2020).
+% The maximisation objective makes the LP degenerate: many optima differ only
+% in which non-core reactions carry flux. The returned active set can
+% therefore vary between LP solvers and between runs with slightly different
+% numerical conditions.
 %
 % Based on SWIFTCORE (Tefagh & Boyd 2020, BMC Bioinformatics 21:23).
 %
@@ -28,8 +27,9 @@ function activeRxns = gapFillSwiftCore(model, coreRxns, epsilon)
 % Returns
 % -------
 % activeRxns : logical
-%     logical vector (length numel(model.rxns)) where true indicates the
-%     reaction carries flux in the solution. Empty on infeasibility.
+%     logical vector (length numel(model.rxns)) where true indicates that the
+%     reaction carries flux in the solution. All elements are false if the LP
+%     is infeasible.
 %
 % See also
 % --------

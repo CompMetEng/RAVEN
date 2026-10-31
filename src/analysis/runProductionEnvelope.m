@@ -13,14 +13,18 @@ function [biomassValues, targetValues] = runProductionEnvelope(model, targetRxn,
 % Name-Value Arguments
 % --------------------
 % nPts : double
-%     number of points in the plot (default 20).
+%     number of biomass values at which the target bounds are calculated
+%     (default 20).
 %
 % Returns
 % -------
 % biomassValues : double
-%     biomass values for plotting.
+%     nPts biomass values, evenly spaced from the minimum to the maximum
+%     biomass flux.
 % targetValues : double
-%     target upper and lower bounds for plotting.
+%     a matrix with two rows: the lower bounds (row 1) and the upper bounds
+%     (row 2) of the target reaction flux at each biomass value. NaN where
+%     the problem has no solution.
 %
 % Examples
 % --------

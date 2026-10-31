@@ -1,9 +1,9 @@
 function inputConverted = convertCharArray(funcInput)
 % convertCharArray  Ensure input is a cell array of character vectors.
 %
-% Converts input to make sure it is a cell array of character vectors.
-% String arrays are transformed into character vectors. Output is always a
-% cell array, also if only one character vector is given as input.
+% Converts the input to a cell array of character vectors. String arrays
+% are transformed into character vectors. A single character vector gives
+% a cell array with one element. An empty input gives [].
 %
 % Parameters
 % ----------
@@ -13,7 +13,7 @@ function inputConverted = convertCharArray(funcInput)
 % Returns
 % -------
 % inputConverted : cell
-%     cell array of character vectors.
+%     cell array of character vectors, or [] if funcInput is empty.
 %
 % Examples
 % --------

@@ -1,8 +1,8 @@
 function newIds=generateNewIds(model,type,prefix,varargin)
 % generateNewIds  Generate a list of new metabolite or reaction ids.
 %
-% The ids are sequentially numbered with a defined prefix. The model is
-% queried for the highest existing number of that type of id. Suffixes are
+% The ids are numbered sequentially with a defined prefix. The highest existing number
+% among the ids of that type with the prefix is read from the model. Suffixes are
 % read with str2double. A suffix counts as a number when the result is a
 % finite integer value below 2^52; text, Inf, NaN, fractions (r_2.5) and
 % numbers of 2^52 or more (r_1e300, r_1e400) do not count.
@@ -14,17 +14,16 @@ function newIds=generateNewIds(model,type,prefix,varargin)
 % type : char
 %     type of id, 'rxns' or 'mets'.
 % prefix : char
-%     prefix to be used in all ids, e.g. 's_' or 'r_'.
+%     prefix to be used in all ids, for example 's_' or 'r_'.
 %
 % Name-Value Arguments
 % --------------------
 % quantity : double
-%     number of new ids that should be generated (default 1).
+%     number of new ids to generate (default 1).
 % numLength : double
-%     length of the numerical part of the id. E.g. 4 gives ids like r_0001
-%     and 6 gives ids like r_000001. If the prefix is already used in the
-%     model, then the model-defined length will be used instead
-%     (default 4).
+%     length of the numerical part of the id; 4 gives ids like r_0001 and 6 gives ids like
+%     r_000001. If the prefix is used in the model, the length of the existing ids
+%     applies instead (default 4).
 %
 % Returns
 % -------

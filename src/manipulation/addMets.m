@@ -1,8 +1,7 @@
 function newModel=addMets(model,metsToAdd,varargin)
 % addMets  Add metabolites to a model.
 %
-% This function does not make extensive checks about MIRIAM formats,
-% forbidden characters or such.
+% The function checks neither MIRIAM formats nor forbidden characters in metabolite ids.
 %
 % Parameters
 % ----------
@@ -11,13 +10,14 @@ function newModel=addMets(model,metsToAdd,varargin)
 % metsToAdd : struct
 %     the metabolite structure, which can have the following fields:
 %
-%     - mets : cell array with unique strings that identifies each
-%       metabolite (optional, default IDs of new metabolites are numbered
-%       with the prefix defined below)
-%     - metNames : cell array with the names of each metabolite
+%     - mets : cell array with unique strings that identify each
+%       metabolite (optional, default: ids numbered with the prefix defined
+%       below)
+%     - metNames : cell array with the names of each metabolite (optional if
+%       mets is given, default: the ids)
 %     - compartments : cell array with the compartment of each metabolite.
-%       Should match model.comps. If this is a string rather than a cell
-%       array it is assumed that all mets are in that compartment
+%       Each entry must match model.comps. A single string, or a cell array
+%       with one entry, assigns all metabolites to that compartment
 %     - b : Nx1 or Nx2 matrix with equality constraints for each
 %       metabolite (optional, default 0)
 %     - unconstrained : vector describing if each metabolite is an exchange
@@ -29,21 +29,19 @@ function newModel=addMets(model,metsToAdd,varargin)
 %       default [])
 %     - metCharges : metabolite charge (optional, default NaN)
 %     - metDeltaG : Gibbs free energy of formation at biochemical standard
-%       condition in kJ/mole (optional, default NaN)
+%       condition in kJ/mol (optional, default NaN)
 %     - metNotes : cell array with metabolite notes as strings (optional,
 %       default "")
 %
 % Name-Value Arguments
 % --------------------
 % copyInfo : logical
-%     when adding metabolites to a compartment where it previously did not
-%     exist, the function will copy any available annotation from the
-%     metabolite in another compartment (default true).
+%     true to copy the available annotation from the metabolite with the same name in
+%     another compartment of the model (default true).
 % prefix : char
-%     when metsToAdd.mets is not specified, new metabolite IDs are
-%     generated with the prefix specified here. If IDs with the prefix are
-%     already used in the model then the numbering will start from the
-%     highest existing integer+1 (default "m_").
+%     prefix of the generated metabolite ids when metsToAdd.mets is not specified. If ids
+%     with the prefix exist in the model, the numbering starts at the highest
+%     existing number plus 1 (default "m_").
 %
 % Returns
 % -------
@@ -56,8 +54,8 @@ function newModel=addMets(model,metsToAdd,varargin)
 %
 % Notes
 % -----
-% If multiple metabolites are added at once, the metMiriams cell array
-% should be defined as (example with ChEBI and KEGG):
+% When multiple metabolites are added at once, metMiriams is a cell array with one MIRIAM
+% structure per metabolite (example with ChEBI and KEGG):
 %
 %     metsToAdd.metMiriams{1} = struct("name",{{"chebi";"kegg.compound"}},...
 %         "value",{{"CHEBI:18072";"C11821"}});

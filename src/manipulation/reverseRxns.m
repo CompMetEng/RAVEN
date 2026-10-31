@@ -1,10 +1,27 @@
 function model=reverseRxns(model, rxns)
-% reverseRxns
-% Reverses the given reactions in place: negates their stoichiometry and
-% objective coefficient, and swaps/negates their lower and upper bounds,
-% so flux in the new positive direction is what was previously negative flux.
-% model     the model to change (input/output)
-% rxns      the rxns to reverse
+% reverseRxns  Reverse the direction of reactions in a model.
+%
+% Negates the stoichiometric coefficients and the objective coefficient of
+% the reactions, and sets the lower bound to the negated upper bound and the
+% upper bound to the negated lower bound. A flux in the new positive
+% direction equals a flux in the original negative direction. Reaction IDs
+% in rxns that are not in the model are ignored.
+%
+% Parameters
+% ----------
+% model : struct
+%     a model structure.
+% rxns : cell
+%     IDs of the reactions to reverse.
+%
+% Returns
+% -------
+% model : struct
+%     an updated model structure.
+%
+% Examples
+% --------
+%     model = reverseRxns(model, rxns);
 
 rxnInd = find(ismember(model.rxns,rxns));
 

@@ -2,9 +2,10 @@ function I=haveFlux(model,varargin)
 % haveFlux  Check which reactions can carry a flux.
 %
 % Checks which reactions can carry a (positive or negative) flux under the
-% model's current bounds; other media or bounds are not explored. Is used
-% as a faster version of getAllowedBounds if it is only interesting whether
-% the reactions can carry a flux or not.
+% model's current bounds; other media or bounds are not explored. Unlike
+% getAllowedBounds, which minimises and maximises every reaction, it skips a
+% reaction once an earlier solution has given it a flux, and minimises only
+% reversible reactions that still have none.
 %
 % Parameters
 % ----------
@@ -14,16 +15,16 @@ function I=haveFlux(model,varargin)
 % Name-Value Arguments
 % --------------------
 % cutOff : double
-%     the flux value that a reaction has to carry to be identified as
-%     positive (default 10^-6).
+%     the absolute flux value that a reaction has to exceed to be identified
+%     as carrying flux (default 10^-6).
 % rxns : cell or logical or double
 %     either a cell array of IDs, a logical vector with the same number of
-%     elements as metabolites in the model, or a vector of indexes (default
+%     elements as reactions in the model, or a vector of indexes (default
 %     model.rxns).
 % seed : double
-%     seed for the random number generator used to shuffle the order in
-%     which reactions are tested, so that order is reproducible across
-%     runs (default: current rng state is left untouched).
+%     seed for the random number generator that shuffles the order in
+%     which reactions are tested. The order is then reproducible across
+%     runs (default: the current rng state is left untouched).
 %
 % Returns
 % -------
@@ -37,8 +38,7 @@ function I=haveFlux(model,varargin)
 %
 % Notes
 % -----
-% If a model has +/- Inf bounds then those are replaced with an arbitary
-% large value of +/- 10000 prior to solving.
+% Bounds of +/- Inf are replaced with +/- 10000 before solving.
 %
 % Dead-end reactions are removed (simplifyModel) before solving. A dead-end
 % reaction with a forced flux (lb > 0 or ub < 0) makes the model infeasible,

@@ -1,10 +1,11 @@
 function model=mergeModels(models,varargin)
 % mergeModels  Merge models into one model structure.
 %
-% Merges models into one model structure. Reactions are added without any
-% checks, so duplicate reactions might appear. Metabolites are matched by
-% their name and compartment (metaboliteName[comp]), while genes are matched
-% by their name.
+% Merges models into one model structure. Reactions are added without a check for
+% duplicate reactions, so duplicates can appear. A reaction id that already exists in
+% the merged model is renamed by appending "_" and the id of its source model.
+% Metabolites are matched by name and compartment (metaboliteName[comp]) and genes by
+% name.
 %
 % Parameters
 % ----------
@@ -14,23 +15,22 @@ function model=mergeModels(models,varargin)
 % Name-Value Arguments
 % --------------------
 % metParam : char
-%     string, metabolite name ("metNames") or ID ("mets") are used for
-%     matching (default "metNames").
+%     the metabolite field used for matching: "metNames" (name and compartment) or
+%     "mets" (id) (default "metNames").
 % supressWarnings : logical
-%     whether warnings should be supressed (default false).
+%     true to suppress warnings (default false).
 % copyToComps : logical
-%     internal flag used by copyToComps.m when it calls mergeModels to
-%     duplicate a model into a new compartment; leave at default when
-%     calling mergeModels directly (default false).
+%     internal flag set by copyToComps when it calls mergeModels to duplicate a model into
+%     a new compartment. Left at the default when calling mergeModels directly
+%     (default false).
 %
 % Returns
 % -------
 % model : struct
-%     a model structure with the merged model. Follows the structure of
-%     normal models but also has "rxnFrom/metFrom/geneFrom" fields to
-%     indicate from which model each reaction/metabolite/gene was taken. If
-%     the model already has "rxnFrom/metFrom/geneFrom" fields, then these
-%     fields are not modified.
+%     the merged model structure. In addition to the usual fields, it has the fields
+%     rxnFrom, metFrom and geneFrom, which hold the id of the model that each reaction,
+%     metabolite and gene was taken from. If a model already has these fields, its
+%     entries are not modified.
 %
 % Examples
 % --------

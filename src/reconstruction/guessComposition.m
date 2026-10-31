@@ -1,8 +1,8 @@
 function [model, guessedFor, couldNotGuess]=guessComposition(model, varargin)
 % guessComposition  Guess the composition of metabolites without one.
 %
-% Attempts to guess the composition of metabolites without information about
-% elemental composition.
+% Derives the elemental composition of metabolites without a formula from the
+% reactions they participate in, and writes it to the metFormulas field.
 %
 % Parameters
 % ----------
@@ -12,17 +12,18 @@ function [model, guessedFor, couldNotGuess]=guessComposition(model, varargin)
 % Name-Value Arguments
 % --------------------
 % printResults : logical
-%     true if the output should be printed (default true).
+%     true if the predicted compositions are printed (default true).
 %
 % Returns
 % -------
 % model : struct
-%     a model structure with information about elemental composition added.
-% guessedFor : double
-%     indexes for the metabolites for which a composition could be guessed.
-% couldNotGuess : double
-%     indexes for the metabolites for which no composition could be
-%     assigned.
+%     a model structure with the predicted formulas added to metFormulas, for
+%     all metabolites that share the metabolite name.
+% guessedFor : cell
+%     metabolite names for which a composition could be guessed.
+% couldNotGuess : cell
+%     metabolite names, among those without a formula in the input model,
+%     for which no composition could be assigned.
 %
 % Examples
 % --------
@@ -33,12 +34,13 @@ function [model, guessedFor, couldNotGuess]=guessComposition(model, varargin)
 % A metabolite's composition can only be resolved from a reaction in which
 % every other participating metabolite already has a known composition;
 % the function repeats this until no further metabolites can be resolved.
-% It requires that the existing compositions and reactions are correct,
-% and throws an error if a metabolite would need inconsistent
-% compositions in different reactions -- so it can also be used to check
-% a model for such errors. Note that successful completion does not
-% guarantee correctness if the pre-existing compositions were themselves
-% wrong.
+% It requires that the existing compositions and reactions are correct. If a
+% metabolite would need different compositions in different reactions, or a
+% reaction gives both positive and negative atom counts, the function issues
+% a warning and assigns no composition to that metabolite, so the warnings
+% can also be used to check a model for such inconsistencies. Completion
+% without warnings does not show that the pre-existing compositions are
+% correct.
 
 p=parseRAVENargs(varargin, {'printResults',true});
 printResults=p.printResults;

@@ -1,8 +1,9 @@
 function testResults = runRAVENtests
 % runRAVENtests  Run all RAVEN function tests.
 %
-% Runs all unit tests found at RAVEN/test/function_tests, and prints output in
-% the command window.
+% Runs all unit tests found in the folder tests/function_tests of the RAVEN
+% root folder, except the abstract base class RavenTestCase, and prints the
+% output in the command window.
 %
 % Returns
 % -------

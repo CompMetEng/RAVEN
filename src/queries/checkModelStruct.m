@@ -1,5 +1,5 @@
 function issues=checkModelStruct(model,varargin)
-% checkModelStruct  Perform a number of checks to ensure a model structure is ok.
+% checkModelStruct  Check a model structure for errors and inconsistencies.
 %
 % Parameters
 % ----------
@@ -10,32 +10,33 @@ function issues=checkModelStruct(model,varargin)
 % --------------------
 % throwErrors : logical
 %     true if structural problems (wrong types, missing required fields,
-%     duplicate IDs, etc.) should throw an error. Advisory notices such as
+%     duplicate IDs and other problems of structure) should throw an error. Advisory notices such as
 %     unused elements and bound inconsistencies are always reported as
 %     warnings regardless of this flag (default true).
 % trimWarnings : logical
-%     true if only a maximum of 10 items should be displayed in a given
-%     warning or error (default true).
+%     true if a given warning or error lists at most 10 items, the last of
+%     which reports the number of remaining items (default true).
 %
 % Returns
 % -------
 % issues : struct
-%     When called with an output argument, returns a struct array with one
-%     element per finding (does not throw or print) instead of the default
-%     print/throw behaviour. Fields:
+%     When called with an output argument, the function returns a struct
+%     array with one element per finding and neither throws nor prints. The
+%     default behaviour without an output argument is to print warnings and
+%     throw errors. Fields:
 %
-%     - category : char — type of issue: "missing_field", "wrong_type",
-%       "empty_id", "duplicate", "invalid_id", "invalid_bounds",
-%       "unused", "objective", "gpr", "invalid_formula",
-%       "cross_reference", or "other".
-%     - target : char — the specific item involved (field name, reaction
-%       ID, metabolite ID, etc.), or "" when not applicable.
-%     - message : char — the full diagnostic text.
+%     - category (char): type of issue, one of "missing_field",
+%       "wrong_type", "empty_id", "duplicate", "invalid_id",
+%       "invalid_bounds", "unused", "objective", "gpr", "invalid_formula",
+%       "cross_reference" or "other".
+%     - target (char): the item involved (field name, reaction ID,
+%       metabolite ID or another item), or "" when not applicable.
+%     - message (char): the full diagnostic text.
 %
 % Notes
 % -----
-% This is typically performed after importing or constructing a model, or
-% before attempting to export a model to SBML format.
+% The check is intended for use after importing or constructing a model and
+% before exporting a model to SBML format.
 %
 % Examples
 % --------
