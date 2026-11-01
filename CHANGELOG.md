@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### I/O
+
+* `writeYAMLmodel` writes an ec reaction without enzymes (a row of zeros in `model.ec.rxnEnzMat`) with no `enzymes` entry (was: `- enzymes: !!omap` with nothing under it, which is not valid YAML). `readYAMLmodel` reads a missing `enzymes` entry as a reaction without enzymes, and still reads `- enzymes: !!omap` with no entries and `- enzymes: !!omap []` from files written earlier.
+
 ### Manipulation
 
 * `mergeCompartments`: a merged metabolite is the copy already in compartment `s`, if any,

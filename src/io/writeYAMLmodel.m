@@ -224,9 +224,10 @@ if isfield(model,fieldName)
         end
 
     elseif strcmp(fieldName,'rxnEnzMat')
-        %S: create header & write each enzyme in a new line
-        fprintf(fid,'%s: !!omap\n',name);
+        %enzymes: create header & write each enzyme in a new line. A
+        %reaction without enzymes has no entry at all.
         if sum(field(pos,:) ~= 0) > 0
+            fprintf(fid,'%s: !!omap\n',name);
             model.enzymes = model.enzymes(field(pos,:) ~= 0);
             model.coeffs  = field(pos,field(pos,:) ~= 0);
             %Sort metabolites:

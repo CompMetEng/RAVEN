@@ -287,6 +287,60 @@ classdef tIO < RavenTestCase
             testCase.verifyEqual(numel(m2.rxns), numel(testCase.model.rxns));
         end
 
+        function writeYAMLmodelOmitsEnzymesOfEcReactionWithoutEnzymes(testCase)
+            % An ec reaction whose rxnEnzMat row is empty has no enzymes
+            % entry in the file; the reaction before and after keep theirs.
+            m = testCase.ecYamlModel();
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            txt = fileread(f);
+            % two ec reactions with enzymes and two ec-enzymes entries
+            testCase.verifyEqual(numel(strfind(txt, '- enzymes:')), 4);
+            lines = splitlines(txt);
+            idx = find(strcmp(strtrim(lines), '- id: ec_R2'));
+            testCase.verifyEqual(numel(idx), 1);
+            testCase.verifyFalse(contains(lines{idx+1}, 'enzymes'));
+            testCase.verifyFalse(contains(lines{idx+2}, 'enzymes'));
+        end
+
+        function readYAMLmodelReadsEcReactionWithoutEnzymes(testCase)
+            % The reaction without enzymes has a zero row in rxnEnzMat and
+            % keeps its id and kcat; the other rows are unchanged.
+            m = testCase.ecYamlModel();
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            evalc('m2 = readYAMLmodel(f);');
+            testCase.verifyEqual(m2.ec.rxns, m.ec.rxns);
+            testCase.verifyEqual(m2.ec.kcat, m.ec.kcat, 'AbsTol', 1e-9);
+            testCase.verifyEqual(full(m2.ec.rxnEnzMat), m.ec.rxnEnzMat);
+        end
+
+        function readYAMLmodelReadsOlderEmptyEnzymesForms(testCase)
+            % Files written earlier carry a content-less "enzymes: !!omap"
+            % or "enzymes: !!omap []" for a reaction without enzymes.
+            m = testCase.ecYamlModel();
+            f = [tempname '.yml'];
+            testCase.addTeardown(@() delete(f));
+            evalc('writeYAMLmodel(m, f);');
+            txt = fileread(f);
+            forms = {'    - enzymes: !!omap', '    - enzymes: !!omap []'};
+            for i = 1:numel(forms)
+                lines = splitlines(txt);
+                idx = find(strcmp(strtrim(lines), '- id: ec_R2'));
+                lines = [lines(1:idx+1); forms(i); lines(idx+2:end)];
+                g = [tempname '.yml'];
+                testCase.addTeardown(@() delete(g));
+                fid = fopen(g, 'w');
+                fprintf(fid, '%s', strjoin(lines, newline));
+                fclose(fid);
+                evalc('m2 = readYAMLmodel(g);');
+                testCase.verifyEqual(m2.ec.rxns, m.ec.rxns);
+                testCase.verifyEqual(full(m2.ec.rxnEnzMat), m.ec.rxnEnzMat);
+            end
+        end
+
         function readYAMLmodelKeepsSubsystemsAligned(testCase)
             % Reactions without a subsystem sit between, before and after
             % those with one: each subsystem stays with its own reaction,
@@ -582,5 +636,24 @@ classdef tIO < RavenTestCase
             testCase.verifyEqual(raw{2,2},1.5,'AbsTol',1e-9);
         end
 
+    end
+
+    methods (Access = private)
+        function m = ecYamlModel(testCase)
+            % Model with three ec reactions; the second has no enzymes.
+            m = testCase.model;
+            m.ec.geckoLight = false;
+            m.ec.rxns     = {'ec_R1'; 'ec_R2'; 'ec_R3'};
+            m.ec.kcat     = [13.7; 5; 2];
+            m.ec.source   = {'brenda'; 'standard'; ''};
+            m.ec.notes    = {''; ''; ''};
+            m.ec.eccodes  = {'1.1.1.1'; ''; ''};
+            m.ec.genes    = m.genes(1:2);
+            m.ec.enzymes  = {'P0A1'; 'P0A2'};
+            m.ec.mw       = [51000; 40000];
+            m.ec.sequence = {'MABC'; 'MDEF'};
+            m.ec.concs    = [NaN; NaN];
+            m.ec.rxnEnzMat = [1 2; 0 0; 0 1];
+        end
     end
 end
