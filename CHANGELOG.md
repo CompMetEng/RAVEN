@@ -92,7 +92,7 @@
 
 ## 3.0.0b1 — 2026-09-07
 
-First beta toward 3.0. Changes below are relative to RAVEN 2.9.3, the last 2.x release:
+First beta toward 3.0. Changes below are relative to RAVEN 2.9.3. The last 2.x release is 2.11.4:
 a reorganized codebase, fewer toolbox dependencies, hardened I/O and MILP algorithms, plus
 capabilities backported from the `raven-toolbox` (Python) port.
 
