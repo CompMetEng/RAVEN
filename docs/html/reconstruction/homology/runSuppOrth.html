@@ -1,0 +1,401 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of runSuppOrth</title>
+  <meta name="keywords" content="runSuppOrth">
+  <meta name="description" content="runSuppOrth  Run SuppOrth on an organism and template proteomes.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../index.html">Home</a> &gt;  <a href="../index.html">reconstruction</a> &gt; <a href="index.html">homology</a> &gt; runSuppOrth.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../index.html"><img alt="<" border="0" src="../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for reconstruction/homology&nbsp;<img alt=">" border="0" src="../../right.png"></a></td></tr></table>-->
+
+<h1>runSuppOrth
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>runSuppOrth  Run SuppOrth on an organism and template proteomes.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>function [blastStructure,suppOrthInfo]=runSuppOrth(organismID,fastaFile,modelIDs,refFastaFiles,outDir,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> runSuppOrth  Run SuppOrth on an organism and template proteomes.
+
+ Runs the suppOrth command (https://github.com/fma91/SuppOrth) and reads
+ its consensus orthologs with hitsFromSuppOrth.
+
+ Parameters
+ ----------
+ organismID : char
+     the id of the organism of interest, as in getModelFromHomology.
+ fastaFile : char
+     a FASTA file (optionally gzipped) with the proteins of the organism.
+ modelIDs : cell
+     the template model ids, as &quot;model.id&quot; in getModelFromHomology.
+ refFastaFiles : cell
+     the proteome of each template, in the order of modelIDs, with FASTA
+     ids equal to the gene ids of that model (or mapped to them with
+     proteinToGene).
+ outDir : char
+     folder for SuppOrth's output.
+
+ Name-Value Arguments
+ --------------------
+ tools : char
+     comma-separated predictors, or 'all' for orthofinder, sonicparanoid
+     and broccoli (default 'all').
+ supportLv : double
+     SuppOrth's --supportLv: a pair is kept if at least this many
+     predictors found it, or if its identity is above identityFilter
+     (default 3, or the number of tools when fewer are selected).
+ identityFilter : double
+     SuppOrth's --identity_filter (default 80).
+ alignment : char
+     SuppOrth's --alignment (default 'diamond').
+ threads : double
+     number of threads (default: the cores assigned to MATLAB).
+ extraArgs : cell
+     further arguments for &quot;suppOrth run&quot;, for example {'--resume'} or
+     {'--oma','path/to/Output'} (default {}).
+ suppOrth : char
+     the suppOrth command. If empty, the RAVEN_SUPPORTH environment
+     variable is used, and then suppOrth on the PATH (default '').
+
+ The name-value arguments of hitsFromSuppOrth (minSupport, requireTools,
+ minIdentity, maxEvalue, proteinToGene, speciesToModel) are passed on.
+
+ Returns
+ -------
+ blastStructure : struct
+     as from hitsFromSuppOrth, for getModelFromHomology.
+ suppOrthInfo : table
+     SuppOrth's values per gene pair, as from hitsFromSuppOrth.
+
+ Notes
+ -----
+ SuppOrth requires protein ids to be unique over all proteomes. When two
+ FASTA files share an id (for example two templates of the same species),
+ every id is given a &quot;&lt;label&gt;__&quot; prefix in copies written to
+ outDir/prefixed_inputs, and the prefix is removed from the returned
+ hits. outDir/suppOrth.tsv then contains the prefixed ids. SuppOrth's
+ console output is written to outDir/run_supporth.log.
+
+ SuppOrth's predictors run on Linux and macOS only. On Windows, run
+ SuppOrth under WSL or on a Linux host, and read suppOrth.tsv with
+ hitsFromSuppOrth.
+
+ Examples
+ --------
+     blastStructure = runSuppOrth('klac','klac.fasta',{'yeastGEM'},...
+        {'yeast.fasta'},'supporth_out','proteinToGene','klac_genes.tsv');
+     draftModel = getModelFromHomology(yeastGEM,blastStructure,'klac');
+
+ See also
+ --------
+ <a href="hitsFromSuppOrth.html" class="code" title="function [blastStructure,suppOrthInfo]=hitsFromSuppOrth(source,organismID,varargin)">hitsFromSuppOrth</a>, <a href="getModelFromHomology.html" class="code" title="function [draftModel, hitGenes]=getModelFromHomology(models,blastStructure,getModelFor,varargin)">getModelFromHomology</a>, <a href="getDiamond.html" class="code" title="function [blastStructure,diamondReport]=getDiamond(organismID,fastaFile,modelIDs,refFastaFiles,varargin)">getDiamond</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="hitsFromSuppOrth.html" class="code" title="function [blastStructure,suppOrthInfo]=hitsFromSuppOrth(source,organismID,varargin)">hitsFromSuppOrth</a>	hitsFromSuppOrth  Read SuppOrth consensus orthologs into a blastStructure.</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function exe=resolveSuppOrth(exe)</a></li><li><a href="#_sub2" class="code">function lines=readFastaLines(file)</a></li><li><a href="#_sub3" class="code">function ids=fastaIds(file)</a></li><li><a href="#_sub4" class="code">function writePrefixed(src,dest,prefix)</a></li><li><a href="#_sub5" class="code">function T=stripPrefixes(file)</a></li><li><a href="#_sub6" class="code">function q=shellQuote(s)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [blastStructure,suppOrthInfo]=runSuppOrth(organismID,fastaFile,modelIDs,refFastaFiles,outDir,varargin)</a>
+0002 <span class="comment">% runSuppOrth  Run SuppOrth on an organism and template proteomes.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Runs the suppOrth command (https://github.com/fma91/SuppOrth) and reads</span>
+0005 <span class="comment">% its consensus orthologs with hitsFromSuppOrth.</span>
+0006 <span class="comment">%</span>
+0007 <span class="comment">% Parameters</span>
+0008 <span class="comment">% ----------</span>
+0009 <span class="comment">% organismID : char</span>
+0010 <span class="comment">%     the id of the organism of interest, as in getModelFromHomology.</span>
+0011 <span class="comment">% fastaFile : char</span>
+0012 <span class="comment">%     a FASTA file (optionally gzipped) with the proteins of the organism.</span>
+0013 <span class="comment">% modelIDs : cell</span>
+0014 <span class="comment">%     the template model ids, as &quot;model.id&quot; in getModelFromHomology.</span>
+0015 <span class="comment">% refFastaFiles : cell</span>
+0016 <span class="comment">%     the proteome of each template, in the order of modelIDs, with FASTA</span>
+0017 <span class="comment">%     ids equal to the gene ids of that model (or mapped to them with</span>
+0018 <span class="comment">%     proteinToGene).</span>
+0019 <span class="comment">% outDir : char</span>
+0020 <span class="comment">%     folder for SuppOrth's output.</span>
+0021 <span class="comment">%</span>
+0022 <span class="comment">% Name-Value Arguments</span>
+0023 <span class="comment">% --------------------</span>
+0024 <span class="comment">% tools : char</span>
+0025 <span class="comment">%     comma-separated predictors, or 'all' for orthofinder, sonicparanoid</span>
+0026 <span class="comment">%     and broccoli (default 'all').</span>
+0027 <span class="comment">% supportLv : double</span>
+0028 <span class="comment">%     SuppOrth's --supportLv: a pair is kept if at least this many</span>
+0029 <span class="comment">%     predictors found it, or if its identity is above identityFilter</span>
+0030 <span class="comment">%     (default 3, or the number of tools when fewer are selected).</span>
+0031 <span class="comment">% identityFilter : double</span>
+0032 <span class="comment">%     SuppOrth's --identity_filter (default 80).</span>
+0033 <span class="comment">% alignment : char</span>
+0034 <span class="comment">%     SuppOrth's --alignment (default 'diamond').</span>
+0035 <span class="comment">% threads : double</span>
+0036 <span class="comment">%     number of threads (default: the cores assigned to MATLAB).</span>
+0037 <span class="comment">% extraArgs : cell</span>
+0038 <span class="comment">%     further arguments for &quot;suppOrth run&quot;, for example {'--resume'} or</span>
+0039 <span class="comment">%     {'--oma','path/to/Output'} (default {}).</span>
+0040 <span class="comment">% suppOrth : char</span>
+0041 <span class="comment">%     the suppOrth command. If empty, the RAVEN_SUPPORTH environment</span>
+0042 <span class="comment">%     variable is used, and then suppOrth on the PATH (default '').</span>
+0043 <span class="comment">%</span>
+0044 <span class="comment">% The name-value arguments of hitsFromSuppOrth (minSupport, requireTools,</span>
+0045 <span class="comment">% minIdentity, maxEvalue, proteinToGene, speciesToModel) are passed on.</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">% Returns</span>
+0048 <span class="comment">% -------</span>
+0049 <span class="comment">% blastStructure : struct</span>
+0050 <span class="comment">%     as from hitsFromSuppOrth, for getModelFromHomology.</span>
+0051 <span class="comment">% suppOrthInfo : table</span>
+0052 <span class="comment">%     SuppOrth's values per gene pair, as from hitsFromSuppOrth.</span>
+0053 <span class="comment">%</span>
+0054 <span class="comment">% Notes</span>
+0055 <span class="comment">% -----</span>
+0056 <span class="comment">% SuppOrth requires protein ids to be unique over all proteomes. When two</span>
+0057 <span class="comment">% FASTA files share an id (for example two templates of the same species),</span>
+0058 <span class="comment">% every id is given a &quot;&lt;label&gt;__&quot; prefix in copies written to</span>
+0059 <span class="comment">% outDir/prefixed_inputs, and the prefix is removed from the returned</span>
+0060 <span class="comment">% hits. outDir/suppOrth.tsv then contains the prefixed ids. SuppOrth's</span>
+0061 <span class="comment">% console output is written to outDir/run_supporth.log.</span>
+0062 <span class="comment">%</span>
+0063 <span class="comment">% SuppOrth's predictors run on Linux and macOS only. On Windows, run</span>
+0064 <span class="comment">% SuppOrth under WSL or on a Linux host, and read suppOrth.tsv with</span>
+0065 <span class="comment">% hitsFromSuppOrth.</span>
+0066 <span class="comment">%</span>
+0067 <span class="comment">% Examples</span>
+0068 <span class="comment">% --------</span>
+0069 <span class="comment">%     blastStructure = runSuppOrth('klac','klac.fasta',{'yeastGEM'},...</span>
+0070 <span class="comment">%        {'yeast.fasta'},'supporth_out','proteinToGene','klac_genes.tsv');</span>
+0071 <span class="comment">%     draftModel = getModelFromHomology(yeastGEM,blastStructure,'klac');</span>
+0072 <span class="comment">%</span>
+0073 <span class="comment">% See also</span>
+0074 <span class="comment">% --------</span>
+0075 <span class="comment">% hitsFromSuppOrth, getModelFromHomology, getDiamond</span>
+0076 
+0077 readerArgs={<span class="string">'speciesToModel'</span>,[]; <span class="string">'minSupport'</span>,1; <span class="string">'requireTools'</span>,{}; <span class="keyword">...</span>
+0078     <span class="string">'minIdentity'</span>,[]; <span class="string">'maxEvalue'</span>,[]; <span class="string">'proteinToGene'</span>,[]};
+0079 p=parseRAVENargs(varargin, [{<span class="string">'tools'</span>,<span class="string">'all'</span>; <span class="string">'supportLv'</span>,[]; <span class="string">'identityFilter'</span>,80; <span class="keyword">...</span>
+0080     <span class="string">'alignment'</span>,<span class="string">'diamond'</span>; <span class="string">'threads'</span>,[]; <span class="string">'extraArgs'</span>,{}; <span class="string">'suppOrth'</span>,<span class="string">''</span>}; readerArgs]);
+0081 
+0082 <span class="keyword">if</span> ispc
+0083     error(<span class="string">'RAVEN:badInput'</span>,[<span class="string">'SuppOrth''s predictors run on Linux and macOS only. Run '</span><span class="keyword">...</span>
+0084         <span class="string">'SuppOrth under WSL or on a Linux host, and read suppOrth.tsv with hitsFromSuppOrth.'</span>]);
+0085 <span class="keyword">end</span>
+0086 organismID=char(organismID);
+0087 modelIDs=cellstr(modelIDs);
+0088 refFastaFiles=cellstr(refFastaFiles);
+0089 <span class="keyword">if</span> numel(modelIDs)~=numel(refFastaFiles)
+0090     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'modelIDs and refFastaFiles must have the same length.'</span>);
+0091 <span class="keyword">end</span>
+0092 <span class="keyword">if</span> isempty(modelIDs)
+0093     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'At least one template is needed.'</span>);
+0094 <span class="keyword">end</span>
+0095 labels=[{organismID};modelIDs(:)];
+0096 <span class="keyword">for</span> i=1:numel(labels)
+0097     l=labels{i};
+0098     <span class="keyword">if</span> isempty(l) || any(strcmp(l,{<span class="string">'.'</span>,<span class="string">'..'</span>})) || ~strcmp(l,strtrim(l)) || any(ismember(l,<span class="string">',/\'</span>))
+0099         error(<span class="string">'RAVEN:badInput'</span>,[<span class="string">'&quot;%s&quot; cannot be a SuppOrth species label: it must be '</span><span class="keyword">...</span>
+0100             <span class="string">'non-empty, not &quot;.&quot; or &quot;..&quot;, have no leading or trailing space, and contain '</span><span class="keyword">...</span>
+0101             <span class="string">'no &quot;,&quot;, &quot;/&quot; or &quot;\\&quot;.'</span>],l);
+0102     <span class="keyword">end</span>
+0103 <span class="keyword">end</span>
+0104 <span class="keyword">if</span> numel(unique(labels))~=numel(labels)
+0105     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'organismID and modelIDs must be distinct, got %s'</span>,strjoin(labels,<span class="string">', '</span>));
+0106 <span class="keyword">end</span>
+0107 
+0108 tools=strtrim(strsplit(char(p.tools),<span class="string">','</span>));
+0109 tools=tools(~cellfun(@isempty,tools));
+0110 <span class="keyword">if</span> isequal(tools,{<span class="string">'all'</span>})
+0111     tools={<span class="string">'orthofinder'</span>,<span class="string">'sonicparanoid'</span>,<span class="string">'broccoli'</span>};
+0112 <span class="keyword">end</span>
+0113 supportLv=p.supportLv;
+0114 <span class="keyword">if</span> isempty(supportLv)
+0115     supportLv=min(3,numel(tools));
+0116 <span class="keyword">end</span>
+0117 <span class="keyword">if</span> supportLv&lt;1 || supportLv&gt;4
+0118     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'supportLv must be between 1 and 4, got %d'</span>,supportLv);
+0119 <span class="keyword">end</span>
+0120 extraArgs=cellstr(p.extraArgs);
+0121 <span class="keyword">if</span> isempty(p.extraArgs)
+0122     extraArgs={};
+0123 <span class="keyword">end</span>
+0124 <span class="keyword">if</span> supportLv&gt;numel(tools) &amp;&amp; ~any(strcmp(extraArgs,<span class="string">'--oma'</span>))
+0125     warning(<span class="string">'RAVEN:runSuppOrth:supportLv'</span>,[<span class="string">'supportLv=%d is more than the %d predictor(s) '</span><span class="keyword">...</span>
+0126         <span class="string">'selected; SuppOrth then keeps only pairs above identityFilter (%g %%).'</span>],<span class="keyword">...</span>
+0127         supportLv,numel(tools),p.identityFilter);
+0128 <span class="keyword">end</span>
+0129 threads=p.threads;
+0130 <span class="keyword">if</span> isempty(threads)
+0131     cores=evalc(<span class="string">'feature(''numcores'')'</span>);
+0132     cores=strsplit(cores,<span class="string">'MATLAB was assigned: '</span>);
+0133     threads=str2double(regexp(cores{2},<span class="string">'^\d*'</span>,<span class="string">'match'</span>,<span class="string">'once'</span>));
+0134 <span class="keyword">end</span>
+0135 
+0136 exe=<a href="#_sub1" class="code" title="subfunction exe=resolveSuppOrth(exe)">resolveSuppOrth</a>(char(p.suppOrth));
+0137 fastas=[{char(fastaFile)};refFastaFiles(:)];
+0138 <span class="keyword">for</span> i=1:numel(fastas)
+0139     <span class="keyword">if</span> ~isfile(fastas{i})
+0140         error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'FASTA file &quot;%s&quot; does not exist.'</span>,fastas{i});
+0141     <span class="keyword">end</span>
+0142 <span class="keyword">end</span>
+0143 <span class="keyword">if</span> ~isfolder(outDir)
+0144     mkdir(outDir);
+0145 <span class="keyword">end</span>
+0146 
+0147 <span class="comment">%SuppOrth requires protein ids to be unique over all proteomes. Templates of</span>
+0148 <span class="comment">%the same species often share gene ids, so in that case every id gets a</span>
+0149 <span class="comment">%&quot;&lt;label&gt;__&quot; prefix in a copy of its FASTA, and the prefix is removed below.</span>
+0150 ids=cell(numel(fastas),1);
+0151 <span class="keyword">for</span> i=1:numel(fastas)
+0152     ids{i}=<a href="#_sub3" class="code" title="subfunction ids=fastaIds(file)">fastaIds</a>(fastas{i});
+0153     ids{i}=unique(ids{i});
+0154 <span class="keyword">end</span>
+0155 allIds=vertcat(ids{:});
+0156 shared=numel(unique(allIds))&lt;numel(allIds);
+0157 <span class="keyword">if</span> shared
+0158     inputs=fullfile(outDir,<span class="string">'prefixed_inputs'</span>);
+0159     <span class="keyword">if</span> ~isfolder(inputs)
+0160         mkdir(inputs);
+0161     <span class="keyword">end</span>
+0162     <span class="keyword">for</span> i=1:numel(fastas)
+0163         dest=fullfile(inputs,[labels{i} <span class="string">'.faa'</span>]);
+0164         <a href="#_sub4" class="code" title="subfunction writePrefixed(src,dest,prefix)">writePrefixed</a>(fastas{i},dest,[labels{i} <span class="string">'__'</span>]);
+0165         fastas{i}=dest;
+0166     <span class="keyword">end</span>
+0167 <span class="keyword">end</span>
+0168 
+0169 args=[{exe,<span class="string">'run'</span>},fastas',{<span class="string">'--labels'</span>,strjoin(labels,<span class="string">','</span>),<span class="string">'-o'</span>,char(outDir),<span class="keyword">...</span>
+0170     <span class="string">'--tools'</span>,strjoin(tools,<span class="string">','</span>),<span class="string">'--supportLv'</span>,num2str(supportLv),<span class="keyword">...</span>
+0171     <span class="string">'--identity_filter'</span>,num2str(p.identityFilter),<span class="string">'--alignment'</span>,char(p.alignment),<span class="keyword">...</span>
+0172     <span class="string">'-t'</span>,num2str(threads)},extraArgs(:)'];
+0173 cmd=strjoin(cellfun(@<a href="#_sub6" class="code" title="subfunction q=shellQuote(s)">shellQuote</a>,args,<span class="string">'UniformOutput'</span>,false),<span class="string">' '</span>);
+0174 <span class="comment">%MATLAB's library path can break the predictors' compiled dependencies</span>
+0175 [status,output]=system([<span class="string">'env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH '</span> cmd <span class="string">' 2&gt;&amp;1'</span>]);
+0176 logFile=fullfile(outDir,<span class="string">'run_supporth.log'</span>);
+0177 fid=fopen(logFile,<span class="string">'w'</span>);
+0178 fprintf(fid,<span class="string">'%s\n\n%s\n'</span>,strjoin(args,<span class="string">' '</span>),strtrim(output));
+0179 fclose(fid);
+0180 <span class="keyword">if</span> status~=0
+0181     lines=splitlines(strtrim(output));
+0182     <span class="comment">%SuppOrth reports a failed stage before the consensus summary, which can</span>
+0183     <span class="comment">%push it out of the last lines</span>
+0184     head=lines(1:max(0,end-20));
+0185     failed=head(contains(head,<span class="string">'FAILED'</span>) | startsWith(head,<span class="string">'error'</span>));
+0186     tail=[failed;lines(max(1,end-19):end)];
+0187     error(<span class="string">'RAVEN:runSuppOrth:failed'</span>,[<span class="string">'suppOrth exited with code %d; its output in %s '</span><span class="keyword">...</span>
+0188         <span class="string">'is incomplete and was not read. Full output in %s.\n%s'</span>],status,char(outDir),<span class="keyword">...</span>
+0189         logFile,strjoin(tail,newline));
+0190 <span class="keyword">end</span>
+0191 
+0192 source=fullfile(outDir,<span class="string">'suppOrth.tsv'</span>);
+0193 <span class="keyword">if</span> shared
+0194     source=<a href="#_sub5" class="code" title="subfunction T=stripPrefixes(file)">stripPrefixes</a>(source);
+0195 <span class="keyword">end</span>
+0196 readerValues=cellfun(@(n) p.(n),readerArgs(:,1),<span class="string">'UniformOutput'</span>,false);
+0197 reader=[readerArgs(:,1),readerValues]';
+0198 [blastStructure,suppOrthInfo]=<a href="hitsFromSuppOrth.html" class="code" title="function [blastStructure,suppOrthInfo]=hitsFromSuppOrth(source,organismID,varargin)">hitsFromSuppOrth</a>(source,organismID,reader{:});
+0199 <span class="keyword">end</span>
+0200 
+0201 <a name="_sub1" href="#_subfunctions" class="code">function exe=resolveSuppOrth(exe)</a>
+0202 <span class="keyword">if</span> ~isempty(exe)
+0203     <span class="keyword">return</span>
+0204 <span class="keyword">end</span>
+0205 exe=getenv(<span class="string">'RAVEN_SUPPORTH'</span>);
+0206 <span class="keyword">if</span> ~isempty(exe)
+0207     <span class="keyword">return</span>
+0208 <span class="keyword">end</span>
+0209 <span class="keyword">for</span> name={<span class="string">'suppOrth'</span>,<span class="string">'supporth'</span>}
+0210     [status,found]=system([<span class="string">'command -v '</span> name{1}]);
+0211     <span class="keyword">if</span> status==0 &amp;&amp; ~isempty(strtrim(found))
+0212         exe=strtrim(found);
+0213         <span class="keyword">return</span>
+0214     <span class="keyword">end</span>
+0215 <span class="keyword">end</span>
+0216 error(<span class="string">'RAVEN:runSuppOrth:notFound'</span>,[<span class="string">'Could not find the SuppOrth command suppOrth. '</span><span class="keyword">...</span>
+0217     <span class="string">'Install it with pip install ''git+https://github.com/fma91/SuppOrth.git@stand_alone'' followed '</span><span class="keyword">...</span>
+0218     <span class="string">'by suppOrth install, then put suppOrth on the PATH, set RAVEN_SUPPORTH, or pass '</span><span class="keyword">...</span>
+0219     <span class="string">'the suppOrth argument.'</span>]);
+0220 <span class="keyword">end</span>
+0221 
+0222 <a name="_sub2" href="#_subfunctions" class="code">function lines=readFastaLines(file)</a>
+0223 [~,~,ext]=fileparts(file);
+0224 <span class="keyword">if</span> strcmpi(ext,<span class="string">'.gz'</span>)
+0225     tmp=tempname;
+0226     unzipped=gunzip(file,tmp);
+0227     text=fileread(unzipped{1});
+0228     rmdir(tmp,<span class="string">'s'</span>);
+0229 <span class="keyword">else</span>
+0230     text=fileread(file);
+0231 <span class="keyword">end</span>
+0232 lines=splitlines(text);
+0233 <span class="keyword">end</span>
+0234 
+0235 <a name="_sub3" href="#_subfunctions" class="code">function ids=fastaIds(file)</a>
+0236 <span class="comment">%Sequence ids as SuppOrth reads them: the first word of each header line</span>
+0237 lines=<a href="#_sub2" class="code" title="subfunction lines=readFastaLines(file)">readFastaLines</a>(file);
+0238 headers=lines(startsWith(lines,<span class="string">'&gt;'</span>));
+0239 words=regexp(headers,<span class="string">'^&gt;\s*(\S+)'</span>,<span class="string">'tokens'</span>,<span class="string">'once'</span>);
+0240 words=words(~cellfun(@isempty,words));
+0241 ids=cellfun(@(w) w{1},words,<span class="string">'UniformOutput'</span>,false);
+0242 <span class="keyword">end</span>
+0243 
+0244 <a name="_sub4" href="#_subfunctions" class="code">function writePrefixed(src,dest,prefix)</a>
+0245 lines=<a href="#_sub2" class="code" title="subfunction lines=readFastaLines(file)">readFastaLines</a>(src);
+0246 isHeader=startsWith(lines,<span class="string">'&gt;'</span>);
+0247 lines(isHeader)=strcat(<span class="string">'&gt;'</span>,prefix,extractAfter(lines(isHeader),1));
+0248 <span class="keyword">if</span> ~isempty(lines) &amp;&amp; isempty(lines{end})
+0249     lines(end)=[];
+0250 <span class="keyword">end</span>
+0251 fid=fopen(dest,<span class="string">'w'</span>);
+0252 fprintf(fid,<span class="string">'%s\n'</span>,lines{:});
+0253 fclose(fid);
+0254 <span class="keyword">end</span>
+0255 
+0256 <a name="_sub5" href="#_subfunctions" class="code">function T=stripPrefixes(file)</a>
+0257 <span class="comment">%Remove the &quot;&lt;label&gt;__&quot; prefix that runSuppOrth added to protein ids</span>
+0258 lines=splitlines(fileread(file));
+0259 lines=lines(~cellfun(@isempty,lines));
+0260 header=strsplit(lines{1},<span class="string">'\t'</span>,<span class="string">'CollapseDelimiters'</span>,false);
+0261 fields=regexp(lines(2:end),<span class="string">'\t'</span>,<span class="string">'split'</span>);
+0262 fields=vertcat(fields{:});
+0263 <span class="keyword">if</span> isempty(fields)
+0264     fields=cell(0,numel(header));
+0265 <span class="keyword">end</span>
+0266 T=cell2table(fields,<span class="string">'VariableNames'</span>,header);
+0267 <span class="keyword">for</span> pair={{<span class="string">'Species1'</span>,<span class="string">'Protein1'</span>},{<span class="string">'Species2'</span>,<span class="string">'Protein2'</span>}}
+0268     s=T.(pair{1}{1});
+0269     prot=T.(pair{1}{2});
+0270     prefix=strcat(s,<span class="string">'__'</span>);
+0271     has=cellfun(@startsWith,prot,prefix);
+0272     prot(has)=cellfun(@(x,pre) x(numel(pre)+1:end),prot(has),prefix(has),<span class="string">'UniformOutput'</span>,false);
+0273     T.(pair{1}{2})=prot;
+0274 <span class="keyword">end</span>
+0275 <span class="keyword">end</span>
+0276 
+0277 <a name="_sub6" href="#_subfunctions" class="code">function q=shellQuote(s)</a>
+0278 q=[<span class="string">''''</span> strrep(char(s),<span class="string">''''</span>,<span class="string">'''\'''''</span>) <span class="string">''''</span>];
+0279 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

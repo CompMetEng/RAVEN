@@ -1,0 +1,295 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of getMinimalMedium</title>
+  <meta name="keywords" content="getMinimalMedium">
+  <meta name="description" content="getMinimalMedium  Find the minimal set of uptake reactions for growth.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">analysis</a> &gt; getMinimalMedium.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for analysis&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>getMinimalMedium
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>getMinimalMedium  Find the minimal set of uptake reactions for growth.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [medium, mediumIdx] = getMinimalMedium(model, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> getMinimalMedium  Find the minimal set of uptake reactions for growth.
+
+ Uses MILP to find the smallest set of exchange reactions that can carry
+ uptake flux (lb &lt; 0) while the model achieves a target growth rate. The
+ MILP formulation gives a medium with the globally minimal number of
+ uptake reactions.
+
+ Parameters
+ ----------
+ model : struct
+     a model structure.
+
+ Name-Value Arguments
+ --------------------
+ minGrowth : double
+     minimum objective value (growth rate) the medium must support. If
+     empty, 10 % of the optimum objective value under the current bounds,
+     which requires one extra FBA call. A value given explicitly avoids
+     that call (for example 'minGrowth', 0.1) (default empty).
+ verbose : logical
+     print the resulting minimal medium (default true).
+
+ Returns
+ -------
+ medium : cell
+     cell array of reaction IDs that form the minimal medium. Empty if
+     no feasible medium can support the requested growth.
+ mediumIdx : double
+     column vector of reaction indices corresponding to medium.
+
+ Examples
+ --------
+     [med, idx] = getMinimalMedium(model)
+     [med, idx] = getMinimalMedium(model, 'minGrowth', 0.05)
+     [med, idx] = getMinimalMedium(model, 'verbose', false)
+
+ Notes
+ -----
+ Only exchange reactions with lb &lt; 0 are candidate uptake reactions.
+ Exchange reactions with lb &gt;= 0 are not included.
+
+ The MILP formulation:
+   minimise  sum(y_i)
+   s.t.      S v = 0
+             c' v &gt;= minGrowth
+             v_i &gt;= lb_i * y_i   for each candidate uptake reaction i
+             lb_j &lt;= v_j &lt;= ub_j for all reactions j
+             y_i in {0, 1}
+
+ A y_i = 0 forces reaction i to carry non-negative flux (no net uptake);
+ y_i = 1 allows it to carry flux as low as lb_i.
+
+ The number of uptake reactions is minimal, but the medium is not
+ necessarily unique: when several media of the same size support the
+ growth rate, the solver returns one of them, and another solver or
+ solver version can return a different one.
+
+ The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled
+ GLPK solves it for small models. The RAVEN:glpkMILP warning issued with
+ GLPK states that GLPK works for small problems and that Gurobi is much
+ faster and more reliable for larger ones (setRavenSolver('gurobi')).</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function printMedium_(model, medium, mediumIdx, minGrowth, nCandidates)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [medium, mediumIdx] = getMinimalMedium(model, varargin)</a>
+0002 <span class="comment">% getMinimalMedium  Find the minimal set of uptake reactions for growth.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Uses MILP to find the smallest set of exchange reactions that can carry</span>
+0005 <span class="comment">% uptake flux (lb &lt; 0) while the model achieves a target growth rate. The</span>
+0006 <span class="comment">% MILP formulation gives a medium with the globally minimal number of</span>
+0007 <span class="comment">% uptake reactions.</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">% Parameters</span>
+0010 <span class="comment">% ----------</span>
+0011 <span class="comment">% model : struct</span>
+0012 <span class="comment">%     a model structure.</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Name-Value Arguments</span>
+0015 <span class="comment">% --------------------</span>
+0016 <span class="comment">% minGrowth : double</span>
+0017 <span class="comment">%     minimum objective value (growth rate) the medium must support. If</span>
+0018 <span class="comment">%     empty, 10 % of the optimum objective value under the current bounds,</span>
+0019 <span class="comment">%     which requires one extra FBA call. A value given explicitly avoids</span>
+0020 <span class="comment">%     that call (for example 'minGrowth', 0.1) (default empty).</span>
+0021 <span class="comment">% verbose : logical</span>
+0022 <span class="comment">%     print the resulting minimal medium (default true).</span>
+0023 <span class="comment">%</span>
+0024 <span class="comment">% Returns</span>
+0025 <span class="comment">% -------</span>
+0026 <span class="comment">% medium : cell</span>
+0027 <span class="comment">%     cell array of reaction IDs that form the minimal medium. Empty if</span>
+0028 <span class="comment">%     no feasible medium can support the requested growth.</span>
+0029 <span class="comment">% mediumIdx : double</span>
+0030 <span class="comment">%     column vector of reaction indices corresponding to medium.</span>
+0031 <span class="comment">%</span>
+0032 <span class="comment">% Examples</span>
+0033 <span class="comment">% --------</span>
+0034 <span class="comment">%     [med, idx] = getMinimalMedium(model)</span>
+0035 <span class="comment">%     [med, idx] = getMinimalMedium(model, 'minGrowth', 0.05)</span>
+0036 <span class="comment">%     [med, idx] = getMinimalMedium(model, 'verbose', false)</span>
+0037 <span class="comment">%</span>
+0038 <span class="comment">% Notes</span>
+0039 <span class="comment">% -----</span>
+0040 <span class="comment">% Only exchange reactions with lb &lt; 0 are candidate uptake reactions.</span>
+0041 <span class="comment">% Exchange reactions with lb &gt;= 0 are not included.</span>
+0042 <span class="comment">%</span>
+0043 <span class="comment">% The MILP formulation:</span>
+0044 <span class="comment">%   minimise  sum(y_i)</span>
+0045 <span class="comment">%   s.t.      S v = 0</span>
+0046 <span class="comment">%             c' v &gt;= minGrowth</span>
+0047 <span class="comment">%             v_i &gt;= lb_i * y_i   for each candidate uptake reaction i</span>
+0048 <span class="comment">%             lb_j &lt;= v_j &lt;= ub_j for all reactions j</span>
+0049 <span class="comment">%             y_i in {0, 1}</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">% A y_i = 0 forces reaction i to carry non-negative flux (no net uptake);</span>
+0052 <span class="comment">% y_i = 1 allows it to carry flux as low as lb_i.</span>
+0053 <span class="comment">%</span>
+0054 <span class="comment">% The number of uptake reactions is minimal, but the medium is not</span>
+0055 <span class="comment">% necessarily unique: when several media of the same size support the</span>
+0056 <span class="comment">% growth rate, the solver returns one of them, and another solver or</span>
+0057 <span class="comment">% solver version can return a different one.</span>
+0058 <span class="comment">%</span>
+0059 <span class="comment">% The MILP is solved with the solver set by setRavenSolver. RAVEN's bundled</span>
+0060 <span class="comment">% GLPK solves it for small models. The RAVEN:glpkMILP warning issued with</span>
+0061 <span class="comment">% GLPK states that GLPK works for small problems and that Gurobi is much</span>
+0062 <span class="comment">% faster and more reliable for larger ones (setRavenSolver('gurobi')).</span>
+0063 
+0064 p = parseRAVENargs(varargin, {<span class="string">'minGrowth'</span>,[]; <span class="string">'verbose'</span>,true});
+0065 minGrowth = p.minGrowth;
+0066 verbose   = p.verbose;
+0067 
+0068 medium    = {};
+0069 mediumIdx = zeros(0,1);
+0070 
+0071 <span class="comment">% ---- Resolve minGrowth ----</span>
+0072 <span class="keyword">if</span> isempty(minGrowth)
+0073     sol0 = solveLP(model);
+0074     <span class="keyword">if</span> sol0.stat ~= 1
+0075         error(<span class="string">'RAVEN:infeasible'</span>, <span class="keyword">...</span>
+0076             <span class="string">'getMinimalMedium: model is infeasible under current bounds.'</span>);
+0077     <span class="keyword">end</span>
+0078     minGrowth = 0.1 * sol0.f;
+0079 <span class="keyword">end</span>
+0080 
+0081 <span class="keyword">if</span> minGrowth &lt;= 0
+0082     warning(<span class="string">'getMinimalMedium:zeroGrowth'</span>, <span class="keyword">...</span>
+0083         <span class="string">'minGrowth &lt;= 0; the MILP will accept a zero-growth solution.'</span>);
+0084 <span class="keyword">end</span>
+0085 
+0086 <span class="comment">% ---- Identify candidate uptake reactions ----</span>
+0087 [~, exchIdx] = getExchangeRxns(model);
+0088 <span class="comment">% Only consider exchange reactions with lb &lt; 0 (able to take up)</span>
+0089 lb_cap = max(model.lb(exchIdx), -1000);  <span class="comment">% cap at -1000 for numerical safety</span>
+0090 isUptake = lb_cap &lt; 0;
+0091 uptakeIdx = exchIdx(isUptake);           <span class="comment">% indices into model.rxns</span>
+0092 uptakeLb  = lb_cap(isUptake);           <span class="comment">% effective lower bounds (negative)</span>
+0093 n_uptake  = numel(uptakeIdx);
+0094 
+0095 <span class="keyword">if</span> n_uptake == 0
+0096     <span class="keyword">if</span> verbose
+0097         fprintf(<span class="string">'getMinimalMedium: no exchange reactions with lb &lt; 0 found.\n'</span>);
+0098     <span class="keyword">end</span>
+0099     <span class="keyword">return</span>
+0100 <span class="keyword">end</span>
+0101 
+0102 <span class="comment">% ---- Build MILP ----</span>
+0103 n_mets = numel(model.mets);
+0104 n_rxns = numel(model.rxns);
+0105 n_vars = n_rxns + n_uptake;   <span class="comment">% [flux vars | binary uptake indicators]</span>
+0106 
+0107 <span class="comment">% Objective: minimise sum(y)</span>
+0108 obj = [zeros(n_rxns,1); ones(n_uptake,1)];
+0109 
+0110 <span class="comment">% 1. Steady-state: S*v = 0   (n_mets rows)</span>
+0111 A_ss = [model.S, sparse(n_mets, n_uptake)];
+0112 b_ss = zeros(n_mets, 1);
+0113 
+0114 <span class="comment">% 2. Growth lower bound: c'*v &gt;= minGrowth   (1 row)</span>
+0115 A_grw = [model.c', sparse(1, n_uptake)];
+0116 b_grw = minGrowth;
+0117 
+0118 <span class="comment">% 3. Uptake coupling: v_i - lb_i*y_k &gt;= 0   (n_uptake rows)</span>
+0119 <span class="comment">%    coefficient of v_i (in flux block) = 1</span>
+0120 <span class="comment">%    coefficient of y_k (in binary block, k-th uptake var) = -lb_i (&gt; 0)</span>
+0121 rows  = (1:n_uptake)';
+0122 colsV = uptakeIdx;
+0123 colsY = n_rxns + (1:n_uptake)';
+0124 A_upt = sparse([rows; rows], [colsV; colsY], [ones(n_uptake,1); -uptakeLb], n_uptake, n_vars);
+0125 b_upt = zeros(n_uptake, 1);
+0126 
+0127 <span class="comment">% Assemble — prob.a is the &quot;original&quot; A (without solver slack columns) and</span>
+0128 <span class="comment">% is used by optimizeProb to know how many variables to return in res.full.</span>
+0129 prob.A       = [A_ss; A_grw; A_upt];
+0130 prob.a       = prob.A;
+0131 prob.b       = [b_ss; b_grw; b_upt];
+0132 prob.csense  = [repmat(<span class="string">'E'</span>,1,n_mets), <span class="string">'G'</span>, repmat(<span class="string">'G'</span>,1,n_uptake)];
+0133 prob.c       = obj;
+0134 prob.osense  = 1;   <span class="comment">% minimise</span>
+0135 lb_forProb              = model.lb;
+0136 lb_forProb(uptakeIdx)   = uptakeLb;   <span class="comment">% cap at -1000 for numerical safety</span>
+0137 prob.lb      = [lb_forProb; zeros(n_uptake,1)];
+0138 prob.ub      = [model.ub; ones(n_uptake,1)];
+0139 prob.vartype = [repmat(<span class="string">'C'</span>, 1, n_rxns), repmat(<span class="string">'I'</span>, 1, n_uptake)];
+0140 
+0141 <span class="comment">% ---- Solve ----</span>
+0142 sol = optimizeProb(prob, [], false);
+0143 isFeasible = checkSolution(sol);
+0144 
+0145 <span class="keyword">if</span> ~isFeasible
+0146     <span class="keyword">if</span> verbose
+0147         fprintf(<span class="string">'getMinimalMedium: MILP returned no feasible solution.\n'</span>);
+0148         fprintf(<span class="string">'  The model may not be able to grow at minGrowth=%.4g with any medium.\n'</span>, minGrowth);
+0149     <span class="keyword">end</span>
+0150     <span class="keyword">return</span>
+0151 <span class="keyword">end</span>
+0152 
+0153 <span class="comment">% ---- Extract result ----</span>
+0154 y_sol     = sol.full(n_rxns + 1 : end);
+0155 inMedium  = y_sol &gt; 0.5;
+0156 mediumIdx = uptakeIdx(inMedium);
+0157 medium    = model.rxns(mediumIdx);
+0158 
+0159 <span class="keyword">if</span> verbose
+0160     <a href="#_sub1" class="code" title="subfunction printMedium_(model, medium, mediumIdx, minGrowth, nCandidates)">printMedium_</a>(model, medium, mediumIdx, minGrowth, n_uptake);
+0161 <span class="keyword">end</span>
+0162 <span class="keyword">end</span>
+0163 
+0164 <span class="comment">%--------------------------------------------------------------------------</span>
+0165 <a name="_sub1" href="#_subfunctions" class="code">function printMedium_(model, medium, mediumIdx, minGrowth, nCandidates)</a>
+0166     W = 62;
+0167     fprintf(<span class="string">'\n%s\n'</span>, repmat(<span class="string">'='</span>, 1, W));
+0168     fprintf(<span class="string">'  Minimal medium  (%d of %d candidate uptake reactions)\n'</span>, <span class="keyword">...</span>
+0169         numel(medium), nCandidates);
+0170     fprintf(<span class="string">'  Target growth: %.4g\n'</span>, minGrowth);
+0171     fprintf(<span class="string">'%s\n'</span>, repmat(<span class="string">'-'</span>, 1, W));
+0172     <span class="keyword">if</span> isempty(medium)
+0173         fprintf(<span class="string">'  (none — model can grow without any uptake)\n'</span>);
+0174     <span class="keyword">else</span>
+0175         <span class="keyword">for</span> i = 1:numel(medium)
+0176             ri  = mediumIdx(i);
+0177             nm  = <span class="string">''</span>;
+0178             <span class="keyword">if</span> isfield(model,<span class="string">'rxnNames'</span>) &amp;&amp; ri &lt;= numel(model.rxnNames)
+0179                 nm = char(model.rxnNames{ri});
+0180             <span class="keyword">end</span>
+0181             <span class="keyword">if</span> numel(nm) &gt; 35, nm = [nm(1:32) <span class="string">'...'</span>]; <span class="keyword">end</span>
+0182             fprintf(<span class="string">'  %-20s  %s\n'</span>, medium{i}, nm);
+0183         <span class="keyword">end</span>
+0184     <span class="keyword">end</span>
+0185     fprintf(<span class="string">'%s\n\n'</span>, repmat(<span class="string">'='</span>, 1, W));
+0186 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

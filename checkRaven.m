@@ -1,35 +1,34 @@
 function [currVer, installType] = checkRaven(developMode, checkBinaries)
-% checkRaven
-%   Checks that all necessary functions are installed and working. It also
-%   checks whether there are any functions
-%   with overlapping names between RAVEN and other toolboxes or
-%   user-defined functions, which are accessible from MATLAB pathlist
+% checkRaven  Check the RAVEN installation and set up the MATLAB path.
 %
-%   NOTE: this function is run before RAVEN has been added to the MATLAB
-%   path, so it must not call any other RAVEN functions until it has added
-%   RAVEN to the path itself. Its arguments are therefore parsed directly
-%   rather than via parseRAVENargs.
+%   Reports the installation type and RAVEN version, adds RAVEN to the
+%   MATLAB path, tests model import and export, the LP solvers and the
+%   binary executables, and checks for functions with overlapping names
+%   between RAVEN and other toolboxes or user-defined functions on the
+%   MATLAB path.
+%
+%   This function runs before RAVEN is on the MATLAB path. It therefore
+%   calls no other RAVEN function until it has added RAVEN to the path, and
+%   it parses its arguments without parseRAVENargs.
 %
 % Parameters
 % ----------
-%   developMode     logical indicating development mode, which includes
-%                   testing of binaries that are required to update KEGG
-%                   HMMs (default false). If 'versionOnly' is
-%                   specified, only the version is reported as currVer, no
-%                   further installation or tests are performed.
-%   checkBinaries   logical whether non-developMode binaries should be
-%                   checked for functionality. If false, it overwrites
-%                   developMode. Default true.
+%   developMode     'versionOnly' to return the version in currVer without
+%                   any further installation check or test. Any other
+%                   value runs all checks. Default false.
+%   checkBinaries   logical, true to test that the BLAST+, DIAMOND and
+%                   HMMER binaries execute. If false, the binary check is
+%                   skipped. Default true.
 %
 % Output:
 %   currVer         current RAVEN version
 %   installType     how RAVEN is installed
-%                   0:  via git (as .git folder is found)
+%                   0:  via git (a .git folder is found)
 %                   1:  as MATLAB Add-On
-%                   2:  neither of the above, direct download of ZIP file
-%                   This matches the installations mentioned in the wiki:
-%                   https://github.com/SysBioChalmers/RAVEN/wiki/Installation
-%                   0 = advanced / 1 = easy / 2 = medium
+%                   2:  direct download of a ZIP file
+%                   The values correspond to the installation types
+%                   Advanced (0), Easy (1) and Medium (2) described at
+%                   https://raven-docs.readthedocs.io/en/latest/installation/raven.html
 %
 % Usage: [currVer, installType] = checkRaven(developMode)
 
@@ -82,7 +81,7 @@ if exist(fullfile(ravenDir,'version.txt'), 'file') == 2
     if ~versionOnly
         fprintf([currVer '\n']);
         try
-            newVer=strtrim(webread('https://raw.githubusercontent.com/SysBioChalmers/RAVEN/main/version.txt'));
+            newVer=strtrim(webread('https://raw.githubusercontent.com/CompMetEng/RAVEN/main/version.txt'));
             newVerNum=str2double(strsplit(newVer,'.'));
             currVerNum=str2double(strsplit(currVer,'.'));
             for i=1:3
@@ -95,10 +94,10 @@ if exist(fullfile(ravenDir,'version.txt'), 'file') == 2
                             printOrange('     to get the latest RAVEN release\n');
                         case 1
                             printOrange(myStr('     Instructions on how to upgrade',40))
-                            fprintf('<a href="https://github.com/SysBioChalmers/RAVEN/wiki/Installation#upgrade-raven-after-easy-installation">here</a>\n');
+                            fprintf('<a href="https://raven-docs.readthedocs.io/en/latest/installation/raven.html#upgrade">here</a>\n');
                         case 2
                             printOrange(myStr('     Instructions on how to upgrade',40))
-                            fprintf('<a href="https://github.com/SysBioChalmers/RAVEN/wiki/Installation#upgrade-raven-after-medium-installation">here</a>\n');                            
+                            fprintf('<a href="https://raven-docs.readthedocs.io/en/latest/installation/raven.html#upgrade">here</a>\n');                            
                     end
                     break
                 elseif i==3
@@ -166,7 +165,7 @@ fprintf('\n=== Model import and export ===\n');
 fprintf(myStr(' > Checking libSBML version',40))
 model = [];
 try
-    evalc('model = importModel(fullfile(ravenDir,''tutorial'',''empty.xml''));');
+    evalc('model = importModel(fullfile(ravenDir,''tutorials'',''data'',''empty.xml''));');
     try
         libSBMLver=OutputSBML_RAVEN; % Only works in libSBML 5.17.0+
         fprintf([libSBMLver.libSBML_version_string '\n']);
@@ -193,7 +192,7 @@ else
 end
 
 reportCheck('   > Export SBML format', @() exportModel(model, fullfile(tmpDir,'model.xml')));
-reportCheck('   > Import YAML format', @() readYAMLmodel(fullfile(ravenDir,'tutorial','empty.yml')));
+reportCheck('   > Import YAML format', @() readYAMLmodel(fullfile(ravenDir,'tutorials','data','empty.yml')));
 reportCheck('   > Export YAML format', @() writeYAMLmodel(model, fullfile(tmpDir,'model.yml')));
 
 reportCheck('   > Export Excel format', @() exportToExcelFormat(model, fullfile(tmpDir,'model.xlsx')));
@@ -251,14 +250,14 @@ if ~checkBinaries
     printOrange('    Skipping check of binary executables\n')
 else
     % The BLAST+/DIAMOND/HMMER binaries are downloaded on demand from
-    % raven-data; fetch any that are missing for this platform before
+    % toolbox-assets; fetch any that are missing for this platform before
     % checking. This doubles as the up-front "prefetch" for users who want
     % everything ready after installation.
     try
         downloadRavenBinaries({'blast+','diamond','hmmer'});
     catch ME
-        printOrange(['    Could not download binaries from raven-data: ' ME.message '\n' ...
-            '    (offline? fetch the "*-binaries" RAVEN release for an offline install)\n']);
+        printOrange(['    Could not download binaries from toolbox-assets: ' ME.message '\n' ...
+            '    (offline? install from the RAVEN-<tag>-full.zip bundle attached to each RAVEN release)\n']);
     end
     % Run each bundled binary with a version/help flag to confirm it
     % executes on this system, rather than running the full test cases.
@@ -294,13 +293,13 @@ end
 function testBinary(ravenDir, tool, binName, versionArg)
 % Run a bundled binary with versionArg to confirm it executes; error if not.
 if ispc
-    binEnd = '.exe'; % native Windows builds (raven-data windows-x86_64 ZIPs)
+    binEnd = '.exe'; % native Windows builds (toolbox-assets windows-x86_64 ZIPs)
 elseif ismac
     binEnd = '.mac';
 else
     binEnd = '';
 end
-cmd = ['"' fullfile(ravenDir,'software',tool,[binName binEnd]) '" ' versionArg];
+cmd = ['"' fullfile(ravenDir,'src','external',tool,[binName binEnd]) '" ' versionArg];
 [status,~] = system(cmd);
 if status ~= 0
     error('%s did not execute (exit status %d)', binName, status);
@@ -339,7 +338,7 @@ if ispc
     status = 0; % No need to run on Windows
     return;
 end
-binDir = fullfile(ravenDir,'software');
+binDir = fullfile(ravenDir,'src','external');
 
 % blast+/diamond/hmmer may be present from an on-demand download
 % (downloadRavenBinaries already chmods those) or from the offline bundle;

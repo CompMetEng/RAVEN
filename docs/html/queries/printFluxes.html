@@ -1,0 +1,305 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of printFluxes</title>
+  <meta name="keywords" content="printFluxes">
+  <meta name="description" content="printFluxes  Print reactions and fluxes to the screen or to a file.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">queries</a> &gt; printFluxes.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for queries&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>printFluxes
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>printFluxes  Print reactions and fluxes to the screen or to a file.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function printFluxes(model, fluxes, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> printFluxes  Print reactions and fluxes to the screen or to a file.
+
+ Parameters
+ ----------
+ model : struct
+     a model structure.
+ fluxes : double
+     a vector with fluxes, or a matrix with one row per reaction and one
+     column per flux distribution.
+
+ Name-Value Arguments
+ --------------------
+ onlyExchange : logical
+     only print exchange fluxes (default true).
+ cutOffFlux : double
+     only print fluxes with absolute values above or equal to this value
+     (default 10^-8).
+ outputFile : char
+     a file to save the print-out to (default is output to the command
+     window).
+ outputString : char
+     a string that specifies the output of each reaction (default
+     &quot;%rxnID\t(%rxnName):\t%flux\n&quot;).
+ metaboliteList : cell
+     cell array of metabolite names (case insensitive). Only reactions
+     involving any of these metabolites are printed.
+
+ Notes
+ -----
+ The following codes are available for user-defined output strings:
+
+ - %rxnID : reaction ID
+ - %rxnName : reaction name
+ - %lower : lower bound
+ - %upper : upper bound
+ - %obj : objective coefficient
+ - %eqn : equation
+ - %flux : flux
+ - %element : equation using the metabolite formulas in place of metabolite
+   names
+ - %unbalanced : &quot;(*)&quot; if the reaction is unbalanced and &quot;(-)&quot; if it could
+   not be parsed
+ - %lumped : equation where the elemental compositions of the left-hand and
+   right-hand sides are lumped
+
+ Examples
+ --------
+     printFluxes(model, fluxes, 'onlyExchange', false, 'cutOffFlux', 10^-6, ...
+                 'outputFile', 'fluxes.txt', 'metaboliteList', {'glucose'});</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="constructEquations.html" class="code" title="function equationStrings=constructEquations(model,varargin)">constructEquations</a>	constructEquations  Construct equation strings for reactions.</li><li><a href="getElementalBalance.html" class="code" title="function balanceStructure=getElementalBalance(model,varargin)">getElementalBalance</a>	getElementalBalance  Check whether the reactions of a model are balanced.</li><li><a href="getExchangeRxns.html" class="code" title="function [exchangeRxns, exchangeRxnsIndexes, exchangedMets]=getExchangeRxns(model,varargin)">getExchangeRxns</a>	getExchangeRxns  Retrieve the exchange reactions from a model.</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function printFluxes(model, fluxes, varargin)</a>
+0002 <span class="comment">% printFluxes  Print reactions and fluxes to the screen or to a file.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Parameters</span>
+0005 <span class="comment">% ----------</span>
+0006 <span class="comment">% model : struct</span>
+0007 <span class="comment">%     a model structure.</span>
+0008 <span class="comment">% fluxes : double</span>
+0009 <span class="comment">%     a vector with fluxes, or a matrix with one row per reaction and one</span>
+0010 <span class="comment">%     column per flux distribution.</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">% Name-Value Arguments</span>
+0013 <span class="comment">% --------------------</span>
+0014 <span class="comment">% onlyExchange : logical</span>
+0015 <span class="comment">%     only print exchange fluxes (default true).</span>
+0016 <span class="comment">% cutOffFlux : double</span>
+0017 <span class="comment">%     only print fluxes with absolute values above or equal to this value</span>
+0018 <span class="comment">%     (default 10^-8).</span>
+0019 <span class="comment">% outputFile : char</span>
+0020 <span class="comment">%     a file to save the print-out to (default is output to the command</span>
+0021 <span class="comment">%     window).</span>
+0022 <span class="comment">% outputString : char</span>
+0023 <span class="comment">%     a string that specifies the output of each reaction (default</span>
+0024 <span class="comment">%     &quot;%rxnID\t(%rxnName):\t%flux\n&quot;).</span>
+0025 <span class="comment">% metaboliteList : cell</span>
+0026 <span class="comment">%     cell array of metabolite names (case insensitive). Only reactions</span>
+0027 <span class="comment">%     involving any of these metabolites are printed.</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">% Notes</span>
+0030 <span class="comment">% -----</span>
+0031 <span class="comment">% The following codes are available for user-defined output strings:</span>
+0032 <span class="comment">%</span>
+0033 <span class="comment">% - %rxnID : reaction ID</span>
+0034 <span class="comment">% - %rxnName : reaction name</span>
+0035 <span class="comment">% - %lower : lower bound</span>
+0036 <span class="comment">% - %upper : upper bound</span>
+0037 <span class="comment">% - %obj : objective coefficient</span>
+0038 <span class="comment">% - %eqn : equation</span>
+0039 <span class="comment">% - %flux : flux</span>
+0040 <span class="comment">% - %element : equation using the metabolite formulas in place of metabolite</span>
+0041 <span class="comment">%   names</span>
+0042 <span class="comment">% - %unbalanced : &quot;(*)&quot; if the reaction is unbalanced and &quot;(-)&quot; if it could</span>
+0043 <span class="comment">%   not be parsed</span>
+0044 <span class="comment">% - %lumped : equation where the elemental compositions of the left-hand and</span>
+0045 <span class="comment">%   right-hand sides are lumped</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">% Examples</span>
+0048 <span class="comment">% --------</span>
+0049 <span class="comment">%     printFluxes(model, fluxes, 'onlyExchange', false, 'cutOffFlux', 10^-6, ...</span>
+0050 <span class="comment">%                 'outputFile', 'fluxes.txt', 'metaboliteList', {'glucose'});</span>
+0051 
+0052 p=parseRAVENargs(varargin, {<span class="string">'onlyExchange'</span>,true; <span class="string">'cutOffFlux'</span>,10^-8; <span class="string">'outputFile'</span>,[]; <span class="string">'outputString'</span>,[]; <span class="string">'metaboliteList'</span>,{}});
+0053 onlyExchange=p.onlyExchange;
+0054 cutOffFlux=p.cutOffFlux;
+0055 <span class="keyword">if</span> isempty(cutOffFlux)
+0056     cutOffFlux=10^-8;
+0057 <span class="keyword">end</span>
+0058 outputFile=p.outputFile;
+0059 <span class="keyword">if</span> ~isempty(outputFile)
+0060     outputFile=char(outputFile);
+0061     fid=fopen(outputFile,<span class="string">'w'</span>);
+0062 <span class="keyword">else</span>
+0063     fid=1;
+0064 <span class="keyword">end</span>
+0065 outputString=p.outputString;
+0066 <span class="keyword">if</span> isempty(outputString)
+0067     outputString=<span class="string">'%rxnID\t(%rxnName):\t%flux\n'</span>;
+0068 <span class="keyword">else</span>
+0069     outputString=char(outputString);
+0070 <span class="keyword">end</span>
+0071 metaboliteList=p.metaboliteList;
+0072 <span class="keyword">if</span> ~isempty(metaboliteList)
+0073     metaboliteList=convertCharArray(metaboliteList);
+0074 <span class="keyword">end</span>
+0075 <span class="keyword">if</span> isempty(fluxes)
+0076     EM=<span class="string">'Empty vector of fluxes, solveLP possibly returned infeasible'</span>;
+0077     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0078 <span class="keyword">elseif</span> size(fluxes,1)~=numel(model.rxns)
+0079     EM=<span class="string">'The number of fluxes and the number of reactions must be the same'</span>;
+0080     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0081 <span class="keyword">end</span>
+0082 
+0083 <span class="comment">%Only keep reactions involving the defined metabolites</span>
+0084 <span class="keyword">if</span> ~isempty(metaboliteList)
+0085     I=ismember(upper(model.metNames),upper(metaboliteList));
+0086     [~, K]=find(model.S(I,:));
+0087     
+0088     <span class="comment">%Delete all other reactions</span>
+0089     toDelete=true(numel(model.rxns),1);
+0090     toDelete(K)=false;
+0091     model=removeReactions(model,toDelete);
+0092     fluxes(toDelete,:)=[];
+0093 <span class="keyword">end</span>
+0094 
+0095 <span class="keyword">if</span> onlyExchange==true
+0096     fprintf(fid,<span class="string">'EXCHANGE FLUXES:\n'</span>);
+0097 <span class="keyword">else</span>
+0098     fprintf(fid,<span class="string">'FLUXES:\n'</span>);
+0099 <span class="keyword">end</span>
+0100 
+0101 <span class="comment">%Remove reactions which are below the cut off</span>
+0102 toDelete=abs(fluxes)&lt;cutOffFlux;
+0103 toDelete=all(toDelete,2);
+0104 model=removeReactions(model,toDelete,true,true);
+0105 fluxes(toDelete,:)=[];
+0106 
+0107 <span class="keyword">if</span> any(strfind(outputString,<span class="string">'%eqn'</span>))
+0108     <span class="comment">%Construct the equations</span>
+0109     eqn=<a href="constructEquations.html" class="code" title="function equationStrings=constructEquations(model,varargin)">constructEquations</a>(model);
+0110 <span class="keyword">else</span>
+0111     eqn=cell(numel(model.rxns),1);
+0112     eqn(:)={<span class="string">''</span>};
+0113 <span class="keyword">end</span>
+0114 <span class="keyword">if</span> any(strfind(outputString,<span class="string">'%element'</span>))
+0115     <span class="comment">%For printing equations using the composition</span>
+0116     cModel=model;
+0117     cModel.metNames=cModel.metFormulas;
+0118     cModel.metNames(cellfun(@isempty,cModel.metNames))={<span class="string">'?'</span>};
+0119     element=<a href="constructEquations.html" class="code" title="function equationStrings=constructEquations(model,varargin)">constructEquations</a>(cModel);
+0120 <span class="keyword">else</span>
+0121     element=cell(numel(model.rxns),1);
+0122     element(:)={<span class="string">''</span>};
+0123 <span class="keyword">end</span>
+0124 
+0125 <span class="keyword">if</span> any(strfind(outputString,<span class="string">'%unbalanced'</span>)) || any(strfind(outputString,<span class="string">'%lumped'</span>))
+0126     balanceStructure=<a href="getElementalBalance.html" class="code" title="function balanceStructure=getElementalBalance(model,varargin)">getElementalBalance</a>(model);
+0127 <span class="keyword">end</span>
+0128 
+0129 unbalanced=cell(numel(model.rxns),1);
+0130 unbalanced(:)={<span class="string">''</span>};
+0131 <span class="keyword">if</span> any(strfind(outputString,<span class="string">'%unbalanced'</span>))
+0132     unbalanced(balanceStructure.balanceStatus==0)={<span class="string">'(*)'</span>};
+0133     unbalanced(balanceStructure.balanceStatus&lt;0)={<span class="string">'(-)'</span>};
+0134 <span class="keyword">end</span>
+0135 
+0136 lumped=cell(numel(model.rxns),1);
+0137 lumped(:)={<span class="string">''</span>};
+0138 <span class="keyword">if</span> any(strfind(outputString,<span class="string">'%lumped'</span>))
+0139     <span class="keyword">for</span> i=1:numel(model.rxns)
+0140         leftGroup=<span class="string">''</span>;
+0141         rightGroup=<span class="string">''</span>;
+0142         <span class="keyword">for</span> j=1:numel(balanceStructure.elements.names)
+0143             I=balanceStructure.leftComp(i,j);
+0144             <span class="keyword">if</span> I~=0
+0145                 <span class="keyword">if</span> I==1
+0146                     leftGroup=[leftGroup balanceStructure.elements.abbrevs{j}];
+0147                 <span class="keyword">else</span>
+0148                     leftGroup=[leftGroup balanceStructure.elements.abbrevs{j} num2str(I)];
+0149                 <span class="keyword">end</span>
+0150             <span class="keyword">end</span>
+0151             I=balanceStructure.rightComp(i,j);
+0152             <span class="keyword">if</span> I~=0
+0153                 <span class="keyword">if</span> I==1
+0154                     rightGroup=[rightGroup balanceStructure.elements.abbrevs{j}];
+0155                 <span class="keyword">else</span>
+0156                     rightGroup=[rightGroup balanceStructure.elements.abbrevs{j} num2str(I)];
+0157                 <span class="keyword">end</span>
+0158             <span class="keyword">end</span>
+0159         <span class="keyword">end</span>
+0160         <span class="keyword">if</span> model.rev(i)
+0161             lumped{i}=[leftGroup <span class="string">' &lt;=&gt; '</span> rightGroup];
+0162         <span class="keyword">else</span>
+0163             lumped{i}=[leftGroup <span class="string">' =&gt; '</span> rightGroup];
+0164         <span class="keyword">end</span>
+0165     <span class="keyword">end</span>
+0166 <span class="keyword">end</span>
+0167 
+0168 <span class="comment">%Use getExchangeRxns' own definition of &quot;exchange reaction&quot; rather than a</span>
+0169 <span class="comment">%local, incomplete re-implementation: a model that still carries explicit</span>
+0170 <span class="comment">%boundary metabolites represents an exchange as realMet &lt;=&gt; realMet[b] --</span>
+0171 <span class="comment">%one reactant AND one product -- which &quot;no reactants or no products&quot; alone</span>
+0172 <span class="comment">%does not recognise, silently printing nothing for such a model.</span>
+0173 isExchRxn=false(numel(model.rxns),1);
+0174 <span class="keyword">if</span> onlyExchange==true
+0175     [~,exchIdx]=<a href="getExchangeRxns.html" class="code" title="function [exchangeRxns, exchangeRxnsIndexes, exchangedMets]=getExchangeRxns(model,varargin)">getExchangeRxns</a>(model,<span class="string">'all'</span>);
+0176     isExchRxn(exchIdx)=true;
+0177 <span class="keyword">end</span>
+0178 
+0179 <span class="keyword">for</span> i=1:numel(model.rxns)
+0180     <span class="comment">%Only print if it is an exchange reaction or if all reactions should be</span>
+0181     <span class="comment">%printed.</span>
+0182     <span class="keyword">if</span> (onlyExchange==false || isExchRxn(i))
+0183         printString=outputString;
+0184         
+0185         <span class="comment">%Produce the final string</span>
+0186         printString=strrep(printString,<span class="string">'%rxnID'</span>,model.rxns{i});
+0187         printString=strrep(printString,<span class="string">'%eqn'</span>,eqn{i});
+0188         printString=strrep(printString,<span class="string">'%rxnName'</span>,model.rxnNames{i});
+0189         printString=strrep(printString,<span class="string">'%lower'</span>,num2str(model.lb(i)));
+0190         printString=strrep(printString,<span class="string">'%upper'</span>,num2str(model.ub(i)));
+0191         printString=strrep(printString,<span class="string">'%obj'</span>,num2str(model.c(i)));
+0192         printString=strrep(printString,<span class="string">'%flux'</span>,num2str(fluxes(i,:)));
+0193         printString=strrep(printString,<span class="string">'%element'</span>,element{i});
+0194         printString=strrep(printString,<span class="string">'%unbalanced'</span>,unbalanced{i});
+0195         printString=strrep(printString,<span class="string">'%lumped'</span>,lumped{i});
+0196         <span class="comment">%Substituted model text (rxnID, eqn, rxnName, etc.) may itself</span>
+0197         <span class="comment">%contain &quot;%&quot;, which fprintf would otherwise reinterpret as a new</span>
+0198         <span class="comment">%format directive; print as literal data instead, after manually</span>
+0199         <span class="comment">%expanding the template's own \t and \n escapes.</span>
+0200         printString=strrep(printString,<span class="string">'\t'</span>,sprintf(<span class="string">'\t'</span>));
+0201         printString=strrep(printString,<span class="string">'\n'</span>,sprintf(<span class="string">'\n'</span>));
+0202         fprintf(fid,<span class="string">'%s'</span>,printString);
+0203     <span class="keyword">end</span>
+0204 <span class="keyword">end</span>
+0205 
+0206 <span class="keyword">if</span> fid~=1
+0207     fprintf(<span class="string">'File successfully saved.\n'</span>);
+0208     fclose(fid);
+0209 <span class="keyword">end</span>
+0210 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

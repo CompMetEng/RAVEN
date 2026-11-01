@@ -1,0 +1,240 @@
+function [solution, hsSolOut]=solveLP(model,varargin)
+% solveLP  Solve a linear programming problem.
+%
+% Parameters
+% ----------
+% model : struct
+%     a model structure.
+%
+% Name-Value Arguments
+% --------------------
+% minFlux : double
+%     determines if a second optimisation is performed to remove loops
+%     from the flux distribution (default 0):
+%
+%     - 0 : no second optimisation is performed
+%     - 1 : the sum of abs(fluxes) is minimised with an LP, which does not
+%       need the MILP that the minimisation of the number of fluxes requires
+%     - 2 : deprecated; gives an error
+%     - 3 : the number of fluxes is minimised with getMinNrFluxes, which
+%       solves a MILP and can take long. The result has the fewest active
+%       reactions, which can make the flux distribution easier to interpret
+% params : struct
+%     solver parameters, forwarded to optimizeProb. The field "maxRatio"
+%     (a number > 1) can be set for numerical conditioning of ill-scaled
+%     models: any reaction whose stoichiometric coefficients span more
+%     than maxRatio is split with auxiliary metabolites before solving,
+%     which preserves the feasible region (and thus the flux distribution
+%     of the original reactions). A common value is 1e6. No splitting is done
+%     when maxRatio is absent (default struct with relGap=0.4).
+% hsSol : struct
+%     hot-start solution for the LP solver, as hsSolOut from a previous
+%     call. It speeds up the solution when many similar optimisation
+%     problems are solved iteratively. A hsSol with stat<1 is ignored.
+%
+% Returns
+% -------
+% solution : struct
+%     LP solution with fields:
+%
+%     - f : objective value
+%     - x : primal (flux distribution)
+%     - stat : exit flag (1 = optimisation terminated successfully, 0 =
+%       solution is feasible but not necessarily optimal, -1 = no feasible
+%       solution found, -2 = solution found but flux minimisation failed)
+%     - msg : string describing the status of the optimisation
+%     - sPrice : shadow price (only reported if minFlux was 0)
+%     - rCost : reduced cost (only reported if minFlux was 0)
+% hsSolOut : struct
+%     solution to be used as hot-start solution (see the input parameters).
+%     Set only if minFlux is 0 or 1, and only when the solver returns a
+%     basis.
+%
+% Examples
+% --------
+%     [solution, hsSolOut] = solveLP(model, minFlux, params, hsSol);
+
+p=parseRAVENargs(varargin, {'minFlux',0; 'params',[]; 'hsSol',[]});
+minFlux=p.minFlux;
+params=p.params;
+if isempty(params)
+    params.relGap=0.4;
+end
+hsSol=p.hsSol;
+
+%Default return values
+hsSolOut=[];
+solution.x=[];
+solution.f=[];
+solution.stat=-1;
+
+%Check for valid lb and ub
+if ~isnumeric([model.lb,model.ub])
+    invalidBound = true(numel(model.lb),1);
+else
+    invalidBound = false(numel(model.lb),1);
+end
+invalidBound = invalidBound | model.lb>model.ub;
+invalidBound = invalidBound | logical(sum(isnan([model.lb,model.ub]),2));
+if any(invalidBound)
+    error(['Invalid set of bounds for reaction(s): ', strjoin(model.rxns(invalidBound),', '), '.'])
+end
+%Check for valid objective
+if ~isnumeric(model.c) || any(isnan(model.c))
+    error('Invalid defintion of objective function in model.c.')
+end
+%Check for valid S-matrix
+if ~allfinite(model.S)
+    invalidS = ~isfinite(model.S);
+    error(['Invalid coefficients defined for reaction(s): ', strjoin(model.rxns(any(invalidS)),', '), '.'])
+end
+
+%Ignore the hot-start if the previous solution was not feasible
+if isfield(hsSol,'stat')
+    if hsSol.stat<1
+        hsSol=[];
+    end
+end
+
+% Setup the linear problem for glpk
+prob        = [];
+prob.c      = [model.c*-1;zeros(size(model.S,1),1)];
+prob.b      = zeros(size(model.S,1), 1);
+prob.lb     = [model.lb; model.b(:,1)];
+prob.ub     = [model.ub; model.b(:,min(size(model.b,2),2))];
+prob.csense = repmat('E', 1, length(prob.b)); % Equality constraints
+prob.osense = 1; 
+prob.vartype = repmat('C', 1, length(prob.c)); % Fluxes are continuous values
+prob.A = [model.S -speye(size(model.S,1))];
+prob.a = model.S;
+
+%If hot-start should be used
+if ~isempty(hsSol)
+    prob.vbasis=hsSol.vbasis;
+    prob.cbasis=hsSol.cbasis;
+end
+
+% Parse the problem to the LP solver
+res = optimizeProb(prob,params);
+% Swap the sign of the obj-value
+res.obj = -res.obj;
+
+%Check if the problem was feasible and that the solution was optimal
+[isFeasible, isOptimal]=checkSolution(res);
+
+%If the problem was infeasible using hot-start it is often possible to
+%re-solve it without hot-start and get a feasible solution
+if ~isFeasible && ~isempty(hsSol)
+    prob=rmfield(prob,{'vbasis','cbasis'});
+    res=optimizeProb(prob,params);
+    [isFeasible, isOptimal]=checkSolution(res);
+end
+
+%Return without solution if the problem was infeasible
+if ~isFeasible
+    solution.msg='The problem is infeasible';
+    return;
+end
+if ~isOptimal
+    solution.msg='The problem is feasible, but not necessarily optimal';
+    solution.stat=0;
+else
+    %All is well
+    solution.stat=1;
+    solution.msg='Optimal solution found';
+end
+
+%Construct the output structure
+if isfield(res,'full')
+    solution.x=res.full;
+    if minFlux<=1
+        if(isfield(res,'vbasis')) % gurobi uses vbasis and cbasis as hotstart
+            hsSolOut.vbasis=res.vbasis;
+            hsSolOut.cbasis=res.cbasis;
+        end
+    end
+    solution.f=res.obj;
+if isfield(res,'dual')
+    solution.sPrice=res.dual;
+else
+    solution.sPrice=[];
+end
+if isfield(res,'rcost')
+    solution.rCost=res.rcost(1:numel(model.rxns));
+else
+    solution.rCost=[];
+end
+
+%If either the square, the number, or the sum of fluxes should be minimized
+%then the objective function value should be fixed before another
+%optimization. It is not correct to fix the reactions which participate in
+%the objective function to their values in solution.x, as there can be
+%multiple solutions with the same objective function value. In addition,
+%this approach could result in numerical issues when several fluxes are
+%fixed. Instead a new "fake metabolite" is added to the problem. This
+%metabolite is produced by each reaction with the stoichiometry that
+%reaction has in the objective function. The equality constraint of that
+%"fake metabolite" is then set to be at least as good as the objective
+%function value.
+if minFlux~=0
+    model.S=[model.S;model.c'];
+    model.mets=[model.mets;'TEMP'];
+    
+    %If the constraint on the objective function value is exact there is a
+    %larger risk of numerical errors. However for the quadratic fitting
+    %intervals are not allowed
+    if minFlux~=2
+        if size(model.b,2)==1
+            model.b=[model.b model.b];
+        end
+        if solution.f>0
+            model.b=[model.b;[solution.f*0.999999 inf]];
+        else
+            model.b=[model.b;[solution.f*1.000001 inf]];
+        end
+    else
+        model.b=[model.b;ones(1,size(model.b,2))*solution.f];
+    end
+    
+    switch minFlux
+        %The sum of fluxes should be minimized
+        case 1
+            %Convert the model to the irreversible format
+            revRxns=find(model.rev);
+            if ~isempty(revRxns)
+                iModel=convertToIrrev(model);
+            else
+                iModel=model;
+            end
+            %Minimize all fluxes
+            iModel.c(:)=-1;
+            sol=solveLP(iModel,0,params);
+            
+            %Map back to reversible fluxes
+            if sol.stat>=0
+                solution.x=sol.x(1:numel(model.c));
+                solution.x(revRxns)=solution.x(revRxns)-sol.x(numel(model.c)+1:end);
+            else
+                EM='Could not solve the problem of minimizing the sum of fluxes. Uses output from original problem';
+                warning('RAVEN:warning', '%s', EM);
+                solution.stat=-2;
+            end
+            
+        case 2
+            error('%Minimization of square of fluxes is deprecated')
+            
+            %The number of fluxes should be minimized
+        case 3
+            [qx,I]=getMinNrFluxes(model,model.rxns,params);
+            qx(~I)=0;
+            if any(I)
+                solution.x=qx;
+            else
+                EM='Could not solve the problem of minimizing the number of fluxes. Uses output from linear program';
+                warning('RAVEN:warning', '%s', EM);
+                solution.stat=-2;
+            end
+    end
+    solution=rmfield(solution,{'sPrice','rCost'});
+end
+end

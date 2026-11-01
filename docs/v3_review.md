@@ -1,7 +1,6 @@
 # RAVEN 3 — development review and roadmap
 
-A review of the RAVEN toolbox aimed at the next major release (**v3**, currently on the
-`develop3` branch). The brief: make the codebase **leaner** (remove old/unused/low-value
+A review of the RAVEN toolbox for RAVEN 3. The brief: make the codebase **leaner** (remove old/unused/low-value
 functions) while gaining **a few critical new capabilities** that increase value and
 usability — with an appetite for ambitious additions.
 
@@ -11,7 +10,7 @@ This document is a proposal and a prioritized to-do list, not a record of work a
 
 ## Scope and method
 
-- Reviewed against the **current `develop3` tree**, not `develop`. The four review lenses:
+- Reviewed against the RAVEN 3 tree. The four review lenses:
   **(a)** unnecessary functions to remove, **(b)** missing functionality worth adding,
   **(c)** existing functionality worth expanding, **(d)** functions worth simplifying.
 - Method: subsystem-by-subsystem audit of every `.m` file outside `software/`, plus
@@ -21,7 +20,7 @@ This document is a proposal and a prioritized to-do list, not a record of work a
   **COBRA Toolbox (MATLAB)** is wanted; **MetaNetX mapping** is explicitly wanted (an old
   stale branch exists); new file formats are *not* a priority.
 
-### Already done in `develop3`
+### Already done in RAVEN 3
 
 So the review does not repeat completed work. v3 already:
 
@@ -30,7 +29,7 @@ So the review does not repeat completed work. v3 already:
   and `combnk`.
 - Dropped the Statistics, Bioinformatics and Text Analytics toolbox dependencies.
 - Moved KEGG HMM libraries and external binaries out of git to on-demand fetch from the
-  `raven-data` release.
+  `toolbox-assets` release.
 - Reorganized the repo into functional folders; reformatted docstrings to NumPy style.
 - Added `progressReport`, `parseRAVENargs` (positional-or-named arguments), and a
   `matlab.unittest` suite.
@@ -70,12 +69,12 @@ So the review does not repeat completed work. v3 already:
   as a new `UniProt` table column (§6.3).
 - Removed `followFluxes` (SysBioChalmers/RAVEN#725): a strict subset of `printFluxes`'s
   cutoff filtering plus `followChanged`'s single-reference-flux comparison, with nothing of
-  its own (SysBioChalmers/raven-gecko-parity#46).
+  its own (CompMetEng/raven-gecko-parity#46).
 - Removed `exportToTabDelimited` and the `exportToExcelFormat` bare-path fallback that called
   it (SysBioChalmers/RAVEN#727): the fallback silently switched output format depending on
   whether `fileName` looked like a path, contradicting `exportToExcelFormat`'s own error
   message ("only xlsx format is supported" as of RAVEN 1.9) whenever a full filename *was*
-  given (SysBioChalmers/raven-gecko-parity#55).
+  given (CompMetEng/raven-gecko-parity#55).
 
 ---
 
@@ -109,7 +108,7 @@ reconstruction / strain-design audience.
 | 13 | **Regulatory integration** — PROM / CoRegFlux (new application domain) (§1.4) | (b) | M each | med |
 | 14 | **Community modeling** — SteadyCom (new application domain) (§1.5) | (b) | M | med |
 | 15 | **E-Flux** next to ftINIT (§1.6) | (b)(c) | S | low–med |
-| 14 | **HPA omics parser consolidation** — extract shared file-read + header-validation into `omics/private/` helper *(§6.2 column fix already done; this is the remaining extract step)* (§5.5) | (d) | S | low |
+| 14 | **HPA omics parser consolidation** — extract shared file-read + header-validation into `INIT/private/` helper *(§6.2 column fix already done; this is the remaining extract step)* (§5.5) | (d) | S | low |
 
 ---
 
@@ -141,14 +140,14 @@ Plus a standalone `mapIDsViaMNXref(type, ids, fromDB, toDB)` ID translator.
 - **No structural matching** — maps only by existing xref IDs and fuzzy names; ignores the
   **InChIKey** column, which is the modern primary metabolite key.
 - **Pre-reorg layout** — lives in `external/MetaNetX/`, carries duplicate `struct_conversion/*`
-  that has since diverged on develop3.
+  that has since diverged in RAVEN 3.
 
 **Refactor plan** (one focused PR; core is M, the polish items are S each):
-1. Relocate to the develop3 layout (e.g. `reconstruction/metanetx/` or `annotation/metanetx/`),
-   drop the duplicated `struct_conversion/*`, rebase on develop3's `convertMiriams`.
+1. Relocate to the RAVEN 3 layout (e.g. `reconstruction/metanetx/` or `annotation/metanetx/`),
+   drop the duplicated `struct_conversion/*`, rebase on RAVEN 3's `convertMiriams`.
 2. **Delete the committed data**; host MNXref 4.5 (gzipped TSVs, and ideally a prebuilt `.mat`)
-   as a `raven-data` release asset and add a `downloadMNXref.m` modeled exactly on the
-   develop3 KEGG-HMM / `downloadRavenBinaries` on-demand pattern (sentinel-file check, cache
+   as a `toolbox-assets` release asset and add a `downloadMNXref.m` modeled exactly on the
+   RAVEN 3 KEGG-HMM / `downloadRavenBinaries` on-demand pattern (sentinel-file check, cache
    under a gitignored dir).
 3. Update parsing to the documented **4.5** columns (header-driven `readtable`, handle the
    `#` comment block and deprecations).
@@ -326,8 +325,8 @@ See §3 — split the monolith into directional internals.
 - **`annotation/loadDeltaGfromCSV.m` + `saveDeltaGtoCSV.m`** *(done)* — collapsed into
   `deltaGCSV(model, direction, metCsv, rxnCsv)`. The four near-identical met/rxn blocks are
   handled by two shared local functions (`loadField`/`saveField`).
-- **`omics/parseHPA.m` vs `parseHPArna.m`** — column detection is now header-driven (§6.2 done).
-  Remaining: extract the shared file-read loop into `omics/private/`. **S.**
+- **`INIT/parseHPA.m` vs `parseHPArna.m`** — column detection is now header-driven (§6.2 done).
+  Remaining: extract the shared file-read loop into `INIT/private/`. **S.**
 - **`localization/getWoLFScores.m` vs `parseScores.m`** *(already done)* — `getWoLFScores`
   already delegates to `parseScores(file,'wolf')`; no normalization duplication exists.
   Remaining question: whether the Linux+Perl-only WoLF runner still earns its place.
@@ -352,7 +351,7 @@ MEMOTE-style, cheap given `extractMiriam` already unpacks the data. Pairs with t
 also auto-detect the delimiter (tab vs comma). Upstream format changes that add or reorder
 columns will no longer silently break the functions.
 
-The remaining consolidation item (extracting a shared `omics/private/` file-read helper) is
+The remaining consolidation item (extracting a shared `INIT/private/` file-read helper) is
 tracked as a low-priority item in the Tier-3 table.
 
 ### 6.3 Smaller expansions  *(done)*
@@ -379,6 +378,6 @@ tracked as a low-priority item in the Tier-3 table.
 2. **Where should new strain-design / community code that needs metaheuristics live**, given
    the dependency question — lean on the Global Optimization Toolbox (`gamultiobj`), or keep
    v3's "minimize toolbox dependencies" stance and ship a self-contained EA?
-4. **MNXref data hosting** — confirm the `raven-data` release is the right home for the MNXref
+4. **MNXref data hosting** — confirm the `toolbox-assets` release is the right home for the MNXref
    4.5 assets (mirroring KEGG HMMs/binaries), and whether to ship a prebuilt `.mat` (7 MB,
    fast) or only the gzipped TSVs (slower first build, always current).

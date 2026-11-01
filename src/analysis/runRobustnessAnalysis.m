@@ -1,0 +1,89 @@
+function [controlFlux, objFlux] = runRobustnessAnalysis(model, controlRxn, varargin)
+% runRobustnessAnalysis  Perform robustness analysis for a reaction and objective.
+%
+% Varies the flux of a reaction of interest from its minimum to its maximum
+% and calculates the optimal value of an objective of interest at each
+% flux.
+%
+% Parameters
+% ----------
+% model : struct
+%     a model structure.
+% controlRxn : char
+%     reaction of interest whose value is to be controlled.
+%
+% Name-Value Arguments
+% --------------------
+% nPoints : double
+%     number of control flux values (default 20).
+% objRxn : char
+%     reaction identifier of the objective to be maximised (default: the
+%     objective defined in the model).
+% plotRedCost : logical
+%     whether the reduced cost of the control reaction is also plotted on
+%     the right axis (default false).
+%
+% Returns
+% -------
+% controlFlux : double
+%     flux values of the reaction of interest, ranging from its minimum to
+%     its maximum value.
+% objFlux : double
+%     optimal values of objective reaction at each control reaction flux
+%     value.
+%
+% Examples
+% --------
+%     [controlFlux, objFlux] = runRobustnessAnalysis(model, controlRxn, ...
+%         nPoints, objRxn);
+%
+% Notes
+% -----
+% Modified from COBRA Toolbox robustnessAnalysis.m.
+
+p=parseRAVENargs(varargin, {'nPoints',20; 'objRxn',[]; 'plotRedCost',false});
+nPoints=p.nPoints;
+objRxn=p.objRxn;
+plotRedCost=p.plotRedCost;
+if isempty(objRxn)
+    baseModel = model;
+else
+    baseModel = setParam(model,'obj',objRxn,1);
+end
+
+if any(ismember(model.rxns,controlRxn))
+    controlRxnIdx = getIndexes(model,controlRxn,'rxns');
+    tmpModel = setParam(model,'obj',controlRxnIdx,1);
+    solMax = solveLP(tmpModel);
+    solMax = solMax.x(logical(tmpModel.c));
+    tmpModel.c = -tmpModel.c;
+    solMin = solveLP(tmpModel);
+    solMin = solMin.x(logical(tmpModel.c));
+else
+    error('Control reaction does not exist!');
+end
+
+objFlux = zeros(nPoints,1);
+redCost = zeros(nPoints,1);
+controlFlux = linspace(solMin,solMax,nPoints)';
+
+
+PB = progressReport(length(controlFlux),'Running robustness analysis');
+for i=1:length(controlFlux)
+    modelControlled = setParam(baseModel,'eq',controlRxnIdx,controlFlux(i));
+    solControlled = solveLP(modelControlled);
+    objFlux(i) = solControlled.x(logical(modelControlled.c));
+    redCost(i) = solControlled.rCost(controlRxnIdx);
+    count(PB);
+end
+
+if plotRedCost
+    yyaxis right
+    plot(controlFlux,redCost)
+    ylabel([strrep(controlRxn,'_','-') ' reduced cost']);
+    yyaxis left
+end
+plot(controlFlux,objFlux)
+xlabel(strrep(controlRxn,'_','-'));
+ylabel('Objective');
+end

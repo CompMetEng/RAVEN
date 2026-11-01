@@ -1,0 +1,193 @@
+function [grRules,rxnGeneMat,indexes2check] = standardizeGrRules(model,varargin)
+% standardizeGrRules  Standardise gene-reaction rules in a model.
+%
+% The grRules are standardised according to the following:
+%
+% - No overall containing brackets
+% - Only enzyme complexes are enclosed in brackets
+% - " and " and " or " strings are set to lowercase
+%
+% A rxnGeneMat matrix consistent with the standardised grRules is created.
+% grRules that are not in disjunctive normal form (an "or" nested inside an
+% "and") or that cannot be parsed are not standardised, apart from the
+% removal of double spaces, spaces inside brackets and uppercase operators.
+% The function throws an error if the model has no grRules field.
+%
+% Parameters
+% ----------
+% model : struct
+%     a model structure.
+%
+% Name-Value Arguments
+% --------------------
+% embedded : logical
+%     if true, suppresses the console warning about grRules that are not in
+%     disjunctive normal form or cannot be parsed, for use when this
+%     function is called inside another RAVEN function that handles
+%     reporting itself (default false).
+%
+% Returns
+% -------
+% grRules : cell
+%     [nRxns x 1] cell array with the standardised grRules.
+% rxnGeneMat : double
+%     [nRxns x nGenes] sparse matrix consistent with the standardised
+%     grRules.
+% indexes2check : double
+%     indices of the grRules that are not in disjunctive normal form or
+%     cannot be parsed. These grRules need a manual check.
+%
+% Examples
+% --------
+%     [grRules, rxnGeneMat, indexes2check] = standardizeGrRules(model, embedded);
+%
+% Notes
+% -----
+% If used in a model reconstruction or modification pipeline, run this
+% function first.
+
+%Preallocate fields
+n          = length(model.rxns);
+[g,~]      = size(model.genes);
+rxnGeneMat = sparse(n,g);
+grRules    = cell(n,1);
+genes      = model.genes;
+p=parseRAVENargs(varargin, {'embedded',false});
+embedded=p.embedded;
+
+%Gene id -> index lookup, built once rather than linearly scanning all of
+%model.genes (via strcmpi) for every gene token of every reaction, which
+%is quadratic in genome-scale models.
+if isempty(genes)
+    geneMap = containers.Map('KeyType','char','ValueType','double');
+else
+    geneMap = containers.Map(lower(genes),num2cell(1:numel(genes)));
+end
+
+if isfield(model,'grRules')
+    originalGrRules=model.grRules; 
+    originalGrRules=grRulesPreparation(originalGrRules);
+    %Search for potential logical errors in the grRules field
+    tmpModel.rxns=model.rxns; tmpModel.grRules=originalGrRules;
+    fpeIssues=findPotentialErrors(tmpModel);
+    if isempty(fpeIssues)
+        indexes2check=[];
+    else
+        indexes2check=vertcat(fpeIssues.index);
+    end
+    if ~isempty(indexes2check) && ~embedded
+        %Escaped: rxn id and grRule are arbitrary model text and may
+        %contain "%", which sprintf/warning would otherwise misread as a
+        %format directive and truncate the rest of the message.
+        esc=@(s) strrep(s,'%','%%');
+        STR=['Potentially problematic ") AND (", ") AND" or "AND ("relat' ...
+             'ionships found in\n\n'];
+        for fpeI=1:numel(fpeIssues)
+            STR=[STR '  - grRule #' esc(fpeIssues(fpeI).rxn) ': ' esc(fpeIssues(fpeI).grRule) '\n']; %#ok<AGROW>
+        end
+        STR=[STR '\n This kind of relationships should only be present ' ...
+             'in reactions catalysed by complexes of isoenzymes e.g.\n\n' ...
+             '  - (G1 or G2) and (G3 or G4)\n\n For these cases modify ' ...
+             'the grRules manually, writing all the possible combinations ' ...
+             'e.g.\n\n  - (G1 and G3) or (G1 and G4) or (G2 and G3) or ' ...
+             '(G2 and G4)\n\n For other cases modify the correspondent ' ...
+             'grRules avoiding:\n\n  1) Overall container brackets, e.g.' ...
+             '\n        "(G1 and G2)" should be "G1 and G2"\n\n  2) ' ...
+             'Single unit enzymes enclosed into brackets, e.g.\n        ' ...
+             '"(G1)" should be "G1"\n\n  3) The use of uppercases for ' ...
+             'logical operators, e.g.\n        "G1 OR G2" should be "G1 ' ...
+             'or G2"\n\n  4) Unbalanced brackets, e.g.\n        "((G1 ' ...
+             'and G2) or G3" should be "(G1 and G2) or G3"\n'];
+        %warning() re-parses its argument as a format string too, so the
+        %already-resolved text must be passed via '%s', not directly.
+        warning('%s', sprintf(STR))
+    end
+    
+    for i=1:length(originalGrRules)
+        originalSTR = originalGrRules{i};
+        grRules{i,:}  = originalSTR;
+        %Non-empty grRules are splitted in all their different isoenzymes
+        genesSets   = getSimpleGeneSets(originalSTR);
+        rxnGeneMat  = modifyRxnGeneMat(genesSets,geneMap,rxnGeneMat,i);
+        %standardize the non-conflicting grRules
+        if ~ismember(i,indexes2check)
+            newSTR = [];
+            if ~isempty(genesSets)
+                for j=1:length(genesSets)
+                    simpleSet  = genesSets{j};
+                    %Enclose simpleSet in brackets
+                    if length(genesSets)>1
+                        if ~isempty(strfind(simpleSet,' and '))
+                            simpleSet = horzcat('(',simpleSet,')');
+                        end
+                    end
+                    %Separate genesSets in the substring (in case of
+                    %isoenzymes)
+                    if j<length(genesSets)
+                        newSTR = [newSTR, simpleSet, ' or '];
+                        %Add the last simpleSet
+                    else
+                        newSTR = [newSTR, simpleSet];
+                    end
+                end
+                %Update grRule
+                grRules{i} = char(newSTR);
+            end
+        end
+    end
+else
+    error('The model does not have a grRules field.')
+end
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Function that gets a cell array with all the simple geneSets in a given
+%grRule string
+function genesSets = getSimpleGeneSets(originalSTR)
+genesSets  = [];
+if ~isempty(originalSTR)
+    originalSTR = strtrim(originalSTR);
+    %Remove all brackets
+    originalSTR = strrep(originalSTR,'(','');
+    originalSTR = strrep(originalSTR,')','');
+    %Split all the different genesSets
+    genesSets  = transpose(strsplit(originalSTR,' or '));
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Function that gets a cell array of simple genes sets (single genes or
+%enzyme complexes) associated with the i-th reaction and modifies the
+%correspondent row in the rxnGeneMat accordingly.
+function rxnGeneMat = modifyRxnGeneMat(genesSets,geneMap,rxnGeneMat,i)
+
+if ~isempty(genesSets)
+    for j=1:length(genesSets)
+        simpleSet  = genesSets{j};
+        %        rxnGeneMat = modifyRxnGeneMat(simpleSet,model.genes,rxnGeneMat,i);
+        %Get individual genes
+        STR   = strrep(simpleSet,') and (',' and ');
+        genes = strsplit(STR,' ');
+        for k=1:length(genes)
+            if ~strcmpi(genes(k),' and ')
+                geneKey = lower(genes{k});
+                if isKey(geneMap,geneKey)
+                    rxnGeneMat(i,geneMap(geneKey)) = 1;
+                    %else
+                    %In this case the gene should be added to the
+                    %genes field (and to all of its dependencies)
+                end
+            end
+        end
+    end
+end
+end
+
+function grRules = grRulesPreparation(grRules)
+%Remove unnecessary blanks
+grRules=strrep(grRules,'  ',' ');
+grRules=strrep(grRules,'( ','(');
+grRules=strrep(grRules,' )',')');
+% Make sure that AND and OR strings are in lowercase
+grRules=strrep(grRules,' AND ',' and ');
+grRules=strrep(grRules,' OR ',' or ');
+end

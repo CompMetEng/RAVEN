@@ -1,0 +1,133 @@
+function model=editMiriam(model,type,object,miriamName,miriams,keep)
+% editMiriam  Change MIRIAM annotation fields, one type at a time.
+%
+% Parameters
+% ----------
+% model : struct
+%     a model structure.
+% type : char
+%     'met', 'rxn', 'gene' or 'comp', the type of object that the
+%     annotations are assigned to.
+% object : cell or logical or double or char
+%     either a cell array of IDs, a logical vector with the same number of
+%     elements as objects of that type in the model, a vector of indexes,
+%     or 'all'.
+% miriamName : char
+%     string specifying the namespace of the identifier, for instance
+%     'bigg.metabolite'. A valid prefix from identifiers.org is expected
+%     (for example https://registry.identifiers.org/registry/bigg.metabolite).
+% miriams : char or cell
+%     string or cell array of strings with annotation identifiers, for example
+%     '12dgr161'.
+% keep : char
+%     one of the following strings, specifying what should be done if an
+%     object already has existing MIRIAM annotations with the same
+%     miriamName:
+%
+%     - 'replace' : discard all existing annotations with the same
+%       miriamName; they are overwritten, even if the new annotation is an
+%       empty field.
+%     - 'fill' : add annotations only to those objects that have no
+%       annotation with that miriamName. Otherwise, the existing annotation
+%       is kept, even if it differs from the new annotation.
+%     - 'add' : keep all existing annotations, and add any new
+%       annotations, after removing duplicates.
+%     - 'remove' : remove all annotations with the given miriamName from
+%       the specified objects. The miriams argument is ignored.
+%
+% Returns
+% -------
+% model : struct
+%     model structure with updated MIRIAM annotation field.
+%
+% Examples
+% --------
+%     model = editMiriam(model, type, object, miriamName, miriams, keep);
+miriamName=char(miriamName);
+miriams=convertCharArray(miriams);
+
+%Check 'keep' input
+keep=char(keep);
+if ~any(strcmp(keep,{'replace','fill','add','remove'}))
+    error('Invalid ''keep'', should be ''replace'',''fill'',''add'',''remove''.')
+end
+%Check 'type' input
+type=char(type);
+if ~any(strcmp(type,{'met','gene','rxn','comp'}))
+    error('Invalid ''type'', should be ''met'', ''gene'', ''rxn'' or ''comp''.')
+end
+%Check 'object' input
+if islogical(object)
+    idxInModel=find(object);
+elseif isnumeric(object)
+    idxInModel=object;
+else
+    object=convertCharArray(object);
+    if numel(object)==1 && strcmp(object{1},'all')
+        idxInModel=1:numel(model.([type,'s']));
+    else
+        idxInModel=getIndexes(model,object,[type,'s']);
+        if ~all(idxInModel)
+            error('RAVEN:badInput', '%s', ravenList('The following objects cannot be found in the model: ', object(~idxInModel)))
+        end
+    end
+end
+%Check 'miriams' input (skip for 'remove' — miriams argument is not used)
+if ~strcmp(keep,'remove')
+    if numel(miriams)==1 && numel(idxInModel)~=1
+        miriams=repmat(miriams,numel(idxInModel),1);
+    elseif numel(miriams)~=numel(idxInModel)
+        error('The number of annotations does not match the number of objects.')
+    end
+end
+
+miriamFieldName=[type,'Miriams'];
+
+if isfield(model,miriamFieldName)
+    [extractedMiriams,extractedMiriamNames]=extractMiriam(model.(miriamFieldName)(idxInModel),'all');
+else
+    extractedMiriams=cell(numel(idxInModel),1);
+    extractedMiriamNames={miriamName};
+end
+
+[~, midx]=ismember(miriamName,extractedMiriamNames);
+if strcmp(keep,'remove')
+    if midx>0
+        extractedMiriams(:,midx)={''};
+    end
+    % Nothing to do when midx==0: miriamName not present
+elseif midx==0
+    midx=numel(extractedMiriamNames)+1;
+    extractedMiriamNames(end+1)={miriamName};
+    extractedMiriams(:,end+1)=miriams;
+elseif strcmp(keep,'replace')
+    extractedMiriams(:,midx)=miriams;
+else
+    noMiriam=cellfun(@isempty,extractedMiriams(:,midx));
+    extractedMiriams(noMiriam,midx)=miriams(noMiriam);
+    if strcmp(keep,'add') % Skipped when only filling empty entries
+        existingMiriams=[split(extractedMiriams(~noMiriam,midx),'; '), miriams(~noMiriam)];
+        uniqueMiriams=cell(size(existingMiriams,1),1);
+        for i=1:size(existingMiriams,1)
+            uniqueMiriams{i,1}=strjoin(unique(existingMiriams(i,:)), {'; '});
+        end
+        extractedMiriams(~noMiriam,midx)=uniqueMiriams;
+    end
+end
+
+% Make Miriam field again
+for i=1:numel(idxInModel)
+    miriam.name=cell(1,1);
+    miriam.value=cell(1,1);
+    for j=1:numel(extractedMiriamNames)
+        if ~isempty(extractedMiriams{i,j})
+            values=strsplit(extractedMiriams{i,j},'; ');
+            miriam.name(end+1:end+numel(values),1)=extractedMiriamNames(j);
+            miriam.value(end+1:end+numel(values),1)=values;
+        end
+    end
+    miriam.name(1)=[];
+    miriam.value(1)=[];
+    model.(miriamFieldName){idxInModel(i),1}=miriam;
+end
+end

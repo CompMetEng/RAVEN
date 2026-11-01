@@ -1,0 +1,181 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of parseHPA</title>
+  <meta name="keywords" content="parseHPA">
+  <meta name="description" content="parseHPA  Parse a database dump of the Human Protein Atlas (HPA).">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">INIT</a> &gt; parseHPA.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for INIT&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>parseHPA
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>parseHPA  Parse a database dump of the Human Protein Atlas (HPA).</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function hpaData=parseHPA(fileName, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> parseHPA  Parse a database dump of the Human Protein Atlas (HPA).
+
+ Parameters
+ ----------
+ fileName : char
+     comma- or tab-separated database dump of HPA protein data. For details
+     regarding the format, see http://www.proteinatlas.org/about/download.
+
+ Name-Value Arguments
+ --------------------
+ version : double
+     ignored; the format is inferred from the column headers (default 19).
+
+ Returns
+ -------
+ hpaData : struct
+     parsed HPA data with fields:
+
+     - genes : cell array with the unique gene IDs (Ensembl in v&gt;=18)
+     - geneNames : cell array with the gene symbols (present in v&gt;=18 only)
+     - tissues : cell array with the tissue names (can repeat; one
+       entry per tissue-cell-type combination)
+     - celltypes : cell array with the cell type names for each tissue
+     - levels : cell array with the unique expression level labels
+     - types : cell array with the unique evidence types (v&lt;18 only)
+     - reliabilities : cell array with the unique reliability levels
+     - gene2Level : sparse gene × tissue-cell-type matrix; value i,j is
+       the index in hpaData.levels for gene i in tissue-cell-type j
+     - gene2Type : sparse gene × tissue-cell-type matrix (v&lt;18 only)
+     - gene2Reliability : sparse gene × tissue-cell-type matrix; value i,j
+       is the index in hpaData.reliabilities for gene i in tissue-cell-type j
+
+ Examples
+ --------
+     hpaData = parseHPA(fileName);</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function hpaData=parseHPA(fileName, varargin)</a>
+0002 <span class="comment">% parseHPA  Parse a database dump of the Human Protein Atlas (HPA).</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Parameters</span>
+0005 <span class="comment">% ----------</span>
+0006 <span class="comment">% fileName : char</span>
+0007 <span class="comment">%     comma- or tab-separated database dump of HPA protein data. For details</span>
+0008 <span class="comment">%     regarding the format, see http://www.proteinatlas.org/about/download.</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">% Name-Value Arguments</span>
+0011 <span class="comment">% --------------------</span>
+0012 <span class="comment">% version : double</span>
+0013 <span class="comment">%     ignored; the format is inferred from the column headers (default 19).</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">% Returns</span>
+0016 <span class="comment">% -------</span>
+0017 <span class="comment">% hpaData : struct</span>
+0018 <span class="comment">%     parsed HPA data with fields:</span>
+0019 <span class="comment">%</span>
+0020 <span class="comment">%     - genes : cell array with the unique gene IDs (Ensembl in v&gt;=18)</span>
+0021 <span class="comment">%     - geneNames : cell array with the gene symbols (present in v&gt;=18 only)</span>
+0022 <span class="comment">%     - tissues : cell array with the tissue names (can repeat; one</span>
+0023 <span class="comment">%       entry per tissue-cell-type combination)</span>
+0024 <span class="comment">%     - celltypes : cell array with the cell type names for each tissue</span>
+0025 <span class="comment">%     - levels : cell array with the unique expression level labels</span>
+0026 <span class="comment">%     - types : cell array with the unique evidence types (v&lt;18 only)</span>
+0027 <span class="comment">%     - reliabilities : cell array with the unique reliability levels</span>
+0028 <span class="comment">%     - gene2Level : sparse gene × tissue-cell-type matrix; value i,j is</span>
+0029 <span class="comment">%       the index in hpaData.levels for gene i in tissue-cell-type j</span>
+0030 <span class="comment">%     - gene2Type : sparse gene × tissue-cell-type matrix (v&lt;18 only)</span>
+0031 <span class="comment">%     - gene2Reliability : sparse gene × tissue-cell-type matrix; value i,j</span>
+0032 <span class="comment">%       is the index in hpaData.reliabilities for gene i in tissue-cell-type j</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">% Examples</span>
+0035 <span class="comment">% --------</span>
+0036 <span class="comment">%     hpaData = parseHPA(fileName);</span>
+0037 
+0038 p=parseRAVENargs(varargin, {<span class="string">'version'</span>,19}); <span class="comment">%#ok&lt;NASGU&gt; retained for backward compat</span>
+0039 
+0040 fileName=char(fileName);
+0041 <span class="keyword">if</span> ~isfile(fileName)
+0042     error(<span class="string">'HPA file %s cannot be found'</span>, string(fileName));
+0043 <span class="keyword">end</span>
+0044 
+0045 <span class="comment">%Read header line and auto-detect delimiter</span>
+0046 fid=fopen(fileName,<span class="string">'r'</span>);
+0047 headerLine=fgetl(fid);
+0048 fclose(fid);
+0049 
+0050 <span class="keyword">if</span> any(headerLine==9)  <span class="comment">% char(9) = horizontal tab</span>
+0051     delim=sprintf(<span class="string">'\t'</span>);
+0052 <span class="keyword">else</span>
+0053     delim=<span class="string">','</span>;
+0054 <span class="keyword">end</span>
+0055 
+0056 <span class="comment">%Parse header and all data columns</span>
+0057 fid=fopen(fileName,<span class="string">'r'</span>);
+0058 headers=strsplit(fgetl(fid), delim);
+0059 fmtStr=strip(repmat(<span class="string">'%q '</span>,1,numel(headers)));
+0060 hpa=textscan(fid, fmtStr, <span class="string">'Delimiter'</span>,delim);
+0061 fclose(fid);
+0062 
+0063 <span class="comment">%Helper: column index by name</span>
+0064 ci=@(name) find(strcmp(headers,name),1);
+0065 
+0066 <span class="comment">%Validate required columns common to all versions</span>
+0067 <span class="keyword">for</span> h={<span class="string">'Gene'</span>,<span class="string">'Tissue'</span>,<span class="string">'Cell type'</span>,<span class="string">'Level'</span>,<span class="string">'Reliability'</span>}
+0068     <span class="keyword">if</span> isempty(ci(h{1}))
+0069         error([<span class="string">'Could not find the column &quot;'</span> h{1} <span class="string">'&quot;. '</span> <span class="keyword">...</span>
+0070             <span class="string">'Make sure the input file matches the format at https://www.proteinatlas.org/about/download'</span>]);
+0071     <span class="keyword">end</span>
+0072 <span class="keyword">end</span>
+0073 
+0074 hasGeneName=~isempty(ci(<span class="string">'Gene name'</span>));
+0075 hasExprType=~isempty(ci(<span class="string">'Expression type'</span>));
+0076 
+0077 [hpaData.genes, P, I]=unique(hpa{ci(<span class="string">'Gene'</span>)});
+0078 <span class="keyword">if</span> hasGeneName
+0079     hpaData.geneNames=hpa{ci(<span class="string">'Gene name'</span>)}(P);
+0080 <span class="keyword">end</span>
+0081 
+0082 tissueCellStr=strcat(hpa{ci(<span class="string">'Tissue'</span>)},<span class="string">'€'</span>,hpa{ci(<span class="string">'Cell type'</span>)});
+0083 [~, J, K]=unique(tissueCellStr);
+0084 hpaData.tissues=hpa{ci(<span class="string">'Tissue'</span>)}(J);
+0085 hpaData.celltypes=hpa{ci(<span class="string">'Cell type'</span>)}(J);
+0086 
+0087 [hpaData.levels, ~, L]=unique(hpa{ci(<span class="string">'Level'</span>)});
+0088 [hpaData.reliabilities, ~, N]=unique(hpa{ci(<span class="string">'Reliability'</span>)});
+0089 
+0090 nGenes=numel(hpaData.genes);
+0091 nTissues=max(K);
+0092 
+0093 hpaData.gene2Level=sparse(I,K,L,nGenes,nTissues);
+0094 hpaData.gene2Reliability=sparse(I,K,N,nGenes,nTissues);
+0095 
+0096 <span class="keyword">if</span> hasExprType
+0097     [hpaData.types, ~, M]=unique(hpa{ci(<span class="string">'Expression type'</span>)});
+0098     hpaData.gene2Type=sparse(I,K,M,nGenes,nTissues);
+0099 <span class="keyword">end</span>
+0100 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

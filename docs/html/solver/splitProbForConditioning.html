@@ -1,0 +1,244 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of splitProbForConditioning</title>
+  <meta name="keywords" content="splitProbForConditioning">
+  <meta name="description" content="splitProbForConditioning  Improve LP conditioning by splitting wide columns.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">solver</a> &gt; splitProbForConditioning.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for solver&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>splitProbForConditioning
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>splitProbForConditioning  Improve LP conditioning by splitting wide columns.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [prob, condInfo] = splitProbForConditioning(prob, maxRatio) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> splitProbForConditioning  Improve LP conditioning by splitting wide columns.
+
+ Reformulates an LP problem to improve its numerical conditioning by
+ splitting columns whose coefficients span more than a given ratio. In a
+ metabolic model a column corresponds to a reaction, and a wide spread of
+ stoichiometric coefficients within one reaction (for example a biomass reaction
+ with both large and small coefficients) cannot be removed by the
+ diagonal row and column scaling that LP solvers apply, and may lead to
+ unreliable solutions or spurious infeasibility.
+
+ Splitting is done with auxiliary metabolites and variables that preserve
+ the feasible region of the original problem exactly, so the values of all
+ original variables are unchanged. A column is split when its ratio
+ exceeds maxRatio by more than 1 %. Columns with a single nonzero
+ coefficient are never split.
+
+ optimizeProb calls this function on the COBRA-style problem struct of an
+ LP, immediately before the problem is passed to the solver. Auxiliary
+ rows and columns are appended after the original ones, so the
+ augmentation can be stripped from the solver output afterwards (see
+ condInfo).
+
+ Parameters
+ ----------
+ prob : struct
+     COBRA-style LP problem struct, with at least the fields A, b, c, lb,
+     ub, csense and vartype.
+ maxRatio : double
+     maximum allowed ratio between the largest and smallest absolute
+     coefficient within any single column.
+
+ Returns
+ -------
+ prob : struct
+     the augmented problem struct. Identical to the input if no column
+     needed splitting.
+ condInfo : struct
+     struct describing the augmentation, with fields:
+
+     - applied : true if any column was split
+     - nSplits : number of pairs of an auxiliary metabolite and a conversion
+       variable added
+     - nOrigRows : number of constraint rows before augmentation
+     - nOrigCols : number of variables (columns) before augmentation
+
+ Examples
+ --------
+     [prob, condInfo] = splitProbForConditioning(prob, maxRatio);
+
+ See also
+ --------
+ <a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="optimizeProb.html" class="code" title="function res = optimizeProb(prob,varargin)">optimizeProb</a>	optimizeProb  Optimise an LP or MILP formulated in COBRA terms.</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [prob, condInfo] = splitProbForConditioning(prob, maxRatio)</a>
+0002 <span class="comment">% splitProbForConditioning  Improve LP conditioning by splitting wide columns.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Reformulates an LP problem to improve its numerical conditioning by</span>
+0005 <span class="comment">% splitting columns whose coefficients span more than a given ratio. In a</span>
+0006 <span class="comment">% metabolic model a column corresponds to a reaction, and a wide spread of</span>
+0007 <span class="comment">% stoichiometric coefficients within one reaction (for example a biomass reaction</span>
+0008 <span class="comment">% with both large and small coefficients) cannot be removed by the</span>
+0009 <span class="comment">% diagonal row and column scaling that LP solvers apply, and may lead to</span>
+0010 <span class="comment">% unreliable solutions or spurious infeasibility.</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">% Splitting is done with auxiliary metabolites and variables that preserve</span>
+0013 <span class="comment">% the feasible region of the original problem exactly, so the values of all</span>
+0014 <span class="comment">% original variables are unchanged. A column is split when its ratio</span>
+0015 <span class="comment">% exceeds maxRatio by more than 1 %. Columns with a single nonzero</span>
+0016 <span class="comment">% coefficient are never split.</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">% optimizeProb calls this function on the COBRA-style problem struct of an</span>
+0019 <span class="comment">% LP, immediately before the problem is passed to the solver. Auxiliary</span>
+0020 <span class="comment">% rows and columns are appended after the original ones, so the</span>
+0021 <span class="comment">% augmentation can be stripped from the solver output afterwards (see</span>
+0022 <span class="comment">% condInfo).</span>
+0023 <span class="comment">%</span>
+0024 <span class="comment">% Parameters</span>
+0025 <span class="comment">% ----------</span>
+0026 <span class="comment">% prob : struct</span>
+0027 <span class="comment">%     COBRA-style LP problem struct, with at least the fields A, b, c, lb,</span>
+0028 <span class="comment">%     ub, csense and vartype.</span>
+0029 <span class="comment">% maxRatio : double</span>
+0030 <span class="comment">%     maximum allowed ratio between the largest and smallest absolute</span>
+0031 <span class="comment">%     coefficient within any single column.</span>
+0032 <span class="comment">%</span>
+0033 <span class="comment">% Returns</span>
+0034 <span class="comment">% -------</span>
+0035 <span class="comment">% prob : struct</span>
+0036 <span class="comment">%     the augmented problem struct. Identical to the input if no column</span>
+0037 <span class="comment">%     needed splitting.</span>
+0038 <span class="comment">% condInfo : struct</span>
+0039 <span class="comment">%     struct describing the augmentation, with fields:</span>
+0040 <span class="comment">%</span>
+0041 <span class="comment">%     - applied : true if any column was split</span>
+0042 <span class="comment">%     - nSplits : number of pairs of an auxiliary metabolite and a conversion</span>
+0043 <span class="comment">%       variable added</span>
+0044 <span class="comment">%     - nOrigRows : number of constraint rows before augmentation</span>
+0045 <span class="comment">%     - nOrigCols : number of variables (columns) before augmentation</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">% Examples</span>
+0048 <span class="comment">% --------</span>
+0049 <span class="comment">%     [prob, condInfo] = splitProbForConditioning(prob, maxRatio);</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">% See also</span>
+0052 <span class="comment">% --------</span>
+0053 <span class="comment">% optimizeProb</span>
+0054 
+0055 [nOrigRows, nOrigCols] = size(prob.A);
+0056 condInfo.applied   = false;
+0057 condInfo.nSplits   = 0;
+0058 condInfo.nOrigRows = nOrigRows;
+0059 condInfo.nOrigCols = nOrigCols;
+0060 
+0061 <span class="comment">%Detection uses a small slack so that reactions that are only marginally over</span>
+0062 <span class="comment">%the threshold are left alone. This also makes the transformation idempotent:</span>
+0063 <span class="comment">%a freshly split column sits exactly at maxRatio and is not split again.</span>
+0064 detectRatio = maxRatio * 1.01;
+0065 
+0066 <span class="comment">%Work on triplets to avoid repeated resizing of the sparse matrix</span>
+0067 [I, J, V] = find(prob.A);
+0068 absV = abs(V);
+0069 
+0070 <span class="comment">%Largest/smallest absolute coefficient and number of nonzeros per column</span>
+0071 cMax   = accumarray(J, absV, [nOrigCols 1], @max, 0);
+0072 cMin   = accumarray(J, absV, [nOrigCols 1], @min, inf);
+0073 nnzCol = accumarray(J, 1,    [nOrigCols 1], @sum, 0);
+0074 
+0075 <span class="comment">%Single-coefficient columns (e.g. exchange reactions or slack variables) have</span>
+0076 <span class="comment">%an undefined ratio and are never split</span>
+0077 badCols = find(nnzCol &gt;= 2 &amp; (cMax ./ cMin) &gt; detectRatio);
+0078 <span class="keyword">if</span> isempty(badCols)
+0079     <span class="keyword">return</span>
+0080 <span class="keyword">end</span>
+0081 
+0082 <span class="comment">%Flag the entries that are too small within their (bad) column. These are</span>
+0083 <span class="comment">%removed from the original matrix and re-introduced via the auxiliary chain.</span>
+0084 smallThresh = cMax(J) / maxRatio;
+0085 removeEntry = ismember(J, badCols) &amp; (absV &lt; smallThresh);
+0086 
+0087 <span class="comment">%Keep all entries that are not removed</span>
+0088 keep = ~removeEntry;
+0089 newI = I(keep);
+0090 newJ = J(keep);
+0091 newV = V(keep);
+0092 
+0093 <span class="comment">%Auxiliary entries are accumulated here</span>
+0094 addI = zeros(0,1); addJ = zeros(0,1); addV = zeros(0,1);
+0095 convLb = zeros(0,1); convUb = zeros(0,1);
+0096 nStar = 0;   <span class="comment">%auxiliary metabolite rows added so far</span>
+0097 nConv = 0;   <span class="comment">%conversion variable columns added so far</span>
+0098 
+0099 remIdx = find(removeEntry);
+0100 <span class="keyword">for</span> k = 1:numel(remIdx)
+0101     e         = remIdx(k);
+0102     metRow    = I(e);
+0103     parentCol = J(e);
+0104     coef      = V(e);
+0105     curCmax   = cMax(parentCol);
+0106     <span class="comment">%Deliver the (signed) coefficient &quot;coef&quot; of metabolite &quot;metRow&quot; into</span>
+0107     <span class="comment">%column &quot;parentCol&quot;, splitting recursively until it is within range</span>
+0108     <span class="keyword">while</span> true
+0109         small = curCmax / maxRatio;
+0110         <span class="keyword">if</span> abs(coef) &gt;= small
+0111             <span class="comment">%Coefficient is acceptable; place it directly</span>
+0112             addI(end+1,1) = metRow;    addJ(end+1,1) = parentCol; addV(end+1,1) = coef; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0113             <span class="keyword">break</span>
+0114         <span class="keyword">end</span>
+0115         <span class="comment">%Otherwise introduce a star metabolite and a conversion variable</span>
+0116         beta    = sign(coef) * small;
+0117         nStar   = nStar + 1; starRow = nOrigRows + nStar;
+0118         nConv   = nConv + 1; convCol = nOrigCols + nConv;
+0119         <span class="comment">%The parent column now consumes the star metabolite (coefficient beta)</span>
+0120         addI(end+1,1) = starRow; addJ(end+1,1) = parentCol; addV(end+1,1) = beta; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0121         <span class="comment">%The conversion variable produces one unit of the star metabolite</span>
+0122         addI(end+1,1) = starRow; addJ(end+1,1) = convCol;   addV(end+1,1) = 1;    <span class="comment">%#ok&lt;AGROW&gt;</span>
+0123         <span class="comment">%Conversion variables are determined by the equality and left unbounded</span>
+0124         convLb(end+1,1) = -inf; convUb(end+1,1) = inf; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0125         <span class="comment">%Deliver the residual coefficient into the new conversion column. Its</span>
+0126         <span class="comment">%reference scale is 1 (the production coefficient of the star met).</span>
+0127         coef      = -coef / beta;
+0128         parentCol = convCol;
+0129         curCmax   = 1;
+0130     <span class="keyword">end</span>
+0131 <span class="keyword">end</span>
+0132 
+0133 condInfo.applied = true;
+0134 condInfo.nSplits = nStar;
+0135 
+0136 <span class="comment">%Assemble the augmented matrix and extend the problem vectors. New rows are</span>
+0137 <span class="comment">%appended at the bottom, new columns at the right.</span>
+0138 prob.A = sparse([newI; addI], [newJ; addJ], [newV; addV], <span class="keyword">...</span>
+0139     nOrigRows + nStar, nOrigCols + nConv);
+0140 prob.b       = [prob.b(:);       zeros(nStar,1)];
+0141 prob.csense  = [prob.csense(:).', repmat(<span class="string">'E'</span>,1,nStar)];
+0142 prob.c       = [prob.c(:);       zeros(nConv,1)];
+0143 prob.lb      = [prob.lb(:);      convLb];
+0144 prob.ub      = [prob.ub(:);      convUb];
+0145 prob.vartype = [prob.vartype(:).', repmat(<span class="string">'C'</span>,1,nConv)];
+0146 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

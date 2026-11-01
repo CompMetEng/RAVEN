@@ -1,0 +1,457 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of prepINITModel</title>
+  <meta name="keywords" content="prepINITModel">
+  <meta name="description" content="prepINITModel  Precompute omics-independent data for ftINIT.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">INIT</a> &gt; prepINITModel.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for INIT&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>prepINITModel
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>prepINITModel  Precompute omics-independent data for ftINIT.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function prepData = prepINITModel(origRefModel, taskStruct, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> prepINITModel  Precompute omics-independent data for ftINIT.
+
+ Runs the calculation steps that do not depend on the omics data, once per
+ template model.
+
+ Parameters
+ ----------
+ origRefModel : struct
+     the template model, such as Human-GEM or Mouse-GEM.
+ taskStruct : struct
+     the essential tasks, for example loaded with
+     taskStruct = parseTaskList('../data/metabolicTasks_Essential.txt').
+     The task ids must be character vectors: a non-text id or a missing id
+     field raises RAVEN:badInput. Ids may repeat (for example as category
+     codes) and may be empty; each task is one row group of the task list,
+     and a task that cannot be performed is removed by its position.
+
+ Name-Value Arguments
+ --------------------
+ spontRxnNames : cell
+     the spontaneous rxns (default {}).
+ convertGenes : logical
+     if true the genes are converted to gene names (from ENSEMBL). This
+     uses translateGrRules, which is distributed with Human-GEM and not with
+     RAVEN, so Human-GEM must be on the MATLAB path (default false).
+ customRxnsToIgnore : cell
+     reactions that are left outside the MILP when bit b7 of the
+     RxnsToIgnoreMask of INITStepDesc is 1 (default {}).
+ extComp : char
+     name of the external compartment, such as 's' or 'e'. This is used for
+     identifying exchange and import reactions (default 'e').
+ skipScaling : logical
+     if true the scaling step is not run on the minimal model. The scaling
+     removes large differences between the stoichiometric coefficients
+     within a reaction (see rescaleModelForINIT), since such differences
+     create numerical issues in the ftINIT algorithm due to limitations in
+     solver resolution. The scaling changes the stoichiometry of the
+     reactions with large differences, and some reactions can become unable
+     to carry flux, which can make the solution infeasible. If the solution
+     is infeasible, turning the scaling off may help; the bounds then stay as in
+     the template and the MILP caps the per-reaction big-M at 1000 (bigMCap
+     in ftINITInternalAlg). In raven-toolbox's ftinit on Human-GEM (one cell
+     line, big_m 1000) the pipeline without scaling was feasible but took
+     157 s against 83 s with scaling. The bounds of the scaled model are set to 1000 where the upper bound is above 0 and
+     to -1000 where the lower bound is below 0; zero bounds stay 0. Only the
+     minModel is scaled; the scaling is not present in the final model
+     (default false).
+ runParallel : logical
+     true to run the task-essentiality check (checkTasks) across parallel
+     workers, since each task is independent of the others (see
+     parallelWorkersRAVEN) (default false, serial).
+
+ Returns
+ -------
+ prepData : struct
+     the resulting prepData structure which is used as input to ftINIT.</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="mergeLinear.html" class="code" title="function [reducedModel,origRxnIds,groupIds,reversedRxns]=mergeLinear(model, noMergeRxns)">mergeLinear</a>	mergeLinear</li><li><a href="rescaleModelForINIT.html" class="code" title="function model=rescaleModelForINIT(model, varargin)">rescaleModelForINIT</a>	rescaleModelForINIT  Rescale a model to avoid large stoichiometric differences.</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function prepData = prepINITModel(origRefModel, taskStruct, varargin)</a>
+0002 <span class="comment">% prepINITModel  Precompute omics-independent data for ftINIT.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Runs the calculation steps that do not depend on the omics data, once per</span>
+0005 <span class="comment">% template model.</span>
+0006 <span class="comment">%</span>
+0007 <span class="comment">% Parameters</span>
+0008 <span class="comment">% ----------</span>
+0009 <span class="comment">% origRefModel : struct</span>
+0010 <span class="comment">%     the template model, such as Human-GEM or Mouse-GEM.</span>
+0011 <span class="comment">% taskStruct : struct</span>
+0012 <span class="comment">%     the essential tasks, for example loaded with</span>
+0013 <span class="comment">%     taskStruct = parseTaskList('../data/metabolicTasks_Essential.txt').</span>
+0014 <span class="comment">%     The task ids must be character vectors: a non-text id or a missing id</span>
+0015 <span class="comment">%     field raises RAVEN:badInput. Ids may repeat (for example as category</span>
+0016 <span class="comment">%     codes) and may be empty; each task is one row group of the task list,</span>
+0017 <span class="comment">%     and a task that cannot be performed is removed by its position.</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">% Name-Value Arguments</span>
+0020 <span class="comment">% --------------------</span>
+0021 <span class="comment">% spontRxnNames : cell</span>
+0022 <span class="comment">%     the spontaneous rxns (default {}).</span>
+0023 <span class="comment">% convertGenes : logical</span>
+0024 <span class="comment">%     if true the genes are converted to gene names (from ENSEMBL). This</span>
+0025 <span class="comment">%     uses translateGrRules, which is distributed with Human-GEM and not with</span>
+0026 <span class="comment">%     RAVEN, so Human-GEM must be on the MATLAB path (default false).</span>
+0027 <span class="comment">% customRxnsToIgnore : cell</span>
+0028 <span class="comment">%     reactions that are left outside the MILP when bit b7 of the</span>
+0029 <span class="comment">%     RxnsToIgnoreMask of INITStepDesc is 1 (default {}).</span>
+0030 <span class="comment">% extComp : char</span>
+0031 <span class="comment">%     name of the external compartment, such as 's' or 'e'. This is used for</span>
+0032 <span class="comment">%     identifying exchange and import reactions (default 'e').</span>
+0033 <span class="comment">% skipScaling : logical</span>
+0034 <span class="comment">%     if true the scaling step is not run on the minimal model. The scaling</span>
+0035 <span class="comment">%     removes large differences between the stoichiometric coefficients</span>
+0036 <span class="comment">%     within a reaction (see rescaleModelForINIT), since such differences</span>
+0037 <span class="comment">%     create numerical issues in the ftINIT algorithm due to limitations in</span>
+0038 <span class="comment">%     solver resolution. The scaling changes the stoichiometry of the</span>
+0039 <span class="comment">%     reactions with large differences, and some reactions can become unable</span>
+0040 <span class="comment">%     to carry flux, which can make the solution infeasible. If the solution</span>
+0041 <span class="comment">%     is infeasible, turning the scaling off may help; the bounds then stay as in</span>
+0042 <span class="comment">%     the template and the MILP caps the per-reaction big-M at 1000 (bigMCap</span>
+0043 <span class="comment">%     in ftINITInternalAlg). In raven-toolbox's ftinit on Human-GEM (one cell</span>
+0044 <span class="comment">%     line, big_m 1000) the pipeline without scaling was feasible but took</span>
+0045 <span class="comment">%     157 s against 83 s with scaling. The bounds of the scaled model are set to 1000 where the upper bound is above 0 and</span>
+0046 <span class="comment">%     to -1000 where the lower bound is below 0; zero bounds stay 0. Only the</span>
+0047 <span class="comment">%     minModel is scaled; the scaling is not present in the final model</span>
+0048 <span class="comment">%     (default false).</span>
+0049 <span class="comment">% runParallel : logical</span>
+0050 <span class="comment">%     true to run the task-essentiality check (checkTasks) across parallel</span>
+0051 <span class="comment">%     workers, since each task is independent of the others (see</span>
+0052 <span class="comment">%     parallelWorkersRAVEN) (default false, serial).</span>
+0053 <span class="comment">%</span>
+0054 <span class="comment">% Returns</span>
+0055 <span class="comment">% -------</span>
+0056 <span class="comment">% prepData : struct</span>
+0057 <span class="comment">%     the resulting prepData structure which is used as input to ftINIT.</span>
+0058 
+0059 
+0060 p=parseRAVENargs(varargin, {<span class="string">'spontRxnNames'</span>,{}; <span class="string">'convertGenes'</span>,false; <span class="string">'customRxnsToIgnore'</span>,{}; <span class="string">'extComp'</span>,<span class="string">'e'</span>; <span class="string">'skipScaling'</span>,false; <span class="string">'runParallel'</span>,false});
+0061 spontRxnNames=p.spontRxnNames;
+0062 convertGenes=p.convertGenes;
+0063 customRxnsToIgnore=p.customRxnsToIgnore;
+0064 extComp=p.extComp;
+0065 skipScaling=p.skipScaling;
+0066 runParallel=p.runParallel;
+0067 
+0068 <span class="keyword">if</span> ~isempty(taskStruct)
+0069     <span class="keyword">if</span> ~isfield(taskStruct,<span class="string">'id'</span>)
+0070         error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'The task structure must have an id field'</span>);
+0071     <span class="keyword">end</span>
+0072     taskIds = {taskStruct.id};
+0073     <span class="keyword">if</span> ~all(cellfun(@(x) ischar(x) &amp;&amp; (isrow(x) || isempty(x)),taskIds))
+0074         error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'The task ids must be character vectors'</span>);
+0075     <span class="keyword">end</span>
+0076 <span class="keyword">end</span>
+0077 
+0078 disp(<span class="string">'Step 1: Gene rules'</span>)
+0079 [origRefModel.grRules, origRefModel.rxnGeneMat] = standardizeGrRules(origRefModel, true);
+0080 
+0081 <span class="keyword">if</span> convertGenes <span class="comment">%For mouse we might want to translate in the opposite direction - this has to be done before calling this function in that case.</span>
+0082     <span class="keyword">if</span> ~exist(<span class="string">'translateGrRules'</span>,<span class="string">'file'</span>)
+0083         EM=[<span class="string">'convertGenes requires translateGrRules, which is distributed with '</span> <span class="keyword">...</span>
+0084             <span class="string">'Human-GEM and not with RAVEN. Add Human-GEM to the MATLAB path, or '</span> <span class="keyword">...</span>
+0085             <span class="string">'convert the gene identifiers before calling prepINITModel.'</span>];
+0086         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0087     <span class="keyword">end</span>
+0088     [origRefModel.grRules, origRefModel.genes, origRefModel.rxnGeneMat] = translateGrRules(origRefModel.grRules, <span class="string">'Name'</span>);
+0089 <span class="keyword">end</span>
+0090 
+0091 
+0092 <span class="comment">% Get list of all dead-end/inacessible/constrained reactions in the model.</span>
+0093 <span class="comment">% We don't merge linear dependent reactions here, that will happen later.</span>
+0094 <span class="comment">% We also don't remove reversibility here, we don't want that in the final</span>
+0095 <span class="comment">% models produced. Therefore, this is done as a separate step.</span>
+0096 <span class="comment">% This takes quite some time to run</span>
+0097 disp(<span class="string">'Step 2: First simplification'</span>)
+0098 [~,deletedDeadEndRxns] = simplifyModel(origRefModel,true,false,true,true,true);
+0099 
+0100 <span class="comment">% get reduced model</span>
+0101 cModel = removeReactions(origRefModel,deletedDeadEndRxns,false,true);
+0102 
+0103 
+0104 <span class="comment">%Then, run the tasks to find out which reactions are essential. These rxns</span>
+0105 <span class="comment">%will be forced to carry flux in the optimization later</span>
+0106 
+0107 <span class="comment">% determine reactions essential for tasks - takes ~10 min</span>
+0108 <span class="comment">% need to add boundary mets first - but only to a temporary model, we don't</span>
+0109 <span class="comment">% want those for further processing</span>
+0110 disp(<span class="string">'Step 3: Check tasks (~10 min)'</span>)
+0111 <span class="keyword">if</span> ~isempty(taskStruct)
+0112     bModel = closeModel(cModel);
+0113     [taskReport, essentialRxnMat, ~, essentialFluxes] = checkTasks(bModel,[],true,false,true,taskStruct,<span class="string">'runParallel'</span>,runParallel);
+0114 
+0115     <span class="comment">%extract the essential rxns:</span>
+0116     sel = sum(essentialRxnMat,2) &gt; 0;
+0117     selInd = find(sel);
+0118     essentialRxns = bModel.rxns(selInd);<span class="comment">%382 rxns for human-GEM</span>
+0119 
+0120     <span class="comment">%Find metabolites present in taskStruct. We want to avoid removing</span>
+0121     <span class="comment">%these metabolites from the final model (even though they may no longer</span>
+0122     <span class="comment">%participate in any reacitons) so that the final model is still able to</span>
+0123     <span class="comment">%complete all of the tasks without any errors.</span>
+0124     taskMets = union(vertcat(taskStruct.inputs),vertcat(taskStruct.outputs));
+0125     taskMets = union(taskMets, parseRxnEqu(vertcat(taskStruct.equations)));
+0126     modelMets = strcat(cModel.metNames,<span class="string">'['</span>,cModel.comps(cModel.metComps),<span class="string">']'</span>);
+0127     [inModel,metInd] = ismember(taskMets,modelMets);
+0128     essentialMetsForTasks = cModel.mets(metInd(inModel));<span class="comment">%118 mets</span>
+0129 
+0130     <span class="comment">%Remove tasks that cannot be performed</span>
+0131     taskStruct(taskReport.ok == false) = [];
+0132 
+0133 <span class="keyword">else</span>
+0134     essentialRxns = {};
+0135     essentialMetsForTasks = {};
+0136     taskReport = {};
+0137 <span class="keyword">end</span>
+0138 
+0139 
+0140 <span class="comment">% remove metabolites separately to avoid removing those needed for tasks</span>
+0141 unusedMets = cModel.mets(all(cModel.S == 0,2));<span class="comment">%1248 in Human-GEM</span>
+0142 cModel = removeMets(cModel, setdiff(unusedMets,essentialMetsForTasks));
+0143 
+0144 <span class="keyword">if</span> ~isempty(taskStruct)
+0145 
+0146     <span class="comment">%Here, we decide on a direction in which the essential reactions should be forced.</span>
+0147     essentialRevDir = false(length(essentialRxns),1);
+0148     pp = zeros(length(essentialRxns),1);
+0149     nn = zeros(length(essentialRxns),1);
+0150     <span class="keyword">for</span> i = 1:length(selInd)
+0151         pos = sum(essentialFluxes(selInd(i),essentialRxnMat(selInd(i),:)) &gt; 0);
+0152         neg = sum(essentialFluxes(selInd(i),essentialRxnMat(selInd(i),:)) &lt; 0);
+0153         essentialRevDir(i) = pos &lt; neg;
+0154         pp(i) = pos;
+0155         nn(i) = neg;
+0156     <span class="keyword">end</span>
+0157 
+0158     <span class="comment">%sum(pp&gt;0 &amp; nn&gt;0) %0, so it is not a big problem that different tasks share essential</span>
+0159     <span class="comment">%reactions but in different directions, at least no such cases exist now, so we ignore this for now.</span>
+0160 
+0161     <span class="comment">%Now create a minimal model for the MILP - we want to make this as small as we can, but we</span>
+0162     <span class="comment">%don't want to use this later when we create the final models - just for the first MILP.</span>
+0163     <span class="comment">%We don't want boundary metabolites in here either.</span>
+0164 
+0165     <span class="comment">%We do a trick with the essential rxns here:</span>
+0166     <span class="comment">%What we want is to get rid of the reversibility of the reactions, because reversible reactions require</span>
+0167     <span class="comment">%an integer each in the MILP, and we can also get the case that it may be cheaper to force flux in the wrong direction, which</span>
+0168     <span class="comment">%will probably not give the gap-filling of reactions that we want.</span>
+0169     <span class="comment">%So, we simply change the reversible reactions to irreversible, and flip their direction if the direction</span>
+0170     <span class="comment">%to force flux in is negative. We don't need to do anything else, runINIT will then handle all essential rxns</span>
+0171     <span class="comment">%as irreversible (and will not add any integers etc. for them).</span>
+0172 
+0173     minModel1 = cModel;
+0174     <span class="comment">%for the essential rxns where we should force flux in the positive direction, just make them irreversible</span>
+0175     <span class="comment">%for the negative direction, we do the same, but also flip the direction of the reaction</span>
+0176 
+0177     <span class="comment">%first flip the reactions with negative direction</span>
+0178     <span class="comment">%constructEquations(minModel1,minModel1.rxns(selInd(essentialRevDir))) %looks good</span>
+0179     minModel1 = reverseRxns(minModel1, minModel1.rxns(selInd(essentialRevDir)));
+0180     <span class="comment">%constructEquations(minModel2,minModel2.rxns(selInd(essentialRevDir))) %looks good</span>
+0181 
+0182     <span class="comment">%Then make them irreversible</span>
+0183     minModel1.rev(selInd) = 0;
+0184     minModel1.lb(selInd) = 0;
+0185 <span class="keyword">else</span>
+0186     minModel1 = cModel;
+0187 <span class="keyword">end</span>
+0188 <span class="comment">%Now, remove reversibility on any reactions that can only be run in one direction - that simplifies the problem</span>
+0189 <span class="comment">%This takes a long time to run (at least an hour or so).</span>
+0190 <span class="comment">%This is an important step, we go from 5533 to 3734 reversible rxns, which reduces the size of the MILP,</span>
+0191 <span class="comment">%since irreversible rxns are easier to handle.</span>
+0192 disp(<span class="string">'Step 4: Second simplification (~1 hour)'</span>)
+0193 minModel2 = simplifyModel(minModel1,false,false,false,false,false,false,true);
+0194 
+0195 disp(<span class="string">'Step 5: Final work'</span>)
+0196 
+0197 <span class="comment">%Now, merge all linear dependent rxns - this reduces the size of the model a lot.</span>
+0198 <span class="comment">%Size goes from 11888 rxns to 7922 rxns for human-GEM, so this is an important step</span>
+0199 [minModel3,origRxnIds,groupIds]=<a href="mergeLinear.html" class="code" title="function [reducedModel,origRxnIds,groupIds,reversedRxns]=mergeLinear(model, noMergeRxns)">mergeLinear</a>(minModel2, {});
+0200 
+0201 <span class="comment">%we now need to figure out what happened to the essential rxns in the merge step above.</span>
+0202 <span class="comment">%Note that it would be ideal to run checkTasks on the result from mergeLinear, but that doesn't work.</span>
+0203 <span class="comment">%The exchange rxns have in many cases been merged with other reactions, making it difficult to run</span>
+0204 <span class="comment">%the tasks. So, instead we run checkTasks before, and figure out which merged reactions the</span>
+0205 <span class="comment">%essential reactions belong to now</span>
+0206 
+0207 <span class="keyword">if</span> ~isempty(taskStruct)
+0208 
+0209     <span class="comment">%find all potential rxns</span>
+0210     rxnIndOrig = ismember(origRxnIds, essentialRxns);
+0211     ids = unique(groupIds(rxnIndOrig));
+0212     ids = ids(ids &gt; 0);<span class="comment">%0 means it has not been merged</span>
+0213     rxnCandidates = unique([essentialRxns;origRxnIds(ismember(groupIds, ids))]);<span class="comment">%388, essentialRxns is 382</span>
+0214     newEssentialRxns = minModel3.rxns(ismember(minModel3.rxns,rxnCandidates));<span class="comment">%196 in Human-GEM</span>
+0215     <span class="comment">%setdiff(newEssentialRxns, essentialRxns)%only 2, that is very few</span>
+0216     <span class="comment">%setdiff(essentialRxns, newEssentialRxns)%188, that is very many</span>
+0217     <span class="comment">%It is probably the case that many essential reactions are linearly dependent on one another, which makes sense.</span>
+0218 <span class="keyword">else</span>
+0219     newEssentialRxns = {};
+0220 <span class="keyword">end</span>
+0221 <span class="comment">%What is left now is to remove some rxns from the problem, such as exchange rxns and spontaneous rxns.</span>
+0222 <span class="comment">%We set the rxn scores of these to exactly 0, and make sure no other scores are zero.</span>
+0223 <span class="comment">%runINIT will then handle this, we do &gt;0 and &lt;0 to get positive and negative scores, the rest</span>
+0224 <span class="comment">%are not included in the problem.</span>
+0225 <span class="comment">%But, this has to happen in the scoring - we identify the reactions in the origrxns here, and then fix this</span>
+0226 <span class="comment">%in the scoring for each sample (the function groupRxnScores handles this and is run for each sample).</span>
+0227 
+0228 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+0229 <span class="comment">%identify the reactions to ignore in the minModel2</span>
+0230 <span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+0231 
+0232 <span class="comment">%Identify reactions that should be ignored by tINIT, i.e. tINIT will not remove these regardless of score</span>
+0233 
+0234 
+0235 [~,exchRxnInd] = getExchangeRxns(minModel2);
+0236 toIgnoreExch = false(numel(minModel2.rxns),1);
+0237 toIgnoreExch(exchRxnInd) = true;
+0238 toIgnoreImportRxns = false(numel(minModel2.rxns),1);
+0239 toIgnoreSimpleTransp = false(numel(minModel2.rxns),1);
+0240 toIgnoreAdvTransp = false(numel(minModel2.rxns),1);
+0241 toIgnoreS = false(numel(minModel2.rxns),1);
+0242 
+0243 
+0244 
+0245 <span class="comment">%sum(toIgnore) %1500 for Human-GEM</span>
+0246 <span class="comment">%find simple transport reactions with no GPRs:</span>
+0247 <span class="comment">%We really only skip the reactions with two metabolites</span>
+0248 <span class="comment">%where they are the same but different compartments - only skip the transport into the cell for now</span>
+0249 numMets = sum(minModel2.S ~= 0, 1);
+0250 scomp = find(strcmp(minModel2.comps,extComp));
+0251 <span class="keyword">for</span> i = 1:length(minModel2.rxns)
+0252     <span class="comment">%check that it has no GPR and that the rxn has two metabolites</span>
+0253     <span class="keyword">if</span> strcmp(minModel2.grRules(i),<span class="string">''</span>) &amp;&amp; (numMets(i) == 2)
+0254       metsComps = minModel2.metComps(minModel2.S(:,i) ~= 0);
+0255       metNames = minModel2.metNames(minModel2.S(:,i) ~= 0);
+0256       <span class="keyword">if</span> metsComps(1) ~= metsComps(2) &amp;&amp; (metsComps(1) == scomp || metsComps(2) == scomp) <span class="comment">%different compartments, one is the extComp</span>
+0257           <span class="keyword">if</span> strcmp(metNames{1}, metNames{2}) <span class="comment">%the same metabolite, it is a transport reaction</span>
+0258               toIgnoreImportRxns(i) = true;
+0259           <span class="keyword">end</span>
+0260       <span class="keyword">elseif</span> metsComps(1) ~= metsComps(2) <span class="comment">%different compartments, no check for extComp</span>
+0261           <span class="keyword">if</span> strcmp(metNames{1}, metNames{2}) <span class="comment">%the same metabolite, it is a transport reaction</span>
+0262               toIgnoreSimpleTransp(i) = true;
+0263           <span class="keyword">end</span>
+0264       <span class="keyword">end</span>
+0265     <span class="keyword">else</span> <span class="comment">%check for advanced</span>
+0266         metsInd = find(minModel2.S(:,i) ~= 0);
+0267         <span class="comment">%check that we have an even number of mets that is larger than 2 and that we don't have a GPR</span>
+0268         <span class="keyword">if</span> rem(length(metsInd),2) == 0 &amp;&amp; length(metsInd) &gt; 2 &amp;&amp; isempty(minModel2.grRules{i})
+0269             <span class="comment">%Now check that we have pairs of metabolites that are transported</span>
+0270             SVals = full(minModel2.S(metsInd,i));
+0271             metNames = minModel2.metNames(metsInd);
+0272             comps = minModel2.metComps(metsInd);
+0273             success = true;
+0274             <span class="keyword">while</span> ~isempty(metNames)
+0275                 <span class="keyword">if</span> length(metNames) &lt; 2 <span class="comment">%this should not happen</span>
+0276                    error(<span class="string">'We should never arrive here!'</span>);
+0277                 <span class="keyword">end</span>
+0278                 metMatch = find(strcmp(metNames(2:length(metNames)),metNames{1})) + 1;
+0279                 <span class="keyword">if</span> length(metMatch) ~= 1 <span class="comment">%we want a match, and only one (if there is some other complex transport rxn, we skip that)</span>
+0280                    success = false;
+0281                    <span class="keyword">break</span>;
+0282                 <span class="keyword">end</span>
+0283                 <span class="keyword">if</span> (SVals(1) + SVals(metMatch)) ~= 0 <span class="comment">%the stoichiometry is not right</span>
+0284                    success = false;
+0285                    <span class="keyword">break</span>;
+0286                 <span class="keyword">end</span>
+0287                 <span class="keyword">if</span> comps(1) == comps(metMatch) <span class="comment">%they must be in different compartments</span>
+0288                    success = false;
+0289                    <span class="keyword">break</span>;
+0290                 <span class="keyword">end</span>
+0291                 <span class="comment">%now remove the pair and continue with the next</span>
+0292                 SVals([1;metMatch]) = [];
+0293                 metNames([1;metMatch]) = [];
+0294                 comps([1;metMatch]) = [];
+0295             <span class="keyword">end</span>
+0296             toIgnoreAdvTransp(i) = success;
+0297         <span class="keyword">end</span>          
+0298     <span class="keyword">end</span>
+0299 <span class="keyword">end</span>
+0300 
+0301 <span class="comment">%Spontaneous reactions:</span>
+0302 toIgnoreSpont = ismember(minModel2.rxns, spontRxnNames);<span class="comment">%only 10 rxns in human-GEM</span>
+0303 
+0304 <span class="comment">%rxns without GPRs in the s compartment (outside the cell)</span>
+0305 sCompInd = find(strcmp(minModel2.comps, extComp));
+0306 <span class="keyword">for</span> i = 1:length(minModel2.rxns)
+0307     metsInd = find(minModel2.S(:,i) ~= 0);
+0308     <span class="comment">%check that it has more than 1 metabolite (not exch rxn) and no GPR</span>
+0309     <span class="keyword">if</span> length(metsInd) &gt; 1 &amp;&amp; isempty(minModel2.grRules{i})
+0310         <span class="keyword">if</span>  all(minModel2.metComps(metsInd) == sCompInd)
+0311             toIgnoreS(i) = true;
+0312         <span class="keyword">end</span>
+0313     <span class="keyword">end</span>
+0314 <span class="keyword">end</span>
+0315 
+0316 toIgnoreAllWithoutGPRs = cellfun(@isempty,minModel2.grRules);
+0317 
+0318 
+0319 <span class="comment">%sum(toIgnore)%in total 2375 rxns in human-GEM</span>
+0320 <span class="comment">%sum(toIgnoreAllTransp)%in total 3337 rxns in human-GEM, so 1,000 more</span>
+0321 
+0322 <span class="comment">%Now, try to scale the model to become more favorable for the solver.</span>
+0323 <span class="comment">%We try to make all fluxes as similar as possible.</span>
+0324 <span class="comment">%      There is room for improvement here, this function is pretty simple.</span>
+0325 <span class="comment">%      It only rescales reactions, while it would be possible to rescale</span>
+0326 <span class="comment">%      metabolites as well (ROS =&gt; kROS, albumin =&gt; millialbumin, etc., but</span>
+0327 <span class="comment">%      scaled freely with a mathematical method). It could potentially open up</span>
+0328 <span class="comment">%      for using less strict margins in the MILP, and make it run faster.</span>
+0329 <span class="keyword">if</span> (skipScaling)
+0330     scaledMinModel = minModel3;
+0331 <span class="keyword">else</span>
+0332     scaledMinModel = <a href="rescaleModelForINIT.html" class="code" title="function model=rescaleModelForINIT(model, varargin)">rescaleModelForINIT</a>(minModel3);
+0333     scaledMinModel.ub(scaledMinModel.ub &gt; 0) = 1000;
+0334     scaledMinModel.lb(scaledMinModel.lb &lt; 0) = -1000;
+0335 <span class="keyword">end</span>
+0336 <span class="comment">% create data structure with pre-processing results</span>
+0337 prepData.taskReport = taskReport;
+0338 prepData.essentialRxns = newEssentialRxns; <span class="comment">%essential rxns in the minModel</span>
+0339 prepData.taskStruct = taskStruct;
+0340 prepData.refModel = cModel;
+0341 prepData.minModel = scaledMinModel;
+0342 prepData.refModelWithBM = closeModel(cModel); <span class="comment">%do this here so we don't have to do this for each sample</span>
+0343 prepData.groupIds = groupIds;
+0344 prepData.essentialMetsForTasks = essentialMetsForTasks;
+0345 
+0346 prepData.toIgnoreExch = toIgnoreExch;
+0347 prepData.toIgnoreImportRxns = toIgnoreImportRxns;
+0348 prepData.toIgnoreSimpleTransp = toIgnoreSimpleTransp;
+0349 prepData.toIgnoreAdvTransp = toIgnoreAdvTransp;
+0350 prepData.toIgnoreSpont = toIgnoreSpont;
+0351 prepData.toIgnoreS = toIgnoreS;
+0352 prepData.toIgnoreCustomRxns = ismember(minModel2.rxns, customRxnsToIgnore);
+0353 prepData.toIgnoreAllWithoutGPRs = toIgnoreAllWithoutGPRs;
+0354 
+0355 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of setGAM</title>
+  <meta name="keywords" content="setGAM">
+  <meta name="description" content="setGAM  Set the growth-associated maintenance (GAM) coefficient.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">biomass</a> &gt; setGAM.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for biomass&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>setGAM
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>setGAM  Set the growth-associated maintenance (GAM) coefficient.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> setGAM  Set the growth-associated maintenance (GAM) coefficient.
+
+ Set the growth-associated maintenance (GAM) coefficient in the biomass
+ pseudoreaction, and optionally fix the non-growth maintenance (NGAM)
+ reaction's bounds. The MATLAB counterpart of yeast-GEM's legacy
+ changeGAM.
+
+ For every metabolite in the biomass pseudoreaction whose model.metNames
+ entry is in cofactorMetNames, the stoichiometric coefficient is set to
+ value with the sign of the current coefficient. An error is raised
+ before the model is changed if ngamRxn is given and is not in the model,
+ and if ngamValue is given without ngamRxn (RAVEN:badInput).
+ For yeast-GEM, the cofactors are ATP, ADP, H2O, H+ and phosphate (ATP and
+ H2O are substrates; ADP, H+ and phosphate are products).
+
+ Parameters
+ ----------
+ model : struct
+     RAVEN model struct.
+ value : double
+     New GAM value (mmol ATP / gDW per growth unit).
+ biomassRxn : char
+     Reaction id of the biomass pseudoreaction.
+ cofactorMetNames : cell
+     Cell array of metabolite names (matched against model.metNames, not
+     metabolite ids) to rescale, for example
+     {'ATP','ADP','H2O','H+','phosphate'}.
+
+ Name-Value Arguments
+ --------------------
+ ngamRxn : char
+     NGAM reaction id. Required when ngamValue is supplied.
+ ngamValue : double
+     NGAM flux to fix. Both bounds of the NGAM reaction are set to
+     ngamValue.
+
+ Returns
+ -------
+ model : struct
+     Modified model.
+
+ Examples
+ --------
+     model = setGAM(model, 80, 'r_4041', {'ATP','ADP','H2O','H+','phosphate'});
+
+ See also
+ --------
+ <a href="fitParameters.html" class="code" title="function [parameters, fitnessScore, exitFlag, newModel]=fitParameters(model,xRxns,xValues,rxnsToFit,valuesToFit,parameterPositions,varargin)">fitParameters</a> : derives such a value from measured fluxes; <a href="setGAM.html" class="code" title="function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)">setGAM</a> then
+     applies it.</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)</a>
+0002 <span class="comment">% setGAM  Set the growth-associated maintenance (GAM) coefficient.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Set the growth-associated maintenance (GAM) coefficient in the biomass</span>
+0005 <span class="comment">% pseudoreaction, and optionally fix the non-growth maintenance (NGAM)</span>
+0006 <span class="comment">% reaction's bounds. The MATLAB counterpart of yeast-GEM's legacy</span>
+0007 <span class="comment">% changeGAM.</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">% For every metabolite in the biomass pseudoreaction whose model.metNames</span>
+0010 <span class="comment">% entry is in cofactorMetNames, the stoichiometric coefficient is set to</span>
+0011 <span class="comment">% value with the sign of the current coefficient. An error is raised</span>
+0012 <span class="comment">% before the model is changed if ngamRxn is given and is not in the model,</span>
+0013 <span class="comment">% and if ngamValue is given without ngamRxn (RAVEN:badInput).</span>
+0014 <span class="comment">% For yeast-GEM, the cofactors are ATP, ADP, H2O, H+ and phosphate (ATP and</span>
+0015 <span class="comment">% H2O are substrates; ADP, H+ and phosphate are products).</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">% Parameters</span>
+0018 <span class="comment">% ----------</span>
+0019 <span class="comment">% model : struct</span>
+0020 <span class="comment">%     RAVEN model struct.</span>
+0021 <span class="comment">% value : double</span>
+0022 <span class="comment">%     New GAM value (mmol ATP / gDW per growth unit).</span>
+0023 <span class="comment">% biomassRxn : char</span>
+0024 <span class="comment">%     Reaction id of the biomass pseudoreaction.</span>
+0025 <span class="comment">% cofactorMetNames : cell</span>
+0026 <span class="comment">%     Cell array of metabolite names (matched against model.metNames, not</span>
+0027 <span class="comment">%     metabolite ids) to rescale, for example</span>
+0028 <span class="comment">%     {'ATP','ADP','H2O','H+','phosphate'}.</span>
+0029 <span class="comment">%</span>
+0030 <span class="comment">% Name-Value Arguments</span>
+0031 <span class="comment">% --------------------</span>
+0032 <span class="comment">% ngamRxn : char</span>
+0033 <span class="comment">%     NGAM reaction id. Required when ngamValue is supplied.</span>
+0034 <span class="comment">% ngamValue : double</span>
+0035 <span class="comment">%     NGAM flux to fix. Both bounds of the NGAM reaction are set to</span>
+0036 <span class="comment">%     ngamValue.</span>
+0037 <span class="comment">%</span>
+0038 <span class="comment">% Returns</span>
+0039 <span class="comment">% -------</span>
+0040 <span class="comment">% model : struct</span>
+0041 <span class="comment">%     Modified model.</span>
+0042 <span class="comment">%</span>
+0043 <span class="comment">% Examples</span>
+0044 <span class="comment">% --------</span>
+0045 <span class="comment">%     model = setGAM(model, 80, 'r_4041', {'ATP','ADP','H2O','H+','phosphate'});</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">% See also</span>
+0048 <span class="comment">% --------</span>
+0049 <span class="comment">% fitParameters : derives such a value from measured fluxes; setGAM then</span>
+0050 <span class="comment">%     applies it.</span>
+0051 
+0052 <span class="keyword">if</span> nargin &lt; 4
+0053     error(<span class="string">'setGAM:missingArgs'</span>, <span class="keyword">...</span>
+0054         <span class="string">'biomassRxn and cofactorMetNames are required.'</span>);
+0055 <span class="keyword">end</span>
+0056 
+0057 p=parseRAVENargs(varargin, {<span class="string">'ngamRxn'</span>,[]; <span class="string">'ngamValue'</span>,[]});
+0058 ngamRxn=p.ngamRxn;
+0059 ngamValue=p.ngamValue;
+0060 <span class="comment">%An empty id counts as not given</span>
+0061 <span class="keyword">if</span> ~isempty(ngamRxn)
+0062     ngamRxn=cellstr(ngamRxn);
+0063     ngamRxn=ngamRxn(~cellfun(@isempty,ngamRxn));
+0064 <span class="keyword">end</span>
+0065 <span class="keyword">if</span> ~isempty(ngamValue) &amp;&amp; isempty(ngamRxn)
+0066     error(<span class="string">'RAVEN:badInput'</span>, <span class="keyword">...</span>
+0067         <span class="string">'ngamValue is given without ngamRxn. Give the NGAM reaction id as ''ngamRxn''.'</span>);
+0068 <span class="keyword">end</span>
+0069 
+0070 bioPos = strcmp(model.rxns, biomassRxn);
+0071 <span class="keyword">if</span> ~any(bioPos)
+0072     error(<span class="string">'setGAM:missingBiomassRxn'</span>, <span class="keyword">...</span>
+0073         <span class="string">'Reaction %s not found in model.'</span>, biomassRxn);
+0074 <span class="keyword">end</span>
+0075 
+0076 setNgam = ~isempty(ngamRxn) &amp;&amp; ~isempty(ngamValue);
+0077 <span class="keyword">if</span> ~isempty(ngamRxn) &amp;&amp; ~all(ismember(ngamRxn, model.rxns))
+0078     error(<span class="string">'setGAM:missingNgamRxn'</span>, <span class="keyword">...</span>
+0079         <span class="string">'NGAM reaction %s not found in model.'</span>, strjoin(ngamRxn, <span class="string">', '</span>));
+0080 <span class="keyword">end</span>
+0081 
+0082 <span class="keyword">for</span> i = 1:length(model.mets)
+0083     S_ix = model.S(i, bioPos);
+0084     isCofactor = any(strcmp(cofactorMetNames, model.metNames{i}));
+0085     <span class="keyword">if</span> S_ix ~= 0 &amp;&amp; isCofactor
+0086         model.S(i, bioPos) = sign(S_ix) * value;
+0087     <span class="keyword">end</span>
+0088 <span class="keyword">end</span>
+0089 
+0090 <span class="keyword">if</span> setNgam
+0091     model = setParam(model, <span class="string">'eq'</span>, ngamRxn, ngamValue);
+0092 <span class="keyword">end</span>
+0093 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of addIdentifierPrefix</title>
+  <meta name="keywords" content="addIdentifierPrefix">
+  <meta name="description" content="addIdentifierPrefix  Add identifier prefixes required by SBML.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">conversion</a> &gt; addIdentifierPrefix.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for conversion&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>addIdentifierPrefix
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>addIdentifierPrefix  Add identifier prefixes required by SBML.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [model, hasChanged]=addIdentifierPrefix(model,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> addIdentifierPrefix  Add identifier prefixes required by SBML.
+
+ If any reaction, metabolite, compartment, gene or model identifier does
+ not start with a letter or _, which conflicts with SBML specifications,
+ a prefix is added to all identifiers in the respective model field.
+ The prefixes are:
+
+     &quot;R_&quot; for model.rxns,
+     &quot;M_&quot; for model.mets and model.id,
+     &quot;C_&quot; for model.comps;
+     &quot;G_&quot; for model.genes (and also represented in model.grRules)
+
+ Parameters
+ ----------
+ model : struct
+     model whose identifiers should be modified.
+
+ Name-Value Arguments
+ --------------------
+ fields : cell
+     cell array with the names of the model fields to check for the need
+     of a prefix, possible values: 'rxns', 'mets', 'comps', 'genes', 'id'
+     (default all of these fields).
+
+ Returns
+ -------
+ model : struct
+     modified model.
+ hasChanged : cell
+     cell array of char with one entry per field that received a prefix,
+     for example 'model.rxns (R_ prefix)'.
+
+ Examples
+ --------
+     [model, hasChanged] = addIdentifierPrefix(model, fields);</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function rule = prefixGenes(rule, prefix)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [model, hasChanged]=addIdentifierPrefix(model,varargin)</a>
+0002 <span class="comment">% addIdentifierPrefix  Add identifier prefixes required by SBML.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% If any reaction, metabolite, compartment, gene or model identifier does</span>
+0005 <span class="comment">% not start with a letter or _, which conflicts with SBML specifications,</span>
+0006 <span class="comment">% a prefix is added to all identifiers in the respective model field.</span>
+0007 <span class="comment">% The prefixes are:</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">%     &quot;R_&quot; for model.rxns,</span>
+0010 <span class="comment">%     &quot;M_&quot; for model.mets and model.id,</span>
+0011 <span class="comment">%     &quot;C_&quot; for model.comps;</span>
+0012 <span class="comment">%     &quot;G_&quot; for model.genes (and also represented in model.grRules)</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Parameters</span>
+0015 <span class="comment">% ----------</span>
+0016 <span class="comment">% model : struct</span>
+0017 <span class="comment">%     model whose identifiers should be modified.</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">% Name-Value Arguments</span>
+0020 <span class="comment">% --------------------</span>
+0021 <span class="comment">% fields : cell</span>
+0022 <span class="comment">%     cell array with the names of the model fields to check for the need</span>
+0023 <span class="comment">%     of a prefix, possible values: 'rxns', 'mets', 'comps', 'genes', 'id'</span>
+0024 <span class="comment">%     (default all of these fields).</span>
+0025 <span class="comment">%</span>
+0026 <span class="comment">% Returns</span>
+0027 <span class="comment">% -------</span>
+0028 <span class="comment">% model : struct</span>
+0029 <span class="comment">%     modified model.</span>
+0030 <span class="comment">% hasChanged : cell</span>
+0031 <span class="comment">%     cell array of char with one entry per field that received a prefix,</span>
+0032 <span class="comment">%     for example 'model.rxns (R_ prefix)'.</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">% Examples</span>
+0035 <span class="comment">% --------</span>
+0036 <span class="comment">%     [model, hasChanged] = addIdentifierPrefix(model, fields);</span>
+0037 
+0038 p=parseRAVENargs(varargin, {<span class="string">'fields'</span>,[]});
+0039 fields=p.fields;
+0040 <span class="keyword">if</span> isempty(fields)
+0041     fields = {<span class="string">'rxns'</span>,<span class="string">'mets'</span>,<span class="string">'comps'</span>,<span class="string">'genes'</span>,<span class="string">'id'</span>};
+0042 <span class="keyword">end</span>
+0043 
+0044 modelFields = {<span class="string">'rxns'</span>,<span class="string">'R_'</span>;
+0045                <span class="string">'mets'</span>,<span class="string">'M_'</span>;
+0046                <span class="string">'comps'</span>,<span class="string">'C_'</span>;
+0047                <span class="string">'genes'</span>,<span class="string">'G_'</span>;
+0048                <span class="string">'id'</span>,<span class="string">'M_'</span>};
+0049 
+0050 toChangeIdx = find(ismember(modelFields(:,1),fields));
+0051 hasChanged  = false(numel(modelFields(:,1)),1);
+0052 <span class="keyword">for</span> i=1:numel(toChangeIdx)
+0053     currName    = modelFields{toChangeIdx(i),1};
+0054     currPrefix  = modelFields{toChangeIdx(i),2};
+0055     <span class="keyword">if</span> isfield(model,currName)
+0056         currField   = model.(currName);
+0057     <span class="keyword">else</span>
+0058         <span class="keyword">continue</span>;
+0059     <span class="keyword">end</span>
+0060     <span class="keyword">if</span> ~all(startsWith(currField,regexpPattern(<span class="string">'^[a-zA-Z_]'</span>)))
+0061         currField = strcat(currPrefix, currField);
+0062         hasChanged(toChangeIdx(i)) = true;
+0063 
+0064         <span class="keyword">if</span> strcmp(currName,<span class="string">'genes'</span>) &amp;&amp; isfield(model,<span class="string">'grRules'</span>)
+0065             model.grRules = cellfun(@(r) <a href="#_sub1" class="code" title="subfunction rule = prefixGenes(rule, prefix)">prefixGenes</a>(r,currPrefix), model.grRules, <span class="string">'UniformOutput'</span>, false);
+0066         <span class="keyword">end</span>
+0067         model.(currName) = currField;
+0068     <span class="keyword">end</span>
+0069 <span class="keyword">end</span>
+0070 
+0071 hasChanged = modelFields(hasChanged,:);
+0072 hasChanged = append(<span class="string">'model.'</span>, hasChanged(:,1), <span class="string">' ('</span>, hasChanged(:,2), <span class="string">' prefix)'</span>);
+0073 <span class="keyword">end</span>
+0074 
+0075 
+0076 <a name="_sub1" href="#_subfunctions" class="code">function rule = prefixGenes(rule, prefix)</a>
+0077 <span class="comment">% Prefix every gene in a grRule, leaving &quot;and&quot;, &quot;or&quot; and brackets alone. A</span>
+0078 <span class="comment">% gene is everything between spaces and brackets, so ids that contain</span>
+0079 <span class="comment">% &quot;-&quot;, &quot;.&quot; or &quot;:&quot; get one prefix, not one per word.</span>
+0080 [tokens, separators] = regexp(rule, <span class="string">'[^\s()]+'</span>, <span class="string">'match'</span>, <span class="string">'split'</span>);
+0081 out = separators{1};
+0082 <span class="keyword">for</span> i = 1:numel(tokens)
+0083     <span class="keyword">if</span> ~any(strcmpi(tokens{i}, {<span class="string">'and'</span>,<span class="string">'or'</span>}))
+0084         tokens{i} = [prefix tokens{i}];
+0085     <span class="keyword">end</span>
+0086     out = [out tokens{i} separators{i+1}]; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0087 <span class="keyword">end</span>
+0088 rule = out;
+0089 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

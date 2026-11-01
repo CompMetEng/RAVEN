@@ -1,0 +1,103 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of addRavenToUserPath</title>
+  <meta name="keywords" content="addRavenToUserPath">
+  <meta name="description" content="This function writes a startup.m file in the userpath, adding RAVEN (and">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">installation</a> &gt; addRavenToUserPath.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for installation&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>addRavenToUserPath
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>This function writes a startup.m file in the userpath, adding RAVEN (and</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function addRavenToUserPath(varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> This function writes a startup.m file in the userpath, adding RAVEN (and
+ all subdirectories except those with .git or doc in their path) to the
+ path each time MATLAB is started.
+ The function applies when the user has no rights to save paths to the
+ pathdef.m file in the matlabroot, for instance due to a lack of admin
+ rights. The startup.m file in the userpath runs at each MATLAB start and
+ loads the paths.
+
+ Name-Value Arguments
+ --------------------
+   overwrite       logical, true if startup.m in the userpath is
+                   overwritten and false if the RAVEN paths are appended
+                   (default true)</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="findRAVENroot.html" class="code" title="function [ravenPath, prevDir] = findRAVENroot()">findRAVENroot</a>	findRAVENroot</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function addRavenToUserPath(varargin)</a>
+0002 <span class="comment">% This function writes a startup.m file in the userpath, adding RAVEN (and</span>
+0003 <span class="comment">% all subdirectories except those with .git or doc in their path) to the</span>
+0004 <span class="comment">% path each time MATLAB is started.</span>
+0005 <span class="comment">% The function applies when the user has no rights to save paths to the</span>
+0006 <span class="comment">% pathdef.m file in the matlabroot, for instance due to a lack of admin</span>
+0007 <span class="comment">% rights. The startup.m file in the userpath runs at each MATLAB start and</span>
+0008 <span class="comment">% loads the paths.</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">% Name-Value Arguments</span>
+0011 <span class="comment">% --------------------</span>
+0012 <span class="comment">%   overwrite       logical, true if startup.m in the userpath is</span>
+0013 <span class="comment">%                   overwritten and false if the RAVEN paths are appended</span>
+0014 <span class="comment">%                   (default true)</span>
+0015 
+0016 p=parseRAVENargs(varargin, {<span class="string">'overwrite'</span>,true});
+0017 overwrite=p.overwrite;
+0018 
+0019 <span class="comment">% Get current RAVEN directory</span>
+0020 ravenDir=<a href="findRAVENroot.html" class="code" title="function [ravenPath, prevDir] = findRAVENroot()">findRAVENroot</a>();
+0021 
+0022 <span class="comment">% Lists all subdirectories</span>
+0023 subpath=regexp(genpath(ravenDir),pathsep,<span class="string">'split'</span>);
+0024 <span class="comment">% Remove .git and doc folders</span>
+0025 pathsToKeep=cellfun(@(x) isempty(strfind(x,<span class="string">'.git'</span>)),subpath) &amp; cellfun(@(x) isempty(strfind(x,<span class="string">'doc'</span>)),subpath);
+0026 <span class="comment">% Only keep useful paths</span>
+0027 subpath = subpath(pathsToKeep);
+0028 subpath = subpath(1:end-1); <span class="comment">% Remove last entry, is empty field</span>
+0029 
+0030 <span class="comment">% Write startup.m file</span>
+0031 <span class="keyword">if</span> overwrite
+0032     fid=fopen(fullfile(userpath,<span class="string">'startup.m'</span>),<span class="string">'w'</span>);
+0033     fprintf(fid,<span class="string">'%sn'</span>,<span class="string">'%%% RAVEN path'</span>);
+0034 <span class="keyword">else</span>
+0035     fid=fopen(fullfile(userpath,<span class="string">'startup.m'</span>),<span class="string">'a'</span>);
+0036     fprintf(fid,<span class="string">'n%sn'</span>,<span class="string">'%%% RAVEN path'</span>);
+0037 <span class="keyword">end</span>
+0038 fprintf(fid,<span class="string">'%sn'</span>,strcat(<span class="string">'addpath('''</span>,subpath{1},<span class="string">''',...'</span>));
+0039 <span class="keyword">for</span> i=2(length(subpath)-1)
+0040     fprintf(fid,<span class="string">'t%sn'</span>,strcat(<span class="string">''''</span>,subpath{i},<span class="string">''',...'</span>));
+0041 <span class="keyword">end</span>
+0042 fprintf(fid,<span class="string">'t%s'</span>,strcat(<span class="string">''''</span>,subpath{length(subpath)},<span class="string">''');'</span>));
+0043 fclose(fid);
+0044 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

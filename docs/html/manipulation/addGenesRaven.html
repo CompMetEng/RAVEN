@@ -1,0 +1,238 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of addGenesRaven</title>
+  <meta name="keywords" content="addGenesRaven">
+  <meta name="description" content="addGenesRaven  Add genes to a model.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">manipulation</a> &gt; addGenesRaven.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for manipulation&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>addGenesRaven
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>addGenesRaven  Add genes to a model.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function newModel=addGenesRaven(model,genesToAdd) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> addGenesRaven  Add genes to a model.
+
+ The function checks neither MIRIAM formats nor forbidden characters in gene ids.
+
+ Parameters
+ ----------
+ model : struct
+     a model structure.
+ genesToAdd : struct
+     the genes to add, which can have the following fields:
+
+     - genes : cell array with unique strings that identify each gene.
+       The characters allowed in SBML ids (mainly a-z, 0-9 and &quot;_&quot;) are the
+       valid ones, but the function does not check them; they matter only for
+       export to SBML
+     - geneShortNames : cell array of gene abbreviations (optional,
+       default &quot;&quot;)
+     - geneMiriams : cell array with MIRIAM structures (optional,
+       default [])
+     - proteins : cell array of the protein names associated with each gene
+       (optional, default &quot;&quot;)
+
+ Returns
+ -------
+ newModel : struct
+     an updated model structure.
+
+ Examples
+ --------
+     newModel = addGenesRaven(model, genesToAdd);</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="addRxns.html" class="code" title="function newModel=addRxns(model,rxnsToAdd,varargin)">addRxns</a>	addRxns  Add reactions to a model.</li><li><a href="changeGrRules.html" class="code" title="function model = changeGrRules(model,rxns,grRules,varargin)">changeGrRules</a>	changeGrRules  Change the grRules of multiple reactions.</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function newModel=addGenesRaven(model,genesToAdd)</a>
+0002 <span class="comment">% addGenesRaven  Add genes to a model.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% The function checks neither MIRIAM formats nor forbidden characters in gene ids.</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">% Parameters</span>
+0007 <span class="comment">% ----------</span>
+0008 <span class="comment">% model : struct</span>
+0009 <span class="comment">%     a model structure.</span>
+0010 <span class="comment">% genesToAdd : struct</span>
+0011 <span class="comment">%     the genes to add, which can have the following fields:</span>
+0012 <span class="comment">%</span>
+0013 <span class="comment">%     - genes : cell array with unique strings that identify each gene.</span>
+0014 <span class="comment">%       The characters allowed in SBML ids (mainly a-z, 0-9 and &quot;_&quot;) are the</span>
+0015 <span class="comment">%       valid ones, but the function does not check them; they matter only for</span>
+0016 <span class="comment">%       export to SBML</span>
+0017 <span class="comment">%     - geneShortNames : cell array of gene abbreviations (optional,</span>
+0018 <span class="comment">%       default &quot;&quot;)</span>
+0019 <span class="comment">%     - geneMiriams : cell array with MIRIAM structures (optional,</span>
+0020 <span class="comment">%       default [])</span>
+0021 <span class="comment">%     - proteins : cell array of the protein names associated with each gene</span>
+0022 <span class="comment">%       (optional, default &quot;&quot;)</span>
+0023 <span class="comment">%</span>
+0024 <span class="comment">% Returns</span>
+0025 <span class="comment">% -------</span>
+0026 <span class="comment">% newModel : struct</span>
+0027 <span class="comment">%     an updated model structure.</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">% Examples</span>
+0030 <span class="comment">% --------</span>
+0031 <span class="comment">%     newModel = addGenesRaven(model, genesToAdd);</span>
+0032 
+0033 newModel=model;
+0034 
+0035 <span class="keyword">if</span> isempty(genesToAdd)
+0036     <span class="keyword">return</span>;
+0037 <span class="keyword">end</span>
+0038 
+0039 <span class="comment">%Check some stuff regarding the required fields</span>
+0040 <span class="keyword">if</span> ~isfield(genesToAdd,<span class="string">'genes'</span>)
+0041     EM=<span class="string">'genes is a required field in genesToAdd'</span>;
+0042     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0043 <span class="keyword">else</span>
+0044     genesToAdd.genes=convertCharArray(genesToAdd.genes);
+0045 <span class="keyword">end</span>
+0046 
+0047 nOldGenes=numel(model.genes);
+0048 largeFiller=cell(nOldGenes,1);
+0049 largeFiller(:)={<span class="string">''</span>};
+0050 
+0051 <span class="comment">%Check that no gene ids are already present in the model</span>
+0052 I=ismember(genesToAdd.genes,model.genes);
+0053 <span class="keyword">if</span> all(I)
+0054     warning(<span class="string">'All genes in genesToAdd.genes are already present in model.genes'</span>);
+0055     <span class="keyword">return</span>
+0056 <span class="keyword">elseif</span> any(I)
+0057     existingGenes=strjoin(genesToAdd.genes(I), <span class="string">', '</span>);
+0058     warning([<span class="string">'The following genes are already present in model.genes and will therefore not be added: '</span>, existingGenes])
+0059     genesToAdd.genes(I)=[];
+0060     <span class="keyword">if</span> isfield(genesToAdd,<span class="string">'geneShortNames'</span>)
+0061         genesToAdd.geneShortNames(I)=[];
+0062     <span class="keyword">end</span>
+0063     <span class="keyword">if</span> isfield(genesToAdd,<span class="string">'proteins'</span>)
+0064         genesToAdd.proteins(I)=[];
+0065     <span class="keyword">end</span>
+0066     <span class="keyword">if</span> isfield(genesToAdd,<span class="string">'geneMiriams'</span>)
+0067         genesToAdd.geneMiriams(I)=[];
+0068     <span class="keyword">end</span>
+0069     <span class="keyword">if</span> isfield(genesToAdd,<span class="string">'geneComps'</span>)
+0070         genesToAdd.geneComps(I)=[];
+0071     <span class="keyword">end</span>
+0072 <span class="keyword">end</span>
+0073 newModel.genes=[newModel.genes;genesToAdd.genes(:)];
+0074 
+0075 <span class="comment">%Number of genes actually being added, now that any already-present genes</span>
+0076 <span class="comment">%have been trimmed out; the per-field length checks below compare against</span>
+0077 <span class="comment">%this</span>
+0078 nGenes=numel(genesToAdd.genes);
+0079 filler=cell(nGenes,1);
+0080 filler(:)={<span class="string">''</span>};
+0081 
+0082 <span class="comment">%Some more checks and if they pass then add each field to the structure</span>
+0083 <span class="keyword">if</span> isfield(genesToAdd,<span class="string">'geneShortNames'</span>)
+0084     genesToAdd.geneShortNames=convertCharArray(genesToAdd.geneShortNames);
+0085     <span class="keyword">if</span> numel(genesToAdd.geneShortNames)~=nGenes
+0086         EM=<span class="string">'genesToAdd.geneShortNames must have the same number of elements as genesToAdd.genes'</span>;
+0087         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0088     <span class="keyword">end</span>
+0089     <span class="comment">%Add empty field if it does not exist</span>
+0090     <span class="keyword">if</span> ~isfield(newModel,<span class="string">'geneShortNames'</span>)
+0091         newModel.geneShortNames=largeFiller;
+0092     <span class="keyword">end</span>
+0093     newModel.geneShortNames=[newModel.geneShortNames;genesToAdd.geneShortNames(:)];
+0094 <span class="keyword">else</span>
+0095     <span class="comment">%Add empty strings if the structure is in the model</span>
+0096     <span class="keyword">if</span> isfield(newModel,<span class="string">'geneShortNames'</span>)
+0097         newModel.geneShortNames=[newModel.geneShortNames;filler];
+0098     <span class="keyword">end</span>
+0099 <span class="keyword">end</span>
+0100 <span class="keyword">if</span> isfield(genesToAdd,<span class="string">'proteins'</span>)
+0101     genesToAdd.proteins=convertCharArray(genesToAdd.proteins);
+0102     <span class="keyword">if</span> numel(genesToAdd.proteins)~=nGenes
+0103         EM=<span class="string">'genesToAdd.proteins must have the same number of elements as genesToAdd.genes'</span>;
+0104         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0105     <span class="keyword">end</span>
+0106     <span class="comment">%Add empty field if it does not exist</span>
+0107     <span class="keyword">if</span> ~isfield(newModel,<span class="string">'proteins'</span>)
+0108         newModel.proteins=largeFiller;
+0109     <span class="keyword">end</span>
+0110     newModel.proteins=[newModel.proteins;genesToAdd.proteins(:)];
+0111 <span class="keyword">else</span>
+0112     <span class="comment">%Add empty strings if the structure is in the model</span>
+0113     <span class="keyword">if</span> isfield(newModel,<span class="string">'proteins'</span>)
+0114         newModel.proteins=[newModel.proteins;filler];
+0115     <span class="keyword">end</span>
+0116 <span class="keyword">end</span>
+0117 
+0118 
+0119 <span class="comment">%Do not check the type of geneMiriams</span>
+0120 <span class="keyword">if</span> isfield(genesToAdd,<span class="string">'geneMiriams'</span>)
+0121     <span class="keyword">if</span> numel(genesToAdd.geneMiriams)~=nGenes
+0122         EM=<span class="string">'genesToAdd.geneMiriams must have the same number of elements as genesToAdd.genes'</span>;
+0123         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0124     <span class="keyword">end</span>
+0125     <span class="comment">%Add empty field if it does not exist</span>
+0126     <span class="keyword">if</span> ~isfield(newModel,<span class="string">'geneMiriams'</span>)
+0127         newModel.geneMiriams=cell(nOldGenes,1);
+0128     <span class="keyword">end</span>
+0129     newModel.geneMiriams=[newModel.geneMiriams;genesToAdd.geneMiriams(:)];
+0130 <span class="keyword">else</span>
+0131     <span class="keyword">if</span> isfield(newModel,<span class="string">'geneMiriams'</span>)
+0132         newModel.geneMiriams=[newModel.geneMiriams;cell(nGenes,1)];
+0133     <span class="keyword">end</span>
+0134 <span class="keyword">end</span>
+0135 
+0136 <span class="keyword">if</span> isfield(genesToAdd,<span class="string">'geneComps'</span>)
+0137     <span class="keyword">if</span> numel(genesToAdd.geneComps)~=nGenes
+0138         EM=<span class="string">'genesToAdd.geneComps must have the same number of elements as genesToAdd.genes'</span>;
+0139         error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0140     <span class="keyword">end</span>
+0141     <span class="comment">%Add empty field if it does not exist</span>
+0142     <span class="keyword">if</span> ~isfield(newModel,<span class="string">'geneComps'</span>)
+0143         newModel.geneComps=ones(nOldGenes,1);
+0144         EM=<span class="string">'Adding genes with compartment information to a model without such information. All existing genes will be assigned to the first compartment'</span>;
+0145         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0146     <span class="keyword">end</span>
+0147     newModel.geneComps=[newModel.geneComps;genesToAdd.geneComps(:)];
+0148 <span class="keyword">else</span>
+0149     <span class="keyword">if</span> isfield(newModel,<span class="string">'geneComps'</span>)
+0150         newModel.geneComps=[newModel.geneComps;ones(nGenes,1)];
+0151         fprintf(<span class="string">'NOTE: The added genes will be assigned to the first compartment\n'</span>);
+0152     <span class="keyword">end</span>
+0153 <span class="keyword">end</span>
+0154 
+0155 <span class="keyword">if</span> isfield(newModel,<span class="string">'geneFrom'</span>)
+0156     newModel.geneFrom=[newModel.geneFrom;filler];
+0157 <span class="keyword">end</span>
+0158 
+0159 <span class="keyword">if</span> isfield(newModel,<span class="string">'rxnGeneMat'</span>)
+0160     newModel.rxnGeneMat=[newModel.rxnGeneMat,zeros(length(newModel.rxns),nGenes)];
+0161 <span class="keyword">end</span>
+0162 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

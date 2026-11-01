@@ -1,0 +1,195 @@
+function [model, removedRxns, idxDuplRxns]=replaceMets(model,metabolite,replacement,varargin)
+% replaceMets  Replace a metabolite with another already in the model.
+%
+% Replaces the name and annotation (formula, miriams, charge, deltaG, InChI
+% and SMILES) of a metabolite with those of a replacement metabolite that is
+% already in the model. If this results in duplicate metabolites, the S matrix
+% is updated to use one of them. With identifiers true the replacement
+% metabolite is kept; by name, the metabolite with the lowest index among those
+% of the same name and compartment is kept. At the end, contractModel is run to remove
+% duplicate reactions that this creates.
+%
+% Parameters
+% ----------
+% model : struct
+%     a model structure.
+% metabolite : char
+%     name of the metabolite to be replaced (its identifier if identifiers is
+%     true).
+% replacement : char
+%     name of the replacement metabolite (its identifier if identifiers is
+%     true).
+%
+% Name-Value Arguments
+% --------------------
+% verbose : logical
+%     whether to print the ids of reactions that involve the replaced
+%     metabolite (default false).
+% identifiers : logical
+%     true if 'metabolite' and 'replacement' are metabolite identifiers,
+%     false if they are metabolite names (default false).
+%
+% Returns
+% -------
+% model : struct
+%     model structure with the selected metabolites replaced.
+% removedRxns : cell
+%     not assigned by the function; requesting this output raises an error.
+% idxDuplRxns : double
+%     not assigned by the function; requesting this output raises an error.
+%
+% Examples
+% --------
+%     [model, removedRxns, idxDuplRxns] = replaceMets(model, metabolite, ...
+%         replacement, verbose);
+%
+% Notes
+% -----
+% The function applies to a model that contains both 'oxygen' and 'o2' as
+% metabolite names. If 'oxygen' and 'o2' are identifiers, 'identifiers' is
+% set to true.
+
+metabolite=char(metabolite);
+replacement=char(replacement);
+
+p=parseRAVENargs(varargin, {'verbose',false; 'identifiers',false});
+verbose=p.verbose;
+if isempty(verbose)
+    verbose=false;
+end
+identifiers=p.identifiers;
+
+% Find occurence of replacement metabolites. Annotation will be taken from
+% first metabolite found.
+if identifiers
+    repIdx = find(strcmp(replacement,model.mets));
+else
+    repIdx = find(strcmp(replacement,model.metNames));
+end
+if isempty(repIdx)
+    error('The replacement metabolite cannot be found in the model.');
+end
+% Captured by id, not position: idxDelete below removes rows, which would
+% otherwise shift repIdx out from under the metabolite it is meant to name
+repMetIds = model.mets(repIdx);
+
+% Change name and information from metabolite to replacement metabolite
+if identifiers
+    metIdx = find(strcmp(metabolite,model.mets));
+else
+    metIdx = find(strcmp(metabolite,model.metNames));
+end
+if isempty(metIdx)
+    error('The to-be-replaced metabolite cannot be found in the model.');
+end
+
+% Either of the two rows can be the one that survives the merge: with identifiers the
+% replacement stays, by name the replaced metabolite is renamed and stays while the
+% replacement's row is deleted below. Both ids are kept so that contractModel is
+% restricted to the metabolite that is left.
+repMetIds = [repMetIds; model.mets(metIdx)];
+
+rxnsWithMet = find(model.S(metIdx,:));
+if verbose==true
+    fprintf('\n\nThe following reactions contain the to-be-replaced metabolite as reactant:\n')
+    %Reaction ids are arbitrary text and may contain "%"; print as
+    %literal data rather than as an fprintf format string.
+    fprintf('%s\n', strjoin(model.rxns(rxnsWithMet),newline))
+end
+
+model.metNames(metIdx) = model.metNames(repIdx(1));
+if isfield(model,'metFormulas')
+    model.metFormulas(metIdx) = model.metFormulas(repIdx(1));
+end
+if isfield(model,'metMiriams')
+    model.metMiriams(metIdx) = model.metMiriams(repIdx(1));
+end
+if isfield(model,'metCharges')
+    model.metCharges(metIdx) = model.metCharges(repIdx(1));
+end
+if isfield(model,'metDeltaG')
+    model.metDeltaG(metIdx) = model.metDeltaG(repIdx(1));
+end
+if isfield(model,'inchis')
+    model.inchis(metIdx) = model.inchis(repIdx(1));
+end
+if isfield(model,'metSmiles')
+    model.metSmiles(metIdx) = model.metSmiles(repIdx(1));
+end
+
+idxDelete=[];
+if identifiers
+    originalStoch = model.S(metIdx,rxnsWithMet);
+    % Add rather than overwrite: a reaction where the replacement
+    % metabolite is already itself a participant must keep that
+    % contribution, not have it clobbered by the replaced metabolite's
+    model.S(repIdx,rxnsWithMet) = model.S(repIdx,rxnsWithMet) + originalStoch;
+    model.S(metIdx,rxnsWithMet) = 0;
+    idxDelete = metIdx;
+else
+    % Run through replacement metabolites and their compartments. If any of the
+    % to-be-replaced metabolites is already present (checked by
+    % metaboliteName[compartment], then the replacement metabolite is kept and
+    % the to-be-replace metabolite ID deleted.
+    
+    % Build list of metaboliteName[compartment]
+    metCompsN =cellstr(num2str(model.metComps));
+    map = containers.Map(cellstr(num2str(transpose(1:length(model.comps)))),model.comps);
+    metCompsN = map.values(metCompsN);
+    metCompsN = strcat(lower(model.metNames),'[',metCompsN,']');
+    
+    for i = 1:length(repIdx)
+        metCompsNidx=find(strcmp(metCompsN(repIdx(i)), metCompsN));
+        if length(metCompsNidx)>1
+            for j = 2:length(metCompsNidx)
+                model.S(metCompsNidx(1),:) = model.S(metCompsNidx(1),:) + model.S(metCompsNidx(j),:);
+                idxDelete=[idxDelete; metCompsNidx(j)]; % Make list of metabolite IDs to delete
+            end
+        end
+    end
+end
+
+if ~isempty(idxDelete)
+    model.S(idxDelete,:) =[];
+    model.mets(idxDelete) = [];
+    model.metNames(idxDelete) = [];
+    model.metComps(idxDelete) = [];
+    model.b(idxDelete,:) = [];
+    if isfield(model,'metFormulas')
+        model.metFormulas(idxDelete) = [];
+    end
+    if isfield(model,'unconstrained')
+        model.unconstrained(idxDelete) = [];
+    end
+    if isfield(model,'metMiriams')
+        model.metMiriams(idxDelete) = [];
+    end
+    if isfield(model,'metCharges')
+        model.metCharges(idxDelete) = [];
+    end
+    if isfield(model,'metDeltaG')
+        model.metDeltaG(idxDelete) = [];
+    end
+    if isfield(model,'inchis')
+        model.inchis(idxDelete) = [];
+    end
+    if isfield(model,'metSmiles')
+        model.metSmiles(idxDelete) = [];
+    end
+    if isfield(model,'metFrom')
+        model.metFrom(idxDelete) = [];
+    end
+end
+
+% This could now have created duplicate reactions. Contract model.
+% repIdx may point past the end, or at the wrong row, once idxDelete has
+% shifted things above; re-resolve the metabolite that is left by id. An empty
+% list must not reach contractModel, which would then check every reaction.
+% distReverse is passed by name rather than positionally as [], which
+% parseRAVENargs would take literally instead of falling back to its
+% documented default of true.
+repIdx = find(ismember(model.mets, repMetIds));
+if ~isempty(repIdx)
+    model=contractModel(model,'mets',repIdx);
+end
+end

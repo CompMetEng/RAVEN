@@ -1,0 +1,73 @@
+function setRavenSolver(solver)
+% setRavenSolver  Set the solver for RAVEN.
+%
+% Sets the solver for RAVEN and optionally saves a default value to MATLAB
+% startup.
+%
+% Parameters
+% ----------
+% solver : char
+%     string with solver name. The following options are available:
+%
+%     - glpk : uses RAVEN-provided binaries. Solves LPs and MILPs; for
+%       MILPs the RAVEN:glpkMILP warning states that Gurobi is much faster
+%       and more reliable for larger problems.
+%     - gurobi : requires a working Gurobi installation.
+%     - scip : requires a SCIP MEX interface. RAVEN provides a
+%       precompiled binary for Windows only.
+%     - cobra : requires a working COBRA Toolbox installation. RAVEN
+%       parses the problem to COBRA and uses the solver that is set by
+%       changeCobraSolver. For MILPs, the RAVEN:glpkMILP warning is issued
+%       when COBRA's MILP solver is GLPK.
+%
+% Examples
+% --------
+%     setRavenSolver(solver);
+solver=char(solver);
+switch solver
+    case 'cobra'
+        global CBT_LP_SOLVER;
+        if isempty(CBT_LP_SOLVER)
+            error('COBRA toolbox is not initialized, run ''initCobraToolbox()''')
+        else
+            setpref('RAVEN','solver','cobra');
+        end
+    case 'mosek'
+        error('MOSEK support has been discontinued since RAVEN 2.3.0.')
+    case {'glpk','gurobi'}
+        setpref('RAVEN','solver',solver)
+    case 'soplex'
+        error('The ''soplex'' solver is replaced by ''scip''.')
+    case 'scip'
+        if ~ispc
+            try
+                scip; % The user might have installed SCIP manually
+                setpref('RAVEN','solver','scip')
+            catch
+                error('SCIP not found. RAVEN only provides the precompiled SCIP MEX binary for Windows. Instructions on how to compile the SCIP MEX file are found at https://github.com/scipopt/MatlabSCIPInterface')
+            end
+        else
+            ravenDir = findRAVENroot();
+            if ~exist(fullfile(ravenDir,'src','external','scip','scip.mexw64'),'file')
+                try
+                    disp('Downloading and installing RAVEN-provided SCIP MEX binary...')
+                    websave(fullfile(ravenDir,'src','external','scip_mex_win.zip'),'https://github.com/SysBioChalmers/RAVEN/releases/download/v2.8.6/scip_mex_win.zip'); % Should be updated to release with SCIP functionality
+                catch
+                    error('Unable to download SCIP MEX binary from the RAVEN GitHub page.')
+                end
+                unzip(fullfile(ravenDir,'src','external','scip_mex_win.zip'),fullfile(ravenDir,'src','external','scip'));
+                delete(fullfile(ravenDir,'src','external','scip_mex_win.zip'));
+            end
+            try
+                scip; % The pre-compiled MEX file might fail
+                setpref('RAVEN','solver','scip')
+            catch
+                error('Unable to use the RAVEN-provided precompiled SCIP MEX binary. Instructions on how to compile the SCIP MEX file are found at https://github.com/scipopt/MatlabSCIPInterface')
+            end
+        end
+    otherwise
+        error('Invalid solver defined')
+end
+global RAVENSOLVER
+RAVENSOLVER = solver;
+end

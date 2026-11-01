@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of ravenModelFields</title>
+  <meta name="keywords" content="ravenModelFields">
+  <meta name="description" content="ravenModelFields  Declarative registry of all RAVEN model struct fields.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">utils</a> &gt; ravenModelFields.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for utils&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>ravenModelFields
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>ravenModelFields  Declarative registry of all RAVEN model struct fields.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function reg = ravenModelFields() </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> ravenModelFields  Declarative registry of all RAVEN model struct fields.
+
+ Returns a struct array with one element per field. The elements have the
+ fields:
+   .name    - field name (char)
+   .type    - entity type: 'rxn', 'met', 'gene' or 'comp' (char)
+   .default - default value when padding new entries
+
+ Only 1-D (vector-per-entity) fields are listed. Fields that need 2-D
+ indexing or value remapping are excluded, and callers handle them
+ explicitly:
+
+   S          - sparse (mets x rxns); use S(:,perm) for rxns, S(perm,:) for mets
+   rxnGeneMat - sparse (rxns x genes); use rxnGeneMat(perm,:) or rxnGeneMat(:,perm)
+   b          - double (mets x N), may be 2-D; use b(perm,:)
+   metComps, rxnComps, geneComps - when the compartments are permuted, the
+       values of these arrays are remapped; the arrays are not permuted</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function reg = ravenModelFields()</a>
+0002 <span class="comment">% ravenModelFields  Declarative registry of all RAVEN model struct fields.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Returns a struct array with one element per field. The elements have the</span>
+0005 <span class="comment">% fields:</span>
+0006 <span class="comment">%   .name    - field name (char)</span>
+0007 <span class="comment">%   .type    - entity type: 'rxn', 'met', 'gene' or 'comp' (char)</span>
+0008 <span class="comment">%   .default - default value when padding new entries</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">% Only 1-D (vector-per-entity) fields are listed. Fields that need 2-D</span>
+0011 <span class="comment">% indexing or value remapping are excluded, and callers handle them</span>
+0012 <span class="comment">% explicitly:</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">%   S          - sparse (mets x rxns); use S(:,perm) for rxns, S(perm,:) for mets</span>
+0015 <span class="comment">%   rxnGeneMat - sparse (rxns x genes); use rxnGeneMat(perm,:) or rxnGeneMat(:,perm)</span>
+0016 <span class="comment">%   b          - double (mets x N), may be 2-D; use b(perm,:)</span>
+0017 <span class="comment">%   metComps, rxnComps, geneComps - when the compartments are permuted, the</span>
+0018 <span class="comment">%       values of these arrays are remapped; the arrays are not permuted</span>
+0019 
+0020 rows = {
+0021 <span class="comment">% name                   type      default</span>
+0022   <span class="string">'rxns'</span>,                <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0023   <span class="string">'lb'</span>,                  <span class="string">'rxn'</span>,    0;
+0024   <span class="string">'ub'</span>,                  <span class="string">'rxn'</span>,    1000;
+0025   <span class="string">'rev'</span>,                 <span class="string">'rxn'</span>,    false;
+0026   <span class="string">'c'</span>,                   <span class="string">'rxn'</span>,    0;
+0027   <span class="string">'grRules'</span>,             <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0028   <span class="string">'rxnNames'</span>,            <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0029   <span class="string">'eccodes'</span>,             <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0030   <span class="string">'subSystems'</span>,          <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0031   <span class="string">'rxnFrom'</span>,             <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0032   <span class="string">'rxnNotes'</span>,            <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0033   <span class="string">'rxnReferences'</span>,       <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0034   <span class="string">'pwys'</span>,                <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0035   <span class="string">'equations'</span>,           <span class="string">'rxn'</span>,    <span class="string">''</span>;
+0036   <span class="string">'rxnComps'</span>,            <span class="string">'rxn'</span>,    NaN;
+0037   <span class="string">'rxnConfidenceScores'</span>, <span class="string">'rxn'</span>,    NaN;
+0038   <span class="string">'rxnDeltaG'</span>,           <span class="string">'rxn'</span>,    NaN;
+0039   <span class="string">'rxnScores'</span>,           <span class="string">'rxn'</span>,    NaN;
+0040   <span class="string">'spontaneous'</span>,         <span class="string">'rxn'</span>,    false;
+0041   <span class="string">'rxnMiriams'</span>,          <span class="string">'rxn'</span>,    {};
+0042   <span class="string">'mets'</span>,                <span class="string">'met'</span>,    <span class="string">''</span>;
+0043   <span class="string">'metComps'</span>,            <span class="string">'met'</span>,    0;
+0044   <span class="string">'metNames'</span>,            <span class="string">'met'</span>,    <span class="string">''</span>;
+0045   <span class="string">'metFormulas'</span>,         <span class="string">'met'</span>,    <span class="string">''</span>;
+0046   <span class="string">'inchis'</span>,              <span class="string">'met'</span>,    <span class="string">''</span>;
+0047   <span class="string">'metSmiles'</span>,           <span class="string">'met'</span>,    <span class="string">''</span>;
+0048   <span class="string">'metNotes'</span>,            <span class="string">'met'</span>,    <span class="string">''</span>;
+0049   <span class="string">'metFrom'</span>,             <span class="string">'met'</span>,    <span class="string">''</span>;
+0050   <span class="string">'metCharges'</span>,          <span class="string">'met'</span>,    NaN;
+0051   <span class="string">'metDeltaG'</span>,           <span class="string">'met'</span>,    NaN;
+0052   <span class="string">'unconstrained'</span>,       <span class="string">'met'</span>,    0;
+0053   <span class="string">'metMiriams'</span>,          <span class="string">'met'</span>,    {};
+0054   <span class="string">'genes'</span>,               <span class="string">'gene'</span>,   <span class="string">''</span>;
+0055   <span class="string">'geneShortNames'</span>,      <span class="string">'gene'</span>,   <span class="string">''</span>;
+0056   <span class="string">'geneFrom'</span>,            <span class="string">'gene'</span>,   <span class="string">''</span>;
+0057   <span class="string">'proteins'</span>,            <span class="string">'gene'</span>,   <span class="string">''</span>;
+0058   <span class="string">'geneComps'</span>,           <span class="string">'gene'</span>,   NaN;
+0059   <span class="string">'geneMiriams'</span>,         <span class="string">'gene'</span>,   {};
+0060   <span class="string">'comps'</span>,               <span class="string">'comp'</span>,   <span class="string">''</span>;
+0061   <span class="string">'compNames'</span>,           <span class="string">'comp'</span>,   <span class="string">''</span>;
+0062   <span class="string">'compOutside'</span>,         <span class="string">'comp'</span>,   <span class="string">''</span>;
+0063   <span class="string">'compMiriams'</span>,         <span class="string">'comp'</span>,   {};
+0064 };
+0065 
+0066 n = size(rows, 1);
+0067 <span class="keyword">for</span> i = 1:n
+0068     reg(i).name    = rows{i,1};
+0069     reg(i).type    = rows{i,2};
+0070     reg(i).default = rows{i,3};
+0071 <span class="keyword">end</span>
+0072 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

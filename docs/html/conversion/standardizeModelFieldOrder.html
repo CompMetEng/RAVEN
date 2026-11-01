@@ -1,0 +1,153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of standardizeModelFieldOrder</title>
+  <meta name="keywords" content="standardizeModelFieldOrder">
+  <meta name="description" content="standardizeModelFieldOrder  Order RAVEN model structure fields.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">conversion</a> &gt; standardizeModelFieldOrder.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for conversion&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>standardizeModelFieldOrder
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>standardizeModelFieldOrder  Order RAVEN model structure fields.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function orderedModel=standardizeModelFieldOrder(model) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> standardizeModelFieldOrder  Order RAVEN model structure fields.
+
+ Orders the fields of a RAVEN or COBRA model structure. The RAVEN order is
+ the one listed in orderRavenFields.csv, described at
+ https://raven-docs.readthedocs.io/en/latest/guide/model-structure.html
+ A structure with the field 'rules' is ordered as a COBRA structure, using
+ COBRA_structure_fields.csv. Fields that are not listed in the file are
+ placed last, in alphabetical order.
+
+ The content of the fields is unchanged. To convert model fields between
+ RAVEN and COBRA format, use ravenCobraWrapper().
+
+ Parameters
+ ----------
+ model : struct
+     model structure, either RAVEN or COBRA format.
+
+ Returns
+ -------
+ orderedModel : struct
+     model structure with ordered fields.
+
+ Examples
+ --------
+     orderedModel = standardizeModelFieldOrder(model);
+
+ See also
+ --------
+ <a href="ravenCobraWrapper.html" class="code" title="function newModel=ravenCobraWrapper(model)">ravenCobraWrapper</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="ravenCobraWrapper.html" class="code" title="function newModel=ravenCobraWrapper(model)">ravenCobraWrapper</a>	ravenCobraWrapper  Convert between RAVEN and COBRA structures.</li></ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function vecT = columnVector(vec)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function orderedModel=standardizeModelFieldOrder(model)</a>
+0002 <span class="comment">% standardizeModelFieldOrder  Order RAVEN model structure fields.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Orders the fields of a RAVEN or COBRA model structure. The RAVEN order is</span>
+0005 <span class="comment">% the one listed in orderRavenFields.csv, described at</span>
+0006 <span class="comment">% https://raven-docs.readthedocs.io/en/latest/guide/model-structure.html</span>
+0007 <span class="comment">% A structure with the field 'rules' is ordered as a COBRA structure, using</span>
+0008 <span class="comment">% COBRA_structure_fields.csv. Fields that are not listed in the file are</span>
+0009 <span class="comment">% placed last, in alphabetical order.</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">% The content of the fields is unchanged. To convert model fields between</span>
+0012 <span class="comment">% RAVEN and COBRA format, use ravenCobraWrapper().</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Parameters</span>
+0015 <span class="comment">% ----------</span>
+0016 <span class="comment">% model : struct</span>
+0017 <span class="comment">%     model structure, either RAVEN or COBRA format.</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">% Returns</span>
+0020 <span class="comment">% -------</span>
+0021 <span class="comment">% orderedModel : struct</span>
+0022 <span class="comment">%     model structure with ordered fields.</span>
+0023 <span class="comment">%</span>
+0024 <span class="comment">% Examples</span>
+0025 <span class="comment">% --------</span>
+0026 <span class="comment">%     orderedModel = standardizeModelFieldOrder(model);</span>
+0027 <span class="comment">%</span>
+0028 <span class="comment">% See also</span>
+0029 <span class="comment">% --------</span>
+0030 <span class="comment">% ravenCobraWrapper</span>
+0031 
+0032 ravenPath=findRAVENroot();
+0033 
+0034 <span class="keyword">if</span> ~isfield(model,<span class="string">'rules'</span>) <span class="comment">% Check if model is RAVEN</span>
+0035     fid = fopen(fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'conversion'</span>,<span class="string">'orderRavenFields.csv'</span>));
+0036     fields = textscan(fid,<span class="string">'%s'</span>,<span class="string">'Delimiter'</span>,<span class="string">','</span>,<span class="string">'HeaderLines'</span>,0);
+0037     fields = fields{1};
+0038     fclose(fid);
+0039 <span class="keyword">else</span> <span class="comment">% If model is COBRA</span>
+0040     fid = fopen(fullfile(ravenPath,<span class="string">'src'</span>,<span class="string">'conversion'</span>,<span class="string">'COBRA_structure_fields.csv'</span>)); <span class="comment">% Taken from https://github.com/opencobra/cobratoolbox/blob/develop/src/base/io/definitions/COBRA_structure_fields.csv</span>
+0041     fields = textscan(fid,repmat(<span class="string">'%s'</span>,1,15),<span class="string">'Delimiter'</span>,<span class="string">'\t'</span>,<span class="string">'HeaderLines'</span>,1);
+0042     fields = fields{1};
+0043     fclose(fid);
+0044 <span class="keyword">end</span>
+0045 
+0046 modelfields = fieldnames(model);
+0047 order = fields(ismember(fields(:,1),modelfields));
+0048 remainingOrder = sort(setdiff(modelfields,order));
+0049 overallOrder = [<a href="#_sub1" class="code" title="subfunction vecT = columnVector(vec)">columnVector</a>(order);<a href="#_sub1" class="code" title="subfunction vecT = columnVector(vec)">columnVector</a>(remainingOrder)];
+0050 orderedModel = orderfields(model,overallOrder);
+0051 <span class="keyword">end</span>
+0052 
+0053 <a name="_sub1" href="#_subfunctions" class="code">function vecT = columnVector(vec)</a>
+0054 <span class="comment">% Converts a vector to a column vector</span>
+0055 <span class="comment">%</span>
+0056 <span class="comment">% USAGE:</span>
+0057 <span class="comment">%</span>
+0058 <span class="comment">%   vecT = columnVector(vec)</span>
+0059 <span class="comment">%</span>
+0060 <span class="comment">% INPUT:</span>
+0061 <span class="comment">%   vec:     a vector</span>
+0062 <span class="comment">%</span>
+0063 <span class="comment">% OUTPUT:</span>
+0064 <span class="comment">%   vecT:    a column vector</span>
+0065 <span class="comment">%</span>
+0066 <span class="comment">% .. Authors:</span>
+0067 <span class="comment">%     - Markus Herrgard (COBRA Toolbox)</span>
+0068 
+0069 [n, m] = size(vec);
+0070 
+0071 <span class="keyword">if</span> (m ~= 1 &amp;&amp; n &lt; m) || n == 1
+0072     vecT = vec';
+0073 <span class="keyword">else</span>
+0074     vecT = vec;
+0075 <span class="keyword">end</span>
+0076 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

@@ -1,0 +1,85 @@
+function metabolites=parseRxnEqu(equations)
+% parseRxnEqu  Get all metabolite names from a cell array of equations.
+%
+% Parameters
+% ----------
+% equations : cell
+%     a cell array with equation strings.
+%
+% Returns
+% -------
+% metabolites : cell
+%     a unique, sorted cell array with the involved metabolites.
+%
+% Examples
+% --------
+%     metabolites = parseRxnEqu(equations);
+%
+% Notes
+% -----
+% The equations are written like:
+%
+%     1 A + 3 B (=> or <=>) 5 C + 2 D
+%
+% with a space around each arrow and plus sign and between a coefficient and
+% its metabolite name. If the equation is expressed as for example
+% '... + (n-1) starch', '(n-1) starch' is interpreted as one metabolite.
+
+if ~iscell(equations)
+    equations={equations};
+end
+
+metabolites={};
+
+%Replace the the direction arrows and plus signs with a weird character
+%that will be used for parsing
+equations=strrep(equations,' <=> ', '€');
+equations=strrep(equations,' => ', '€');
+equations=strrep(equations,' + ', '€');
+equations=strtrim(equations);
+
+for i=1:numel(equations)
+    %Split each equation in possible metabolites
+    candidates=regexp(equations{i},'€','split');
+    
+    %If the splitting character is at the end (if exchange rxns), then an
+    %empty string will exist together with the real ones. Remove it
+    candidates(cellfun(@isempty,candidates))=[];
+    
+    %Now remove the potential coefficient before each metabolite.
+    %Appended one cell at a time instead of [metabolites;x], which
+    %recopies the whole (growing) array on every metabolite across every
+    %equation - quadratic in the total metabolite-occurrence count.
+    for j=1:numel(candidates)
+        %If the metabolite has a coefficient it will look as 'number name'
+        space=strfind(candidates{j},' ');
+
+        if isempty(space)
+            %Add the metabolite
+            metabolites{end+1,1}=candidates{j}; %#ok<AGROW>
+        else
+            potNumber=candidates{j}(1:space(1));
+            %I use str2double here which can't deal with fractions (1/3 glc
+            %and so on). I do this because I don't want to risk calling
+            %functions
+            [~,isNumber]=str2num(potNumber);
+
+            if isNumber==1
+                %Remove the coefficient
+                metName=candidates{j}(space(1)+1:end);
+                metabolites{end+1,1}=metName; %#ok<AGROW>
+            else
+                %The metabolite name contained spaces
+                metabolites{end+1,1}=candidates{j}; %#ok<AGROW>
+            end
+        end
+    end
+end
+
+metabolites=strtrim(metabolites);
+
+%Upper/lower case is treated as different names. This should be checked for
+%later since it's bad modelling practice
+metabolites=unique(metabolites);
+
+end

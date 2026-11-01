@@ -1,0 +1,212 @@
+function [S, mets, badRxns, reversible]=constructS(equations,varargin)
+% constructS  Construct a stoichiometric matrix from a cell array of equations.
+%
+% Parameters
+% ----------
+% equations : cell
+%     cell array of equations in the form "A + 2 B <=> 3 C", where <=>
+%     indicates reversible and => irreversible reactions.
+%
+% Name-Value Arguments
+% --------------------
+% mets : cell
+%     cell array of metabolites. All metabolites in the equations must be
+%     present in the list, otherwise an error is thrown (default generated
+%     from the equations).
+% rxns : cell
+%     cell array of reaction ids. Used to print reaction ids in error
+%     messages in place of equations (default []).
+%
+% Returns
+% -------
+% S : double
+%     the resulting stoichiometric matrix.
+% mets : cell
+%     cell array with the metabolites in the order of the rows of the S
+%     matrix.
+% badRxns : logical
+%     logical vector with true for the reactions in which one or more
+%     metabolites occur more than once, for example as both substrate and
+%     product. An example is the phosphotransferase reaction
+%     ATP + ADP <=> ADP + ATP, which gives an empty column in the
+%     stoichiometric matrix.
+% reversible : logical
+%     logical vector with true if the equation is reversible.
+%
+% Examples
+% --------
+%     [S, mets, badRxns, reversible] = constructS(equations, mets);
+
+equations=convertCharArray(equations);
+p=parseRAVENargs(varargin, {'mets',[]; 'rxns',[]});
+mets=p.mets;
+rxns=p.rxns;
+if ~isempty(mets)
+    mets=convertCharArray(mets);
+end
+if ~isempty(rxns)
+    rxns=convertCharArray(rxns);
+end
+
+badRxns=false(numel(equations),1);
+
+%Check that no equations are too short to have reversibility data
+I=cellfun(@numel,equations);
+I=find(I<4,1);
+if any(I)
+    if isempty(rxns)
+        EM=['The following equation does not have reversibility data: ' equations{I} ];
+        error('RAVEN:badInput', '%s', EM);
+    else
+        EM=['The reaction ' rxns{I} ' does not have reversibility data'];
+        error('RAVEN:badInput', '%s', EM);
+    end
+end
+
+%Makes life a little easier
+equations=strtrim(equations);
+equations=fixEquations(equations);
+
+%A supplied list is authoritative, so an entry in it can be matched in full
+%before the leading number of "2 oxoglutarate" is read as a coefficient. A
+%list derived from the equations cannot disambiguate that.
+metsSupplied=~isempty(mets);
+if isempty(mets)
+    mets=parseRxnEqu(equations);
+end
+
+%Get which reactions are reversible
+reversible=cellfun(@any,strfind(equations,' <=> '));
+
+%Make them all reversible. This is not all that neat, but nevermind
+equations=strrep(equations,' => ',' <=> ');
+
+%Replace the the plus signs with some weird character that will be used for
+%parsing
+equations=strrep(equations,' + ', '€');
+
+%Keep track of coefficients to be added to S-matrix
+metsToS = cell(100000,1);
+rxnsToS = zeros(100000,1);
+coefToS = zeros(100000,1);
+newEntry = 1;
+%Loop through the equations and add the info to the S matrix
+for i=1:numel(equations)
+    %Start by finding the position of the (=> or <=>)
+    arrowIndex=strfind(equations{i},' <=> ');
+    
+    if numel(arrowIndex)~=1
+        if isempty(rxns)
+            EM=['The following equation does not have reversibility data: ' equations{i} ];
+            error('RAVEN:badInput', '%s', EM);
+        else
+            EM=['The reaction ' rxns{i} ' does not have reversibility data'];
+            error('RAVEN:badInput', '%s', EM);
+        end
+    end
+    
+    reactants=regexp(equations{i}(1:arrowIndex-1),'€','split');
+    products=regexp(equations{i}(arrowIndex+5:end),'€','split');
+    
+    %If the splitting character is at the end (if exchange rxns), then an
+    %empty string will exist together with the real ones. Remove it
+    reactants(cellfun(@isempty,reactants))=[];
+    products(cellfun(@isempty,products))=[];
+    
+    %A vector where an element is -1 is the corresponding metabolite is a
+    %reactant and 1 if it is a product
+    multiplyWith=[ones(numel(reactants),1)*-1; ones(numel(products),1)];
+    
+    metabolites=strtrim([reactants products]);
+    
+    %Now loop through the reactants and see if the metabolite has a
+    %coefficient (it will look as "number name")
+    for j=1:numel(metabolites)
+        space=strfind(metabolites{j},' ');
+        
+        if isempty(space)
+            %No coefficient
+            coeff=1;
+            name=metabolites{j};
+        elseif metsSupplied && any(strcmp(strtrim(metabolites{j}),mets))
+            %The whole entry is a known metabolite, so its leading number is
+            %part of its name ("2 oxoglutarate") rather than a coefficient
+            coeff=1;
+            name=strtrim(metabolites{j});
+        else
+            coeff=str2double(metabolites{j}(1:space(1)));
+            
+            %If it was not a coefficiant
+            if isnan(coeff)
+                coeff=1;
+                name=strtrim(metabolites{j});
+            else
+                name=strtrim(metabolites{j}(space(1)+1:end));
+            end
+        end
+        
+        %Find the name in the mets list [a b]=ismember(name,mets);
+        metsToS{newEntry}=name;
+        rxnsToS(newEntry)=i;
+        coefToS(newEntry)=coeff*multiplyWith(j);
+        newEntry=newEntry+1;
+    end
+end
+%Remove unused fields
+metsToS(newEntry:end)=[];
+rxnsToS(newEntry:end)=[];
+coefToS(newEntry:end)=[];
+
+%Match to mets array
+[metsPresent,metsLoc]=ismember(metsToS,mets);
+
+%Find badRxns
+[~,I]=unique([rxnsToS,metsLoc],'rows','stable');
+x=1:length(rxnsToS);
+x(I)=[];
+x=unique(rxnsToS(x));
+badRxns(x)=true;
+
+if any(~metsPresent)
+    if isempty(rxns)
+        EM=['Could not find the following metabolites in the metabolite list: ',...
+            strjoin(unique(metsToS(~metsPresent)),', ')];
+        error('RAVEN:badInput','%s',EM)
+    else
+        %Escaped: metabolite/reaction names are arbitrary model text and
+        %may contain "%", which the sprintf below (needed to interpret
+        %the template's own "\n") would otherwise misread as a format
+        %directive and truncate the rest of the message.
+        esc=@(c) strrep(c,'%','%%');
+        missingMet = find(~metsPresent);
+        missingMet = strcat(esc(metsToS(missingMet)),' (reaction:',esc(rxns(rxnsToS(missingMet))),')\n');
+        missingMet = strjoin(missingMet,'');
+        EM=sprintf(['Could not find the following metabolites (reaction indicated) in the metabolite list: \n' ...
+            missingMet]);
+        error('RAVEN:badInput','%s',EM)
+    end
+end
+%sparse() adds up repeated (metabolite,reaction) entries, which is what a
+%metabolite occurring more than once in one equation means: "2 H2O + H2O =>"
+%is a coefficient of 3, and a metabolite on both sides cancels to an empty
+%column, as badRxns above reports. Assigning into a preallocated matrix
+%instead kept only the last occurrence, and materialised the whole matrix
+%densely on the way.
+S=sparse(metsLoc,rxnsToS,coefToS,numel(mets),numel(equations));
+end
+
+function equ=fixEquations(equ)
+%If the equation starts with "=>" or "<=>" then add a space again. This is
+%an alternative way to represent uptake reactions. The opposite way for
+%producing reactions
+equ=equ(:);
+for i=1:numel(equ)
+    if strcmp(equ{i}(1:2),'=>') || strcmp(equ{i}(1:3),'<=>')
+        equ{i}=[' ' equ{i}];
+    else
+        if strcmp(equ{i}(end-1:end),'=>') || strcmp(equ{i}(end-2:end),'<=>')
+            equ{i}=[equ{i} ' '];
+        end
+    end
+end
+end

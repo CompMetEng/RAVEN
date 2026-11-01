@@ -3,10 +3,10 @@ function [currVer, installType] = checkInstallation(developMode, checkBinaries)
 %
 %   Forwards all arguments and outputs to checkRaven.
 %
-%   NOTE: this function is run before RAVEN has been added to the MATLAB
-%   path, so it must not call any other RAVEN functions until checkRaven has
-%   added RAVEN to the path itself. It cannot use the shared
-%   utils/deprecationWarning for the same reason.
+%   This function runs before RAVEN is on the MATLAB path. It therefore
+%   calls no other RAVEN function until checkRaven has added RAVEN to the
+%   path, and it does not use the shared deprecationWarning function in
+%   the utils folder.
 %
 % Usage: [currVer, installType] = checkInstallation(developMode, checkBinaries)
 

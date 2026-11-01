@@ -1,0 +1,6 @@
+	ID	DESCRIPTION	SHOULD FAIL	IN	IN LB	IN UB	OUT	OUT LB	OUT UB
+#	ER: Energy and redox; BS: Biosynthesis of products							
+	ER	Produce e from a		a[s]	0	1000	e[s]	1	1
+	BS	Produce e from a, second		a[s]	0	1000	e[s]	1	1
+	ER	Produce e without an input					e[s]	1	1
+	BS	Produce e from a, third		a[s]	0	1000	e[s]	1	1

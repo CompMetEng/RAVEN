@@ -1,0 +1,466 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of hitsFromSuppOrth</title>
+  <meta name="keywords" content="hitsFromSuppOrth">
+  <meta name="description" content="hitsFromSuppOrth  Read SuppOrth consensus orthologs into a blastStructure.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../../index.html">Home</a> &gt;  <a href="../index.html">reconstruction</a> &gt; <a href="index.html">homology</a> &gt; hitsFromSuppOrth.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../../index.html"><img alt="<" border="0" src="../../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for reconstruction/homology&nbsp;<img alt=">" border="0" src="../../right.png"></a></td></tr></table>-->
+
+<h1>hitsFromSuppOrth
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>hitsFromSuppOrth  Read SuppOrth consensus orthologs into a blastStructure.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="box"><strong>function [blastStructure,suppOrthInfo]=hitsFromSuppOrth(source,organismID,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> hitsFromSuppOrth  Read SuppOrth consensus orthologs into a blastStructure.
+
+ SuppOrth (https://github.com/fma91/SuppOrth) runs several ortholog
+ predictors (OrthoFinder, SonicParanoid2, Broccoli, and optionally an
+ imported OMA run) on a set of proteomes and writes suppOrth.tsv: one row
+ per cross-species protein pair, with the number of predictors that
+ support it. This function turns that table into a blastStructure for
+ getModelFromHomology.
+
+ Parameters
+ ----------
+ source : char or table
+     path to suppOrth.tsv, or a MATLAB table with its columns. Protein
+     ids are read as text, so ids such as &quot;NA&quot; or &quot;0123&quot; are kept.
+ organismID : char
+     SuppOrth species label of the organism to build a model for: the
+     FASTA file name without extension, or the --labels value. It becomes
+     fromId and toId unless speciesToModel maps it to another id.
+
+ Name-Value Arguments
+ --------------------
+ speciesToModel : cell or containers.Map
+     SuppOrth species label to model id, as an N-by-2 cell array or a
+     containers.Map. A label mapped to '' is left out. When given, every
+     label in the table must be included. When empty, labels are used as
+     model ids (default []).
+ minSupport : double
+     minimum number of predictors that found the pair (Lv_support).
+     SuppOrth has already filtered the table with its own --supportLv and
+     --identity_filter; this filter is applied in addition (default 1).
+ requireTools : cell
+     predictors that must all have found the pair, by column name
+     ('orthofinder', 'sonicparanoid', 'broccoli', 'oma') (default {}).
+ minIdentity : double
+     minimum SuppOrth identity. A pair without an alignment hit fails this
+     filter (default [], no filter).
+ maxEvalue : double
+     maximum SuppOrth e-value. A pair without an alignment hit fails this
+     filter (default [], no filter).
+ proteinToGene : cell, containers.Map or char
+     protein id to model gene id, as an N-by-2 cell array, a
+     containers.Map, a JSON file with one object of strings, or a
+     two-column tab-separated file (lines starting with # are skipped).
+     Proteins missing from the map keep their id, and their number is
+     reported in a warning. A gene pair takes the highest support over its
+     protein pairs, the union of their predictors, the highest identity
+     and bitscore, and the lowest e-value; these values can come from
+     different protein pairs (default [], no mapping).
+
+ Returns
+ -------
+ blastStructure : struct
+     one element per search direction between organismID and each other
+     species, as from getBlast or getDiamond. Every pair is written in
+     both directions, so strictness 1 and 2 of getModelFromHomology give
+     the same result. evalue, identity, aligLen and ppos are placeholders
+     (0, 100, 1000, 100) that pass the filters of getModelFromHomology;
+     bitscore is SuppOrth's value (0 when it has none), which strictness 3
+     ranks by.
+ suppOrthInfo : table
+     one row per gene pair, with modelId, newGene, templateGene, support,
+     supportedBy, identity, evalue and bitscore (SuppOrth's values).
+
+ Notes
+ -----
+ Only pairs between organismID and another species are kept. Species that
+ are not templates in getModelFromHomology have to be left out with
+ speciesToModel, because getModelFromHomology requires every id in the
+ blastStructure to be the new organism or a template.
+
+ Examples
+ --------
+     blastStructure = hitsFromSuppOrth('out/suppOrth.tsv','klac',...
+        'minSupport',2,'proteinToGene','klac_genes.tsv');
+
+ See also
+ --------
+ <a href="runSuppOrth.html" class="code" title="function [blastStructure,suppOrthInfo]=runSuppOrth(organismID,fastaFile,modelIDs,refFastaFiles,outDir,varargin)">runSuppOrth</a>, <a href="getModelFromHomology.html" class="code" title="function [draftModel, hitGenes]=getModelFromHomology(models,blastStructure,getModelFor,varargin)">getModelFromHomology</a>, <a href="getDiamond.html" class="code" title="function [blastStructure,diamondReport]=getDiamond(organismID,fastaFile,modelIDs,refFastaFiles,varargin)">getDiamond</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="runSuppOrth.html" class="code" title="function [blastStructure,suppOrthInfo]=runSuppOrth(organismID,fastaFile,modelIDs,refFastaFiles,outDir,varargin)">runSuppOrth</a>	runSuppOrth  Run SuppOrth on an organism and template proteomes.</li></ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<ul style="list-style-image:url(../../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function T=readTable(source)</a></li><li><a href="#_sub2" class="code">function x=toNumber(x)</a></li><li><a href="#_sub3" class="code">function m=toMap(x)</a></li><li><a href="#_sub4" class="code">function m=readMapFile(file)</a></li><li><a href="#_sub5" class="code">function ids=mapIds(m,ids)</a></li><li><a href="#_sub6" class="code">function joined=joinLabels(labels)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [blastStructure,suppOrthInfo]=hitsFromSuppOrth(source,organismID,varargin)</a>
+0002 <span class="comment">% hitsFromSuppOrth  Read SuppOrth consensus orthologs into a blastStructure.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% SuppOrth (https://github.com/fma91/SuppOrth) runs several ortholog</span>
+0005 <span class="comment">% predictors (OrthoFinder, SonicParanoid2, Broccoli, and optionally an</span>
+0006 <span class="comment">% imported OMA run) on a set of proteomes and writes suppOrth.tsv: one row</span>
+0007 <span class="comment">% per cross-species protein pair, with the number of predictors that</span>
+0008 <span class="comment">% support it. This function turns that table into a blastStructure for</span>
+0009 <span class="comment">% getModelFromHomology.</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">% Parameters</span>
+0012 <span class="comment">% ----------</span>
+0013 <span class="comment">% source : char or table</span>
+0014 <span class="comment">%     path to suppOrth.tsv, or a MATLAB table with its columns. Protein</span>
+0015 <span class="comment">%     ids are read as text, so ids such as &quot;NA&quot; or &quot;0123&quot; are kept.</span>
+0016 <span class="comment">% organismID : char</span>
+0017 <span class="comment">%     SuppOrth species label of the organism to build a model for: the</span>
+0018 <span class="comment">%     FASTA file name without extension, or the --labels value. It becomes</span>
+0019 <span class="comment">%     fromId and toId unless speciesToModel maps it to another id.</span>
+0020 <span class="comment">%</span>
+0021 <span class="comment">% Name-Value Arguments</span>
+0022 <span class="comment">% --------------------</span>
+0023 <span class="comment">% speciesToModel : cell or containers.Map</span>
+0024 <span class="comment">%     SuppOrth species label to model id, as an N-by-2 cell array or a</span>
+0025 <span class="comment">%     containers.Map. A label mapped to '' is left out. When given, every</span>
+0026 <span class="comment">%     label in the table must be included. When empty, labels are used as</span>
+0027 <span class="comment">%     model ids (default []).</span>
+0028 <span class="comment">% minSupport : double</span>
+0029 <span class="comment">%     minimum number of predictors that found the pair (Lv_support).</span>
+0030 <span class="comment">%     SuppOrth has already filtered the table with its own --supportLv and</span>
+0031 <span class="comment">%     --identity_filter; this filter is applied in addition (default 1).</span>
+0032 <span class="comment">% requireTools : cell</span>
+0033 <span class="comment">%     predictors that must all have found the pair, by column name</span>
+0034 <span class="comment">%     ('orthofinder', 'sonicparanoid', 'broccoli', 'oma') (default {}).</span>
+0035 <span class="comment">% minIdentity : double</span>
+0036 <span class="comment">%     minimum SuppOrth identity. A pair without an alignment hit fails this</span>
+0037 <span class="comment">%     filter (default [], no filter).</span>
+0038 <span class="comment">% maxEvalue : double</span>
+0039 <span class="comment">%     maximum SuppOrth e-value. A pair without an alignment hit fails this</span>
+0040 <span class="comment">%     filter (default [], no filter).</span>
+0041 <span class="comment">% proteinToGene : cell, containers.Map or char</span>
+0042 <span class="comment">%     protein id to model gene id, as an N-by-2 cell array, a</span>
+0043 <span class="comment">%     containers.Map, a JSON file with one object of strings, or a</span>
+0044 <span class="comment">%     two-column tab-separated file (lines starting with # are skipped).</span>
+0045 <span class="comment">%     Proteins missing from the map keep their id, and their number is</span>
+0046 <span class="comment">%     reported in a warning. A gene pair takes the highest support over its</span>
+0047 <span class="comment">%     protein pairs, the union of their predictors, the highest identity</span>
+0048 <span class="comment">%     and bitscore, and the lowest e-value; these values can come from</span>
+0049 <span class="comment">%     different protein pairs (default [], no mapping).</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">% Returns</span>
+0052 <span class="comment">% -------</span>
+0053 <span class="comment">% blastStructure : struct</span>
+0054 <span class="comment">%     one element per search direction between organismID and each other</span>
+0055 <span class="comment">%     species, as from getBlast or getDiamond. Every pair is written in</span>
+0056 <span class="comment">%     both directions, so strictness 1 and 2 of getModelFromHomology give</span>
+0057 <span class="comment">%     the same result. evalue, identity, aligLen and ppos are placeholders</span>
+0058 <span class="comment">%     (0, 100, 1000, 100) that pass the filters of getModelFromHomology;</span>
+0059 <span class="comment">%     bitscore is SuppOrth's value (0 when it has none), which strictness 3</span>
+0060 <span class="comment">%     ranks by.</span>
+0061 <span class="comment">% suppOrthInfo : table</span>
+0062 <span class="comment">%     one row per gene pair, with modelId, newGene, templateGene, support,</span>
+0063 <span class="comment">%     supportedBy, identity, evalue and bitscore (SuppOrth's values).</span>
+0064 <span class="comment">%</span>
+0065 <span class="comment">% Notes</span>
+0066 <span class="comment">% -----</span>
+0067 <span class="comment">% Only pairs between organismID and another species are kept. Species that</span>
+0068 <span class="comment">% are not templates in getModelFromHomology have to be left out with</span>
+0069 <span class="comment">% speciesToModel, because getModelFromHomology requires every id in the</span>
+0070 <span class="comment">% blastStructure to be the new organism or a template.</span>
+0071 <span class="comment">%</span>
+0072 <span class="comment">% Examples</span>
+0073 <span class="comment">% --------</span>
+0074 <span class="comment">%     blastStructure = hitsFromSuppOrth('out/suppOrth.tsv','klac',...</span>
+0075 <span class="comment">%        'minSupport',2,'proteinToGene','klac_genes.tsv');</span>
+0076 <span class="comment">%</span>
+0077 <span class="comment">% See also</span>
+0078 <span class="comment">% --------</span>
+0079 <span class="comment">% runSuppOrth, getModelFromHomology, getDiamond</span>
+0080 
+0081 p=parseRAVENargs(varargin, {<span class="string">'speciesToModel'</span>,[]; <span class="string">'minSupport'</span>,1; <span class="keyword">...</span>
+0082     <span class="string">'requireTools'</span>,{}; <span class="string">'minIdentity'</span>,[]; <span class="string">'maxEvalue'</span>,[]; <span class="string">'proteinToGene'</span>,[]});
+0083 organismID=char(organismID);
+0084 requireTools=cellstr(p.requireTools);
+0085 <span class="keyword">if</span> isempty(p.requireTools)
+0086     requireTools={};
+0087 <span class="keyword">end</span>
+0088 
+0089 T=<a href="#_sub1" class="code" title="subfunction T=readTable(source)">readTable</a>(source);
+0090 columns=T.Properties.VariableNames;
+0091 
+0092 labels=unique([T.Species1;T.Species2]);
+0093 <span class="keyword">if</span> ~ismember(organismID,labels)
+0094     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'organismID &quot;%s&quot; is not a species in the table: %s'</span>,<span class="keyword">...</span>
+0095         organismID,strjoin(labels,<span class="string">', '</span>));
+0096 <span class="keyword">end</span>
+0097 <span class="keyword">if</span> isempty(p.speciesToModel)
+0098     idOf=containers.Map(labels,labels);
+0099 <span class="keyword">else</span>
+0100     idOf=<a href="#_sub3" class="code" title="subfunction m=toMap(x)">toMap</a>(p.speciesToModel);
+0101     unmapped=labels(~isKey(idOf,labels));
+0102     <span class="keyword">if</span> ~isempty(unmapped)
+0103         error(<span class="string">'RAVEN:badInput'</span>,[<span class="string">'speciesToModel has no entry for %s; map each '</span><span class="keyword">...</span>
+0104             <span class="string">'label to a model id, or to '''' to leave it out.'</span>],strjoin(unmapped,<span class="string">', '</span>));
+0105     <span class="keyword">end</span>
+0106     <span class="keyword">if</span> isempty(idOf(organismID))
+0107         error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'speciesToModel maps organismID &quot;%s&quot; to ''''.'</span>,organismID);
+0108     <span class="keyword">end</span>
+0109 <span class="keyword">end</span>
+0110 
+0111 <span class="comment">%The per-predictor 0/1 columns are those between SupportedBy and Identity</span>
+0112 alignment={<span class="string">'Identity'</span>,<span class="string">'e_val'</span>,<span class="string">'Bitscore'</span>};
+0113 start=find(strcmp(columns,<span class="string">'SupportedBy'</span>))+1;
+0114 stop=find(strcmp(columns,<span class="string">'Identity'</span>))-1;
+0115 <span class="keyword">if</span> isempty(stop)
+0116     stop=numel(columns);
+0117 <span class="keyword">end</span>
+0118 toolColumns=setdiff(columns(start:stop),alignment,<span class="string">'stable'</span>);
+0119 unknown=setdiff(requireTools,toolColumns,<span class="string">'stable'</span>);
+0120 <span class="keyword">if</span> ~isempty(unknown)
+0121     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'requireTools %s not in the table; its predictors are %s'</span>,<span class="keyword">...</span>
+0122         strjoin(unknown,<span class="string">', '</span>),strjoin(toolColumns,<span class="string">', '</span>));
+0123 <span class="keyword">end</span>
+0124 
+0125 keep=T.Lv_support&gt;=p.minSupport;
+0126 <span class="keyword">for</span> i=1:numel(requireTools)
+0127     keep=keep &amp; <a href="#_sub2" class="code" title="subfunction x=toNumber(x)">toNumber</a>(T.(requireTools{i}))==1;
+0128 <span class="keyword">end</span>
+0129 <span class="keyword">if</span> ~isempty(p.minIdentity)
+0130     keep=keep &amp; T.Identity&gt;=p.minIdentity; <span class="comment">%NaN fails</span>
+0131 <span class="keyword">end</span>
+0132 <span class="keyword">if</span> ~isempty(p.maxEvalue)
+0133     keep=keep &amp; T.e_val&lt;=p.maxEvalue; <span class="comment">%NaN fails</span>
+0134 <span class="keyword">end</span>
+0135 T=T(keep,:);
+0136 
+0137 <span class="comment">%Orient every pair as (organism protein, template species, template protein)</span>
+0138 first=strcmp(T.Species1,organismID) &amp; ~strcmp(T.Species2,organismID);
+0139 second=strcmp(T.Species2,organismID) &amp; ~strcmp(T.Species1,organismID);
+0140 newProt=[T.Protein1(first);T.Protein2(second)];
+0141 label=[T.Species2(first);T.Species1(second)];
+0142 template=[T.Protein2(first);T.Protein1(second)];
+0143 support=[T.Lv_support(first);T.Lv_support(second)];
+0144 supportedBy=[T.SupportedBy(first);T.SupportedBy(second)];
+0145 identity=[T.Identity(first);T.Identity(second)];
+0146 evalue=[T.e_val(first);T.e_val(second)];
+0147 bitscore=[T.Bitscore(first);T.Bitscore(second)];
+0148 modelId=values(idOf,label);
+0149 modelId=modelId(:);
+0150 I=~cellfun(@isempty,modelId);
+0151 [newProt,template,modelId,support,supportedBy,identity,evalue,bitscore]=<span class="keyword">...</span>
+0152     deal(newProt(I),template(I),modelId(I),support(I),supportedBy(I),<span class="keyword">...</span>
+0153     identity(I),evalue(I),bitscore(I));
+0154 
+0155 <span class="keyword">if</span> ~isempty(p.proteinToGene)
+0156     geneOf=<a href="#_sub3" class="code" title="subfunction m=toMap(x)">toMap</a>(p.proteinToGene);
+0157     proteins=unique([newProt;template]);
+0158     nMissing=sum(~isKey(geneOf,proteins));
+0159     <span class="keyword">if</span> nMissing&gt;0
+0160         warning(<span class="string">'RAVEN:hitsFromSuppOrth:unmappedProteins'</span>,[<span class="string">'%d of %d proteins are not '</span><span class="keyword">...</span>
+0161             <span class="string">'in proteinToGene and keep their protein id.'</span>],nMissing,numel(proteins));
+0162     <span class="keyword">end</span>
+0163     newProt=<a href="#_sub5" class="code" title="subfunction ids=mapIds(m,ids)">mapIds</a>(geneOf,newProt);
+0164     template=<a href="#_sub5" class="code" title="subfunction ids=mapIds(m,ids)">mapIds</a>(geneOf,template);
+0165 <span class="keyword">end</span>
+0166 
+0167 <span class="keyword">if</span> isempty(newProt)
+0168     error(<span class="string">'RAVEN:badInput'</span>,[<span class="string">'No SuppOrth pairs between &quot;%s&quot; and a template species '</span><span class="keyword">...</span>
+0169         <span class="string">'remain after filtering.'</span>],organismID);
+0170 <span class="keyword">end</span>
+0171 
+0172 <span class="comment">%One row per gene pair, sorted by model, new gene and template gene</span>
+0173 key=strcat(modelId,char(31),newProt,char(31),template);
+0174 [key,firstRow,group]=unique(key);
+0175 info=table();
+0176 info.modelId=modelId(firstRow);
+0177 info.newGene=newProt(firstRow);
+0178 info.templateGene=template(firstRow);
+0179 info.support=accumarray(group,support,[],@max);
+0180 rows=accumarray(group,(1:numel(group))',[],@(r) {r});
+0181 info.supportedBy=cellfun(@(r) <a href="#_sub6" class="code" title="subfunction joined=joinLabels(labels)">joinLabels</a>(supportedBy(r)),rows,<span class="string">'UniformOutput'</span>,false);
+0182 info.identity=accumarray(group,identity,[],@max);
+0183 info.evalue=accumarray(group,evalue,[],@min);
+0184 info.bitscore=accumarray(group,bitscore,[],@max);
+0185 suppOrthInfo=info;
+0186 
+0187 newId=idOf(organismID);
+0188 score=info.bitscore;
+0189 score(isnan(score))=0;
+0190 models=unique(info.modelId);
+0191 blastStructure=[];
+0192 <span class="keyword">for</span> direction=1:2
+0193     <span class="keyword">for</span> i=1:numel(models)
+0194         r=strcmp(info.modelId,models{i});
+0195         element=[];
+0196         <span class="keyword">if</span> direction==1
+0197             element.fromId=models{i};
+0198             element.toId=newId;
+0199             element.fromGenes=info.templateGene(r);
+0200             element.toGenes=info.newGene(r);
+0201         <span class="keyword">else</span>
+0202             element.fromId=newId;
+0203             element.toId=models{i};
+0204             element.fromGenes=info.newGene(r);
+0205             element.toGenes=info.templateGene(r);
+0206         <span class="keyword">end</span>
+0207         n=sum(r);
+0208         element.evalue=zeros(n,1);
+0209         element.identity=100*ones(n,1);
+0210         element.aligLen=1000*ones(n,1);
+0211         element.bitscore=score(r);
+0212         element.ppos=100*ones(n,1);
+0213         blastStructure=[blastStructure element]; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0214     <span class="keyword">end</span>
+0215 <span class="keyword">end</span>
+0216 <span class="keyword">end</span>
+0217 
+0218 <a name="_sub1" href="#_subfunctions" class="code">function T=readTable(source)</a>
+0219 required={<span class="string">'Species1'</span>,<span class="string">'Species2'</span>,<span class="string">'Protein1'</span>,<span class="string">'Protein2'</span>,<span class="string">'Lv_support'</span>,<span class="string">'SupportedBy'</span>};
+0220 text=[required(1:4),{<span class="string">'SupportedBy'</span>}];
+0221 <span class="keyword">if</span> istable(source)
+0222     T=source;
+0223 <span class="keyword">else</span>
+0224     source=char(source);
+0225     <span class="keyword">if</span> ~isfile(source)
+0226         error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'SuppOrth table &quot;%s&quot; does not exist.'</span>,source);
+0227     <span class="keyword">end</span>
+0228     lines=splitlines(fileread(source));
+0229     lines=lines(~cellfun(@isempty,lines));
+0230     header=strsplit(lines{1},<span class="string">'\t'</span>,<span class="string">'CollapseDelimiters'</span>,false);
+0231     fields=regexp(lines(2:end),<span class="string">'\t'</span>,<span class="string">'split'</span>);
+0232     width=cellfun(@numel,fields);
+0233     bad=find(width~=numel(header),1);
+0234     <span class="keyword">if</span> ~isempty(bad)
+0235         error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'%s: line %d has %d fields, the header has %d.'</span>,<span class="keyword">...</span>
+0236             source,bad+1,width(bad),numel(header));
+0237     <span class="keyword">end</span>
+0238     fields=vertcat(fields{:});
+0239     <span class="keyword">if</span> isempty(fields)
+0240         fields=cell(0,numel(header));
+0241     <span class="keyword">end</span>
+0242     T=cell2table(fields,<span class="string">'VariableNames'</span>,header);
+0243 <span class="keyword">end</span>
+0244 missing=setdiff(required,T.Properties.VariableNames,<span class="string">'stable'</span>);
+0245 <span class="keyword">if</span> ~isempty(missing)
+0246     error(<span class="string">'RAVEN:badInput'</span>,[<span class="string">'Not a suppOrth.tsv table (SuppOrth 0.4): missing columns %s. '</span><span class="keyword">...</span>
+0247         <span class="string">'suppOrth.genes.tsv is not supported; use proteinToGene instead.'</span>],strjoin(missing,<span class="string">', '</span>));
+0248 <span class="keyword">end</span>
+0249 <span class="comment">%Protein ids such as &quot;NA&quot; or &quot;0123&quot; stay text</span>
+0250 <span class="keyword">for</span> i=1:numel(text)
+0251     T.(text{i})=cellstr(string(T.(text{i})));
+0252 <span class="keyword">end</span>
+0253 <span class="keyword">for</span> c={<span class="string">'Identity'</span>,<span class="string">'e_val'</span>,<span class="string">'Bitscore'</span>}
+0254     <span class="keyword">if</span> ismember(c{1},T.Properties.VariableNames)
+0255         T.(c{1})=<a href="#_sub2" class="code" title="subfunction x=toNumber(x)">toNumber</a>(T.(c{1}));
+0256     <span class="keyword">else</span>
+0257         T.(c{1})=nan(height(T),1);
+0258     <span class="keyword">end</span>
+0259 <span class="keyword">end</span>
+0260 T.Lv_support=<a href="#_sub2" class="code" title="subfunction x=toNumber(x)">toNumber</a>(T.Lv_support);
+0261 <span class="keyword">end</span>
+0262 
+0263 <a name="_sub2" href="#_subfunctions" class="code">function x=toNumber(x)</a>
+0264 <span class="comment">%Read numbers exactly; empty and non-numeric fields become NaN</span>
+0265 <span class="keyword">if</span> ~isnumeric(x)
+0266     x=str2double(x);
+0267 <span class="keyword">end</span>
+0268 x=double(x(:));
+0269 <span class="keyword">end</span>
+0270 
+0271 <a name="_sub3" href="#_subfunctions" class="code">function m=toMap(x)</a>
+0272 <span class="keyword">if</span> isa(x,<span class="string">'containers.Map'</span>)
+0273     m=x;
+0274 <span class="keyword">elseif</span> iscell(x)
+0275     <span class="keyword">if</span> size(x,2)~=2
+0276         error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'A cell array map needs two columns.'</span>);
+0277     <span class="keyword">end</span>
+0278     m=containers.Map(cellstr(string(x(:,1))),cellstr(string(x(:,2))));
+0279 <span class="keyword">elseif</span> ischar(x) || isstring(x)
+0280     m=<a href="#_sub4" class="code" title="subfunction m=readMapFile(file)">readMapFile</a>(char(x));
+0281 <span class="keyword">else</span>
+0282     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'A map must be a two-column cell array, a containers.Map or a file.'</span>);
+0283 <span class="keyword">end</span>
+0284 <span class="keyword">end</span>
+0285 
+0286 <a name="_sub4" href="#_subfunctions" class="code">function m=readMapFile(file)</a>
+0287 [~,~,ext]=fileparts(file);
+0288 <span class="keyword">if</span> any(strcmpi(ext,{<span class="string">'.pkl'</span>,<span class="string">'.pickle'</span>}))
+0289     error(<span class="string">'RAVEN:badInput'</span>,[<span class="string">'%s: pickle maps are not read; use a cell array, '</span><span class="keyword">...</span>
+0290         <span class="string">'a JSON file or a two-column tab-separated file.'</span>],file);
+0291 <span class="keyword">end</span>
+0292 <span class="keyword">if</span> ~isfile(file)
+0293     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'Map file &quot;%s&quot; does not exist.'</span>,file);
+0294 <span class="keyword">end</span>
+0295 text=fileread(file);
+0296 <span class="keyword">if</span> strcmpi(ext,<span class="string">'.json'</span>)
+0297     <span class="comment">%Keys are protein ids, which jsondecode would turn into field names</span>
+0298     pairs=regexp(text,<span class="string">'&quot;((?:[^&quot;\\]|\\.)*)&quot;\s*:\s*&quot;((?:[^&quot;\\]|\\.)*)&quot;'</span>,<span class="string">'tokens'</span>);
+0299     pairs=vertcat(pairs{:});
+0300     <span class="keyword">if</span> isempty(pairs)
+0301         m=containers.Map(<span class="string">'KeyType'</span>,<span class="string">'char'</span>,<span class="string">'ValueType'</span>,<span class="string">'char'</span>);
+0302         <span class="keyword">return</span>
+0303     <span class="keyword">end</span>
+0304     pairs=regexprep(pairs,<span class="string">'\\([&quot;\\/])'</span>,<span class="string">'$1'</span>);
+0305     m=containers.Map(pairs(:,1),pairs(:,2));
+0306     <span class="keyword">return</span>
+0307 <span class="keyword">end</span>
+0308 lines=splitlines(text);
+0309 lines=lines(~cellfun(@isempty,strtrim(lines)) &amp; ~startsWith(lines,<span class="string">'#'</span>));
+0310 fields=regexp(lines,<span class="string">'\t'</span>,<span class="string">'split'</span>);
+0311 short=find(cellfun(@numel,fields)&lt;2,1);
+0312 <span class="keyword">if</span> ~isempty(short)
+0313     error(<span class="string">'RAVEN:badInput'</span>,<span class="string">'%s: expected two tab-separated columns, got &quot;%s&quot;'</span>,file,lines{short});
+0314 <span class="keyword">end</span>
+0315 keys=strtrim(cellfun(@(f) f{1},fields,<span class="string">'UniformOutput'</span>,false));
+0316 vals=strtrim(cellfun(@(f) f{2},fields,<span class="string">'UniformOutput'</span>,false));
+0317 <span class="keyword">if</span> isempty(keys)
+0318     m=containers.Map(<span class="string">'KeyType'</span>,<span class="string">'char'</span>,<span class="string">'ValueType'</span>,<span class="string">'char'</span>);
+0319 <span class="keyword">else</span>
+0320     m=containers.Map(keys,vals);
+0321 <span class="keyword">end</span>
+0322 <span class="keyword">end</span>
+0323 
+0324 <a name="_sub5" href="#_subfunctions" class="code">function ids=mapIds(m,ids)</a>
+0325 known=isKey(m,ids);
+0326 <span class="keyword">if</span> any(known)
+0327     ids(known)=values(m,ids(known));
+0328 <span class="keyword">end</span>
+0329 <span class="keyword">end</span>
+0330 
+0331 <a name="_sub6" href="#_subfunctions" class="code">function joined=joinLabels(labels)</a>
+0332 <span class="comment">%Union of comma-separated predictor labels, in SuppOrth's F, S, B, O order</span>
+0333 found=strtrim(split(strjoin(labels,<span class="string">','</span>),<span class="string">','</span>));
+0334 found=unique(found(~cellfun(@isempty,found)));
+0335 order={<span class="string">'F'</span>,<span class="string">'S'</span>,<span class="string">'B'</span>,<span class="string">'O'</span>};
+0336 [isKnown,rank]=ismember(found,order);
+0337 known=found(isKnown);
+0338 [~,o]=sort(rank(isKnown));
+0339 joined=strjoin([known(o);sort(found(~isKnown))],<span class="string">','</span>);
+0340 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

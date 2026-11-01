@@ -1,0 +1,240 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of getBiomassFractions</title>
+  <meta name="keywords" content="getBiomassFractions">
+  <meta name="description" content="getBiomassFractions  Compute mass fraction per biomass component.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">biomass</a> &gt; getBiomassFractions.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for biomass&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>getBiomassFractions
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>getBiomassFractions  Compute mass fraction per biomass component.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function fractions = getBiomassFractions(model, biomassConfig) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> getBiomassFractions  Compute mass fraction per biomass component.
+
+ Compute the mass fraction (g/gDW) per biomass component plus the total.
+ The MATLAB counterpart of yeast-GEM's legacy sumBioMass.
+
+ The biomassConfig struct describes the per-organism biomass layout (see
+ Parameters). A component contributes 0 when its pseudoreaction is missing
+ from the model or has no substrates. For a component whose pseudoreaction
+ exists and has substrates, and whose mass_strategy is not 'grams', an error
+ is raised when the molecular weight of a substrate is 0 (an empty
+ metFormula field, or a formula that consists only of R), when its formula
+ contains an element outside the built-in element table, or when
+ mass_strategy is unknown. A component with an unknown mass_strategy whose
+ pseudoreaction is missing or has no substrates contributes 0 without an
+ error.
+
+ Parameters
+ ----------
+ model : struct
+     RAVEN model struct.
+ biomassConfig : struct
+     Struct describing the biomass layout, with fields:
+
+     - biomass_rxn : rxn id of the top-level biomass pseudoreaction.
+     - proton_met : met id of cytosolic H+ (used by
+       scaleBiomassPseudoreaction, not by getBiomassFractions).
+     - components : cell array of component structs, each with fields:
+
+       - name : component name (for example 'protein').
+       - pseudoreaction_name : model.rxnNames entry to identify the
+         pseudoreaction.
+       - mass_strategy : 'mw', 'mw_minus_2h', 'mw_minus_water' or
+         'grams' (see Notes).
+
+ Returns
+ -------
+ fractions : struct
+     Struct with one field per component name and a field 'total'
+     (for example fractions.protein and fractions.RNA). All values are in
+     g/gDW.
+
+ Examples
+ --------
+     fractions = getBiomassFractions(model, biomassConfig);
+
+ Notes
+ -----
+ mass_strategy values:
+
+     'mw'              MW from chemical formula
+     'mw_minus_2h'     MW - 2.016 g/mol (two protons released per charged
+                       tRNA; protein pseudoreaction substrates)
+     'mw_minus_water'  MW - 18.015 g/mol (water released per
+                       polymerisation step; RNA and DNA)
+     'grams'           stoichiometry is already in g/gDW (lipid backbone)</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="scaleBiomassFraction.html" class="code" title="function model = scaleBiomassFraction(model, biomassConfig, componentName, newValue, varargin)">scaleBiomassFraction</a>	scaleBiomassFraction  Rescale a biomass component to a target value.</li></ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function f = computeComponentFraction(model, comp)</a></li><li><a href="#_sub2" class="code">function offset = mwOffset(strategy)</a></li><li><a href="#_sub3" class="code">function mw = computeFormulaMW(formula)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function fractions = getBiomassFractions(model, biomassConfig)</a>
+0002 <span class="comment">% getBiomassFractions  Compute mass fraction per biomass component.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Compute the mass fraction (g/gDW) per biomass component plus the total.</span>
+0005 <span class="comment">% The MATLAB counterpart of yeast-GEM's legacy sumBioMass.</span>
+0006 <span class="comment">%</span>
+0007 <span class="comment">% The biomassConfig struct describes the per-organism biomass layout (see</span>
+0008 <span class="comment">% Parameters). A component contributes 0 when its pseudoreaction is missing</span>
+0009 <span class="comment">% from the model or has no substrates. For a component whose pseudoreaction</span>
+0010 <span class="comment">% exists and has substrates, and whose mass_strategy is not 'grams', an error</span>
+0011 <span class="comment">% is raised when the molecular weight of a substrate is 0 (an empty</span>
+0012 <span class="comment">% metFormula field, or a formula that consists only of R), when its formula</span>
+0013 <span class="comment">% contains an element outside the built-in element table, or when</span>
+0014 <span class="comment">% mass_strategy is unknown. A component with an unknown mass_strategy whose</span>
+0015 <span class="comment">% pseudoreaction is missing or has no substrates contributes 0 without an</span>
+0016 <span class="comment">% error.</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">% Parameters</span>
+0019 <span class="comment">% ----------</span>
+0020 <span class="comment">% model : struct</span>
+0021 <span class="comment">%     RAVEN model struct.</span>
+0022 <span class="comment">% biomassConfig : struct</span>
+0023 <span class="comment">%     Struct describing the biomass layout, with fields:</span>
+0024 <span class="comment">%</span>
+0025 <span class="comment">%     - biomass_rxn : rxn id of the top-level biomass pseudoreaction.</span>
+0026 <span class="comment">%     - proton_met : met id of cytosolic H+ (used by</span>
+0027 <span class="comment">%       scaleBiomassPseudoreaction, not by getBiomassFractions).</span>
+0028 <span class="comment">%     - components : cell array of component structs, each with fields:</span>
+0029 <span class="comment">%</span>
+0030 <span class="comment">%       - name : component name (for example 'protein').</span>
+0031 <span class="comment">%       - pseudoreaction_name : model.rxnNames entry to identify the</span>
+0032 <span class="comment">%         pseudoreaction.</span>
+0033 <span class="comment">%       - mass_strategy : 'mw', 'mw_minus_2h', 'mw_minus_water' or</span>
+0034 <span class="comment">%         'grams' (see Notes).</span>
+0035 <span class="comment">%</span>
+0036 <span class="comment">% Returns</span>
+0037 <span class="comment">% -------</span>
+0038 <span class="comment">% fractions : struct</span>
+0039 <span class="comment">%     Struct with one field per component name and a field 'total'</span>
+0040 <span class="comment">%     (for example fractions.protein and fractions.RNA). All values are in</span>
+0041 <span class="comment">%     g/gDW.</span>
+0042 <span class="comment">%</span>
+0043 <span class="comment">% Examples</span>
+0044 <span class="comment">% --------</span>
+0045 <span class="comment">%     fractions = getBiomassFractions(model, biomassConfig);</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">% Notes</span>
+0048 <span class="comment">% -----</span>
+0049 <span class="comment">% mass_strategy values:</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">%     'mw'              MW from chemical formula</span>
+0052 <span class="comment">%     'mw_minus_2h'     MW - 2.016 g/mol (two protons released per charged</span>
+0053 <span class="comment">%                       tRNA; protein pseudoreaction substrates)</span>
+0054 <span class="comment">%     'mw_minus_water'  MW - 18.015 g/mol (water released per</span>
+0055 <span class="comment">%                       polymerisation step; RNA and DNA)</span>
+0056 <span class="comment">%     'grams'           stoichiometry is already in g/gDW (lipid backbone)</span>
+0057 
+0058 fractions = struct();
+0059 total = 0;
+0060 <span class="keyword">for</span> i = 1:numel(biomassConfig.components)
+0061     comp = biomassConfig.components{i};
+0062     f = <a href="#_sub1" class="code" title="subfunction f = computeComponentFraction(model, comp)">computeComponentFraction</a>(model, comp);
+0063     fractions.(comp.name) = f;
+0064     total = total + f;
+0065 <span class="keyword">end</span>
+0066 fractions.total = total;
+0067 <span class="keyword">end</span>
+0068 
+0069 <a name="_sub1" href="#_subfunctions" class="code">function f = computeComponentFraction(model, comp)</a>
+0070 rxnPos = strcmp(model.rxnNames, comp.pseudoreaction_name);
+0071 <span class="keyword">if</span> ~any(rxnPos)
+0072     f = 0;
+0073     <span class="keyword">return</span>;
+0074 <span class="keyword">end</span>
+0075 S_col = model.S(:, rxnPos);
+0076 isSub = find(S_col &lt; 0);
+0077 <span class="keyword">if</span> isempty(isSub)
+0078     f = 0;
+0079     <span class="keyword">return</span>;
+0080 <span class="keyword">end</span>
+0081 <span class="keyword">if</span> strcmp(comp.mass_strategy, <span class="string">'grams'</span>)
+0082     f = full(-sum(S_col(isSub)));
+0083     <span class="keyword">return</span>;
+0084 <span class="keyword">end</span>
+0085 offset = <a href="#_sub2" class="code" title="subfunction offset = mwOffset(strategy)">mwOffset</a>(comp.mass_strategy);
+0086 formulas = model.metFormulas(isSub);
+0087 MWs = zeros(numel(formulas), 1);
+0088 <span class="keyword">for</span> i = 1:numel(formulas)
+0089     MWs(i) = <a href="#_sub3" class="code" title="subfunction mw = computeFormulaMW(formula)">computeFormulaMW</a>(formulas{i});
+0090 <span class="keyword">end</span>
+0091 zeroMW = MWs == 0;
+0092 <span class="keyword">if</span> any(zeroMW)
+0093     error(<span class="string">'getBiomassFractions:emptyFormula'</span>, <span class="keyword">...</span>
+0094         <span class="string">'Biomass metabolite %s has an empty metFormula field.'</span>, <span class="keyword">...</span>
+0095         model.mets{isSub(find(zeroMW, 1))});
+0096 <span class="keyword">end</span>
+0097 MWs = MWs + offset;
+0098 f = full(-sum(S_col(isSub) .* MWs) / 1000);
+0099 <span class="keyword">end</span>
+0100 
+0101 <a name="_sub2" href="#_subfunctions" class="code">function offset = mwOffset(strategy)</a>
+0102 <span class="keyword">switch</span> strategy
+0103     <span class="keyword">case</span> <span class="string">'mw'</span>
+0104         offset = 0;
+0105     <span class="keyword">case</span> <span class="string">'mw_minus_2h'</span>
+0106         offset = -2.016;
+0107     <span class="keyword">case</span> <span class="string">'mw_minus_water'</span>
+0108         offset = -18.015;
+0109     <span class="keyword">otherwise</span>
+0110         error(<span class="string">'getBiomassFractions:unknownStrategy'</span>, <span class="keyword">...</span>
+0111             <span class="string">'Unknown mass_strategy: %s'</span>, strategy);
+0112 <span class="keyword">end</span>
+0113 <span class="keyword">end</span>
+0114 
+0115 <a name="_sub3" href="#_subfunctions" class="code">function mw = computeFormulaMW(formula)</a>
+0116 <span class="comment">% Molecular weight in g/mol from a Hill-style chemical formula. Same</span>
+0117 <span class="comment">% element table as the legacy yeast-GEM sumBioMass.</span>
+0118 tokens = regexp(formula, <span class="string">'([A-Z][a-z]*)(\d*)'</span>, <span class="string">'tokens'</span>);
+0119 <span class="keyword">if</span> isempty(tokens)
+0120     mw = 0;
+0121     <span class="keyword">return</span>;
+0122 <span class="keyword">end</span>
+0123 tokensMatrix = vertcat(tokens{:});
+0124 tokensMatrix(cellfun(@isempty, tokensMatrix(:,2)), 2) = {<span class="string">'1'</span>};
+0125 elements = tokensMatrix(:, 1);
+0126 counts = str2double(tokensMatrix(:, 2));
+0127 elem = {<span class="string">'C'</span>, 12.01; <span class="string">'H'</span>, 1.008; <span class="string">'N'</span>, 14.007; <span class="string">'O'</span>, 15.999; <span class="keyword">...</span>
+0128         <span class="string">'P'</span>, 30.974; <span class="string">'S'</span>, 32.06; <span class="string">'R'</span>, 0; <span class="keyword">...</span>
+0129         <span class="string">'Fe'</span>, 55.845; <span class="string">'K'</span>, 39.098; <span class="string">'Na'</span>, 22.99; <span class="string">'Cl'</span>, 35.45; <span class="keyword">...</span>
+0130         <span class="string">'Mn'</span>, 54.938; <span class="string">'Zn'</span>, 65.38; <span class="string">'Ca'</span>, 40.078; <span class="string">'Mg'</span>, 24.305; <span class="string">'Cu'</span>, 63.546};
+0131 [~, elemMatch] = ismember(elements, elem(:,1));
+0132 <span class="keyword">if</span> any(elemMatch == 0)
+0133     error(<span class="string">'getBiomassFractions:unknownElement'</span>, <span class="keyword">...</span>
+0134         <span class="string">'Unknown element in formula %s'</span>, formula);
+0135 <span class="keyword">end</span>
+0136 mw = sum(counts .* transpose([elem{elemMatch, 2}]), <span class="string">'all'</span>);
+0137 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

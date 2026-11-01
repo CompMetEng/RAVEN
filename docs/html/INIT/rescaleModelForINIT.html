@@ -1,0 +1,152 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of rescaleModelForINIT</title>
+  <meta name="keywords" content="rescaleModelForINIT">
+  <meta name="description" content="rescaleModelForINIT  Rescale a model to avoid large stoichiometric differences.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">INIT</a> &gt; rescaleModelForINIT.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for INIT&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>rescaleModelForINIT
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>rescaleModelForINIT  Rescale a model to avoid large stoichiometric differences.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function model=rescaleModelForINIT(model, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> rescaleModelForINIT  Rescale a model to avoid large stoichiometric differences.
+
+ Rescales the stoichiometric matrix for the MILP problem in ftINIT to reduce
+ differences in flux magnitudes between reactions. Such differences cause,
+ among other effects, difficulties with the tolerances for integer variables.
+ In each reaction, each coefficient with an absolute value above
+ maxStoichDiff times the smallest absolute coefficient of the reaction is
+ set to that limit (keeping its sign). The reaction is then multiplied by a
+ factor that sets the mean absolute coefficient to 1.
+
+ Parameters
+ ----------
+ model : struct
+     a model structure.
+
+ Name-Value Arguments
+ --------------------
+ maxStoichDiff : double
+     largest allowed ratio between the largest and the smallest absolute
+     stoichiometric coefficient in a reaction (default 25).
+
+ Returns
+ -------
+ model : struct
+     the rescaled model structure.</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="prepINITModel.html" class="code" title="function prepData = prepINITModel(origRefModel, taskStruct, varargin)">prepINITModel</a>	prepINITModel  Precompute omics-independent data for ftINIT.</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function model=rescaleModelForINIT(model, varargin)</a>
+0002 <span class="comment">% rescaleModelForINIT  Rescale a model to avoid large stoichiometric differences.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Rescales the stoichiometric matrix for the MILP problem in ftINIT to reduce</span>
+0005 <span class="comment">% differences in flux magnitudes between reactions. Such differences cause,</span>
+0006 <span class="comment">% among other effects, difficulties with the tolerances for integer variables.</span>
+0007 <span class="comment">% In each reaction, each coefficient with an absolute value above</span>
+0008 <span class="comment">% maxStoichDiff times the smallest absolute coefficient of the reaction is</span>
+0009 <span class="comment">% set to that limit (keeping its sign). The reaction is then multiplied by a</span>
+0010 <span class="comment">% factor that sets the mean absolute coefficient to 1.</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">% Parameters</span>
+0013 <span class="comment">% ----------</span>
+0014 <span class="comment">% model : struct</span>
+0015 <span class="comment">%     a model structure.</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">% Name-Value Arguments</span>
+0018 <span class="comment">% --------------------</span>
+0019 <span class="comment">% maxStoichDiff : double</span>
+0020 <span class="comment">%     largest allowed ratio between the largest and the smallest absolute</span>
+0021 <span class="comment">%     stoichiometric coefficient in a reaction (default 25).</span>
+0022 <span class="comment">%</span>
+0023 <span class="comment">% Returns</span>
+0024 <span class="comment">% -------</span>
+0025 <span class="comment">% model : struct</span>
+0026 <span class="comment">%     the rescaled model structure.</span>
+0027 
+0028 p=parseRAVENargs(varargin, {<span class="string">'maxStoichDiff'</span>,25});
+0029 maxStoichDiff=p.maxStoichDiff;
+0030 
+0031 <span class="comment">%Define maxMinRatio to be the ratio between the largest and smallest</span>
+0032 <span class="comment">%stoichiometric coefficients in each reaction.</span>
+0033 <span class="comment">%Scale all rxns with maxMinRatio &gt; maxStoichDiff - just set all coeffs that are</span>
+0034 <span class="comment">%larger than maxStoichDiff*minVal to that value, and center the mean coeff to 1 for all rxns.</span>
+0035 SAbs = abs(model.S);
+0036 <span class="keyword">for</span> i = 1:numel(model.rxns)
+0037     tmp = SAbs(:,i);
+0038     tmp = tmp(tmp ~= 0);
+0039     mn = min(tmp);
+0040     <span class="comment">%modify matrix</span>
+0041     sign = ones(numel(model.mets),1);
+0042     sign(model.S(:,i) &lt; 0) = -1;
+0043     sel = SAbs(:,i) &gt; maxStoichDiff*mn;
+0044     model.S(sel,i) = sign(sel) .* maxStoichDiff*mn;
+0045 <span class="keyword">end</span>
+0046 <span class="comment">%center around 1</span>
+0047 boolMat = model.S ~= 0;
+0048 absMat = abs(model.S);
+0049 rxnScales = sum(boolMat,1)./sum(absMat,1);
+0050 
+0051 model.S = model.S .* rxnScales;
+0052 
+0053 <span class="comment">%{</span>
+0054 <span class="keyword">if</span> (nargin &lt; 2)
+0055     maxStoichVal = 250;
+0056 <span class="keyword">end</span>
+0057 
+0058 
+0059 <span class="comment">%find all reactions containing high stoichiometry coefficients</span>
+0060 maxCoeffs = max(model.S, [], 1);
+0061 rxnsToCheck = maxCoeffs &gt; maxStoichVal;
+0062 
+0063 <span class="comment">%for debugging:</span>
+0064 <span class="comment">%constructEquations(model, model.rxns(rxnsToCheck))</span>
+0065 
+0066 rxnsToCheckInd = find(rxnsToCheck);
+0067 
+0068 <span class="comment">%We just scale all reactions so they don't have a coefficient &gt; maxStoichVal for now</span>
+0069 
+0070 <span class="comment">%do this with a loop, doesn't really matter</span>
+0071 <span class="keyword">for</span> rxnInd = rxnsToCheckInd
+0072     <span class="comment">%find the lowest index which is not a pointless metabolite, such as H+, H2O etc.</span>
+0073     rxnS = model.S(:,rxnInd);
+0074     <span class="comment">%metInd = find(rxnS ~= 0);</span>
+0075     
+0076     largestCoeff = max(abs(rxnS));
+0077     scaleFactor = maxStoichVal/largestCoeff;
+0078     model.S(:,rxnInd) = model.S(:,rxnInd) .* scaleFactor;
+0079 <span class="keyword">end</span>
+0080 <span class="comment">%}</span>
+0081 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

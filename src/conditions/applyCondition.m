@@ -1,0 +1,167 @@
+function model = applyCondition(model, condition)
+% applyCondition  Apply a deterministic condition to a model.
+%
+% The steps of a condition are applied in this order: a prelude that resets
+% exchange bounds, metabolite removals from a pseudoreaction with automatic
+% charge rebalancing, a change of biomass stoichiometry, and per-reaction
+% bound changes. A final check compares the number of uptake bounds with an
+% expected count. The schema covers only these steps, so a condition can be
+% reviewed as data.
+%
+% The schema applies to any GEM whose condition presets are kept as data.
+% Project-specific extensions, for example yeast-GEM's amino_acid_ratio
+% step that rewrites the stoichiometry of a protein pseudoreaction from a
+% separate TSV file, are applied by the caller before or after this
+% function.
+%
+% Parameters
+% ----------
+% model : struct
+%     RAVEN model struct.
+% condition : char or struct
+%     Path to a YAML condition file, or a struct as produced by parseYAML.
+%     The schema is as follows (all keys optional). reset_exchanges is
+%     passed as the reaction type to getExchangeRxns; the lower bound of
+%     the matching reactions is set to 0 and the upper bound to 1000.
+%     charge_balance_met receives the coefficient that makes the charge of
+%     rxn_id zero, which requires the metCharges field; a participant of
+%     rxn_id other than charge_balance_met with a NaN charge raises
+%     applyCondition:unknownCharge. add entries are
+%     added to the existing coefficients. A bounds entry whose rxn is not
+%     in the model is skipped with a warning. expected_uptake_count is
+%     compared with the number of bounds entries with lb of -1000, and a
+%     warning is issued when they differ.
+%
+%         prelude:
+%           reset_exchanges: out
+%
+%         cofactor_pseudoreaction:
+%           rxn_id: r_4598
+%           remove_mets:
+%             - { met: s_3714 }
+%           charge_balance_met: s_0794
+%
+%         biomass_stoichiometry_delta:
+%           rxn_id: r_4041
+%           add:
+%             - { met: s_0689, coef:  0.08 }
+%             - { met: s_0687, coef: -0.08 }
+%             - { met: s_0794, coef: -0.16 }
+%
+%         bounds:
+%           - { rxn: r_1654, lb: -1000 }
+%           - { rxn: r_1992, lb: 0 }
+%           - { rxn: r_1663, lb: 0, ub: 0 }
+%
+%         expected_uptake_count: 15
+%
+% Returns
+% -------
+% model : struct
+%     Model with the condition applied.
+%
+% Examples
+% --------
+%     model = applyCondition(model, 'data/conditions/anaerobic.yml');
+%     model = applyCondition(model, parseYAML('data/conditions/anaerobic.yml'));
+%
+% See also
+% --------
+% parseYAML
+
+if ischar(condition) || isstring(condition)
+    cond = parseYAML(char(condition));
+elseif isstruct(condition)
+    cond = condition;
+else
+    error('applyCondition:invalidCondition', ...
+        'condition must be a YAML file path or a struct.');
+end
+
+% --- Step 1: prelude ---------------------------------------------------
+if isfield(cond, 'prelude') && isfield(cond.prelude, 'reset_exchanges')
+    [~, exchangeRxns] = getExchangeRxns(model, cond.prelude.reset_exchanges);
+    model.lb(exchangeRxns) = 0;
+    model.ub(exchangeRxns) = 1000;
+end
+
+% --- Step 2: cofactor pseudoreaction edits ----------------------------
+if isfield(cond, 'cofactor_pseudoreaction')
+    cp = cond.cofactor_pseudoreaction;
+    cofacIdx = getIndexes(model, cp.rxn_id, 'rxns');
+    if isfield(cp, 'remove_mets')
+        for i = 1:numel(cp.remove_mets)
+            metIdx = getIndexes(model, cp.remove_mets{i}.met, 'mets');
+            model.S(metIdx, cofacIdx) = 0;
+        end
+    end
+    if isfield(cp, 'charge_balance_met')
+        balanceIdx = find(strcmp(model.mets, cp.charge_balance_met));
+        model.S(balanceIdx, cofacIdx) = 0;
+        % Only the participating metabolites may be summed: S is sparse and
+        % 0*NaN is NaN, while 'omitnan' would treat an unset charge as
+        % neutral and silently write the wrong balancing coefficient.
+        metIdx = find(model.S(:, cofacIdx));
+        if ~isfield(model, 'metCharges')
+            error('applyCondition:noCharges', ...
+                ['Cannot charge balance %s: the model has no metCharges ' ...
+                 'field.'], cp.rxn_id);
+        end
+        unknown = metIdx(isnan(model.metCharges(metIdx)));
+        if ~isempty(unknown)
+            error('applyCondition:unknownCharge', ...
+                ['Cannot charge balance %s: the following metabolites have ' ...
+                 'no charge, so the charge balance is unknown rather than ' ...
+                 'zero:\n\t%s'], cp.rxn_id, strjoin(model.mets(unknown), ', '));
+        end
+        model.S(balanceIdx, cofacIdx) = ...
+            -sum(full(model.S(metIdx, cofacIdx)) .* model.metCharges(metIdx));
+    end
+end
+
+% --- Step 3: biomass stoichiometry delta ------------------------------
+if isfield(cond, 'biomass_stoichiometry_delta')
+    delta = cond.biomass_stoichiometry_delta;
+    bioIdx = getIndexes(model, delta.rxn_id, 'rxns');
+    if isfield(delta, 'add')
+        for i = 1:numel(delta.add)
+            entry = delta.add{i};
+            metIdx = getIndexes(model, entry.met, 'mets');
+            model.S(metIdx, bioIdx) = full(model.S(metIdx, bioIdx)) + entry.coef;
+        end
+    end
+end
+
+% --- Step 4: bounds ---------------------------------------------------
+nUptake = 0;
+if isfield(cond, 'bounds')
+    for i = 1:numel(cond.bounds)
+        b = cond.bounds{i};
+        rxnIdx = find(strcmp(model.rxns, b.rxn));
+        if isempty(rxnIdx)
+            warning('applyCondition:missingRxn', ...
+                'Reaction %s not found in model; skipping.', b.rxn);
+            continue;
+        end
+        if isfield(b, 'lb')
+            model.lb(rxnIdx) = b.lb;
+            if b.lb == -1000
+                nUptake = nUptake + 1;
+            end
+        end
+        if isfield(b, 'ub')
+            model.ub(rxnIdx) = b.ub;
+        end
+    end
+end
+
+% --- Step 5: uptake sanity check --------------------------------------
+if isfield(cond, 'expected_uptake_count')
+    if nUptake ~= cond.expected_uptake_count
+        warning('applyCondition:uptakeCountMismatch', ...
+            'Expected %d uptake reactions, applied %d. Some may be missing from the model.', ...
+            cond.expected_uptake_count, nUptake);
+    end
+end
+
+end

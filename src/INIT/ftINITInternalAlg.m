@@ -1,0 +1,711 @@
+function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,rankKeys,pinFluxes)
+% ftINITInternalAlg
+%	Run the MILP for one step of ftINIT.
+%
+%   model           a reference model structure
+%   rxnScores       a vector of scores for the reactions in the model.
+%                   Positive scores are reactions to keep and negative
+%                   scores are reactions to exclude. Reactions with score 0
+%                   are not part of the problem
+%   metData         boolean matrix with mets as rows and rxns as columns
+%                   saying which reaction produces each detected met (optional, default [])
+%   essentialRxns   cell array of reactions that are essential and that
+%                   have to be in the resulting model. ftINIT passes the
+%                   reactions that the tasks require (see fitTasks)
+%   prodWeight      a reward for each detected metabolite that has at least
+%                   one producing reaction turned on; net production is not
+%                   checked. The sum of these rewards and the scores for the
+%                   reactions is optimised. The reward gives a reason for
+%                   including reactions with a negative score for
+%                   connectivity reasons, which gives a more functional
+%                   network (default 0.5)
+%   allowExcretion  true if excretion of all metabolites is allowed.
+%                   This results in fewer reactions being considered
+%                   dead-ends, but not every reaction in the resulting model
+%                   can carry flux. If this is "false" then the
+%                   equality constraints are taken from model.b. If the
+%                   input model lacks exchange reactions, set it to true;
+%                   with false a large part of the model is excluded for
+%                   connectivity reasons
+%   remPosRev       If true, the positive reversible reactions are removed from the problem.
+%                   This is used in step 1 of ftINIT
+%   params          parameters for the MILP, for example MIPGap and TimeLimit
+%   startVals       Start values for the MILP. ftINIT passes the result of
+%                   the previous run when it reruns the MILP with a higher
+%                   MIPGap
+%   fluxes          Fluxes from the last run. The flux of an essential
+%                   irreversible reaction is forced to at least
+%                   min(0.99*|flux|, 0.1), clamped to the reaction's capacity
+%                   in the forced direction (its upper bound, as ftINIT
+%                   passes reactions in the forward direction)
+%   verbose         If true, the MILP progression is shown.
+%   forceOn         minimum flux magnitude enforced through a reaction once
+%                   it is turned on in the MILP (optional, default 0.1)
+%   resolveTies     if true, the MILP's degenerate optimum is solved to a
+%                   canonical answer in addition to the solver Seed: the
+%                   score objective is held at its optimum, then the count
+%                   of "on" removable (negative-score) reactions is
+%                   minimised, then, among the sparsest solutions, their
+%                   summed reaction-id rank is minimised. Positive-score
+%                   reactions have a continuous on/off variable (pinned near
+%                   1 by the score objective) and only the negative-score
+%                   ones have a binary on/off variable, so only these are
+%                   tied. The fluxes are then taken from the
+%                   least-total-flux solution for that on/off state and,
+%                   among those, from the one with the least id-rank-weighted
+%                   backward flux, so the directions and forced magnitudes
+%                   the next ftINIT step reads from them are fixed too.
+%                   This follows resolve_ties in raven-toolbox
+%                   (raven-gecko-parity#104). The phases are skipped when
+%                   the primary solve stops at params.TimeLimit, and the
+%                   primary solution is kept. Phases 2a and 2b get half of
+%                   params.TimeLimit each (rounded down, at least 1 s), the
+%                   flux phases the full limit. A warning names each phase
+%                   that does not prove optimal or finds no solution; when a
+%                   flux phase finds none, the fluxes of the phase before it
+%                   are kept (optional, default false)
+%   rankKeys        cell array with, for each reaction in model.rxns, the key
+%                   that the id-rank phases of resolveTies sort it by
+%                   (optional, default model.rxns). ftINIT passes the smallest
+%                   original reaction id of each merge group, so the order
+%                   does not depend on which member names the merged reaction
+%   pinFluxes       if false, resolveTies skips phases 2c and 2d and the
+%                   fluxes and metProduction are those of phase 2b
+%                   (optional, default true).
+%                   ftINIT passes false in its last step, whose fluxes no
+%                   later step reads
+%
+%   deletedRxns     reactions which were deleted by the algorithm (only
+%                   rxns included in the problem)
+%   metProduction   logical array that indicates which of the metabolites in
+%                   metData could be produced (true) or not (false).
+%                   Metabolites with a producing reaction that is essential
+%                   are not part of the MILP and are not in the array
+%   res             The result from the MILP
+%   turnedOnRxns    The reactions determined to be present (only 
+%                   rxns included in the problem) 
+%   fluxes          The fluxes from the MILP
+%
+%   This function is the implementation of the algorithm. See
+%   ftINIT for a higher-level function for model reconstruction. 
+%
+% Usage: [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,...
+%           rxnScores,metData,essentialRxns,prodWeight,allowExcretion,...
+%           remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,...
+%           rankKeys,pinFluxes)
+
+if nargin < 12 || isempty(forceOn)
+    forceOn = 0.1;
+end
+if nargin < 14 || isempty(rankKeys)
+    rankKeys = model.rxns;
+end
+if nargin < 13 || isempty(resolveTies)
+    resolveTies = false;
+end
+if nargin < 15 || isempty(pinFluxes)
+    pinFluxes = true;
+end
+if isempty(essentialRxns)
+    essentialRxns={};
+end
+essentialRxns=essentialRxns(:);
+if isempty(prodWeight)
+    prodWeight=0.5;
+end
+
+
+%The model should be in the reversible format and all relevant exchange
+%reactions should be open
+if isfield(model,'unconstrained')
+    EM='Exchange metabolites are still present in the model. Use simplifyModel if this is not intended';
+    warning('RAVEN:warning', '%s', EM);
+end
+
+
+essential = ismember(model.rxns,essentialRxns);
+
+%Some nice to have numbers
+nMets=numel(model.mets);
+nRxns=numel(model.rxns);
+nRxnsWithOnOff = nRxns;
+
+%Reactions with score 0 will just be left in the model, and will not be part of the problem (but can carry flux).
+%It is possible to set score = 0 for e.g. spontaneous reactions, exchange rxns, etc., which may not be that interesting
+%to remove.
+
+%if makeIrrev is on, we can just as well skip all positive reversible rxns - they will be turned on without carrying any flux
+%since they can form a loop within themself (fwd-rev)
+if remPosRev
+    rxnScores(rxnScores > 0 & model.rev~=0) = 0;
+end
+
+%Handle metabolomics
+%A problem with the metabolomics is that some of the producer reactions
+%for a metabolite could be excluded from the problem. We solve this by
+%adding them with score 0. They can still be seen as positive, since they
+%either do not matter (there is another producer) or they can contribute to an
+%increased score.
+revRxns=model.rev~=0; 
+essRevRxns = find(revRxns & essential);
+essIrrevRxns = find(~revRxns & essential);
+
+if ~isempty(metData)
+    %remove any metData rows that is connected to an essential rxn - 
+    %these will be on regardless and will cause problems below.
+    containsEssential = any(metData(:,essential),2);
+    metData = metData(~containsEssential,:);
+end
+
+if ~isempty(metData)
+    metRxns = any(metData,1).';
+    posRxns = rxnScores > 0 | ((rxnScores == 0) & metRxns);
+else
+    posRxns = rxnScores > 0;
+end
+negRxns = rxnScores < 0;
+
+posRevRxns = find(posRxns & revRxns & ~essential);
+negRevRxns = find(negRxns & revRxns & ~essential);
+posIrrevRxns = find(posRxns & ~revRxns & ~essential);
+negIrrevRxns = find(negRxns & ~revRxns & ~essential);
+nPosRev = numel(posRevRxns);
+nNegRev = numel(negRevRxns);
+nPosIrrev = numel(posIrrevRxns);
+nNegIrrev = numel(negIrrevRxns);
+nEssRev = numel(essRevRxns);
+nEssIrrev = numel(essIrrevRxns); %not used, but left for symmetry
+nMetabolMets = size(metData,1);
+
+if ~isempty(metData)
+    metNegRev = negRxns & revRxns & ~essential & metRxns;
+    metNegIrrev = negRxns & ~revRxns & ~essential & metRxns;
+    nMetNegRev = sum(metNegRev);
+    nMetNegIrrev = sum(metNegIrrev);
+end
+
+
+milpModel = model;
+
+%These six categories need to be handled separately:
+%
+%PosIrrev (positive reaction score, irreversible): 
+%flux >= 0.1*Yi, flux - 0.1*Yi - VPI == 0, 0 <= Yi(onoff) <= 1, 0 <= VPI <= Inf
+%The nice thing with rxns with positive score is that they do not require a boolean. The optimizer will
+%strive for maximizing the Yi here, so it can be a continuous variable, where we just force a flux if
+%the variable is on.
+%PosRev: 
+% 1: Split up the flux into positive and negative: flux - vnrp + vnrn == 0, 0 <= vprp,vprn <= Inf.
+% 2. Force one of the fluxes on: vprp + vprn >= 0.1*Yi, vprp + vprn - 0.1*Yi - vprv1 == 0. 0 <= Yi(onoff) <= 1, vprv1 >= 0
+% 3. We need a bool to make sure that one of vprp and vprn are always zero:
+%    vprb E {0,1}:  vprp <= 100*vprb (if bool is 0, vprp is zero): vprp - 100*vprb + vprv2 == 0, vprv2 >= 0
+%    vprn <= (1-vprb)*100 (if bool is one, vprn is zero): vprn + 100*vprb + vprv3 == 0, -100 <= vprv3 <= inf
+%Neg Irrev:
+%For negative scores, we need to use an integer, I see no way around that.
+% flux < 100*Yi, Yi E {0,1}. Flux - 100*Yi + vni == 0
+%Neg Rev:
+%Two cases:
+%A: Without irrev model
+% 1: Split up the flux into positive and negative: flux - vnrp + vnrn == 0, 0 <= vprp,vprn <= Inf.
+% 2: Force the Yi (on/off) var on if the flux is on: vnrp + vnrn <= 0.1 * Yi, Yi E {0,1}: vnrp + vnrn - 0.1 * Yi + vnrv1 == 0, vnrv1 >= 0.
+%B: Irrev model (Not used for now)
+% 1. We now have two reactions, but still just boolean variable. We know that
+%    the flux can only be positive, so we just say that flux1 + flux2 <= 0.1 * Yi, Yi E {0,1}: flux1 + flux2 - 0.1 * Yi + vnrv1 == 0, vnrv1 >= 0.
+%    There is no need to prevent loops - there is no benefit for the objective to generate one, and it does not matter.
+%Ess Irrev (essential rxn, i.e. forced to carry flux, irreversible): 
+%flux >= 0.1 - solved with lb = 0.1.
+%Ess Rev (these are not really used): 
+% 1: Split up the flux into positive and negative: flux - verp + vern == 0, 0 <= verp,vern <= Inf.
+% 2. Force one of the fluxes on: verp + vern >= 0.1, verp + vern - verv1 == 0. verv1 >= 0.1
+% 3. We need a bool to make sure that one of verp and vern are always zero:
+%    verb E {0,1}:  verp <= 100*verb (if bool is 0, verp is zero): verp - 100*verb + verv2 == 0, verv2 >= 0
+%    vern <= (1-verb)*100 (if bool is one, vern is zero): vern + 100*verb + verv3 == 0, -100 <= verv3 <= inf
+
+% Now metabolomics
+% The basic idea is that the bonus is gotten if any of the producer reactions are on. We can
+% therefore use the "on" variables directly for the reactions that are included. We therefore add one variable per met, mon, which can be 
+% continuous and between 0 and 1. We then say that mon <= v1 + v2 + ... + vn, i.e. that 
+% mon + mv1 - v1 - v2 ... - vn == 0, 0 <= mon <= 1, 0 <= mv1 <= inf
+% mon gets -prodWeight in the c vector (i.e. objective function)
+% A tricky part is that some of the reactions producing a metabolite are left outside the problem
+% This is solved by moving them into the problem, but with the score 0. They can still be treated as positive
+% reactions. In the end, we are not interested if they are on though, but they may
+% allow for production of a metabolite, giving no benefit of turning on another producer reaction.
+% Another tricky thing is that some metabolite producers have negative score. There is
+% no automatic mechanism for forcing flux on if the variable is on - this is simply
+% not needed for negative variables - unless they are a metabolite producer. We therefore need 
+% to add an extra constraint there, similar to the case of positive. It gets a bit complicated.
+% For reversible, we need a bool to make sure that one of vnrp and vnrn stays zero:
+%    vnrbm E {0,1}:  vnrp <= 100*vnrbm (if bool is 0, vnrp is zero): vnrp - 100*vnrbm + vnrvm1 == 0, vnrvm1 >= 0
+%    vnrn <= (1-vnrbm)*100 (if bool is one, vnrn is zero): vnrn + 100*vnrbm + vnrvm2 == 0, -100 <= vnrvm2 <= inf
+% We then also say that vnrp + vnrn >= 0.1*Yi, vnrp + vnrn - 0.1*Yi - vnrvm3 == 0, vnrvm3 >= 0
+% For irreversible, it is fairly straight-forward. We just say that flux >= 0.1*Yi, i.e. flux - 0.1*Yi - vnim == 0, 0 <= vnim <= Inf.
+
+
+%The total matrix then looks like this. Note that we have ordered the categories, two reactions each,
+%in the S matrix to make it easier to follow the figure. In practice, they come in random order, which
+%is why the SEye variable is used further down.
+%all categories below have two columns - the two column starts where label starts
+%since the label cannot fit in two chars, they are on multiple lines
+%
+%The met variables and constraints are not in this figure for practical reasons.
+%
+%                           vprb  vprv3 vnrn  vern  verv2 mv1
+% pi  ni  ei  Ypi Yni vpi vprn  vprv2 vnrp  verp  verb  mon
+%   pr  nr  er  Ypr Ynr vprp  vprv1 vni   vnrv1 verv1 verv3
+% SSSSSSSSSSSS0000000000000000000000000000000000000000000000
+% SSSSSSSSSSSS0000000000000000000000000000000000000000000000 S block
+% SSSSSSSSSSSS0000000000000000000000000000000000000000000000
+% 1           N       -                                      Pos irrev block
+%  1           N       -
+%   1                   - 1                                  Pos rev block 1
+%    1                   - 1
+%               N       1 1   -                              Pos rev block 2
+%                N       1 1   -
+%                       1   M   1                            Pos rev block 3
+%                        1   M   1
+%                         1 C     1                          Pos rev block 4
+%                          1 C     1
+%     1           M                 1                        Neg irrev block
+%      1           M                 1
+%       1                             - 1                    Neg rev block 1
+%        1                             - 1
+%                   M                 1 1 1                  Neg rev block 2
+%                    M                 1 1 1
+%           1                               - 1              Ess rev block 1
+%            1                               - 1
+%                                           1 1 -            Ess rev block 2
+%                                            1 1 -
+%                                           1     M 1        Ess rev block 3
+%                                            1     M 1
+%                                             1   C   1      Ess rev block 4
+%                                              1   C   1
+%             --------                                  1 1  Met block - Here, we assume that all variables support each met.
+%             --------                                   1 1             In practice, fewer of the "on" variables with -1 should be included
+%
+%
+%M = -100
+%N = -0.1
+%D = 0.1
+%C = 100
+%- = -1
+%
+%It looks a bit different for the irrev model, but still quite similar
+
+%build the A matrix
+%S row
+%When forcing on essential rxns, use the flux value of the previous run (set to 0.1 the first time)
+%Do not set it above 0.1, may starve something else out. Leave a margin of 1% from the last run.
+forceOnLim = forceOn;
+forceOnLimEss=min(abs(fluxes)*0.99,0.1);
+forceOnLimEss(essIrrevRxns) = min(forceOnLimEss(essIrrevRxns), milpModel.ub(essIrrevRxns));
+
+% Per-reaction big-M: use each reaction own flux capacity (capped at 1000).
+% This replaces the fixed big-M=100, which underestimates capacity for standard
+% RAVEN models where ub=1000. Must be at least forceOnLim so the constraints are feasible.
+bigMCap = 1000;
+ubSafe = min(milpModel.ub, bigMCap); ubSafe(~isfinite(ubSafe)) = bigMCap;
+lbSafe = min(-milpModel.lb, bigMCap); lbSafe(~isfinite(lbSafe)) = bigMCap; lbSafe = max(lbSafe, 0);
+bigMPosRev   = max(max(ubSafe(posRevRxns),  lbSafe(posRevRxns)),  forceOnLim);
+bigMNegIrrev = max(ubSafe(negIrrevRxns), forceOnLim);
+bigMNegRev   = max(max(ubSafe(negRevRxns),  lbSafe(negRevRxns)),  forceOnLim);
+bigMEssRev   = max(max(ubSafe(essRevRxns),  lbSafe(essRevRxns)),  forceOnLim);
+
+varsPerNegRev = 3;
+
+
+%Figure out the number of variables needed for metabolomics
+if ~isempty(metData)
+    nMetVars = 2*size(metData,1) + 4*nMetNegRev + nMetNegIrrev; %mon,mv1; vnrbm,vnrvm1,vnrvm2,vnrvm3; vnim
+else
+    nMetVars = 0;
+end
+
+
+sRow = [milpModel.S sparse(nMets, nPosIrrev*2+nPosRev*7+nNegIrrev*2+nNegRev*(1+varsPerNegRev)+nEssRev*6 + nMetVars)];
+sEye = speye(nRxns);
+nYBlock = nPosIrrev+nPosRev+nNegIrrev+nNegRev;
+piRows = [sEye(posIrrevRxns,:) speye(nPosIrrev)*-forceOnLim sparse(nPosIrrev,nPosRev+nNegIrrev+nNegRev) speye(nPosIrrev)*-1 sparse(nPosIrrev,nPosRev*6+nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+
+prRows1 = [sEye(posRevRxns,:) sparse(nPosRev,nYBlock + nPosIrrev) speye(nPosRev)*-1 speye(nPosRev) sparse(nPosRev,nPosRev*4+nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+prRows2 = [sparse(nPosRev,nRxns + nPosIrrev) speye(nPosRev)*-forceOnLim sparse(nPosRev,nNegIrrev + nNegRev + nPosIrrev) speye(nPosRev) speye(nPosRev) sparse(nPosRev,nPosRev) speye(nPosRev)*-1 sparse(nPosRev,nPosRev*2+nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+prRows3 = [sparse(nPosRev,nRxns + nYBlock + nPosIrrev) speye(nPosRev) sparse(nPosRev,nPosRev) spdiags(-bigMPosRev,0,nPosRev,nPosRev) sparse(nPosRev,nPosRev) speye(nPosRev) sparse(nPosRev,nPosRev+nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+prRows4 = [sparse(nPosRev,nRxns + nYBlock + nPosIrrev + nPosRev) speye(nPosRev) spdiags(bigMPosRev,0,nPosRev,nPosRev) sparse(nPosRev,nPosRev*2) speye(nPosRev) sparse(nPosRev, nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+
+niRows = [sEye(negIrrevRxns,:) sparse(nNegIrrev,nPosIrrev + nPosRev) spdiags(-bigMNegIrrev,0,nNegIrrev,nNegIrrev) sparse(nNegIrrev,nNegRev + nPosIrrev + nPosRev*6) speye(nNegIrrev) sparse(nNegIrrev,nNegRev*varsPerNegRev + nEssRev*6+nMetVars)];
+
+nrRows1 = [sEye(negRevRxns,:) sparse(nNegRev,nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev) speye(nNegRev)*-1 speye(nNegRev) sparse(nNegRev,nNegRev + nEssRev*6+nMetVars)];
+nrRows2 = [sparse(nNegRev,nRxns + nPosIrrev + nPosRev + nNegIrrev) spdiags(-bigMNegRev,0,nNegRev,nNegRev) sparse(nNegRev,nPosIrrev + nPosRev*6 + nNegIrrev) speye(nNegRev) speye(nNegRev) speye(nNegRev) sparse(nNegRev,nEssRev*6+nMetVars)];
+nrRows = [nrRows1;nrRows2];
+
+erRows1 = [sEye(essRevRxns,:) sparse(nEssRev,nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev) speye(nEssRev)*-1 speye(nEssRev) sparse(nEssRev, nEssRev*4+nMetVars)];
+erRows2 = [sparse(nEssRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev) speye(nEssRev) speye(nEssRev) speye(nEssRev)*-1 sparse(nEssRev, nEssRev*3+nMetVars)];
+erRows3 = [sparse(nEssRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev) speye(nEssRev) sparse(nEssRev, nEssRev*2) spdiags(-bigMEssRev,0,nEssRev,nEssRev) speye(nEssRev) sparse(nEssRev, nEssRev+nMetVars)];
+erRows4 = [sparse(nEssRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev + nEssRev) speye(nEssRev) sparse(nEssRev, nEssRev) spdiags(bigMEssRev,0,nEssRev,nEssRev) sparse(nEssRev, nEssRev) speye(nEssRev) sparse(nEssRev, nMetVars)];
+
+%now the mets
+if ~isempty(metData)
+    %Order of rxn "on" vars: Ypi Ypr Yni Ynr. This is a bit messy, since they are not in the
+    %same order as the reactions in the S matrix or metData. We therefore resort the vars in 
+    %metData to match the order of the vars.
+    srtMetData = sparse([metData(:,posIrrevRxns) metData(:,posRevRxns) metData(:,negIrrevRxns) metData(:,negRevRxns)]);
+    
+    %First the setup for giving bonus if the met is included.
+    %The mon vars come first followed by the mv1 vars
+    metRows1 = [sparse(nMetabolMets,nRxns) -srtMetData sparse(nMetabolMets,  nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev + nEssRev*6) speye(nMetabolMets) speye(nMetabolMets) sparse(nMetabolMets, 4*nMetNegRev + nMetNegIrrev)];
+    %Then negative rev:
+    % Variable order: eye(vnrbm),eye(vnrvm1),eye(vnrvm2),eye(vnrvm3)
+    % vnrp,vnrn are the two first variables among the neg rev vars.
+    % For reversible, we need a bool to make sure that one of vnrp and vnrn stays zero:
+    %    vnrbm E {0,1}:  vnrp <= 100*vnrbm (if bool is 0, vnrp is zero): vnrp - 100*vnrbm + vnrvm1 == 0, vnrvm1 >= 0 (metRows2)
+    %    vnrn <= (1-vnrbm)*100 (if bool is one, vnrn is zero): vnrn + 100*vnrbm + vnrvm2 == 0, -100 <= vnrvm2 <= inf (metRows3)
+    % We then also say that vnrp + vnrn >= 0.1*Yi, -0.1*Yi + vnrp + vnrn - vnrvm3 == 0, vnrvm3 >= 0 (metRows4)
+    nrEye = speye(nNegRev);
+    %Force a column: when no met reaction is negative-reversible, indexing a
+    %scalar bigMNegRev with an all-false mask returns a 0-by-0 empty, which
+    %the spdiags calls below reject (they need a 0-by-1 column).
+    bigMMetNegRev = bigMNegRev(metNegRev(negRevRxns));
+    bigMMetNegRev = bigMMetNegRev(:);
+    %vnrp - M*vnrbm + vnrvm1 == 0
+    metRows2 = [sparse(nMetNegRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev) ... %zeros up to vnrp
+                nrEye(metNegRev(negRevRxns),:) ... %vnrp
+                sparse(nMetNegRev, nNegRev*(varsPerNegRev-1) + nEssRev*6 + nMetabolMets*2) ... %zeros up to vnrbm
+                spdiags(-bigMMetNegRev,0,nMetNegRev,nMetNegRev) ... %vnrbm
+                speye(nMetNegRev) ... % vnrvm1
+                sparse(nMetNegRev, nMetNegRev*2 + nMetNegIrrev)];%fill up the rest with zeros
+    %vnrn + M*vnrbm + vnrvm2 == 0
+    metRows3 = [sparse(nMetNegRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev) ... %zeros up to vnrn
+                nrEye(metNegRev(negRevRxns),:) ... %vnrp
+                sparse(nMetNegRev, nNegRev*(varsPerNegRev-2) + nEssRev*6 + nMetabolMets*2) ... %zeros up to vnrbm
+                spdiags(bigMMetNegRev,0,nMetNegRev,nMetNegRev) ... %vnrbm
+                sparse(nMetNegRev, nMetNegRev) ... %zeros up to vnrvm2
+                speye(nMetNegRev) ... % vnrvm2
+                sparse(nMetNegRev, nMetNegRev + nMetNegIrrev)];%fill up the rest with zeros
+    %-0.1*Yi + vnrp + vnrn - vnrvm3 == 0
+    metRows4 = [sparse(nMetNegRev,nRxns + nPosIrrev + nPosRev + nNegIrrev) ... %zeros up to Yi for neg rev
+                nrEye(metNegRev(negRevRxns),:)*-0.1 ... %Yi for met neg rev
+                sparse(nMetNegRev, nPosIrrev + nPosRev*6 + nNegIrrev) ... %zeros up to vnrp
+                nrEye(metNegRev(negRevRxns),:) ... %vnrp
+                nrEye(metNegRev(negRevRxns),:) ... %vnrn
+                sparse(nMetNegRev, nNegRev*(varsPerNegRev-2) + nEssRev*6 + nMetabolMets*2 + nMetNegRev*3) ...%zeros up to vnrvm3
+                speye(nMetNegRev)*-1 ... % vnrvm3
+                sparse(nMetNegRev, nMetNegIrrev)];%fill up the rest with zeros
+    
+    %Then negative irrev, i.e. flux - 0.1*Yi - vnim == 0
+    niEye = speye(nNegIrrev);
+    metRows5 = [sEye(metNegIrrev,:) ... %flux
+                sparse(nMetNegIrrev, nPosIrrev + nPosRev) ... % zeros up to Yi for neg irrev
+                niEye(metNegIrrev(negIrrevRxns),:)*-0.1 ... %Yi for met neg irrev
+                sparse(nMetNegIrrev, nNegRev + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev + nEssRev*6 + nMetabolMets*2 + 4*nMetNegRev) ... %zeros up to vnim
+                -speye(nMetNegIrrev) ]; %vnim
+    metRows = [metRows1;metRows2;metRows3;metRows4;metRows5];
+    metVarC = [ones(nMetabolMets,1)*-prodWeight;zeros(nMetVars - nMetabolMets,1)];
+    %vnrbm is boolean, so between 0 and 1
+    %vnrvm1 >= 0
+    %-100 <= vnrvm2 <= inf
+    % vnrvm3 >= 0
+    %0 <= vnim <= Inf
+    metLb = [zeros(nMetabolMets*2 + 2*nMetNegRev,1);-bigMMetNegRev;zeros(nMetNegRev + nMetNegIrrev,1)];
+    metUb = [ones(nMetabolMets,1);inf(nMetabolMets,1);ones(nMetNegRev,1);inf(3*nMetNegRev + nMetNegIrrev,1)];
+    metVartype = [repmat('C', 1, nMetabolMets*2), ...
+                  repmat('B', 1, nMetNegRev), ...
+                  repmat('C', 1, 3*nMetNegRev + nMetNegIrrev)];
+
+else
+    metRows = [];
+    metVarC = [];
+    metLb = [];
+    metUb = [];
+    metVartype = [];
+end
+
+prob.a = [sRow;piRows;prRows1;prRows2;prRows3;prRows4;niRows;nrRows;erRows1;erRows2;erRows3;erRows4;metRows];
+prob.A = prob.a;
+prob.b = zeros(size(prob.A,1),1);
+prob.c = [zeros(nRxns,1);rxnScores(posIrrevRxns)*-1;rxnScores(posRevRxns)*-1;rxnScores(negIrrevRxns)*-1;rxnScores(negRevRxns)*-1;zeros(nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev + nEssRev*6,1);metVarC];
+prob.lb = [milpModel.lb;zeros(nYBlock + nPosIrrev + 5*nPosRev,1);-bigMPosRev;zeros(nNegIrrev+nNegRev*varsPerNegRev+nEssRev*2,1);ones(nEssRev,1)*forceOnLim;zeros(nEssRev*2,1);-bigMEssRev;metLb];
+prob.lb(essIrrevRxns) = forceOnLimEss(essIrrevRxns);%force flux for the ess irrev rxns - this is the only way these are handled
+prob.ub = [milpModel.ub;ones(nYBlock,1);inf(nPosIrrev+nPosRev*2,1);ones(nPosRev,1);inf(3*nPosRev+nNegIrrev+varsPerNegRev*nNegRev+3*nEssRev,1);ones(nEssRev,1);inf(2*nEssRev,1);metUb];
+
+prob.vartype = [repmat('C', 1, nRxns + nPosIrrev + nPosRev), ...
+                repmat('B', 1, nNegIrrev + nNegRev), ...
+                repmat('C', 1, nPosIrrev + 2*nPosRev), ... 
+                repmat('B', 1, nPosRev), ...
+                repmat('C', 1, 3*nPosRev + nNegIrrev + varsPerNegRev*nNegRev + 3*nEssRev), ...
+                repmat('B', 1, nEssRev), ...
+                repmat('C', 1, 2*nEssRev), ...
+                metVartype];
+            
+onoffVarInd = (1:(nPosIrrev + nPosRev + nNegIrrev + nNegRev)) + nRxns;
+onoffPosIrrev = onoffVarInd(1:nPosIrrev);
+onoffPosRev = onoffVarInd((1:nPosRev)+nPosIrrev);
+onoffNegIrrev = onoffVarInd((1:nNegIrrev)+nPosIrrev+nPosRev);
+onoffNegRev = onoffVarInd((1:nNegRev)+nPosIrrev+nPosRev+nNegIrrev);
+
+metVarInd = (1:nMetabolMets) + (length(prob.vartype) - nMetVars);
+
+if allowExcretion
+    %S*v >= 0: a metabolite may be produced in excess of what is consumed,
+    %and the surplus is implicitly excreted. 'L' would say S*v <= 0, which
+    %lets a metabolite be consumed without ever being produced -- free
+    %uptake, the opposite of excretion, and enough for the MILP to switch a
+    %reaction on by conjuring its substrates out of nothing.
+    prob.csense = [repmat('G', 1, length(milpModel.mets)), ...
+                  repmat('E', 1, length(prob.b) - length(milpModel.mets))];
+else
+    %One character per row: optimizeProb maps csense elementwise for glpk and
+    %cobra, so a scalar '=' only happens to work on gurobi.
+    prob.csense = repmat('E', 1, length(prob.b));
+end
+
+params.intTol = 10^-7; %This value is very important. If set too low
+                       %there is a risk that gurobi fails due to numerical
+                       %issues - this happened for Gurobi v. 10.0 with TestModelL.
+                       %On the other hand, it should not be too large
+                       %either. With this value, fluxes of 10-7 can slip
+                       %through, which should be fine. Another option if
+                       %this becomes a problem is to set NumericFocus=2,
+                       %which makes the solver slower but fixes the issue
+                       %with TestModelL.
+
+prob.osense = 1; %minimize
+
+if ~isempty(startVals)
+     prob.start = startVals; %This doesn't work...
+end
+
+res=optimizeProb(prob,params,verbose);
+
+
+if ~checkSolution(res)
+    if res.hitTimeLimit
+        EM='Time limit reached without finding a solution. Try increasing the TimeLimit parameter.';
+    else
+        EM='The problem is infeasible';
+    end
+    error('RAVEN:badInput', '%s', EM);
+end
+
+if resolveTies && (nNegIrrev + nNegRev) > 0 && ~res.hitTimeLimit
+    %Skipped when the primary solve stopped at the time limit: the floor
+    %constraint would pin an unproven incumbent, so the phases cannot select
+    %among true optima.
+    %This MILP is highly degenerate: many reaction subsets reach the same
+    %score optimum, and the solver returns an arbitrary one -- reproducible
+    %for a fixed solver build + Seed, but fragile to a solver version bump
+    %(raven-gecko-parity#104). This runs a lexicographic phase 2, holding
+    %the score objective at its optimum with a floor constraint: first
+    %minimise the count of "on" removable reactions (the sparsest optimum),
+    %then, among the sparsest, minimise their summed reaction-id rank
+    %(prefer lower ids). Only the negative-score "on" variables (onoffNegIrrev,
+    %onoffNegRev) are a genuine tie to resolve: positive-score ones are
+    %continuous, pinned near 1 by the score objective rather than a free
+    %binary choice. Ports raven-toolbox's _resolve_ties (raven-toolbox#114).
+    negCols = [onoffNegIrrev, onoffNegRev];
+    negRxnIdx = [negIrrevRxns; negRevRxns];
+    primaryObj = full(prob.c' * res.full);
+    tol = max(abs(primaryObj)*1e-7, 1e-7);
+
+    floorRow = prob.c';
+    tieProb = prob;
+    tieProb.A = [prob.A; floorRow];
+    tieProb.a = tieProb.A;
+    tieProb.b = [prob.b; primaryObj+tol];
+    tieProb.csense = [prob.csense 'L'];
+
+    %An integer objective needs only a cheap absolute-gap proof, not a tiny
+    %relative one -- mirrors raven-toolbox's own MIPGap=0/MIPGapAbs=0.4 for
+    %the same two phases.
+    tieParams = params;
+    tieParams.MIPGap = 0;
+    tieParams.MIPGapAbs = 0.4;
+    %Phases 2a and 2b get half of the time limit each, as in raven-toolbox.
+    if isfield(tieParams,'TimeLimit')
+        tieParams.TimeLimit = max(1,floor(tieParams.TimeLimit*0.5));
+    end
+
+    unproven = {};
+
+    %Phase 2a: fewest "on" removable reactions among the score-optimal solutions.
+    countObj = zeros(size(prob.c));
+    countObj(negCols) = 1;
+    tieProb.c = countObj;
+    res2a = optimizeProb(tieProb,tieParams,verbose);
+    [isFeasible2a, isOptimal2a] = checkSolution(res2a);
+    if ~isOptimal2a
+        unproven{end+1} = 'phase2a-parsimony';
+    end
+    if isFeasible2a
+        kmin = full(countObj'*res2a.full);
+
+        %Phase 2b: among the sparsest, prefer lower reaction ids -- a
+        %deterministic tie-break independent of solver/seed.
+        countRow = sparse(1,size(tieProb.A,2));
+        countRow(negCols) = 1;
+        tieProb2b = tieProb;
+        tieProb2b.A = [tieProb.A; countRow];
+        tieProb2b.a = tieProb2b.A;
+        tieProb2b.b = [tieProb.b; kmin+0.5];
+        tieProb2b.csense = [tieProb.csense 'L'];
+
+        [~, sortOrder] = sort(rankKeys(negRxnIdx));
+        ranks = zeros(numel(negRxnIdx),1);
+        ranks(sortOrder) = (1:numel(negRxnIdx))';
+        idObj = zeros(size(prob.c));
+        idObj(negCols) = ranks;
+        tieProb2b.c = idObj;
+        res2b = optimizeProb(tieProb2b,tieParams,verbose);
+        [isFeasible2b, isOptimal2b] = checkSolution(res2b);
+        if ~isOptimal2b
+            unproven{end+1} = 'phase2b-idrank';
+        end
+        if isFeasible2b
+            %Adopt the tie-resolved solution for the on/off read-out below.
+            res = res2b;
+
+            %Phases 2c and 2d change the fluxes, not the on/off state; the next
+            %ftINIT step reads the fluxes, and pinFluxes is false when no step
+            %follows.
+            if pinFluxes
+                %Phase 2c: the least total absolute flux for this on/off state.
+                %The next step forces each turned-on reaction in the direction
+                %of its flux, at min(0.99*|flux|,0.1), so the flux read-out
+                %comes from a minimal-flux solution instead of an arbitrary
+                %vertex. A binary on/off variable is fixed at its value; a
+                %continuous one that is on keeps at least its value, one that
+                %is off at most its value. Directions of reversible scored
+                %reactions stay free, so this is still a MILP.
+                %It stops at a relative or absolute gap of 1e-6, as raven-toolbox's
+                %phase 2c.
+                nCols = numel(prob.c);
+                minProb = tieProb2b;
+                if isfield(minProb,'start')
+                    minProb = rmfield(minProb,'start');
+                end
+                x = res2b.full;
+                negVal = round(x(negCols));
+                minProb.lb(negCols) = negVal;
+                minProb.ub(negCols) = negVal;
+                posCols = [onoffPosIrrev, onoffPosRev];
+                posVal = min(max(x(posCols),0),1);
+                posOn = posVal >= 0.5;
+                minProb.lb(posCols(posOn)) = posVal(posOn);
+                minProb.ub(posCols(~posOn)) = posVal(~posOn);
+                %|v| is v for a forward-only flux, -v for a backward-only one,
+                %and an added t >= v, t >= -v otherwise.
+                fwdOnly = minProb.lb(1:nRxns) >= 0;
+                bwdOnly = ~fwdOnly & minProb.ub(1:nRxns) <= 0;
+                tRxns = find(~fwdOnly & ~bwdOnly);
+                nT = numel(tRxns);
+                selV = sparse(1:nT, tRxns, 1, nT, nCols);
+                minProb.A = [minProb.A sparse(size(minProb.A,1),nT); -selV speye(nT); selV speye(nT)];
+                minProb.a = minProb.A;
+                minProb.b = [minProb.b; zeros(2*nT,1)];
+                minProb.csense = [minProb.csense repmat('G',1,2*nT)];
+                minProb.lb = [minProb.lb; zeros(nT,1)];
+                minProb.ub = [minProb.ub; inf(nT,1)];
+                minProb.vartype = [minProb.vartype repmat('C',1,nT)];
+                minProb.c = [zeros(nCols,1); ones(nT,1)];
+                minProb.c(fwdOnly) = 1;
+                minProb.c(bwdOnly) = -1;
+                minParams = params;
+                minParams.MIPGap = 1e-6;
+                minParams.MIPGapAbs = 1e-6;
+                res2c = optimizeProb(minProb,minParams,verbose);
+                [isFeasible2c, isOptimal2c] = checkSolution(res2c);
+                if ~isOptimal2c
+                    unproven{end+1} = 'phase2c-minflux';
+                end
+                if isFeasible2c
+                    %Only the fluxes change; the status stays that of phase 2b.
+                    res.full = res2c.full(1:nCols);
+
+                    %Phase 2d: the least total flux can leave a direction open
+                    %when two directions carry the same total flux, for example
+                    %a pair of reversible reactions closing a loop either way.
+                    %Keep the on/off state of phase 2c, hold the total absolute
+                    %flux at most at its phase-2c value plus
+                    %max(1e-7*total, 1e-6), and minimise the backward flux
+                    %max(0,-v) of the reactions whose flux can take either sign,
+                    %weighted by id rank from the end: sorted by rankKeys, the
+                    %first of n reactions gets weight n and the last 1, so a
+                    %reaction with a lower id prefers its forward direction.
+                    if nT > 0
+                        total = minProb.c' * res2c.full;
+                        dirProb = minProb;
+                        nCols2c = numel(minProb.c);
+                        [~, ord] = sort(rankKeys(tRxns));
+                        w = zeros(nT,1);
+                        w(ord) = (nT:-1:1)';
+                        dirProb.A = [minProb.A sparse(size(minProb.A,1),nT); ...
+                                     minProb.c' sparse(1,nT); ...
+                                     selV sparse(nT,nT) speye(nT)];
+                        dirProb.a = dirProb.A;
+                        dirProb.b = [minProb.b; total + max(abs(total)*1e-7, 1e-6); zeros(nT,1)];
+                        dirProb.csense = [minProb.csense 'L' repmat('G',1,nT)];
+                        dirProb.lb = [minProb.lb; zeros(nT,1)];
+                        dirProb.ub = [minProb.ub; inf(nT,1)];
+                        dirProb.vartype = [minProb.vartype repmat('C',1,nT)];
+                        dirProb.c = [zeros(nCols2c,1); w];
+                        %The phase-2c solution is the MIP start: the tight cap on
+                        %the total flux leaves the solver's heuristics little room
+                        %to find a first solution.
+                        dirProb.start = [res2c.full; max(0, -res2c.full(tRxns))];
+                        res2d = optimizeProb(dirProb,minParams,verbose);
+                        [isFeasible2d, isOptimal2d] = checkSolution(res2d);
+                        if ~isOptimal2d
+                            unproven{end+1} = 'phase2d-direction';
+                        end
+                        if isFeasible2d
+                            res.full = res2d.full(1:nCols);
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if ~isempty(unproven)
+        EM = ['ftINITInternalAlg tie resolution did not converge (' strjoin(unproven,', ') '): the selection among equally score-optimal solutions is itself an unproven incumbent, so resolveTies has reduced but not removed the run-to-run spread. Raise params.TimeLimit for a proven tie-break.'];
+        warning('RAVEN:warning', '%s', EM);
+    end
+end
+
+%get the on/off vals
+onoff = ones(nRxnsWithOnOff,1);%standard is on, i.e. all reactions not included in the problem + ess is on
+onoff(posIrrevRxns) = res.full(onoffPosIrrev);
+onoff(posRevRxns) = res.full(onoffPosRev);
+onoff(negIrrevRxns) = res.full(onoffNegIrrev);
+onoff(negRevRxns) = res.full(onoffNegRev);
+
+onoff2 = zeros(nRxnsWithOnOff,1);%standard is off, i.e. all reactions not included in the problem + ess is off
+onoff2(posIrrevRxns) = res.full(onoffPosIrrev);
+onoff2(posRevRxns) = res.full(onoffPosRev);
+onoff2(negIrrevRxns) = res.full(onoffNegIrrev);
+onoff2(negRevRxns) = res.full(onoffNegRev);
+
+
+%investigate a bit - this code could be used for fault finding. We have
+%this code commented out, but it is definitely worth testing this if for example
+%the solver is changed.
+%problematic = onoff < 0.99 & onoff > 0.01 & (rxnScores ~= 0).';
+%if sum(problematic) > 0
+%    disp("There are reactions that are in between on and off in the MILP. This may be due to the MILP parameter settings, the tolerances may be too large.")
+%    disp(["No problematic reactions: ", num2str(sum(problematic))])
+%end
+
+%so, it is only positive that are problematic. Likely because the 0.1 is too large. Test to change to 0.01
+%unique(onoff(onoff < 0.99 & onoff > 0.01))
+
+%Get all reactions used in the irreversible model
+%The reaction score check is for metabolomics - we add those reactions as 
+%positive even though the score is 0. And, we do not want them included in the
+%results.
+deletedRxns=(onoff < 0.5).' & (rxnScores ~= 0).'; 
+turnedOnRxns=(onoff2 >= 0.5).' & (rxnScores ~= 0).';
+
+fluxes = res.full(1:nRxns);
+
+%extract the met data
+metProduction = logical(round(res.full(metVarInd)));
+
+end

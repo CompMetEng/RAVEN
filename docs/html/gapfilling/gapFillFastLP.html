@@ -1,0 +1,263 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of gapFillFastLP</title>
+  <meta name="keywords" content="gapFillFastLP">
+  <meta name="description" content="gapFillFastLP  LP-based gap-filling (fastGapFill or swiftGapFill).">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">gapfilling</a> &gt; gapFillFastLP.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for gapfilling&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>gapFillFastLP
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>gapFillFastLP  LP-based gap-filling (fastGapFill or swiftGapFill).</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [addedRxns, newModel, cannotConnect] = gapFillFastLP(model, universalModel, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> gapFillFastLP  LP-based gap-filling (fastGapFill or swiftGapFill).
+
+ Merges the draft model with a universal reaction database, then for each
+ blocked draft reaction calls an LP subroutine (FASTCORE or SWIFTCORE) to
+ find the minimum set of database reactions that makes the blocked reaction
+ carry flux. The union of all activated database reactions across all blocked
+ reactions is returned as addedRxns.
+
+ Based on fastGapFill (Thiele et al. 2014, PLoS Comput Biol 10:e1003515)
+ and swiftGapFill (Tefagh &amp; Boyd 2020, BMC Bioinformatics 21:23).
+
+ Parameters
+ ----------
+ model : struct
+     draft RAVEN model to be gap-filled.
+ universalModel : struct
+     universal reaction database (RAVEN model), for example built with
+     getKEGGModelForOrganism with broad scope.
+
+ Name-Value Arguments
+ --------------------
+ epsilon : double
+     minimum flux threshold for a reaction to be considered active
+     (default 1e-4).
+ variant : char
+     the LP subroutine (default 'fast'):
+
+     - 'fast' : use the FASTCORE L1-norm LP (gapFillFastCore).
+     - 'swift' : use the SWIFTCORE single LP (gapFillSwiftCore), which
+       maximises the sum of the non-core fluxes. The LP is degenerate, so
+       results can vary between runs and solvers.
+ verbose : logical
+     true to print progress messages (default true).
+
+ Returns
+ -------
+ addedRxns : cell
+     reaction IDs from universalModel that should be added to rescue
+     blocked reactions.
+ newModel : struct
+     copy of model with addedRxns incorporated.
+ cannotConnect : cell
+     IDs of blocked draft reactions that remain blocked after merging with
+     the full universalModel (the database cannot rescue them).
+
+ See also
+ --------
+ <a href="gapFillFastCore.html" class="code" title="function activeRxns = gapFillFastCore(model, coreRxns, epsilon)">gapFillFastCore</a>, <a href="gapFillSwiftCore.html" class="code" title="function activeRxns = gapFillSwiftCore(model, coreRxns, epsilon)">gapFillSwiftCore</a>, <a href="gapFillMILP.html" class="code" title="function [addedRxns, newModel, exitFlag] = gapFillMILP(model, universalModel, varargin)">gapFillMILP</a>, <a href="fillGaps.html" class="code" title="function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(model,models,varargin)">fillGaps</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="gapFillFastCore.html" class="code" title="function activeRxns = gapFillFastCore(model, coreRxns, epsilon)">gapFillFastCore</a>	gapFillFastCore  L1-norm LP subroutine for fastGapFill.</li><li><a href="gapFillSwiftCore.html" class="code" title="function activeRxns = gapFillSwiftCore(model, coreRxns, epsilon)">gapFillSwiftCore</a>	gapFillSwiftCore  SWIFTCORE LP subroutine for swiftGapFill.</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="fillGaps.html" class="code" title="function [newConnected, cannotConnect, addedRxns, newModel, exitFlag]=fillGaps(model,models,varargin)">fillGaps</a>	fillGaps  Use template model(s) to fill gaps in a model.</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [addedRxns, newModel, cannotConnect] = gapFillFastLP(model, universalModel, varargin)</a>
+0002 <span class="comment">% gapFillFastLP  LP-based gap-filling (fastGapFill or swiftGapFill).</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Merges the draft model with a universal reaction database, then for each</span>
+0005 <span class="comment">% blocked draft reaction calls an LP subroutine (FASTCORE or SWIFTCORE) to</span>
+0006 <span class="comment">% find the minimum set of database reactions that makes the blocked reaction</span>
+0007 <span class="comment">% carry flux. The union of all activated database reactions across all blocked</span>
+0008 <span class="comment">% reactions is returned as addedRxns.</span>
+0009 <span class="comment">%</span>
+0010 <span class="comment">% Based on fastGapFill (Thiele et al. 2014, PLoS Comput Biol 10:e1003515)</span>
+0011 <span class="comment">% and swiftGapFill (Tefagh &amp; Boyd 2020, BMC Bioinformatics 21:23).</span>
+0012 <span class="comment">%</span>
+0013 <span class="comment">% Parameters</span>
+0014 <span class="comment">% ----------</span>
+0015 <span class="comment">% model : struct</span>
+0016 <span class="comment">%     draft RAVEN model to be gap-filled.</span>
+0017 <span class="comment">% universalModel : struct</span>
+0018 <span class="comment">%     universal reaction database (RAVEN model), for example built with</span>
+0019 <span class="comment">%     getKEGGModelForOrganism with broad scope.</span>
+0020 <span class="comment">%</span>
+0021 <span class="comment">% Name-Value Arguments</span>
+0022 <span class="comment">% --------------------</span>
+0023 <span class="comment">% epsilon : double</span>
+0024 <span class="comment">%     minimum flux threshold for a reaction to be considered active</span>
+0025 <span class="comment">%     (default 1e-4).</span>
+0026 <span class="comment">% variant : char</span>
+0027 <span class="comment">%     the LP subroutine (default 'fast'):</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">%     - 'fast' : use the FASTCORE L1-norm LP (gapFillFastCore).</span>
+0030 <span class="comment">%     - 'swift' : use the SWIFTCORE single LP (gapFillSwiftCore), which</span>
+0031 <span class="comment">%       maximises the sum of the non-core fluxes. The LP is degenerate, so</span>
+0032 <span class="comment">%       results can vary between runs and solvers.</span>
+0033 <span class="comment">% verbose : logical</span>
+0034 <span class="comment">%     true to print progress messages (default true).</span>
+0035 <span class="comment">%</span>
+0036 <span class="comment">% Returns</span>
+0037 <span class="comment">% -------</span>
+0038 <span class="comment">% addedRxns : cell</span>
+0039 <span class="comment">%     reaction IDs from universalModel that should be added to rescue</span>
+0040 <span class="comment">%     blocked reactions.</span>
+0041 <span class="comment">% newModel : struct</span>
+0042 <span class="comment">%     copy of model with addedRxns incorporated.</span>
+0043 <span class="comment">% cannotConnect : cell</span>
+0044 <span class="comment">%     IDs of blocked draft reactions that remain blocked after merging with</span>
+0045 <span class="comment">%     the full universalModel (the database cannot rescue them).</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">% See also</span>
+0048 <span class="comment">% --------</span>
+0049 <span class="comment">% gapFillFastCore, gapFillSwiftCore, gapFillMILP, fillGaps</span>
+0050 
+0051 <span class="comment">% ---- Parse optional arguments ----</span>
+0052 p = inputParser();
+0053 addParameter(p, <span class="string">'epsilon'</span>, 1e-4,   @isnumeric);
+0054 addParameter(p, <span class="string">'variant'</span>, <span class="string">'fast'</span>, @ischar);
+0055 addParameter(p, <span class="string">'verbose'</span>, true,   @islogical);
+0056 parse(p, varargin{:});
+0057 epsilon = p.Results.epsilon;
+0058 variant = lower(p.Results.variant);
+0059 verbose = p.Results.verbose;
+0060 
+0061 <span class="comment">% ---- Initialise outputs ----</span>
+0062 addedRxns    = {};
+0063 cannotConnect = {};
+0064 newModel     = model;
+0065 
+0066 <span class="comment">% ---- Identify blocked reactions in the draft model ----</span>
+0067 blocked = find(~haveFlux(model, epsilon));
+0068 <span class="keyword">if</span> isempty(blocked)
+0069     <span class="keyword">if</span> verbose
+0070         fprintf(<span class="string">'gapFillFastLP: all reactions carry flux; nothing to repair.\n'</span>);
+0071     <span class="keyword">end</span>
+0072     <span class="keyword">return</span>;
+0073 <span class="keyword">end</span>
+0074 nBlocked = numel(blocked);
+0075 <span class="keyword">if</span> verbose
+0076     fprintf(<span class="string">'gapFillFastLP: %d blocked reaction(s) found in draft model.\n'</span>, nBlocked);
+0077 <span class="keyword">end</span>
+0078 
+0079 <span class="comment">% ---- Merge draft + universal database ----</span>
+0080 mergedModel = mergeModels({model; universalModel});
+0081 
+0082 <span class="comment">% For each draft reaction, find its position in the merged model.</span>
+0083 [inMerged, draftPosInMerged] = ismember(model.rxns, mergedModel.rxns);
+0084 <span class="keyword">if</span> any(~inMerged)
+0085     warning(<span class="string">'gapFillFastLP: %d draft reaction(s) not found in merged model — skipped.'</span>, sum(~inMerged));
+0086 <span class="keyword">end</span>
+0087 
+0088 <span class="comment">% ---- Determine which blocked reactions can carry flux in the merged model ----</span>
+0089 mergedHasFlux = haveFlux(mergedModel, epsilon);
+0090 draftCanCarry = mergedHasFlux(draftPosInMerged);   <span class="comment">% indexed by draft position</span>
+0091 
+0092 <span class="comment">% Blocked reactions that still cannot carry flux even with the full DB.</span>
+0093 blockedCanCarry = draftCanCarry(blocked);
+0094 cannotConnectIdx = blocked(~blockedCanCarry);
+0095 cannotConnect    = model.rxns(cannotConnectIdx);
+0096 rescuable        = blocked(blockedCanCarry);
+0097 
+0098 <span class="keyword">if</span> verbose &amp;&amp; ~isempty(cannotConnect)
+0099     fprintf(<span class="string">'gapFillFastLP: %d reaction(s) cannot be rescued by the universal database.\n'</span>, <span class="keyword">...</span>
+0100         numel(cannotConnect));
+0101 <span class="keyword">end</span>
+0102 
+0103 <span class="keyword">if</span> isempty(rescuable)
+0104     <span class="keyword">if</span> verbose
+0105         fprintf(<span class="string">'gapFillFastLP: no rescuable blocked reactions; nothing to add.\n'</span>);
+0106     <span class="keyword">end</span>
+0107     <span class="keyword">return</span>;
+0108 <span class="keyword">end</span>
+0109 <span class="keyword">if</span> verbose
+0110     fprintf(<span class="string">'gapFillFastLP: %d/%d blocked reaction(s) are rescuable; running %s...\n'</span>, <span class="keyword">...</span>
+0111         numel(rescuable), nBlocked, variant);
+0112 <span class="keyword">end</span>
+0113 
+0114 <span class="comment">% ---- For each rescuable blocked reaction, run the LP subroutine ----</span>
+0115 <span class="comment">% Accumulate which merged-model reactions are activated.</span>
+0116 isUniversal   = ~ismember(mergedModel.rxns, model.rxns);
+0117 candidateSet  = false(numel(mergedModel.rxns), 1);
+0118 
+0119 nSkipped = 0;
+0120 <span class="keyword">for</span> i = 1:numel(rescuable)
+0121     coreIdxInMerged = draftPosInMerged(rescuable(i));
+0122     <span class="keyword">if</span> coreIdxInMerged == 0
+0123         nSkipped = nSkipped + 1;
+0124         <span class="keyword">continue</span>;
+0125     <span class="keyword">end</span>
+0126 
+0127     <span class="keyword">if</span> strcmp(variant, <span class="string">'swift'</span>)
+0128         active = <a href="gapFillSwiftCore.html" class="code" title="function activeRxns = gapFillSwiftCore(model, coreRxns, epsilon)">gapFillSwiftCore</a>(mergedModel, coreIdxInMerged, epsilon);
+0129     <span class="keyword">else</span>
+0130         active = <a href="gapFillFastCore.html" class="code" title="function activeRxns = gapFillFastCore(model, coreRxns, epsilon)">gapFillFastCore</a>(mergedModel, coreIdxInMerged, epsilon);
+0131     <span class="keyword">end</span>
+0132 
+0133     <span class="keyword">if</span> any(active)
+0134         candidateSet = candidateSet | active;
+0135     <span class="keyword">else</span>
+0136         nSkipped = nSkipped + 1;
+0137         <span class="keyword">if</span> verbose
+0138             fprintf(<span class="string">'gapFillFastLP: LP infeasible for %s; skipping.\n'</span>, model.rxns{rescuable(i)});
+0139         <span class="keyword">end</span>
+0140     <span class="keyword">end</span>
+0141 <span class="keyword">end</span>
+0142 
+0143 <span class="keyword">if</span> verbose &amp;&amp; nSkipped &gt; 0
+0144     fprintf(<span class="string">'gapFillFastLP: %d reaction(s) skipped (infeasible LP).\n'</span>, nSkipped);
+0145 <span class="keyword">end</span>
+0146 
+0147 <span class="comment">% ---- Extract universal reactions that appear in any solution ----</span>
+0148 addedMask = candidateSet &amp; isUniversal;
+0149 addedRxns = mergedModel.rxns(addedMask);
+0150 
+0151 <span class="keyword">if</span> isempty(addedRxns)
+0152     <span class="keyword">if</span> verbose
+0153         fprintf(<span class="string">'gapFillFastLP: no universal reactions needed (all gaps already resolved).\n'</span>);
+0154     <span class="keyword">end</span>
+0155     <span class="keyword">return</span>;
+0156 <span class="keyword">end</span>
+0157 
+0158 <span class="comment">% ---- Build new model: draft + selected universal reactions ----</span>
+0159 toRemove = find(isUniversal &amp; ~addedMask);
+0160 <span class="keyword">if</span> ~isempty(toRemove)
+0161     newModel = removeReactions(mergedModel, mergedModel.rxns(toRemove));
+0162 <span class="keyword">else</span>
+0163     newModel = mergedModel;
+0164 <span class="keyword">end</span>
+0165 
+0166 <span class="keyword">if</span> verbose
+0167     fprintf(<span class="string">'gapFillFastLP: added %d reaction(s) from universal database.\n'</span>, numel(addedRxns));
+0168 <span class="keyword">end</span>
+0169 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

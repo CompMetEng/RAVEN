@@ -1,0 +1,321 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of compareFluxes</title>
+  <meta name="keywords" content="compareFluxes">
+  <meta name="description" content="compareFluxes  Find the reactions whose flux differs between two flux vectors.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">analysis</a> &gt; compareFluxes.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for analysis&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>compareFluxes
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>compareFluxes  Find the reactions whose flux differs between two flux vectors.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function result = compareFluxes(model, fluxes1, fluxes2, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> compareFluxes  Find the reactions whose flux differs between two flux vectors.
+
+ Compares two flux vectors from the same model and returns all reactions
+ that changed, sorted by absolute flux difference. Classifies reactions as
+ turned on, turned off, reversed direction, or changed magnitude.
+
+ Parameters
+ ----------
+ model : struct
+     a model structure.
+ fluxes1 : double
+     reference flux vector (condition A, such as wild-type).
+ fluxes2 : double
+     comparison flux vector (condition B, such as a mutant or knock-in).
+
+ Name-Value Arguments
+ --------------------
+ cutoff : double
+     minimum |flux| for a reaction to be active, and minimum |flux2 - flux1|
+     for a reaction to be changed (default 1e-8).
+ metaboliteList : cell
+     cell array of metabolite names. Only reactions involving at least one
+     of these metabolites are compared; all other reactions are excluded
+     from every field of the result. Matching is against model.metNames and
+     is case insensitive. A name that matches no metabolite is reported as
+     a warning (default all reactions).
+ nMax : double
+     maximum rows printed in the summary table (default 20).
+ verbose : logical
+     print the summary table (default true).
+
+ Returns
+ -------
+ result : struct
+     structure with fields:
+
+     - turnedOn : cell array with the IDs of reactions that are active in
+       fluxes2 and not in fluxes1.
+     - turnedOff : cell array with the IDs of reactions that are active in
+       fluxes1 and not in fluxes2.
+     - flipped : cell array with the IDs of reactions that are active in
+       both conditions and change sign.
+     - changed : struct with fields for all reactions with |flux2 - flux1|
+       above cutoff, sorted by |flux2 - flux1| descending:
+
+       - rxn : cell array with the reaction IDs.
+       - flux1 : double array with the flux in condition A.
+       - flux2 : double array with the flux in condition B.
+       - absDelta : double array with |flux2 - flux1|.
+       - relChange : double array with (flux2 - flux1)/|flux1|. NaN when
+         |flux1| is below cutoff.
+       - type : cell array with 'on', 'off', 'flip' or '' (changed
+         magnitude) for each reaction.
+
+ Examples
+ --------
+     solA = solveLP(model);
+     modelAna = setParam(model, 'ub', 'O2exchange', 0);
+     solB = solveLP(modelAna);
+     result = compareFluxes(model, solA.x, solB.x)
+     result = compareFluxes(model, solA.x, solB.x, 'nMax', 50)
+     result = compareFluxes(model, solA.x, solB.x, 'metaboliteList', {'ATP','NADH'})
+
+ See also
+ --------
+ <a href="walkFluxes.html" class="code" title="function walkFluxes(model, fluxes, startRxn, varargin)">walkFluxes</a>, <a href="traceFluxPath.html" class="code" title="function [pathRxns, pathMets, cumFrac] = traceFluxPath(model, fluxes, fromRxn, toRxn, varargin)">traceFluxPath</a>, modelSummary</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function printTable_(model, r, nMax, nConsidered)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function result = compareFluxes(model, fluxes1, fluxes2, varargin)</a>
+0002 <span class="comment">% compareFluxes  Find the reactions whose flux differs between two flux vectors.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Compares two flux vectors from the same model and returns all reactions</span>
+0005 <span class="comment">% that changed, sorted by absolute flux difference. Classifies reactions as</span>
+0006 <span class="comment">% turned on, turned off, reversed direction, or changed magnitude.</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">% Parameters</span>
+0009 <span class="comment">% ----------</span>
+0010 <span class="comment">% model : struct</span>
+0011 <span class="comment">%     a model structure.</span>
+0012 <span class="comment">% fluxes1 : double</span>
+0013 <span class="comment">%     reference flux vector (condition A, such as wild-type).</span>
+0014 <span class="comment">% fluxes2 : double</span>
+0015 <span class="comment">%     comparison flux vector (condition B, such as a mutant or knock-in).</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">% Name-Value Arguments</span>
+0018 <span class="comment">% --------------------</span>
+0019 <span class="comment">% cutoff : double</span>
+0020 <span class="comment">%     minimum |flux| for a reaction to be active, and minimum |flux2 - flux1|</span>
+0021 <span class="comment">%     for a reaction to be changed (default 1e-8).</span>
+0022 <span class="comment">% metaboliteList : cell</span>
+0023 <span class="comment">%     cell array of metabolite names. Only reactions involving at least one</span>
+0024 <span class="comment">%     of these metabolites are compared; all other reactions are excluded</span>
+0025 <span class="comment">%     from every field of the result. Matching is against model.metNames and</span>
+0026 <span class="comment">%     is case insensitive. A name that matches no metabolite is reported as</span>
+0027 <span class="comment">%     a warning (default all reactions).</span>
+0028 <span class="comment">% nMax : double</span>
+0029 <span class="comment">%     maximum rows printed in the summary table (default 20).</span>
+0030 <span class="comment">% verbose : logical</span>
+0031 <span class="comment">%     print the summary table (default true).</span>
+0032 <span class="comment">%</span>
+0033 <span class="comment">% Returns</span>
+0034 <span class="comment">% -------</span>
+0035 <span class="comment">% result : struct</span>
+0036 <span class="comment">%     structure with fields:</span>
+0037 <span class="comment">%</span>
+0038 <span class="comment">%     - turnedOn : cell array with the IDs of reactions that are active in</span>
+0039 <span class="comment">%       fluxes2 and not in fluxes1.</span>
+0040 <span class="comment">%     - turnedOff : cell array with the IDs of reactions that are active in</span>
+0041 <span class="comment">%       fluxes1 and not in fluxes2.</span>
+0042 <span class="comment">%     - flipped : cell array with the IDs of reactions that are active in</span>
+0043 <span class="comment">%       both conditions and change sign.</span>
+0044 <span class="comment">%     - changed : struct with fields for all reactions with |flux2 - flux1|</span>
+0045 <span class="comment">%       above cutoff, sorted by |flux2 - flux1| descending:</span>
+0046 <span class="comment">%</span>
+0047 <span class="comment">%       - rxn : cell array with the reaction IDs.</span>
+0048 <span class="comment">%       - flux1 : double array with the flux in condition A.</span>
+0049 <span class="comment">%       - flux2 : double array with the flux in condition B.</span>
+0050 <span class="comment">%       - absDelta : double array with |flux2 - flux1|.</span>
+0051 <span class="comment">%       - relChange : double array with (flux2 - flux1)/|flux1|. NaN when</span>
+0052 <span class="comment">%         |flux1| is below cutoff.</span>
+0053 <span class="comment">%       - type : cell array with 'on', 'off', 'flip' or '' (changed</span>
+0054 <span class="comment">%         magnitude) for each reaction.</span>
+0055 <span class="comment">%</span>
+0056 <span class="comment">% Examples</span>
+0057 <span class="comment">% --------</span>
+0058 <span class="comment">%     solA = solveLP(model);</span>
+0059 <span class="comment">%     modelAna = setParam(model, 'ub', 'O2exchange', 0);</span>
+0060 <span class="comment">%     solB = solveLP(modelAna);</span>
+0061 <span class="comment">%     result = compareFluxes(model, solA.x, solB.x)</span>
+0062 <span class="comment">%     result = compareFluxes(model, solA.x, solB.x, 'nMax', 50)</span>
+0063 <span class="comment">%     result = compareFluxes(model, solA.x, solB.x, 'metaboliteList', {'ATP','NADH'})</span>
+0064 <span class="comment">%</span>
+0065 <span class="comment">% See also</span>
+0066 <span class="comment">% --------</span>
+0067 <span class="comment">% walkFluxes, traceFluxPath, modelSummary</span>
+0068 
+0069 p = parseRAVENargs(varargin, {<span class="string">'cutoff'</span>,1e-8; <span class="string">'metaboliteList'</span>,[]; <span class="string">'nMax'</span>,20; <span class="string">'verbose'</span>,true});
+0070 cutoff         = p.cutoff;
+0071 metaboliteList = p.metaboliteList;
+0072 nMax           = p.nMax;
+0073 verbose        = p.verbose;
+0074 
+0075 f1    = fluxes1(:);
+0076 f2    = fluxes2(:);
+0077 nRxns = numel(model.rxns);
+0078 
+0079 <span class="keyword">if</span> numel(f1) ~= nRxns || numel(f2) ~= nRxns
+0080     error(<span class="string">'RAVEN:badInput'</span>, <span class="keyword">...</span>
+0081         <span class="string">'Flux vectors must have %d elements (numel(model.rxns)).'</span>, nRxns);
+0082 <span class="keyword">end</span>
+0083 
+0084 active1 = abs(f1) &gt; cutoff;
+0085 active2 = abs(f2) &gt; cutoff;
+0086 delta   = f2 - f1;
+0087 
+0088 <span class="comment">% Restrict to reactions involving one of metaboliteList, if given. Reactions</span>
+0089 <span class="comment">% left out are treated as unchanged, so they appear in no output field.</span>
+0090 inList = true(nRxns, 1);
+0091 <span class="keyword">if</span> ~isempty(metaboliteList)
+0092     metaboliteList = convertCharArray(metaboliteList);
+0093     inList = false(nRxns, 1);
+0094     notFound = {};
+0095     <span class="keyword">for</span> i = 1:numel(metaboliteList)
+0096         metIdx = find(strcmpi(metaboliteList{i}, model.metNames));
+0097         <span class="keyword">if</span> isempty(metIdx)
+0098             notFound{end+1} = metaboliteList{i}; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0099         <span class="keyword">else</span>
+0100             inList(any(model.S(metIdx,:) ~= 0, 1)) = true;
+0101         <span class="keyword">end</span>
+0102     <span class="keyword">end</span>
+0103     <span class="keyword">if</span> ~isempty(notFound)
+0104         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, <span class="keyword">...</span>
+0105             ravenList(<span class="string">'No metabolite in the model is named:'</span>, notFound));
+0106     <span class="keyword">end</span>
+0107     active1(~inList) = false;
+0108     active2(~inList) = false;
+0109     delta(~inList)   = 0;
+0110 <span class="keyword">end</span>
+0111 
+0112 onMask   = ~active1 &amp;  active2;
+0113 offMask  =  active1 &amp; ~active2;
+0114 flipMask =  active1 &amp;  active2 &amp; sign(f1) ~= sign(f2);
+0115 
+0116 result.turnedOn  = model.rxns(onMask);
+0117 result.turnedOff = model.rxns(offMask);
+0118 result.flipped   = model.rxns(flipMask);
+0119 
+0120 <span class="comment">% All changed reactions sorted by |delta| descending</span>
+0121 changedMask = abs(delta) &gt; cutoff;
+0122 [~, si]     = sort(abs(delta(changedMask)), <span class="string">'descend'</span>);
+0123 idx = find(changedMask);
+0124 idx = idx(si);
+0125 
+0126 <span class="comment">% Relative change: (f2-f1)/|f1|; NaN when reference flux is near-zero</span>
+0127 denom = abs(f1(idx));
+0128 denom(denom &lt; cutoff) = NaN;
+0129 relChange = delta(idx) ./ denom;
+0130 
+0131 <span class="comment">% Type label per changed reaction</span>
+0132 changedTypes = repmat({<span class="string">''</span>}, numel(idx), 1);
+0133 <span class="keyword">for</span> k = 1:numel(idx)
+0134     ri = idx(k);
+0135     <span class="keyword">if</span> onMask(ri)
+0136         changedTypes{k} = <span class="string">'on'</span>;
+0137     <span class="keyword">elseif</span> offMask(ri)
+0138         changedTypes{k} = <span class="string">'off'</span>;
+0139     <span class="keyword">elseif</span> flipMask(ri)
+0140         changedTypes{k} = <span class="string">'flip'</span>;
+0141     <span class="keyword">end</span>
+0142 <span class="keyword">end</span>
+0143 
+0144 result.changed.rxn       = model.rxns(idx);
+0145 result.changed.flux1     = f1(idx);
+0146 result.changed.flux2     = f2(idx);
+0147 result.changed.absDelta  = abs(delta(idx));
+0148 result.changed.relChange = relChange;
+0149 result.changed.type      = changedTypes;
+0150 
+0151 <span class="keyword">if</span> verbose
+0152     <a href="#_sub1" class="code" title="subfunction printTable_(model, r, nMax, nConsidered)">printTable_</a>(model, result, nMax, nnz(inList));
+0153 <span class="keyword">end</span>
+0154 <span class="keyword">end</span>
+0155 
+0156 <span class="comment">%--------------------------------------------------------------------------</span>
+0157 <a name="_sub1" href="#_subfunctions" class="code">function printTable_(model, r, nMax, nConsidered)</a>
+0158     W   = 72;
+0159     bar = repmat(<span class="string">'='</span>, 1, W);
+0160     sep = repmat(<span class="string">'-'</span>, 1, W);
+0161     nC  = numel(r.changed.rxn);
+0162 
+0163     fprintf(<span class="string">'\n%s\n'</span>, bar);
+0164     fprintf(<span class="string">'  Flux comparison: %d of %d reactions changed\n'</span>, nC, nConsidered);
+0165     nOn  = numel(r.turnedOn);
+0166     nOff = numel(r.turnedOff);
+0167     nFlp = numel(r.flipped);
+0168     <span class="keyword">if</span> nOn + nOff + nFlp &gt; 0
+0169         fprintf(<span class="string">'  (on: %d  |  off: %d  |  reversed: %d)\n'</span>, nOn, nOff, nFlp);
+0170     <span class="keyword">end</span>
+0171 
+0172     <span class="keyword">if</span> nC == 0
+0173         fprintf(<span class="string">'%s\n\n'</span>, bar);
+0174         <span class="keyword">return</span>
+0175     <span class="keyword">end</span>
+0176 
+0177     nShow    = min(nC, nMax);
+0178     showRxns = r.changed.rxn(1:nShow);
+0179     eqns     = constructEquations(model, showRxns);
+0180 
+0181     fprintf(<span class="string">'%s\n'</span>, sep);
+0182     fprintf(<span class="string">'  %-20s  %10s  %10s  %10s  %7s  %-5s  %-25s  %s\n'</span>, <span class="keyword">...</span>
+0183         <span class="string">'Reaction'</span>, <span class="string">'Cond.1'</span>, <span class="string">'Cond.2'</span>, <span class="string">'|dflux|'</span>, <span class="string">'drel%'</span>, <span class="string">'Type'</span>, <span class="string">'Name'</span>, <span class="string">'Equation'</span>);
+0184     fprintf(<span class="string">'  %s\n'</span>, sep);
+0185 
+0186     <span class="keyword">for</span> i = 1:nShow
+0187         rel = r.changed.relChange(i);
+0188         <span class="keyword">if</span> isnan(rel)
+0189             relStr = <span class="string">'    new'</span>;
+0190         <span class="keyword">else</span>
+0191             relStr = sprintf(<span class="string">'%+6.0f%%'</span>, rel * 100);
+0192         <span class="keyword">end</span>
+0193         ri = find(strcmp(model.rxns, showRxns{i}), 1);
+0194         nm = <span class="string">''</span>;
+0195         <span class="keyword">if</span> isfield(model,<span class="string">'rxnNames'</span>) &amp;&amp; ri &lt;= numel(model.rxnNames)
+0196             nm = char(model.rxnNames{ri});
+0197         <span class="keyword">end</span>
+0198         <span class="keyword">if</span> numel(nm) &gt; 25, nm = [nm(1:22) <span class="string">'...'</span>]; <span class="keyword">end</span>
+0199         fprintf(<span class="string">'  %-20s  %+10.4g  %+10.4g  %10.4g  %7s  %-5s  %-25s  %s\n'</span>, <span class="keyword">...</span>
+0200             showRxns{i}, r.changed.flux1(i), r.changed.flux2(i), <span class="keyword">...</span>
+0201             r.changed.absDelta(i), relStr, r.changed.type{i}, nm, eqns{i});
+0202     <span class="keyword">end</span>
+0203     <span class="keyword">if</span> nC &gt; nMax
+0204         fprintf(<span class="string">'  ... (%d more, use nMax to show all)\n'</span>, nC - nMax);
+0205     <span class="keyword">end</span>
+0206     fprintf(<span class="string">'%s\n\n'</span>, bar);
+0207 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

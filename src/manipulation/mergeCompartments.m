@@ -1,0 +1,161 @@
+function [model, deletedRxns, duplicateRxns]=mergeCompartments(model,varargin)
+% mergeCompartments  Merge all compartments in a model.
+%
+% Parameters
+% ----------
+% model : struct
+%     a model structure.
+%
+% Name-Value Arguments
+% --------------------
+% keepUnconstrained : logical
+%     true to keep the unconstrained metabolites in a separate compartment "b"
+%     (name "Unconstrained"). If they are merged, an exchange reaction between an
+%     unconstrained metabolite and a metabolite of the same name has no net
+%     stoichiometry after merging and is deleted (default false).
+% deleteRxnsWithOneMet : logical
+%     true to delete reactions that have one metabolite after merging and had more
+%     before. Such reactions arise from reactions such as A[c] + B[c] => A[m]. Some
+%     models balance hydrogen around each membrane with reactions like this
+%     (default false).
+% distReverse : logical
+%     true to treat reactions with the same metabolites but different reversibility as
+%     different reactions (default true).
+%
+% Returns
+% -------
+% model : struct
+%     a model with all reactions in one compartment.
+% deletedRxns : cell
+%     the ids of the reactions deleted because they have one metabolite after merging.
+% duplicateRxns : cell
+%     one entry per reaction of the returned model: '' when no duplicate was merged
+%     into it, otherwise the ids of the identical reactions from different
+%     compartments that were removed into it, joined by ";".
+%
+% Examples
+% --------
+%     [model, deletedRxns, duplicateRxns] = mergeCompartments(model);
+%
+% Notes
+% -----
+% Merges all compartments into one compartment "s" (name "System"). The merged model
+% can be used to test whether the network can synthesise all metabolites.
+%
+% Metabolites with the same name are merged into one. The merged metabolite
+% keeps the id and the other fields of one of the copies: the copy that is
+% already in compartment "s" if there is one, otherwise the copy whose id
+% comes first in character code order (for example ACCOA_c before ACCOA_m).
+% With keepUnconstrained only the copies that are not unconstrained are
+% candidates. If the metabolite ids contain the compartment, the ids of merged
+% metabolites can name a compartment that no longer exists.
+
+p=parseRAVENargs(varargin, {'keepUnconstrained',false; 'deleteRxnsWithOneMet',false; 'distReverse',true});
+keepUnconstrained=p.keepUnconstrained;
+deleteRxnsWithOneMet=p.deleteRxnsWithOneMet;
+distReverse=p.distReverse;
+
+if ~isfield(model,'unconstrained')
+    keepUnconstrained=false;
+end
+
+%Keep track of which reactions only contained one metabolite before the
+%merging as they are probable exchange reactions.
+if deleteRxnsWithOneMet==true
+    reservedRxns=model.rxns(sum(model.S~=0)==1);
+    if ~isempty(reservedRxns) && ~isfield(model,'unconstrained')
+        %If there is no unconstrained field these reactions are probably
+        %exchange reactions and shall be kept. If not then print a warning
+        EM='There are reactions with only one metabolite. Cannot determine whether they are exchange reactions since there is no unconstrained field';
+        warning('RAVEN:warning', '%s', EM);
+    end
+end
+
+%Loop through each metabolite name, and if a copy is not unconstrained then
+%change the S matrix to use the copy chosen as described in the Notes
+%Group metabolite indices by name once, rather than re-scanning all of
+%model.metNames (via ismember) for every unique name, which is quadratic
+%in a genome-scale model's (unique names x mets) count.
+[uNames,~,nameGroup]=unique(model.metNames);
+sameNameIdx=accumarray(nameGroup,(1:numel(nameGroup))',[numel(uNames) 1],@(v) {v});
+for i=1:numel(uNames)
+    %Find all metabolites with this name..
+    I=false(numel(model.metNames),1);
+    I(sameNameIdx{i})=true;
+
+    %Choose the copy that the other "un-unconstrained" copies are merged
+    %into: one already in compartment "s" if there is one, otherwise the
+    %one whose id sorts first.
+    if keepUnconstrained==true
+        candidates=find(I & model.unconstrained==false);
+        
+        %This could happen if there is only one metabolite and it is
+        %unconstrained
+        if isempty(candidates)
+            continue;
+        end
+    else
+        candidates=find(I);
+    end
+    inMerged=candidates(strcmp(model.comps(model.metComps(candidates)),'s'));
+    if ~isempty(inMerged)
+        candidates=inMerged;
+    end
+    [~,first]=sort(model.mets(candidates));
+    mergeTo=candidates(first(1));
+    I(mergeTo)=false; %Do not do anything for itself
+    I=find(I);
+    
+    %Go through each of the metabolites with this name and update them to
+    %mergeTo
+    for j=1:numel(I)
+        if keepUnconstrained==true && model.unconstrained(I(j))==true
+            continue;
+        end
+        %Update the S matrix
+        model.S(mergeTo,:)=model.S(mergeTo,:)+model.S(I(j),:);
+        model.S(I(j),:)=0;
+    end
+end
+
+%Remove all metabolites that are no longer used (with a bit of a trick)
+model=removeReactions(model,{},true);
+
+%Update all mets so that they are in compartment "s" with id "1"
+model.compNames={'System'};
+model.comps={'s'};
+model.compOutside={''};
+model.metComps=ones(numel(model.mets),1);
+%The per-compartment MIRIAM annotations no longer apply once every
+%compartment is merged into one, and leaving them would desync compMiriams
+%from the rebuilt comps. Drop them.
+if isfield(model,'compMiriams')
+    model=rmfield(model,'compMiriams');
+end
+
+%Add exchange mets to another compartment "b" with id "2"
+if keepUnconstrained==true
+    model.compNames=[model.compNames; {'Unconstrained'}];
+    model.comps=[model.comps; {'b'}];
+    model.compOutside=[model.compOutside; {'s'}];
+    model.metComps(model.unconstrained~=0)=2;
+end
+
+%Transport reactions on the form A <=> B will have been deleted by the
+%merging. Remove those reactions
+model=removeMets(model,{},false,true,true);
+
+if deleteRxnsWithOneMet==true
+    I=model.rxns(sum(model.S~=0)==1);
+    
+    %Delete the reactions that contain only one metabolite after the
+    %merging but not before
+    deletedRxns=setdiff(I,reservedRxns);
+    model=removeReactions(model,deletedRxns,true,true);
+else
+    deletedRxns={};
+end
+
+%And then finally merge the identical reactions
+[model, ~, duplicateRxns]=contractModel(model,distReverse);
+end

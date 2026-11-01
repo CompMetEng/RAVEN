@@ -1,0 +1,196 @@
+function model=addRxnsGenesMets(model,sourceModel,rxns,varargin)
+% addRxnsGenesMets  Copy reactions from a source model into another model.
+%
+% Copies reactions from a source model to a draft model, together with their new
+% metabolites and genes. Reactions that are already in the draft model are skipped.
+%
+% The draft model and the source model must follow the same metabolite and compartment
+% naming convention, because metabolites are matched only by metaboliteName[compartment].
+% The function can copy additional reactions from a source model to a draft model that
+% getModelFromHomology created from the same models.
+%
+% Parameters
+% ----------
+% model : struct
+%     the draft model that receives the reactions.
+% sourceModel : struct
+%     the model that the reactions and metabolites are copied from.
+% rxns : cell or char
+%     reaction ids from the source model. A string adds one reaction.
+%
+% Name-Value Arguments
+% --------------------
+% addGene : logical or char or cell
+%     three options (default false):
+%
+%     - false : no genes are annotated to the new reactions
+%     - true : grRules are copied from the sourceModel and new genes are
+%       added when required
+%     - string or cell array : the grRules of the new reactions, as a string or a
+%       cell array, and new genes are added when required
+% rxnNote : cell or char
+%     strings that explain why the reactions were copied, stored in rxnNotes of the new
+%     reactions. A string applies the same note to every new reaction
+%     (default "Added via addRxnsGenesMets()").
+% confidence : double
+%     integer confidence score for all new reactions, following
+%     doi:10.1038/nprot.2009.203 (default 0):
+%
+%     - 4 : biochemical data: direct evidence from enzyme assays
+%     - 3 : genetic data: knockout/-in or overexpression analysis
+%     - 2 : physiological data: indirect evidence, for example secretion products
+%       or defined medium requirement; sequence data: genome annotation
+%     - 1 : modelling data: required for a functional model, hypothetical
+%       reaction
+%     - 0 : no evidence
+%
+% Returns
+% -------
+% model : struct
+%     an updated model structure.
+%
+% Examples
+% --------
+%     newModel = addRxnsGenesMets(model, sourceModel, rxns, addGene, ...
+%                                 rxnNote, confidence);
+
+p=parseRAVENargs(varargin, {'addGene',false; 'rxnNote',[]; 'confidence',0});
+confidence=p.confidence;
+rxns=convertCharArray(rxns);
+if isempty(p.rxnNote)
+    rxnNote={'Added via addRxnsGenesMets()'};
+else
+    rxnNote=convertCharArray(p.rxnNote);
+end
+if numel(rxnNote)==1 && numel(rxns)>1
+    rxnNoteArray=cell(1,numel(rxns));
+    rxnNoteArray(:)=rxnNote;
+    rxnNote=rxnNoteArray;
+end
+addGene=p.addGene;
+
+% Obtain indexes of reactions in source model
+[notNewRxn,oldRxn]=ismember(rxns,model.rxns);
+rxns=rxns(~notNewRxn);
+if isempty(rxns)
+    error('All reactions are already in the model.');
+elseif ~isempty(notNewRxn)
+    fprintf('The following reactions were already present in the model and will not be added:\n')
+    %Reaction ids are arbitrary text and may contain "%"; print as
+    %literal data rather than as an fprintf format string.
+    fprintf('%s\n', strjoin(model.rxns(oldRxn(find(oldRxn))),newline))
+end
+
+[~, rxnIdx]=ismember(rxns,sourceModel.rxns); % Get rxnIDs
+if any(rxnIdx==0)
+    error('RAVEN:badInput', '%s', ravenList('The following reaction IDs could not be found in the source model:', rxns(rxnIdx==0)));
+end
+
+% Add new metabolites
+metIdx=find(any(sourceModel.S(:,rxnIdx),2)); % Get metabolite IDs
+% Many of the metabolites in are already in the draft model, so only add
+% the new metabolites
+
+% Match by metNames[metComps]. First make these structures for each model.
+metCompsN =cellstr(num2str(model.metComps));
+map=containers.Map(cellstr(num2str(transpose([1:length(model.comps)]))),model.comps);
+metCompsN = map.values(metCompsN);
+metCompsN = strcat(model.metNames,'[',metCompsN,']');
+
+sourcemetCompsN=cellstr(num2str(sourceModel.metComps));
+map=containers.Map(cellstr(num2str(transpose([1:length(sourceModel.comps)]))),sourceModel.comps);
+sourcemetCompsN = map.values(sourcemetCompsN);
+sourcemetCompsN=strcat(sourceModel.metNames,'[',sourcemetCompsN,']');
+
+newMetCompsN=sourcemetCompsN(metIdx);
+notNewMet=newMetCompsN(ismember(newMetCompsN,metCompsN));
+
+if ~isempty(notNewMet)
+    fprintf('\nThe following metabolites were already present in the model and will not be added:\n')
+    %Metabolite names are arbitrary text and may contain "%"; print as
+    %literal data rather than as an fprintf format string.
+    fprintf('%s\n', strjoin(transpose(notNewMet),newline))
+end
+
+metIdx=metIdx(~ismember(sourcemetCompsN(metIdx),metCompsN));
+
+if ~isempty(metIdx)
+    fprintf('\nThe following metabolites will be added to the model:\n')
+    %Metabolite names are arbitrary text and may contain "%"; print as
+    %literal data rather than as an fprintf format string.
+    fprintf('%s\n', strjoin(transpose(sourcemetCompsN(metIdx)),newline))
+    
+    if isfield(sourceModel,'mets')
+        metsToAdd.mets=sourceModel.mets(metIdx);
+    end
+    if isfield(sourceModel,'metNames')
+        metsToAdd.metNames=sourceModel.metNames(metIdx);
+    end
+    if isfield(sourceModel,'metFormulas')
+        metsToAdd.metFormulas=sourceModel.metFormulas(metIdx);
+    end
+    if isfield(sourceModel,'metCharges')
+        metsToAdd.metCharges=sourceModel.metCharges(metIdx);
+    end
+    if isfield(sourceModel,'metMiriams')
+        metsToAdd.metMiriams=sourceModel.metMiriams(metIdx);
+    end
+    if isfield(sourceModel,'metNotes')
+        metsToAdd.metNotes=sourceModel.metNotes(metIdx);
+    end
+    if isfield(sourceModel,'inchis')
+        metsToAdd.inchis=sourceModel.inchis(metIdx);
+    end
+    if isfield(sourceModel,'metSmiles')
+        metsToAdd.metSmiles=sourceModel.metSmiles(metIdx);
+    end
+    if isfield(sourceModel,'metDeltaG')
+        metsToAdd.metDeltaG=sourceModel.metDeltaG(metIdx);
+    end
+    
+    metsToAdd.compartments=strtrim(cellstr(num2str(sourceModel.metComps(metIdx)))); % Convert from compartment string to compartment number
+    [~,idx]=ismember(metsToAdd.compartments,strsplit(num2str(1:length(sourceModel.comps)))); % Match compartment number to compartment abbreviation
+    metsToAdd.compartments=sourceModel.comps(idx); % Fill in compartment abbreviations
+    
+    model=addMets(model,metsToAdd);
+end
+fprintf('\nNumber of metabolites added to the model:\n')
+fprintf([num2str(numel(metIdx)),'\n'])
+
+% Add new genes
+if ~islogical(addGene) | addGene ~= false
+    if ischar(addGene)
+        rxnToAdd.grRules={addGene};
+    elseif iscell(addGene)
+        rxnToAdd.grRules=addGene(~notNewRxn); 
+    else
+        rxnToAdd.grRules=sourceModel.grRules(rxnIdx); % Get the relevant grRules
+    end
+end
+% Add new reactions
+rxnToAdd.equations=constructEquations(sourceModel,rxnIdx);
+rxnToAdd.rxnNames=sourceModel.rxnNames(rxnIdx);
+rxnToAdd.rxns=sourceModel.rxns(rxnIdx);
+rxnToAdd.lb=sourceModel.lb(rxnIdx);
+rxnToAdd.ub=sourceModel.ub(rxnIdx);
+rxnToAdd.rxnNotes(:)=rxnNote(~notNewRxn);
+rxnToAdd.rxnConfidenceScores=NaN(1,numel(rxnToAdd.rxns));
+if ~isnumeric(confidence)
+    EM='confidence score must be numeric';
+    error('RAVEN:badInput', '%s', EM);
+end
+rxnToAdd.rxnConfidenceScores(:)=confidence;
+if isfield(sourceModel,'rxnDeltaG')
+    rxnToAdd.rxnDeltaG=sourceModel.rxnDeltaG(rxnIdx);
+end
+if isfield(sourceModel,'subSystems')
+    rxnToAdd.subSystems=sourceModel.subSystems(rxnIdx);
+end
+if isfield(sourceModel,'eccodes')
+    rxnToAdd.eccodes=sourceModel.eccodes(rxnIdx);
+end
+model=addRxns(model,rxnToAdd,3,'',false,true);
+
+fprintf('\nNumber of reactions added to the model:\n')
+fprintf([num2str(numel(rxnIdx)),'\n'])
+end

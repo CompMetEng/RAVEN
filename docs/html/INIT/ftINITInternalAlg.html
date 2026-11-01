@@ -1,0 +1,851 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of ftINITInternalAlg</title>
+  <meta name="keywords" content="ftINITInternalAlg">
+  <meta name="description" content="ftINITInternalAlg">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">INIT</a> &gt; ftINITInternalAlg.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for INIT&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>ftINITInternalAlg
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>ftINITInternalAlg</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,rankKeys,pinFluxes) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> ftINITInternalAlg
+    Run the MILP for one step of ftINIT.
+
+   model           a reference model structure
+   rxnScores       a vector of scores for the reactions in the model.
+                   Positive scores are reactions to keep and negative
+                   scores are reactions to exclude. Reactions with score 0
+                   are not part of the problem
+   metData         boolean matrix with mets as rows and rxns as columns
+                   saying which reaction produces each detected met (optional, default [])
+   essentialRxns   cell array of reactions that are essential and that
+                   have to be in the resulting model. ftINIT passes the
+                   reactions that the tasks require (see fitTasks)
+   prodWeight      a reward for each detected metabolite that has at least
+                   one producing reaction turned on; net production is not
+                   checked. The sum of these rewards and the scores for the
+                   reactions is optimised. The reward gives a reason for
+                   including reactions with a negative score for
+                   connectivity reasons, which gives a more functional
+                   network (default 0.5)
+   allowExcretion  true if excretion of all metabolites is allowed.
+                   This results in fewer reactions being considered
+                   dead-ends, but not every reaction in the resulting model
+                   can carry flux. If this is &quot;false&quot; then the
+                   equality constraints are taken from model.b. If the
+                   input model lacks exchange reactions, set it to true;
+                   with false a large part of the model is excluded for
+                   connectivity reasons
+   remPosRev       If true, the positive reversible reactions are removed from the problem.
+                   This is used in step 1 of ftINIT
+   params          parameters for the MILP, for example MIPGap and TimeLimit
+   startVals       Start values for the MILP. ftINIT passes the result of
+                   the previous run when it reruns the MILP with a higher
+                   MIPGap
+   fluxes          Fluxes from the last run. The flux of an essential
+                   irreversible reaction is forced to at least
+                   min(0.99*|flux|, 0.1), clamped to the reaction's capacity
+                   in the forced direction (its upper bound, as ftINIT
+                   passes reactions in the forward direction)
+   verbose         If true, the MILP progression is shown.
+   forceOn         minimum flux magnitude enforced through a reaction once
+                   it is turned on in the MILP (optional, default 0.1)
+   resolveTies     if true, the MILP's degenerate optimum is solved to a
+                   canonical answer in addition to the solver Seed: the
+                   score objective is held at its optimum, then the count
+                   of &quot;on&quot; removable (negative-score) reactions is
+                   minimised, then, among the sparsest solutions, their
+                   summed reaction-id rank is minimised. Positive-score
+                   reactions have a continuous on/off variable (pinned near
+                   1 by the score objective) and only the negative-score
+                   ones have a binary on/off variable, so only these are
+                   tied. The fluxes are then taken from the
+                   least-total-flux solution for that on/off state and,
+                   among those, from the one with the least id-rank-weighted
+                   backward flux, so the directions and forced magnitudes
+                   the next ftINIT step reads from them are fixed too.
+                   This follows resolve_ties in raven-toolbox
+                   (raven-gecko-parity#104). The phases are skipped when
+                   the primary solve stops at params.TimeLimit, and the
+                   primary solution is kept. Phases 2a and 2b get half of
+                   params.TimeLimit each (rounded down, at least 1 s), the
+                   flux phases the full limit. A warning names each phase
+                   that does not prove optimal or finds no solution; when a
+                   flux phase finds none, the fluxes of the phase before it
+                   are kept (optional, default false)
+   rankKeys        cell array with, for each reaction in model.rxns, the key
+                   that the id-rank phases of resolveTies sort it by
+                   (optional, default model.rxns). ftINIT passes the smallest
+                   original reaction id of each merge group, so the order
+                   does not depend on which member names the merged reaction
+   pinFluxes       if false, resolveTies skips phases 2c and 2d and the
+                   fluxes and metProduction are those of phase 2b
+                   (optional, default true).
+                   ftINIT passes false in its last step, whose fluxes no
+                   later step reads
+
+   deletedRxns     reactions which were deleted by the algorithm (only
+                   rxns included in the problem)
+   metProduction   logical array that indicates which of the metabolites in
+                   metData could be produced (true) or not (false).
+                   Metabolites with a producing reaction that is essential
+                   are not part of the MILP and are not in the array
+   res             The result from the MILP
+   turnedOnRxns    The reactions determined to be present (only 
+                   rxns included in the problem) 
+   fluxes          The fluxes from the MILP
+
+   This function is the implementation of the algorithm. See
+   ftINIT for a higher-level function for model reconstruction. 
+
+ Usage: [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,...
+           rxnScores,metData,essentialRxns,prodWeight,allowExcretion,...
+           remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,...
+           rankKeys,pinFluxes)</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="ftINIT.html" class="code" title="">ftINIT</a>	</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,rxnScores,metData,essentialRxns,prodWeight,allowExcretion,remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,rankKeys,pinFluxes)</a>
+0002 <span class="comment">% ftINITInternalAlg</span>
+0003 <span class="comment">%    Run the MILP for one step of ftINIT.</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%   model           a reference model structure</span>
+0006 <span class="comment">%   rxnScores       a vector of scores for the reactions in the model.</span>
+0007 <span class="comment">%                   Positive scores are reactions to keep and negative</span>
+0008 <span class="comment">%                   scores are reactions to exclude. Reactions with score 0</span>
+0009 <span class="comment">%                   are not part of the problem</span>
+0010 <span class="comment">%   metData         boolean matrix with mets as rows and rxns as columns</span>
+0011 <span class="comment">%                   saying which reaction produces each detected met (optional, default [])</span>
+0012 <span class="comment">%   essentialRxns   cell array of reactions that are essential and that</span>
+0013 <span class="comment">%                   have to be in the resulting model. ftINIT passes the</span>
+0014 <span class="comment">%                   reactions that the tasks require (see fitTasks)</span>
+0015 <span class="comment">%   prodWeight      a reward for each detected metabolite that has at least</span>
+0016 <span class="comment">%                   one producing reaction turned on; net production is not</span>
+0017 <span class="comment">%                   checked. The sum of these rewards and the scores for the</span>
+0018 <span class="comment">%                   reactions is optimised. The reward gives a reason for</span>
+0019 <span class="comment">%                   including reactions with a negative score for</span>
+0020 <span class="comment">%                   connectivity reasons, which gives a more functional</span>
+0021 <span class="comment">%                   network (default 0.5)</span>
+0022 <span class="comment">%   allowExcretion  true if excretion of all metabolites is allowed.</span>
+0023 <span class="comment">%                   This results in fewer reactions being considered</span>
+0024 <span class="comment">%                   dead-ends, but not every reaction in the resulting model</span>
+0025 <span class="comment">%                   can carry flux. If this is &quot;false&quot; then the</span>
+0026 <span class="comment">%                   equality constraints are taken from model.b. If the</span>
+0027 <span class="comment">%                   input model lacks exchange reactions, set it to true;</span>
+0028 <span class="comment">%                   with false a large part of the model is excluded for</span>
+0029 <span class="comment">%                   connectivity reasons</span>
+0030 <span class="comment">%   remPosRev       If true, the positive reversible reactions are removed from the problem.</span>
+0031 <span class="comment">%                   This is used in step 1 of ftINIT</span>
+0032 <span class="comment">%   params          parameters for the MILP, for example MIPGap and TimeLimit</span>
+0033 <span class="comment">%   startVals       Start values for the MILP. ftINIT passes the result of</span>
+0034 <span class="comment">%                   the previous run when it reruns the MILP with a higher</span>
+0035 <span class="comment">%                   MIPGap</span>
+0036 <span class="comment">%   fluxes          Fluxes from the last run. The flux of an essential</span>
+0037 <span class="comment">%                   irreversible reaction is forced to at least</span>
+0038 <span class="comment">%                   min(0.99*|flux|, 0.1), clamped to the reaction's capacity</span>
+0039 <span class="comment">%                   in the forced direction (its upper bound, as ftINIT</span>
+0040 <span class="comment">%                   passes reactions in the forward direction)</span>
+0041 <span class="comment">%   verbose         If true, the MILP progression is shown.</span>
+0042 <span class="comment">%   forceOn         minimum flux magnitude enforced through a reaction once</span>
+0043 <span class="comment">%                   it is turned on in the MILP (optional, default 0.1)</span>
+0044 <span class="comment">%   resolveTies     if true, the MILP's degenerate optimum is solved to a</span>
+0045 <span class="comment">%                   canonical answer in addition to the solver Seed: the</span>
+0046 <span class="comment">%                   score objective is held at its optimum, then the count</span>
+0047 <span class="comment">%                   of &quot;on&quot; removable (negative-score) reactions is</span>
+0048 <span class="comment">%                   minimised, then, among the sparsest solutions, their</span>
+0049 <span class="comment">%                   summed reaction-id rank is minimised. Positive-score</span>
+0050 <span class="comment">%                   reactions have a continuous on/off variable (pinned near</span>
+0051 <span class="comment">%                   1 by the score objective) and only the negative-score</span>
+0052 <span class="comment">%                   ones have a binary on/off variable, so only these are</span>
+0053 <span class="comment">%                   tied. The fluxes are then taken from the</span>
+0054 <span class="comment">%                   least-total-flux solution for that on/off state and,</span>
+0055 <span class="comment">%                   among those, from the one with the least id-rank-weighted</span>
+0056 <span class="comment">%                   backward flux, so the directions and forced magnitudes</span>
+0057 <span class="comment">%                   the next ftINIT step reads from them are fixed too.</span>
+0058 <span class="comment">%                   This follows resolve_ties in raven-toolbox</span>
+0059 <span class="comment">%                   (raven-gecko-parity#104). The phases are skipped when</span>
+0060 <span class="comment">%                   the primary solve stops at params.TimeLimit, and the</span>
+0061 <span class="comment">%                   primary solution is kept. Phases 2a and 2b get half of</span>
+0062 <span class="comment">%                   params.TimeLimit each (rounded down, at least 1 s), the</span>
+0063 <span class="comment">%                   flux phases the full limit. A warning names each phase</span>
+0064 <span class="comment">%                   that does not prove optimal or finds no solution; when a</span>
+0065 <span class="comment">%                   flux phase finds none, the fluxes of the phase before it</span>
+0066 <span class="comment">%                   are kept (optional, default false)</span>
+0067 <span class="comment">%   rankKeys        cell array with, for each reaction in model.rxns, the key</span>
+0068 <span class="comment">%                   that the id-rank phases of resolveTies sort it by</span>
+0069 <span class="comment">%                   (optional, default model.rxns). ftINIT passes the smallest</span>
+0070 <span class="comment">%                   original reaction id of each merge group, so the order</span>
+0071 <span class="comment">%                   does not depend on which member names the merged reaction</span>
+0072 <span class="comment">%   pinFluxes       if false, resolveTies skips phases 2c and 2d and the</span>
+0073 <span class="comment">%                   fluxes and metProduction are those of phase 2b</span>
+0074 <span class="comment">%                   (optional, default true).</span>
+0075 <span class="comment">%                   ftINIT passes false in its last step, whose fluxes no</span>
+0076 <span class="comment">%                   later step reads</span>
+0077 <span class="comment">%</span>
+0078 <span class="comment">%   deletedRxns     reactions which were deleted by the algorithm (only</span>
+0079 <span class="comment">%                   rxns included in the problem)</span>
+0080 <span class="comment">%   metProduction   logical array that indicates which of the metabolites in</span>
+0081 <span class="comment">%                   metData could be produced (true) or not (false).</span>
+0082 <span class="comment">%                   Metabolites with a producing reaction that is essential</span>
+0083 <span class="comment">%                   are not part of the MILP and are not in the array</span>
+0084 <span class="comment">%   res             The result from the MILP</span>
+0085 <span class="comment">%   turnedOnRxns    The reactions determined to be present (only</span>
+0086 <span class="comment">%                   rxns included in the problem)</span>
+0087 <span class="comment">%   fluxes          The fluxes from the MILP</span>
+0088 <span class="comment">%</span>
+0089 <span class="comment">%   This function is the implementation of the algorithm. See</span>
+0090 <span class="comment">%   ftINIT for a higher-level function for model reconstruction.</span>
+0091 <span class="comment">%</span>
+0092 <span class="comment">% Usage: [deletedRxns,metProduction,res,turnedOnRxns,fluxes]=ftINITInternalAlg(model,...</span>
+0093 <span class="comment">%           rxnScores,metData,essentialRxns,prodWeight,allowExcretion,...</span>
+0094 <span class="comment">%           remPosRev,params,startVals,fluxes,verbose,forceOn,resolveTies,...</span>
+0095 <span class="comment">%           rankKeys,pinFluxes)</span>
+0096 
+0097 <span class="keyword">if</span> nargin &lt; 12 || isempty(forceOn)
+0098     forceOn = 0.1;
+0099 <span class="keyword">end</span>
+0100 <span class="keyword">if</span> nargin &lt; 14 || isempty(rankKeys)
+0101     rankKeys = model.rxns;
+0102 <span class="keyword">end</span>
+0103 <span class="keyword">if</span> nargin &lt; 13 || isempty(resolveTies)
+0104     resolveTies = false;
+0105 <span class="keyword">end</span>
+0106 <span class="keyword">if</span> nargin &lt; 15 || isempty(pinFluxes)
+0107     pinFluxes = true;
+0108 <span class="keyword">end</span>
+0109 <span class="keyword">if</span> isempty(essentialRxns)
+0110     essentialRxns={};
+0111 <span class="keyword">end</span>
+0112 essentialRxns=essentialRxns(:);
+0113 <span class="keyword">if</span> isempty(prodWeight)
+0114     prodWeight=0.5;
+0115 <span class="keyword">end</span>
+0116 
+0117 
+0118 <span class="comment">%The model should be in the reversible format and all relevant exchange</span>
+0119 <span class="comment">%reactions should be open</span>
+0120 <span class="keyword">if</span> isfield(model,<span class="string">'unconstrained'</span>)
+0121     EM=<span class="string">'Exchange metabolites are still present in the model. Use simplifyModel if this is not intended'</span>;
+0122     warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0123 <span class="keyword">end</span>
+0124 
+0125 
+0126 essential = ismember(model.rxns,essentialRxns);
+0127 
+0128 <span class="comment">%Some nice to have numbers</span>
+0129 nMets=numel(model.mets);
+0130 nRxns=numel(model.rxns);
+0131 nRxnsWithOnOff = nRxns;
+0132 
+0133 <span class="comment">%Reactions with score 0 will just be left in the model, and will not be part of the problem (but can carry flux).</span>
+0134 <span class="comment">%It is possible to set score = 0 for e.g. spontaneous reactions, exchange rxns, etc., which may not be that interesting</span>
+0135 <span class="comment">%to remove.</span>
+0136 
+0137 <span class="comment">%if makeIrrev is on, we can just as well skip all positive reversible rxns - they will be turned on without carrying any flux</span>
+0138 <span class="comment">%since they can form a loop within themself (fwd-rev)</span>
+0139 <span class="keyword">if</span> remPosRev
+0140     rxnScores(rxnScores &gt; 0 &amp; model.rev~=0) = 0;
+0141 <span class="keyword">end</span>
+0142 
+0143 <span class="comment">%Handle metabolomics</span>
+0144 <span class="comment">%A problem with the metabolomics is that some of the producer reactions</span>
+0145 <span class="comment">%for a metabolite could be excluded from the problem. We solve this by</span>
+0146 <span class="comment">%adding them with score 0. They can still be seen as positive, since they</span>
+0147 <span class="comment">%either do not matter (there is another producer) or they can contribute to an</span>
+0148 <span class="comment">%increased score.</span>
+0149 revRxns=model.rev~=0; 
+0150 essRevRxns = find(revRxns &amp; essential);
+0151 essIrrevRxns = find(~revRxns &amp; essential);
+0152 
+0153 <span class="keyword">if</span> ~isempty(metData)
+0154     <span class="comment">%remove any metData rows that is connected to an essential rxn -</span>
+0155     <span class="comment">%these will be on regardless and will cause problems below.</span>
+0156     containsEssential = any(metData(:,essential),2);
+0157     metData = metData(~containsEssential,:);
+0158 <span class="keyword">end</span>
+0159 
+0160 <span class="keyword">if</span> ~isempty(metData)
+0161     metRxns = any(metData,1).';
+0162     posRxns = rxnScores &gt; 0 | ((rxnScores == 0) &amp; metRxns);
+0163 <span class="keyword">else</span>
+0164     posRxns = rxnScores &gt; 0;
+0165 <span class="keyword">end</span>
+0166 negRxns = rxnScores &lt; 0;
+0167 
+0168 posRevRxns = find(posRxns &amp; revRxns &amp; ~essential);
+0169 negRevRxns = find(negRxns &amp; revRxns &amp; ~essential);
+0170 posIrrevRxns = find(posRxns &amp; ~revRxns &amp; ~essential);
+0171 negIrrevRxns = find(negRxns &amp; ~revRxns &amp; ~essential);
+0172 nPosRev = numel(posRevRxns);
+0173 nNegRev = numel(negRevRxns);
+0174 nPosIrrev = numel(posIrrevRxns);
+0175 nNegIrrev = numel(negIrrevRxns);
+0176 nEssRev = numel(essRevRxns);
+0177 nEssIrrev = numel(essIrrevRxns); <span class="comment">%not used, but left for symmetry</span>
+0178 nMetabolMets = size(metData,1);
+0179 
+0180 <span class="keyword">if</span> ~isempty(metData)
+0181     metNegRev = negRxns &amp; revRxns &amp; ~essential &amp; metRxns;
+0182     metNegIrrev = negRxns &amp; ~revRxns &amp; ~essential &amp; metRxns;
+0183     nMetNegRev = sum(metNegRev);
+0184     nMetNegIrrev = sum(metNegIrrev);
+0185 <span class="keyword">end</span>
+0186 
+0187 
+0188 milpModel = model;
+0189 
+0190 <span class="comment">%These six categories need to be handled separately:</span>
+0191 <span class="comment">%</span>
+0192 <span class="comment">%PosIrrev (positive reaction score, irreversible):</span>
+0193 <span class="comment">%flux &gt;= 0.1*Yi, flux - 0.1*Yi - VPI == 0, 0 &lt;= Yi(onoff) &lt;= 1, 0 &lt;= VPI &lt;= Inf</span>
+0194 <span class="comment">%The nice thing with rxns with positive score is that they do not require a boolean. The optimizer will</span>
+0195 <span class="comment">%strive for maximizing the Yi here, so it can be a continuous variable, where we just force a flux if</span>
+0196 <span class="comment">%the variable is on.</span>
+0197 <span class="comment">%PosRev:</span>
+0198 <span class="comment">% 1: Split up the flux into positive and negative: flux - vnrp + vnrn == 0, 0 &lt;= vprp,vprn &lt;= Inf.</span>
+0199 <span class="comment">% 2. Force one of the fluxes on: vprp + vprn &gt;= 0.1*Yi, vprp + vprn - 0.1*Yi - vprv1 == 0. 0 &lt;= Yi(onoff) &lt;= 1, vprv1 &gt;= 0</span>
+0200 <span class="comment">% 3. We need a bool to make sure that one of vprp and vprn are always zero:</span>
+0201 <span class="comment">%    vprb E {0,1}:  vprp &lt;= 100*vprb (if bool is 0, vprp is zero): vprp - 100*vprb + vprv2 == 0, vprv2 &gt;= 0</span>
+0202 <span class="comment">%    vprn &lt;= (1-vprb)*100 (if bool is one, vprn is zero): vprn + 100*vprb + vprv3 == 0, -100 &lt;= vprv3 &lt;= inf</span>
+0203 <span class="comment">%Neg Irrev:</span>
+0204 <span class="comment">%For negative scores, we need to use an integer, I see no way around that.</span>
+0205 <span class="comment">% flux &lt; 100*Yi, Yi E {0,1}. Flux - 100*Yi + vni == 0</span>
+0206 <span class="comment">%Neg Rev:</span>
+0207 <span class="comment">%Two cases:</span>
+0208 <span class="comment">%A: Without irrev model</span>
+0209 <span class="comment">% 1: Split up the flux into positive and negative: flux - vnrp + vnrn == 0, 0 &lt;= vprp,vprn &lt;= Inf.</span>
+0210 <span class="comment">% 2: Force the Yi (on/off) var on if the flux is on: vnrp + vnrn &lt;= 0.1 * Yi, Yi E {0,1}: vnrp + vnrn - 0.1 * Yi + vnrv1 == 0, vnrv1 &gt;= 0.</span>
+0211 <span class="comment">%B: Irrev model (Not used for now)</span>
+0212 <span class="comment">% 1. We now have two reactions, but still just boolean variable. We know that</span>
+0213 <span class="comment">%    the flux can only be positive, so we just say that flux1 + flux2 &lt;= 0.1 * Yi, Yi E {0,1}: flux1 + flux2 - 0.1 * Yi + vnrv1 == 0, vnrv1 &gt;= 0.</span>
+0214 <span class="comment">%    There is no need to prevent loops - there is no benefit for the objective to generate one, and it does not matter.</span>
+0215 <span class="comment">%Ess Irrev (essential rxn, i.e. forced to carry flux, irreversible):</span>
+0216 <span class="comment">%flux &gt;= 0.1 - solved with lb = 0.1.</span>
+0217 <span class="comment">%Ess Rev (these are not really used):</span>
+0218 <span class="comment">% 1: Split up the flux into positive and negative: flux - verp + vern == 0, 0 &lt;= verp,vern &lt;= Inf.</span>
+0219 <span class="comment">% 2. Force one of the fluxes on: verp + vern &gt;= 0.1, verp + vern - verv1 == 0. verv1 &gt;= 0.1</span>
+0220 <span class="comment">% 3. We need a bool to make sure that one of verp and vern are always zero:</span>
+0221 <span class="comment">%    verb E {0,1}:  verp &lt;= 100*verb (if bool is 0, verp is zero): verp - 100*verb + verv2 == 0, verv2 &gt;= 0</span>
+0222 <span class="comment">%    vern &lt;= (1-verb)*100 (if bool is one, vern is zero): vern + 100*verb + verv3 == 0, -100 &lt;= verv3 &lt;= inf</span>
+0223 
+0224 <span class="comment">% Now metabolomics</span>
+0225 <span class="comment">% The basic idea is that the bonus is gotten if any of the producer reactions are on. We can</span>
+0226 <span class="comment">% therefore use the &quot;on&quot; variables directly for the reactions that are included. We therefore add one variable per met, mon, which can be</span>
+0227 <span class="comment">% continuous and between 0 and 1. We then say that mon &lt;= v1 + v2 + ... + vn, i.e. that</span>
+0228 <span class="comment">% mon + mv1 - v1 - v2 ... - vn == 0, 0 &lt;= mon &lt;= 1, 0 &lt;= mv1 &lt;= inf</span>
+0229 <span class="comment">% mon gets -prodWeight in the c vector (i.e. objective function)</span>
+0230 <span class="comment">% A tricky part is that some of the reactions producing a metabolite are left outside the problem</span>
+0231 <span class="comment">% This is solved by moving them into the problem, but with the score 0. They can still be treated as positive</span>
+0232 <span class="comment">% reactions. In the end, we are not interested if they are on though, but they may</span>
+0233 <span class="comment">% allow for production of a metabolite, giving no benefit of turning on another producer reaction.</span>
+0234 <span class="comment">% Another tricky thing is that some metabolite producers have negative score. There is</span>
+0235 <span class="comment">% no automatic mechanism for forcing flux on if the variable is on - this is simply</span>
+0236 <span class="comment">% not needed for negative variables - unless they are a metabolite producer. We therefore need</span>
+0237 <span class="comment">% to add an extra constraint there, similar to the case of positive. It gets a bit complicated.</span>
+0238 <span class="comment">% For reversible, we need a bool to make sure that one of vnrp and vnrn stays zero:</span>
+0239 <span class="comment">%    vnrbm E {0,1}:  vnrp &lt;= 100*vnrbm (if bool is 0, vnrp is zero): vnrp - 100*vnrbm + vnrvm1 == 0, vnrvm1 &gt;= 0</span>
+0240 <span class="comment">%    vnrn &lt;= (1-vnrbm)*100 (if bool is one, vnrn is zero): vnrn + 100*vnrbm + vnrvm2 == 0, -100 &lt;= vnrvm2 &lt;= inf</span>
+0241 <span class="comment">% We then also say that vnrp + vnrn &gt;= 0.1*Yi, vnrp + vnrn - 0.1*Yi - vnrvm3 == 0, vnrvm3 &gt;= 0</span>
+0242 <span class="comment">% For irreversible, it is fairly straight-forward. We just say that flux &gt;= 0.1*Yi, i.e. flux - 0.1*Yi - vnim == 0, 0 &lt;= vnim &lt;= Inf.</span>
+0243 
+0244 
+0245 <span class="comment">%The total matrix then looks like this. Note that we have ordered the categories, two reactions each,</span>
+0246 <span class="comment">%in the S matrix to make it easier to follow the figure. In practice, they come in random order, which</span>
+0247 <span class="comment">%is why the SEye variable is used further down.</span>
+0248 <span class="comment">%all categories below have two columns - the two column starts where label starts</span>
+0249 <span class="comment">%since the label cannot fit in two chars, they are on multiple lines</span>
+0250 <span class="comment">%</span>
+0251 <span class="comment">%The met variables and constraints are not in this figure for practical reasons.</span>
+0252 <span class="comment">%</span>
+0253 <span class="comment">%                           vprb  vprv3 vnrn  vern  verv2 mv1</span>
+0254 <span class="comment">% pi  ni  ei  Ypi Yni vpi vprn  vprv2 vnrp  verp  verb  mon</span>
+0255 <span class="comment">%   pr  nr  er  Ypr Ynr vprp  vprv1 vni   vnrv1 verv1 verv3</span>
+0256 <span class="comment">% SSSSSSSSSSSS0000000000000000000000000000000000000000000000</span>
+0257 <span class="comment">% SSSSSSSSSSSS0000000000000000000000000000000000000000000000 S block</span>
+0258 <span class="comment">% SSSSSSSSSSSS0000000000000000000000000000000000000000000000</span>
+0259 <span class="comment">% 1           N       -                                      Pos irrev block</span>
+0260 <span class="comment">%  1           N       -</span>
+0261 <span class="comment">%   1                   - 1                                  Pos rev block 1</span>
+0262 <span class="comment">%    1                   - 1</span>
+0263 <span class="comment">%               N       1 1   -                              Pos rev block 2</span>
+0264 <span class="comment">%                N       1 1   -</span>
+0265 <span class="comment">%                       1   M   1                            Pos rev block 3</span>
+0266 <span class="comment">%                        1   M   1</span>
+0267 <span class="comment">%                         1 C     1                          Pos rev block 4</span>
+0268 <span class="comment">%                          1 C     1</span>
+0269 <span class="comment">%     1           M                 1                        Neg irrev block</span>
+0270 <span class="comment">%      1           M                 1</span>
+0271 <span class="comment">%       1                             - 1                    Neg rev block 1</span>
+0272 <span class="comment">%        1                             - 1</span>
+0273 <span class="comment">%                   M                 1 1 1                  Neg rev block 2</span>
+0274 <span class="comment">%                    M                 1 1 1</span>
+0275 <span class="comment">%           1                               - 1              Ess rev block 1</span>
+0276 <span class="comment">%            1                               - 1</span>
+0277 <span class="comment">%                                           1 1 -            Ess rev block 2</span>
+0278 <span class="comment">%                                            1 1 -</span>
+0279 <span class="comment">%                                           1     M 1        Ess rev block 3</span>
+0280 <span class="comment">%                                            1     M 1</span>
+0281 <span class="comment">%                                             1   C   1      Ess rev block 4</span>
+0282 <span class="comment">%                                              1   C   1</span>
+0283 <span class="comment">%             --------                                  1 1  Met block - Here, we assume that all variables support each met.</span>
+0284 <span class="comment">%             --------                                   1 1             In practice, fewer of the &quot;on&quot; variables with -1 should be included</span>
+0285 <span class="comment">%</span>
+0286 <span class="comment">%</span>
+0287 <span class="comment">%M = -100</span>
+0288 <span class="comment">%N = -0.1</span>
+0289 <span class="comment">%D = 0.1</span>
+0290 <span class="comment">%C = 100</span>
+0291 <span class="comment">%- = -1</span>
+0292 <span class="comment">%</span>
+0293 <span class="comment">%It looks a bit different for the irrev model, but still quite similar</span>
+0294 
+0295 <span class="comment">%build the A matrix</span>
+0296 <span class="comment">%S row</span>
+0297 <span class="comment">%When forcing on essential rxns, use the flux value of the previous run (set to 0.1 the first time)</span>
+0298 <span class="comment">%Do not set it above 0.1, may starve something else out. Leave a margin of 1% from the last run.</span>
+0299 forceOnLim = forceOn;
+0300 forceOnLimEss=min(abs(fluxes)*0.99,0.1);
+0301 forceOnLimEss(essIrrevRxns) = min(forceOnLimEss(essIrrevRxns), milpModel.ub(essIrrevRxns));
+0302 
+0303 <span class="comment">% Per-reaction big-M: use each reaction own flux capacity (capped at 1000).</span>
+0304 <span class="comment">% This replaces the fixed big-M=100, which underestimates capacity for standard</span>
+0305 <span class="comment">% RAVEN models where ub=1000. Must be at least forceOnLim so the constraints are feasible.</span>
+0306 bigMCap = 1000;
+0307 ubSafe = min(milpModel.ub, bigMCap); ubSafe(~isfinite(ubSafe)) = bigMCap;
+0308 lbSafe = min(-milpModel.lb, bigMCap); lbSafe(~isfinite(lbSafe)) = bigMCap; lbSafe = max(lbSafe, 0);
+0309 bigMPosRev   = max(max(ubSafe(posRevRxns),  lbSafe(posRevRxns)),  forceOnLim);
+0310 bigMNegIrrev = max(ubSafe(negIrrevRxns), forceOnLim);
+0311 bigMNegRev   = max(max(ubSafe(negRevRxns),  lbSafe(negRevRxns)),  forceOnLim);
+0312 bigMEssRev   = max(max(ubSafe(essRevRxns),  lbSafe(essRevRxns)),  forceOnLim);
+0313 
+0314 varsPerNegRev = 3;
+0315 
+0316 
+0317 <span class="comment">%Figure out the number of variables needed for metabolomics</span>
+0318 <span class="keyword">if</span> ~isempty(metData)
+0319     nMetVars = 2*size(metData,1) + 4*nMetNegRev + nMetNegIrrev; <span class="comment">%mon,mv1; vnrbm,vnrvm1,vnrvm2,vnrvm3; vnim</span>
+0320 <span class="keyword">else</span>
+0321     nMetVars = 0;
+0322 <span class="keyword">end</span>
+0323 
+0324 
+0325 sRow = [milpModel.S sparse(nMets, nPosIrrev*2+nPosRev*7+nNegIrrev*2+nNegRev*(1+varsPerNegRev)+nEssRev*6 + nMetVars)];
+0326 sEye = speye(nRxns);
+0327 nYBlock = nPosIrrev+nPosRev+nNegIrrev+nNegRev;
+0328 piRows = [sEye(posIrrevRxns,:) speye(nPosIrrev)*-forceOnLim sparse(nPosIrrev,nPosRev+nNegIrrev+nNegRev) speye(nPosIrrev)*-1 sparse(nPosIrrev,nPosRev*6+nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+0329 
+0330 prRows1 = [sEye(posRevRxns,:) sparse(nPosRev,nYBlock + nPosIrrev) speye(nPosRev)*-1 speye(nPosRev) sparse(nPosRev,nPosRev*4+nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+0331 prRows2 = [sparse(nPosRev,nRxns + nPosIrrev) speye(nPosRev)*-forceOnLim sparse(nPosRev,nNegIrrev + nNegRev + nPosIrrev) speye(nPosRev) speye(nPosRev) sparse(nPosRev,nPosRev) speye(nPosRev)*-1 sparse(nPosRev,nPosRev*2+nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+0332 prRows3 = [sparse(nPosRev,nRxns + nYBlock + nPosIrrev) speye(nPosRev) sparse(nPosRev,nPosRev) spdiags(-bigMPosRev,0,nPosRev,nPosRev) sparse(nPosRev,nPosRev) speye(nPosRev) sparse(nPosRev,nPosRev+nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+0333 prRows4 = [sparse(nPosRev,nRxns + nYBlock + nPosIrrev + nPosRev) speye(nPosRev) spdiags(bigMPosRev,0,nPosRev,nPosRev) sparse(nPosRev,nPosRev*2) speye(nPosRev) sparse(nPosRev, nNegIrrev+nNegRev*varsPerNegRev+nEssRev*6+nMetVars)];
+0334 
+0335 niRows = [sEye(negIrrevRxns,:) sparse(nNegIrrev,nPosIrrev + nPosRev) spdiags(-bigMNegIrrev,0,nNegIrrev,nNegIrrev) sparse(nNegIrrev,nNegRev + nPosIrrev + nPosRev*6) speye(nNegIrrev) sparse(nNegIrrev,nNegRev*varsPerNegRev + nEssRev*6+nMetVars)];
+0336 
+0337 nrRows1 = [sEye(negRevRxns,:) sparse(nNegRev,nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev) speye(nNegRev)*-1 speye(nNegRev) sparse(nNegRev,nNegRev + nEssRev*6+nMetVars)];
+0338 nrRows2 = [sparse(nNegRev,nRxns + nPosIrrev + nPosRev + nNegIrrev) spdiags(-bigMNegRev,0,nNegRev,nNegRev) sparse(nNegRev,nPosIrrev + nPosRev*6 + nNegIrrev) speye(nNegRev) speye(nNegRev) speye(nNegRev) sparse(nNegRev,nEssRev*6+nMetVars)];
+0339 nrRows = [nrRows1;nrRows2];
+0340 
+0341 erRows1 = [sEye(essRevRxns,:) sparse(nEssRev,nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev) speye(nEssRev)*-1 speye(nEssRev) sparse(nEssRev, nEssRev*4+nMetVars)];
+0342 erRows2 = [sparse(nEssRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev) speye(nEssRev) speye(nEssRev) speye(nEssRev)*-1 sparse(nEssRev, nEssRev*3+nMetVars)];
+0343 erRows3 = [sparse(nEssRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev) speye(nEssRev) sparse(nEssRev, nEssRev*2) spdiags(-bigMEssRev,0,nEssRev,nEssRev) speye(nEssRev) sparse(nEssRev, nEssRev+nMetVars)];
+0344 erRows4 = [sparse(nEssRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev + nEssRev) speye(nEssRev) sparse(nEssRev, nEssRev) spdiags(bigMEssRev,0,nEssRev,nEssRev) sparse(nEssRev, nEssRev) speye(nEssRev) sparse(nEssRev, nMetVars)];
+0345 
+0346 <span class="comment">%now the mets</span>
+0347 <span class="keyword">if</span> ~isempty(metData)
+0348     <span class="comment">%Order of rxn &quot;on&quot; vars: Ypi Ypr Yni Ynr. This is a bit messy, since they are not in the</span>
+0349     <span class="comment">%same order as the reactions in the S matrix or metData. We therefore resort the vars in</span>
+0350     <span class="comment">%metData to match the order of the vars.</span>
+0351     srtMetData = sparse([metData(:,posIrrevRxns) metData(:,posRevRxns) metData(:,negIrrevRxns) metData(:,negRevRxns)]);
+0352     
+0353     <span class="comment">%First the setup for giving bonus if the met is included.</span>
+0354     <span class="comment">%The mon vars come first followed by the mv1 vars</span>
+0355     metRows1 = [sparse(nMetabolMets,nRxns) -srtMetData sparse(nMetabolMets,  nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev + nEssRev*6) speye(nMetabolMets) speye(nMetabolMets) sparse(nMetabolMets, 4*nMetNegRev + nMetNegIrrev)];
+0356     <span class="comment">%Then negative rev:</span>
+0357     <span class="comment">% Variable order: eye(vnrbm),eye(vnrvm1),eye(vnrvm2),eye(vnrvm3)</span>
+0358     <span class="comment">% vnrp,vnrn are the two first variables among the neg rev vars.</span>
+0359     <span class="comment">% For reversible, we need a bool to make sure that one of vnrp and vnrn stays zero:</span>
+0360     <span class="comment">%    vnrbm E {0,1}:  vnrp &lt;= 100*vnrbm (if bool is 0, vnrp is zero): vnrp - 100*vnrbm + vnrvm1 == 0, vnrvm1 &gt;= 0 (metRows2)</span>
+0361     <span class="comment">%    vnrn &lt;= (1-vnrbm)*100 (if bool is one, vnrn is zero): vnrn + 100*vnrbm + vnrvm2 == 0, -100 &lt;= vnrvm2 &lt;= inf (metRows3)</span>
+0362     <span class="comment">% We then also say that vnrp + vnrn &gt;= 0.1*Yi, -0.1*Yi + vnrp + vnrn - vnrvm3 == 0, vnrvm3 &gt;= 0 (metRows4)</span>
+0363     nrEye = speye(nNegRev);
+0364     <span class="comment">%Force a column: when no met reaction is negative-reversible, indexing a</span>
+0365     <span class="comment">%scalar bigMNegRev with an all-false mask returns a 0-by-0 empty, which</span>
+0366     <span class="comment">%the spdiags calls below reject (they need a 0-by-1 column).</span>
+0367     bigMMetNegRev = bigMNegRev(metNegRev(negRevRxns));
+0368     bigMMetNegRev = bigMMetNegRev(:);
+0369     <span class="comment">%vnrp - M*vnrbm + vnrvm1 == 0</span>
+0370     metRows2 = [sparse(nMetNegRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev) <span class="keyword">...</span><span class="comment"> %zeros up to vnrp</span>
+0371                 nrEye(metNegRev(negRevRxns),:) <span class="keyword">...</span><span class="comment"> %vnrp</span>
+0372                 sparse(nMetNegRev, nNegRev*(varsPerNegRev-1) + nEssRev*6 + nMetabolMets*2) <span class="keyword">...</span><span class="comment"> %zeros up to vnrbm</span>
+0373                 spdiags(-bigMMetNegRev,0,nMetNegRev,nMetNegRev) <span class="keyword">...</span><span class="comment"> %vnrbm</span>
+0374                 speye(nMetNegRev) <span class="keyword">...</span><span class="comment"> % vnrvm1</span>
+0375                 sparse(nMetNegRev, nMetNegRev*2 + nMetNegIrrev)];<span class="comment">%fill up the rest with zeros</span>
+0376     <span class="comment">%vnrn + M*vnrbm + vnrvm2 == 0</span>
+0377     metRows3 = [sparse(nMetNegRev,nRxns + nYBlock + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev) <span class="keyword">...</span><span class="comment"> %zeros up to vnrn</span>
+0378                 nrEye(metNegRev(negRevRxns),:) <span class="keyword">...</span><span class="comment"> %vnrp</span>
+0379                 sparse(nMetNegRev, nNegRev*(varsPerNegRev-2) + nEssRev*6 + nMetabolMets*2) <span class="keyword">...</span><span class="comment"> %zeros up to vnrbm</span>
+0380                 spdiags(bigMMetNegRev,0,nMetNegRev,nMetNegRev) <span class="keyword">...</span><span class="comment"> %vnrbm</span>
+0381                 sparse(nMetNegRev, nMetNegRev) <span class="keyword">...</span><span class="comment"> %zeros up to vnrvm2</span>
+0382                 speye(nMetNegRev) <span class="keyword">...</span><span class="comment"> % vnrvm2</span>
+0383                 sparse(nMetNegRev, nMetNegRev + nMetNegIrrev)];<span class="comment">%fill up the rest with zeros</span>
+0384     <span class="comment">%-0.1*Yi + vnrp + vnrn - vnrvm3 == 0</span>
+0385     metRows4 = [sparse(nMetNegRev,nRxns + nPosIrrev + nPosRev + nNegIrrev) <span class="keyword">...</span><span class="comment"> %zeros up to Yi for neg rev</span>
+0386                 nrEye(metNegRev(negRevRxns),:)*-0.1 <span class="keyword">...</span><span class="comment"> %Yi for met neg rev</span>
+0387                 sparse(nMetNegRev, nPosIrrev + nPosRev*6 + nNegIrrev) <span class="keyword">...</span><span class="comment"> %zeros up to vnrp</span>
+0388                 nrEye(metNegRev(negRevRxns),:) <span class="keyword">...</span><span class="comment"> %vnrp</span>
+0389                 nrEye(metNegRev(negRevRxns),:) <span class="keyword">...</span><span class="comment"> %vnrn</span>
+0390                 sparse(nMetNegRev, nNegRev*(varsPerNegRev-2) + nEssRev*6 + nMetabolMets*2 + nMetNegRev*3) <span class="keyword">...</span><span class="comment">%zeros up to vnrvm3</span>
+0391                 speye(nMetNegRev)*-1 <span class="keyword">...</span><span class="comment"> % vnrvm3</span>
+0392                 sparse(nMetNegRev, nMetNegIrrev)];<span class="comment">%fill up the rest with zeros</span>
+0393     
+0394     <span class="comment">%Then negative irrev, i.e. flux - 0.1*Yi - vnim == 0</span>
+0395     niEye = speye(nNegIrrev);
+0396     metRows5 = [sEye(metNegIrrev,:) <span class="keyword">...</span><span class="comment"> %flux</span>
+0397                 sparse(nMetNegIrrev, nPosIrrev + nPosRev) <span class="keyword">...</span><span class="comment"> % zeros up to Yi for neg irrev</span>
+0398                 niEye(metNegIrrev(negIrrevRxns),:)*-0.1 <span class="keyword">...</span><span class="comment"> %Yi for met neg irrev</span>
+0399                 sparse(nMetNegIrrev, nNegRev + nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev + nEssRev*6 + nMetabolMets*2 + 4*nMetNegRev) <span class="keyword">...</span><span class="comment"> %zeros up to vnim</span>
+0400                 -speye(nMetNegIrrev) ]; <span class="comment">%vnim</span>
+0401     metRows = [metRows1;metRows2;metRows3;metRows4;metRows5];
+0402     metVarC = [ones(nMetabolMets,1)*-prodWeight;zeros(nMetVars - nMetabolMets,1)];
+0403     <span class="comment">%vnrbm is boolean, so between 0 and 1</span>
+0404     <span class="comment">%vnrvm1 &gt;= 0</span>
+0405     <span class="comment">%-100 &lt;= vnrvm2 &lt;= inf</span>
+0406     <span class="comment">% vnrvm3 &gt;= 0</span>
+0407     <span class="comment">%0 &lt;= vnim &lt;= Inf</span>
+0408     metLb = [zeros(nMetabolMets*2 + 2*nMetNegRev,1);-bigMMetNegRev;zeros(nMetNegRev + nMetNegIrrev,1)];
+0409     metUb = [ones(nMetabolMets,1);inf(nMetabolMets,1);ones(nMetNegRev,1);inf(3*nMetNegRev + nMetNegIrrev,1)];
+0410     metVartype = [repmat(<span class="string">'C'</span>, 1, nMetabolMets*2), <span class="keyword">...</span>
+0411                   repmat(<span class="string">'B'</span>, 1, nMetNegRev), <span class="keyword">...</span>
+0412                   repmat(<span class="string">'C'</span>, 1, 3*nMetNegRev + nMetNegIrrev)];
+0413 
+0414 <span class="keyword">else</span>
+0415     metRows = [];
+0416     metVarC = [];
+0417     metLb = [];
+0418     metUb = [];
+0419     metVartype = [];
+0420 <span class="keyword">end</span>
+0421 
+0422 prob.a = [sRow;piRows;prRows1;prRows2;prRows3;prRows4;niRows;nrRows;erRows1;erRows2;erRows3;erRows4;metRows];
+0423 prob.A = prob.a;
+0424 prob.b = zeros(size(prob.A,1),1);
+0425 prob.c = [zeros(nRxns,1);rxnScores(posIrrevRxns)*-1;rxnScores(posRevRxns)*-1;rxnScores(negIrrevRxns)*-1;rxnScores(negRevRxns)*-1;zeros(nPosIrrev + nPosRev*6 + nNegIrrev + nNegRev*varsPerNegRev + nEssRev*6,1);metVarC];
+0426 prob.lb = [milpModel.lb;zeros(nYBlock + nPosIrrev + 5*nPosRev,1);-bigMPosRev;zeros(nNegIrrev+nNegRev*varsPerNegRev+nEssRev*2,1);ones(nEssRev,1)*forceOnLim;zeros(nEssRev*2,1);-bigMEssRev;metLb];
+0427 prob.lb(essIrrevRxns) = forceOnLimEss(essIrrevRxns);<span class="comment">%force flux for the ess irrev rxns - this is the only way these are handled</span>
+0428 prob.ub = [milpModel.ub;ones(nYBlock,1);inf(nPosIrrev+nPosRev*2,1);ones(nPosRev,1);inf(3*nPosRev+nNegIrrev+varsPerNegRev*nNegRev+3*nEssRev,1);ones(nEssRev,1);inf(2*nEssRev,1);metUb];
+0429 
+0430 prob.vartype = [repmat(<span class="string">'C'</span>, 1, nRxns + nPosIrrev + nPosRev), <span class="keyword">...</span>
+0431                 repmat(<span class="string">'B'</span>, 1, nNegIrrev + nNegRev), <span class="keyword">...</span>
+0432                 repmat(<span class="string">'C'</span>, 1, nPosIrrev + 2*nPosRev), <span class="keyword">...</span><span class="comment"> </span>
+0433                 repmat(<span class="string">'B'</span>, 1, nPosRev), <span class="keyword">...</span>
+0434                 repmat(<span class="string">'C'</span>, 1, 3*nPosRev + nNegIrrev + varsPerNegRev*nNegRev + 3*nEssRev), <span class="keyword">...</span>
+0435                 repmat(<span class="string">'B'</span>, 1, nEssRev), <span class="keyword">...</span>
+0436                 repmat(<span class="string">'C'</span>, 1, 2*nEssRev), <span class="keyword">...</span>
+0437                 metVartype];
+0438             
+0439 onoffVarInd = (1:(nPosIrrev + nPosRev + nNegIrrev + nNegRev)) + nRxns;
+0440 onoffPosIrrev = onoffVarInd(1:nPosIrrev);
+0441 onoffPosRev = onoffVarInd((1:nPosRev)+nPosIrrev);
+0442 onoffNegIrrev = onoffVarInd((1:nNegIrrev)+nPosIrrev+nPosRev);
+0443 onoffNegRev = onoffVarInd((1:nNegRev)+nPosIrrev+nPosRev+nNegIrrev);
+0444 
+0445 metVarInd = (1:nMetabolMets) + (length(prob.vartype) - nMetVars);
+0446 
+0447 <span class="keyword">if</span> allowExcretion
+0448     <span class="comment">%S*v &gt;= 0: a metabolite may be produced in excess of what is consumed,</span>
+0449     <span class="comment">%and the surplus is implicitly excreted. 'L' would say S*v &lt;= 0, which</span>
+0450     <span class="comment">%lets a metabolite be consumed without ever being produced -- free</span>
+0451     <span class="comment">%uptake, the opposite of excretion, and enough for the MILP to switch a</span>
+0452     <span class="comment">%reaction on by conjuring its substrates out of nothing.</span>
+0453     prob.csense = [repmat(<span class="string">'G'</span>, 1, length(milpModel.mets)), <span class="keyword">...</span>
+0454                   repmat(<span class="string">'E'</span>, 1, length(prob.b) - length(milpModel.mets))];
+0455 <span class="keyword">else</span>
+0456     <span class="comment">%One character per row: optimizeProb maps csense elementwise for glpk and</span>
+0457     <span class="comment">%cobra, so a scalar '=' only happens to work on gurobi.</span>
+0458     prob.csense = repmat(<span class="string">'E'</span>, 1, length(prob.b));
+0459 <span class="keyword">end</span>
+0460 
+0461 params.intTol = 10^-7; <span class="comment">%This value is very important. If set too low</span>
+0462                        <span class="comment">%there is a risk that gurobi fails due to numerical</span>
+0463                        <span class="comment">%issues - this happened for Gurobi v. 10.0 with TestModelL.</span>
+0464                        <span class="comment">%On the other hand, it should not be too large</span>
+0465                        <span class="comment">%either. With this value, fluxes of 10-7 can slip</span>
+0466                        <span class="comment">%through, which should be fine. Another option if</span>
+0467                        <span class="comment">%this becomes a problem is to set NumericFocus=2,</span>
+0468                        <span class="comment">%which makes the solver slower but fixes the issue</span>
+0469                        <span class="comment">%with TestModelL.</span>
+0470 
+0471 prob.osense = 1; <span class="comment">%minimize</span>
+0472 
+0473 <span class="keyword">if</span> ~isempty(startVals)
+0474      prob.start = startVals; <span class="comment">%This doesn't work...</span>
+0475 <span class="keyword">end</span>
+0476 
+0477 res=optimizeProb(prob,params,verbose);
+0478 
+0479 
+0480 <span class="keyword">if</span> ~checkSolution(res)
+0481     <span class="keyword">if</span> res.hitTimeLimit
+0482         EM=<span class="string">'Time limit reached without finding a solution. Try increasing the TimeLimit parameter.'</span>;
+0483     <span class="keyword">else</span>
+0484         EM=<span class="string">'The problem is infeasible'</span>;
+0485     <span class="keyword">end</span>
+0486     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0487 <span class="keyword">end</span>
+0488 
+0489 <span class="keyword">if</span> resolveTies &amp;&amp; (nNegIrrev + nNegRev) &gt; 0 &amp;&amp; ~res.hitTimeLimit
+0490     <span class="comment">%Skipped when the primary solve stopped at the time limit: the floor</span>
+0491     <span class="comment">%constraint would pin an unproven incumbent, so the phases cannot select</span>
+0492     <span class="comment">%among true optima.</span>
+0493     <span class="comment">%This MILP is highly degenerate: many reaction subsets reach the same</span>
+0494     <span class="comment">%score optimum, and the solver returns an arbitrary one -- reproducible</span>
+0495     <span class="comment">%for a fixed solver build + Seed, but fragile to a solver version bump</span>
+0496     <span class="comment">%(raven-gecko-parity#104). This runs a lexicographic phase 2, holding</span>
+0497     <span class="comment">%the score objective at its optimum with a floor constraint: first</span>
+0498     <span class="comment">%minimise the count of &quot;on&quot; removable reactions (the sparsest optimum),</span>
+0499     <span class="comment">%then, among the sparsest, minimise their summed reaction-id rank</span>
+0500     <span class="comment">%(prefer lower ids). Only the negative-score &quot;on&quot; variables (onoffNegIrrev,</span>
+0501     <span class="comment">%onoffNegRev) are a genuine tie to resolve: positive-score ones are</span>
+0502     <span class="comment">%continuous, pinned near 1 by the score objective rather than a free</span>
+0503     <span class="comment">%binary choice. Ports raven-toolbox's _resolve_ties (raven-toolbox#114).</span>
+0504     negCols = [onoffNegIrrev, onoffNegRev];
+0505     negRxnIdx = [negIrrevRxns; negRevRxns];
+0506     primaryObj = full(prob.c' * res.full);
+0507     tol = max(abs(primaryObj)*1e-7, 1e-7);
+0508 
+0509     floorRow = prob.c';
+0510     tieProb = prob;
+0511     tieProb.A = [prob.A; floorRow];
+0512     tieProb.a = tieProb.A;
+0513     tieProb.b = [prob.b; primaryObj+tol];
+0514     tieProb.csense = [prob.csense <span class="string">'L'</span>];
+0515 
+0516     <span class="comment">%An integer objective needs only a cheap absolute-gap proof, not a tiny</span>
+0517     <span class="comment">%relative one -- mirrors raven-toolbox's own MIPGap=0/MIPGapAbs=0.4 for</span>
+0518     <span class="comment">%the same two phases.</span>
+0519     tieParams = params;
+0520     tieParams.MIPGap = 0;
+0521     tieParams.MIPGapAbs = 0.4;
+0522     <span class="comment">%Phases 2a and 2b get half of the time limit each, as in raven-toolbox.</span>
+0523     <span class="keyword">if</span> isfield(tieParams,<span class="string">'TimeLimit'</span>)
+0524         tieParams.TimeLimit = max(1,floor(tieParams.TimeLimit*0.5));
+0525     <span class="keyword">end</span>
+0526 
+0527     unproven = {};
+0528 
+0529     <span class="comment">%Phase 2a: fewest &quot;on&quot; removable reactions among the score-optimal solutions.</span>
+0530     countObj = zeros(size(prob.c));
+0531     countObj(negCols) = 1;
+0532     tieProb.c = countObj;
+0533     res2a = optimizeProb(tieProb,tieParams,verbose);
+0534     [isFeasible2a, isOptimal2a] = checkSolution(res2a);
+0535     <span class="keyword">if</span> ~isOptimal2a
+0536         unproven{end+1} = <span class="string">'phase2a-parsimony'</span>;
+0537     <span class="keyword">end</span>
+0538     <span class="keyword">if</span> isFeasible2a
+0539         kmin = full(countObj'*res2a.full);
+0540 
+0541         <span class="comment">%Phase 2b: among the sparsest, prefer lower reaction ids -- a</span>
+0542         <span class="comment">%deterministic tie-break independent of solver/seed.</span>
+0543         countRow = sparse(1,size(tieProb.A,2));
+0544         countRow(negCols) = 1;
+0545         tieProb2b = tieProb;
+0546         tieProb2b.A = [tieProb.A; countRow];
+0547         tieProb2b.a = tieProb2b.A;
+0548         tieProb2b.b = [tieProb.b; kmin+0.5];
+0549         tieProb2b.csense = [tieProb.csense <span class="string">'L'</span>];
+0550 
+0551         [~, sortOrder] = sort(rankKeys(negRxnIdx));
+0552         ranks = zeros(numel(negRxnIdx),1);
+0553         ranks(sortOrder) = (1:numel(negRxnIdx))';
+0554         idObj = zeros(size(prob.c));
+0555         idObj(negCols) = ranks;
+0556         tieProb2b.c = idObj;
+0557         res2b = optimizeProb(tieProb2b,tieParams,verbose);
+0558         [isFeasible2b, isOptimal2b] = checkSolution(res2b);
+0559         <span class="keyword">if</span> ~isOptimal2b
+0560             unproven{end+1} = <span class="string">'phase2b-idrank'</span>;
+0561         <span class="keyword">end</span>
+0562         <span class="keyword">if</span> isFeasible2b
+0563             <span class="comment">%Adopt the tie-resolved solution for the on/off read-out below.</span>
+0564             res = res2b;
+0565 
+0566             <span class="comment">%Phases 2c and 2d change the fluxes, not the on/off state; the next</span>
+0567             <span class="comment">%ftINIT step reads the fluxes, and pinFluxes is false when no step</span>
+0568             <span class="comment">%follows.</span>
+0569             <span class="keyword">if</span> pinFluxes
+0570                 <span class="comment">%Phase 2c: the least total absolute flux for this on/off state.</span>
+0571                 <span class="comment">%The next step forces each turned-on reaction in the direction</span>
+0572                 <span class="comment">%of its flux, at min(0.99*|flux|,0.1), so the flux read-out</span>
+0573                 <span class="comment">%comes from a minimal-flux solution instead of an arbitrary</span>
+0574                 <span class="comment">%vertex. A binary on/off variable is fixed at its value; a</span>
+0575                 <span class="comment">%continuous one that is on keeps at least its value, one that</span>
+0576                 <span class="comment">%is off at most its value. Directions of reversible scored</span>
+0577                 <span class="comment">%reactions stay free, so this is still a MILP.</span>
+0578                 <span class="comment">%It stops at a relative or absolute gap of 1e-6, as raven-toolbox's</span>
+0579                 <span class="comment">%phase 2c.</span>
+0580                 nCols = numel(prob.c);
+0581                 minProb = tieProb2b;
+0582                 <span class="keyword">if</span> isfield(minProb,<span class="string">'start'</span>)
+0583                     minProb = rmfield(minProb,<span class="string">'start'</span>);
+0584                 <span class="keyword">end</span>
+0585                 x = res2b.full;
+0586                 negVal = round(x(negCols));
+0587                 minProb.lb(negCols) = negVal;
+0588                 minProb.ub(negCols) = negVal;
+0589                 posCols = [onoffPosIrrev, onoffPosRev];
+0590                 posVal = min(max(x(posCols),0),1);
+0591                 posOn = posVal &gt;= 0.5;
+0592                 minProb.lb(posCols(posOn)) = posVal(posOn);
+0593                 minProb.ub(posCols(~posOn)) = posVal(~posOn);
+0594                 <span class="comment">%|v| is v for a forward-only flux, -v for a backward-only one,</span>
+0595                 <span class="comment">%and an added t &gt;= v, t &gt;= -v otherwise.</span>
+0596                 fwdOnly = minProb.lb(1:nRxns) &gt;= 0;
+0597                 bwdOnly = ~fwdOnly &amp; minProb.ub(1:nRxns) &lt;= 0;
+0598                 tRxns = find(~fwdOnly &amp; ~bwdOnly);
+0599                 nT = numel(tRxns);
+0600                 selV = sparse(1:nT, tRxns, 1, nT, nCols);
+0601                 minProb.A = [minProb.A sparse(size(minProb.A,1),nT); -selV speye(nT); selV speye(nT)];
+0602                 minProb.a = minProb.A;
+0603                 minProb.b = [minProb.b; zeros(2*nT,1)];
+0604                 minProb.csense = [minProb.csense repmat(<span class="string">'G'</span>,1,2*nT)];
+0605                 minProb.lb = [minProb.lb; zeros(nT,1)];
+0606                 minProb.ub = [minProb.ub; inf(nT,1)];
+0607                 minProb.vartype = [minProb.vartype repmat(<span class="string">'C'</span>,1,nT)];
+0608                 minProb.c = [zeros(nCols,1); ones(nT,1)];
+0609                 minProb.c(fwdOnly) = 1;
+0610                 minProb.c(bwdOnly) = -1;
+0611                 minParams = params;
+0612                 minParams.MIPGap = 1e-6;
+0613                 minParams.MIPGapAbs = 1e-6;
+0614                 res2c = optimizeProb(minProb,minParams,verbose);
+0615                 [isFeasible2c, isOptimal2c] = checkSolution(res2c);
+0616                 <span class="keyword">if</span> ~isOptimal2c
+0617                     unproven{end+1} = <span class="string">'phase2c-minflux'</span>;
+0618                 <span class="keyword">end</span>
+0619                 <span class="keyword">if</span> isFeasible2c
+0620                     <span class="comment">%Only the fluxes change; the status stays that of phase 2b.</span>
+0621                     res.full = res2c.full(1:nCols);
+0622 
+0623                     <span class="comment">%Phase 2d: the least total flux can leave a direction open</span>
+0624                     <span class="comment">%when two directions carry the same total flux, for example</span>
+0625                     <span class="comment">%a pair of reversible reactions closing a loop either way.</span>
+0626                     <span class="comment">%Keep the on/off state of phase 2c, hold the total absolute</span>
+0627                     <span class="comment">%flux at most at its phase-2c value plus</span>
+0628                     <span class="comment">%max(1e-7*total, 1e-6), and minimise the backward flux</span>
+0629                     <span class="comment">%max(0,-v) of the reactions whose flux can take either sign,</span>
+0630                     <span class="comment">%weighted by id rank from the end: sorted by rankKeys, the</span>
+0631                     <span class="comment">%first of n reactions gets weight n and the last 1, so a</span>
+0632                     <span class="comment">%reaction with a lower id prefers its forward direction.</span>
+0633                     <span class="keyword">if</span> nT &gt; 0
+0634                         total = minProb.c' * res2c.full;
+0635                         dirProb = minProb;
+0636                         nCols2c = numel(minProb.c);
+0637                         [~, ord] = sort(rankKeys(tRxns));
+0638                         w = zeros(nT,1);
+0639                         w(ord) = (nT:-1:1)';
+0640                         dirProb.A = [minProb.A sparse(size(minProb.A,1),nT); <span class="keyword">...</span>
+0641                                      minProb.c' sparse(1,nT); <span class="keyword">...</span>
+0642                                      selV sparse(nT,nT) speye(nT)];
+0643                         dirProb.a = dirProb.A;
+0644                         dirProb.b = [minProb.b; total + max(abs(total)*1e-7, 1e-6); zeros(nT,1)];
+0645                         dirProb.csense = [minProb.csense <span class="string">'L'</span> repmat(<span class="string">'G'</span>,1,nT)];
+0646                         dirProb.lb = [minProb.lb; zeros(nT,1)];
+0647                         dirProb.ub = [minProb.ub; inf(nT,1)];
+0648                         dirProb.vartype = [minProb.vartype repmat(<span class="string">'C'</span>,1,nT)];
+0649                         dirProb.c = [zeros(nCols2c,1); w];
+0650                         <span class="comment">%The phase-2c solution is the MIP start: the tight cap on</span>
+0651                         <span class="comment">%the total flux leaves the solver's heuristics little room</span>
+0652                         <span class="comment">%to find a first solution.</span>
+0653                         dirProb.start = [res2c.full; max(0, -res2c.full(tRxns))];
+0654                         res2d = optimizeProb(dirProb,minParams,verbose);
+0655                         [isFeasible2d, isOptimal2d] = checkSolution(res2d);
+0656                         <span class="keyword">if</span> ~isOptimal2d
+0657                             unproven{end+1} = <span class="string">'phase2d-direction'</span>;
+0658                         <span class="keyword">end</span>
+0659                         <span class="keyword">if</span> isFeasible2d
+0660                             res.full = res2d.full(1:nCols);
+0661                         <span class="keyword">end</span>
+0662                     <span class="keyword">end</span>
+0663                 <span class="keyword">end</span>
+0664             <span class="keyword">end</span>
+0665         <span class="keyword">end</span>
+0666     <span class="keyword">end</span>
+0667     <span class="keyword">if</span> ~isempty(unproven)
+0668         EM = [<span class="string">'ftINITInternalAlg tie resolution did not converge ('</span> strjoin(unproven,<span class="string">', '</span>) <span class="string">'): the selection among equally score-optimal solutions is itself an unproven incumbent, so resolveTies has reduced but not removed the run-to-run spread. Raise params.TimeLimit for a proven tie-break.'</span>];
+0669         warning(<span class="string">'RAVEN:warning'</span>, <span class="string">'%s'</span>, EM);
+0670     <span class="keyword">end</span>
+0671 <span class="keyword">end</span>
+0672 
+0673 <span class="comment">%get the on/off vals</span>
+0674 onoff = ones(nRxnsWithOnOff,1);<span class="comment">%standard is on, i.e. all reactions not included in the problem + ess is on</span>
+0675 onoff(posIrrevRxns) = res.full(onoffPosIrrev);
+0676 onoff(posRevRxns) = res.full(onoffPosRev);
+0677 onoff(negIrrevRxns) = res.full(onoffNegIrrev);
+0678 onoff(negRevRxns) = res.full(onoffNegRev);
+0679 
+0680 onoff2 = zeros(nRxnsWithOnOff,1);<span class="comment">%standard is off, i.e. all reactions not included in the problem + ess is off</span>
+0681 onoff2(posIrrevRxns) = res.full(onoffPosIrrev);
+0682 onoff2(posRevRxns) = res.full(onoffPosRev);
+0683 onoff2(negIrrevRxns) = res.full(onoffNegIrrev);
+0684 onoff2(negRevRxns) = res.full(onoffNegRev);
+0685 
+0686 
+0687 <span class="comment">%investigate a bit - this code could be used for fault finding. We have</span>
+0688 <span class="comment">%this code commented out, but it is definitely worth testing this if for example</span>
+0689 <span class="comment">%the solver is changed.</span>
+0690 <span class="comment">%problematic = onoff &lt; 0.99 &amp; onoff &gt; 0.01 &amp; (rxnScores ~= 0).';</span>
+0691 <span class="comment">%if sum(problematic) &gt; 0</span>
+0692 <span class="comment">%    disp(&quot;There are reactions that are in between on and off in the MILP. This may be due to the MILP parameter settings, the tolerances may be too large.&quot;)</span>
+0693 <span class="comment">%    disp([&quot;No problematic reactions: &quot;, num2str(sum(problematic))])</span>
+0694 <span class="comment">%end</span>
+0695 
+0696 <span class="comment">%so, it is only positive that are problematic. Likely because the 0.1 is too large. Test to change to 0.01</span>
+0697 <span class="comment">%unique(onoff(onoff &lt; 0.99 &amp; onoff &gt; 0.01))</span>
+0698 
+0699 <span class="comment">%Get all reactions used in the irreversible model</span>
+0700 <span class="comment">%The reaction score check is for metabolomics - we add those reactions as</span>
+0701 <span class="comment">%positive even though the score is 0. And, we do not want them included in the</span>
+0702 <span class="comment">%results.</span>
+0703 deletedRxns=(onoff &lt; 0.5).' &amp; (rxnScores ~= 0).'; 
+0704 turnedOnRxns=(onoff2 &gt;= 0.5).' &amp; (rxnScores ~= 0).';
+0705 
+0706 fluxes = res.full(1:nRxns);
+0707 
+0708 <span class="comment">%extract the met data</span>
+0709 metProduction = logical(round(res.full(metVarInd)));
+0710 
+0711 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

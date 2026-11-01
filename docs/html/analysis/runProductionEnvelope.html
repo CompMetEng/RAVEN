@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of runProductionEnvelope</title>
+  <meta name="keywords" content="runProductionEnvelope">
+  <meta name="description" content="runProductionEnvelope  Calculate the byproduct secretion envelope.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">analysis</a> &gt; runProductionEnvelope.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for analysis&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>runProductionEnvelope
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>runProductionEnvelope  Calculate the byproduct secretion envelope.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [biomassValues, targetValues] = runProductionEnvelope(model, targetRxn, biomassRxn, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> runProductionEnvelope  Calculate the byproduct secretion envelope.
+
+ Parameters
+ ----------
+ model : struct
+     a model structure.
+ targetRxn : char
+     identifier of target metabolite production reaction.
+ biomassRxn : char
+     identifier of biomass reaction.
+
+ Name-Value Arguments
+ --------------------
+ nPts : double
+     number of biomass values at which the target bounds are calculated
+     (default 20).
+
+ Returns
+ -------
+ biomassValues : double
+     nPts biomass values, evenly spaced from the minimum to the maximum
+     biomass flux.
+ targetValues : double
+     a matrix with two rows: the lower bounds (row 1) and the upper bounds
+     (row 2) of the target reaction flux at each biomass value. NaN where
+     the problem has no solution.
+
+ Examples
+ --------
+     [biomassValues, targetValues] = runProductionEnvelope(model, ...
+         targetRxn, biomassRxn, nPts);
+
+ Notes
+ -----
+ Modified from COBRA Toolbox productionEnvelope.m.</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [biomassValues, targetValues] = runProductionEnvelope(model, targetRxn, biomassRxn, varargin)</a>
+0002 <span class="comment">% runProductionEnvelope  Calculate the byproduct secretion envelope.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Parameters</span>
+0005 <span class="comment">% ----------</span>
+0006 <span class="comment">% model : struct</span>
+0007 <span class="comment">%     a model structure.</span>
+0008 <span class="comment">% targetRxn : char</span>
+0009 <span class="comment">%     identifier of target metabolite production reaction.</span>
+0010 <span class="comment">% biomassRxn : char</span>
+0011 <span class="comment">%     identifier of biomass reaction.</span>
+0012 <span class="comment">%</span>
+0013 <span class="comment">% Name-Value Arguments</span>
+0014 <span class="comment">% --------------------</span>
+0015 <span class="comment">% nPts : double</span>
+0016 <span class="comment">%     number of biomass values at which the target bounds are calculated</span>
+0017 <span class="comment">%     (default 20).</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">% Returns</span>
+0020 <span class="comment">% -------</span>
+0021 <span class="comment">% biomassValues : double</span>
+0022 <span class="comment">%     nPts biomass values, evenly spaced from the minimum to the maximum</span>
+0023 <span class="comment">%     biomass flux.</span>
+0024 <span class="comment">% targetValues : double</span>
+0025 <span class="comment">%     a matrix with two rows: the lower bounds (row 1) and the upper bounds</span>
+0026 <span class="comment">%     (row 2) of the target reaction flux at each biomass value. NaN where</span>
+0027 <span class="comment">%     the problem has no solution.</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">% Examples</span>
+0030 <span class="comment">% --------</span>
+0031 <span class="comment">%     [biomassValues, targetValues] = runProductionEnvelope(model, ...</span>
+0032 <span class="comment">%         targetRxn, biomassRxn, nPts);</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">% Notes</span>
+0035 <span class="comment">% -----</span>
+0036 <span class="comment">% Modified from COBRA Toolbox productionEnvelope.m.</span>
+0037 
+0038 p=parseRAVENargs(varargin, {<span class="string">'nPts'</span>,20});
+0039 nPts=p.nPts;
+0040 
+0041 <span class="comment">% Run FBA to get upper bound for biomass</span>
+0042 model   = setParam(model,<span class="string">'obj'</span>,biomassRxn,1);
+0043 [solMax,hsSol]  = solveLP(model);
+0044 solMax  = solMax.x(logical(model.c));
+0045 model.c = -model.c;
+0046 solMin  = solveLP(model,0,[],hsSol);
+0047 solMin  = solMin.x(logical(model.c));
+0048 
+0049 <span class="comment">% Create biomass range vector</span>
+0050 biomassValues = linspace(solMin,solMax,nPts);
+0051 targetUpperBound = nan(1,numel(biomassValues));
+0052 targetLowerBound = nan(1,numel(biomassValues));
+0053 
+0054 PB = progressReport(length(biomassValues),<span class="string">'Creating production envelope'</span>);
+0055 <span class="comment">% Max/min for target production</span>
+0056 model = setParam(model,<span class="string">'obj'</span>,targetRxn,1);
+0057 <span class="keyword">for</span> i = 1:length(biomassValues)
+0058     model1 = setParam(model,<span class="string">'eq'</span>,biomassRxn,biomassValues(i));
+0059     sol = solveLP(model1,0,[],hsSol);
+0060     <span class="keyword">if</span> (sol.stat &gt; 0)
+0061         targetUpperBound(i) = sol.x(logical(model.c));
+0062     <span class="keyword">else</span>
+0063         targetUpperBound(i) = NaN;
+0064     <span class="keyword">end</span>
+0065     model1.c = -model1.c;
+0066     sol = solveLP(model1,0,[],hsSol);
+0067     <span class="keyword">if</span> (sol.stat &gt; 0)
+0068         targetLowerBound(i) = sol.x(logical(model1.c));
+0069     <span class="keyword">else</span>
+0070         targetLowerBound(i) = NaN;
+0071     <span class="keyword">end</span>
+0072     count(PB);
+0073 <span class="keyword">end</span>
+0074 
+0075 <span class="comment">% Plot results</span>
+0076 plot([biomassValues fliplr(biomassValues)],[targetUpperBound fliplr(targetLowerBound)],<span class="string">'blue'</span>,<span class="string">'LineWidth'</span>,2);
+0077 axis tight;
+0078 ylabel([strrep(targetRxn,<span class="string">'_'</span>,<span class="string">'-'</span>) <span class="string">' (mmol/gDW h)'</span>]);
+0079 xlabel(<span class="string">'Growth rate (1/h)'</span>);
+0080 targetValues = [targetLowerBound; targetUpperBound];
+0081 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

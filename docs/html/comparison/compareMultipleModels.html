@@ -1,0 +1,684 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of compareMultipleModels</title>
+  <meta name="keywords" content="compareMultipleModels">
+  <meta name="description" content="compareMultipleModels  Compare two or more condition-specific models.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">comparison</a> &gt; compareMultipleModels.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for comparison&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>compareMultipleModels
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>compareMultipleModels  Compare two or more condition-specific models.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function compStruct = compareMultipleModels(models,varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> compareMultipleModels  Compare two or more condition-specific models.
+
+ Compares two or more models on overlap of reactions, metabolites, genes,
+ EC-codes, metabolite names and reaction equations (with and without
+ compartmentalisation), and on high-dimensional comparisons of the
+ reaction content: subsystem coverage, structural similarity, a
+ low-dimensional structural projection (skipped when neither tsne nor
+ mdscale is available), and an optional functional (task-based) comparison.
+
+ Parameters
+ ----------
+ models : cell
+     cell array of two or more models.
+
+ Name-Value Arguments
+ --------------------
+ printResults : logical
+     true to print the results to the command window (default false).
+ plotResults : logical
+     true to plot the results (default false).
+ groupVector : double or cell
+     numeric vector or cell array that assigns each model to a group, for
+     example by tissue. The groups colour the points of the structural
+     projection plot (default [], no grouping).
+ funcCompare : logical
+     true to run the functional comparison, which requires taskFile
+     (default false).
+ taskFile : char
+     name of the task file for the functional comparison, in a format that
+     parseTaskList reads. Required when funcCompare is true.
+
+ Returns
+ -------
+ compStruct : struct
+     structure that contains the comparison results, with fields:
+
+     - modelIDs : cell array of model ids
+     - rxns, mets, genes, eccodes, metNames, equ, uEqu : the overlap for
+       each field, each with sub-fields comparison (binary matrix where each
+       row indicates which models are included in the comparison) and
+       nElements (vector with the number of elements for each comparison).
+       &quot;equ&quot; are the reaction equations after sorting and &quot;uEqu&quot; are the
+       equations without compartments. The fields rxns, mets and genes
+       compare identifiers; eccodes, metNames, equ and uEqu compare EC
+       codes, metabolite names and reaction equations, which allows
+       overlap between models that use different identifiers.
+     - subsystems : substructure containing subsystem information, with
+       fields matrix (number of reactions per subsystem, subsystems in rows
+       and models in columns) and ID (cell array with the names of all
+       subsystems). Only the first subsystem of each reaction is counted.
+       The field is absent when a model lacks the subSystems field.
+     - reactions : substructure containing reaction information, with
+       fields matrix (binary matrix with reactions in rows and models in
+       columns, used as the input for the model comparisons) and IDs
+       (list of the reactions contained in the reaction matrix)
+     - structComp : matrix with pairwise comparisons of model structure
+       based on (1 - Hamming distance) between models
+     - structCompMap : matrix with the 3D tSNE (or MDS) mapping of model
+       structures based on Hamming distances. It is empty when neither
+       tsne nor mdscale is available.
+     - funcComp : substructure containing function comparison results, with
+       fields matrix (1 for a passed task and 0 for a failed task, tasks in
+       rows and models in columns) and tasks (the descriptions of all
+       tasks). It is present only when funcCompare is true.
+
+ Examples
+ --------
+     compStruct = compareMultipleModels(models, printResults, ...
+         plotResults, groupVector, funcCompare, taskFile);</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function [id,compMat] = compareModelField(models,field)</a></li><li><a href="#_sub2" class="code">function A=getElements(models,field)</a></li><li><a href="#_sub3" class="code">function toCheck=getToCheck(models,field)</a></li><li><a href="#_sub4" class="code">function I=checkField(A)</a></li><li><a href="#_sub5" class="code">function printList(models,toCheck,nElements)</a></li><li><a href="#_sub6" class="code">function nElements=checkStuff(A,toCheck)</a></li><li><a href="#_sub7" class="code">function h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color)</a></li><li><a href="#_sub8" class="code">function c = redblue(m)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function compStruct = compareMultipleModels(models,varargin)</a>
+0002 <span class="comment">% compareMultipleModels  Compare two or more condition-specific models.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Compares two or more models on overlap of reactions, metabolites, genes,</span>
+0005 <span class="comment">% EC-codes, metabolite names and reaction equations (with and without</span>
+0006 <span class="comment">% compartmentalisation), and on high-dimensional comparisons of the</span>
+0007 <span class="comment">% reaction content: subsystem coverage, structural similarity, a</span>
+0008 <span class="comment">% low-dimensional structural projection (skipped when neither tsne nor</span>
+0009 <span class="comment">% mdscale is available), and an optional functional (task-based) comparison.</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">% Parameters</span>
+0012 <span class="comment">% ----------</span>
+0013 <span class="comment">% models : cell</span>
+0014 <span class="comment">%     cell array of two or more models.</span>
+0015 <span class="comment">%</span>
+0016 <span class="comment">% Name-Value Arguments</span>
+0017 <span class="comment">% --------------------</span>
+0018 <span class="comment">% printResults : logical</span>
+0019 <span class="comment">%     true to print the results to the command window (default false).</span>
+0020 <span class="comment">% plotResults : logical</span>
+0021 <span class="comment">%     true to plot the results (default false).</span>
+0022 <span class="comment">% groupVector : double or cell</span>
+0023 <span class="comment">%     numeric vector or cell array that assigns each model to a group, for</span>
+0024 <span class="comment">%     example by tissue. The groups colour the points of the structural</span>
+0025 <span class="comment">%     projection plot (default [], no grouping).</span>
+0026 <span class="comment">% funcCompare : logical</span>
+0027 <span class="comment">%     true to run the functional comparison, which requires taskFile</span>
+0028 <span class="comment">%     (default false).</span>
+0029 <span class="comment">% taskFile : char</span>
+0030 <span class="comment">%     name of the task file for the functional comparison, in a format that</span>
+0031 <span class="comment">%     parseTaskList reads. Required when funcCompare is true.</span>
+0032 <span class="comment">%</span>
+0033 <span class="comment">% Returns</span>
+0034 <span class="comment">% -------</span>
+0035 <span class="comment">% compStruct : struct</span>
+0036 <span class="comment">%     structure that contains the comparison results, with fields:</span>
+0037 <span class="comment">%</span>
+0038 <span class="comment">%     - modelIDs : cell array of model ids</span>
+0039 <span class="comment">%     - rxns, mets, genes, eccodes, metNames, equ, uEqu : the overlap for</span>
+0040 <span class="comment">%       each field, each with sub-fields comparison (binary matrix where each</span>
+0041 <span class="comment">%       row indicates which models are included in the comparison) and</span>
+0042 <span class="comment">%       nElements (vector with the number of elements for each comparison).</span>
+0043 <span class="comment">%       &quot;equ&quot; are the reaction equations after sorting and &quot;uEqu&quot; are the</span>
+0044 <span class="comment">%       equations without compartments. The fields rxns, mets and genes</span>
+0045 <span class="comment">%       compare identifiers; eccodes, metNames, equ and uEqu compare EC</span>
+0046 <span class="comment">%       codes, metabolite names and reaction equations, which allows</span>
+0047 <span class="comment">%       overlap between models that use different identifiers.</span>
+0048 <span class="comment">%     - subsystems : substructure containing subsystem information, with</span>
+0049 <span class="comment">%       fields matrix (number of reactions per subsystem, subsystems in rows</span>
+0050 <span class="comment">%       and models in columns) and ID (cell array with the names of all</span>
+0051 <span class="comment">%       subsystems). Only the first subsystem of each reaction is counted.</span>
+0052 <span class="comment">%       The field is absent when a model lacks the subSystems field.</span>
+0053 <span class="comment">%     - reactions : substructure containing reaction information, with</span>
+0054 <span class="comment">%       fields matrix (binary matrix with reactions in rows and models in</span>
+0055 <span class="comment">%       columns, used as the input for the model comparisons) and IDs</span>
+0056 <span class="comment">%       (list of the reactions contained in the reaction matrix)</span>
+0057 <span class="comment">%     - structComp : matrix with pairwise comparisons of model structure</span>
+0058 <span class="comment">%       based on (1 - Hamming distance) between models</span>
+0059 <span class="comment">%     - structCompMap : matrix with the 3D tSNE (or MDS) mapping of model</span>
+0060 <span class="comment">%       structures based on Hamming distances. It is empty when neither</span>
+0061 <span class="comment">%       tsne nor mdscale is available.</span>
+0062 <span class="comment">%     - funcComp : substructure containing function comparison results, with</span>
+0063 <span class="comment">%       fields matrix (1 for a passed task and 0 for a failed task, tasks in</span>
+0064 <span class="comment">%       rows and models in columns) and tasks (the descriptions of all</span>
+0065 <span class="comment">%       tasks). It is present only when funcCompare is true.</span>
+0066 <span class="comment">%</span>
+0067 <span class="comment">% Examples</span>
+0068 <span class="comment">% --------</span>
+0069 <span class="comment">%     compStruct = compareMultipleModels(models, printResults, ...</span>
+0070 <span class="comment">%         plotResults, groupVector, funcCompare, taskFile);</span>
+0071 
+0072 <span class="comment">% The core comparison (structComp) runs in base MATLAB. The low-dimensional</span>
+0073 <span class="comment">% projection (structCompMap) and the heatmap clustering additionally use the</span>
+0074 <span class="comment">% Statistics and Machine Learning Toolbox (tsne/mdscale, linkage); these</span>
+0075 <span class="comment">% degrade gracefully and are skipped when the toolbox is not available.</span>
+0076 <span class="comment">%</span>
+0077 <span class="comment">% See also</span>
+0078 <span class="comment">% --------</span>
+0079 <span class="comment">% diffModels : reports the differing values (stoichiometry, bounds, grRules)</span>
+0080 <span class="comment">%     between two models.</span>
+0081 
+0082 <span class="comment">%% Set up input defaults</span>
+0083 p=parseRAVENargs(varargin, {<span class="string">'printResults'</span>,false; <span class="string">'plotResults'</span>,false; <span class="string">'groupVector'</span>,[]; <span class="string">'funcCompare'</span>,false; <span class="string">'taskFile'</span>,[]});
+0084 printResults=p.printResults;
+0085 plotResults=p.plotResults;
+0086 groupVector=p.groupVector;
+0087 <span class="keyword">if</span> isempty(groupVector)
+0088     groupVector = [];
+0089 <span class="keyword">elseif</span> ~isnumeric(groupVector)
+0090     <span class="comment">% convert strings to numeric groups</span>
+0091     [groupNames,~,groupVector] = unique(groupVector);
+0092 <span class="keyword">else</span>
+0093     <span class="comment">% generate group names for vector of numbers</span>
+0094     groupNames = arrayfun(@num2str,unique(groupVector),<span class="string">'UniformOutput'</span>,false);
+0095 <span class="keyword">end</span>
+0096 funcCompare=p.funcCompare;
+0097 taskFile=p.taskFile;
+0098 <span class="keyword">if</span> ~isempty(taskFile)
+0099     taskFile=char(taskFile);
+0100 <span class="keyword">end</span>
+0101 <span class="keyword">if</span> numel(models) &lt;= 1
+0102     EM = <span class="string">'Cannot compare only one model. Use printModelStats if you want a summary of a model'</span>;
+0103     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0104 <span class="keyword">end</span>
+0105 <span class="keyword">if</span> isempty(taskFile) &amp;&amp; funcCompare
+0106     EM = <span class="string">'Cannot perform the functional comparison without a task file. Specify taskFile or set funcCompare to FALSE.'</span>;
+0107     error(<span class="string">'RAVEN:badInput'</span>, <span class="string">'%s'</span>, EM);
+0108 <span class="keyword">end</span>
+0109 
+0110 <span class="comment">%% Set up model ID structure</span>
+0111 compStruct.modelIDs = {};
+0112 fprintf(<span class="string">'\n Getting model IDs \n'</span>)
+0113 <span class="keyword">for</span> i = 1:numel(models)
+0114     <span class="keyword">if</span> ~ischar(models{i}.id)  <span class="comment">% to deal with non-character IDs (cells, strings, etc)</span>
+0115         compStruct.modelIDs{i,1} = models{i}.id{1};
+0116     <span class="keyword">else</span>
+0117         compStruct.modelIDs{i,1} = models{i}.id;
+0118     <span class="keyword">end</span>
+0119     <span class="comment">% Equations are computed once here (with and without compartmentalization)</span>
+0120     <span class="comment">% so the overlap comparison below can treat them like any other field.</span>
+0121     models{i}.equ=constructEquations(models{i},models{i}.rxns,true,true,true);
+0122     models{i}.uEqu=constructEquations(models{i},models{i}.rxns,false,true,true);
+0123 <span class="keyword">end</span>
+0124 fprintf(<span class="string">'*** Done \n\n'</span>)
+0125 
+0126 <span class="comment">%% Compare overlap of reactions, metabolites, genes, EC-codes, metabolite</span>
+0127 <span class="comment">% names and equations (with and without compartmentalization)</span>
+0128 fprintf(<span class="string">'\n Comparing overlap of reactions, genes, metabolites and compartments \n'</span>)
+0129 overlapFields={<span class="string">'rxns'</span>,<span class="string">'mets'</span>,<span class="string">'genes'</span>,<span class="string">'eccodes'</span>,<span class="string">'metNames'</span>,<span class="string">'equ'</span>,<span class="string">'uEqu'</span>};
+0130 overlapLabels={<span class="string">'reaction IDs'</span>,<span class="string">'metabolite IDs'</span>,<span class="string">'gene IDs'</span>,<span class="string">'ec-numbers'</span>, <span class="keyword">...</span>
+0131     <span class="string">'metabolite names'</span>,<span class="string">'equations with compartment'</span>,<span class="string">'equations without compartment'</span>};
+0132 <span class="keyword">for</span> i=1:numel(overlapFields)
+0133     field=overlapFields{i};
+0134     compStruct.(field).comparison=<a href="#_sub3" class="code" title="subfunction toCheck=getToCheck(models,field)">getToCheck</a>(models,field);
+0135     compStruct.(field).nElements=<a href="#_sub6" class="code" title="subfunction nElements=checkStuff(A,toCheck)">checkStuff</a>(<a href="#_sub2" class="code" title="subfunction A=getElements(models,field)">getElements</a>(models,field),compStruct.(field).comparison);
+0136     <span class="keyword">if</span> printResults==true
+0137         fprintf([<span class="string">'*** Comparison of '</span> overlapLabels{i} <span class="string">':\n'</span>]);
+0138         <a href="#_sub5" class="code" title="subfunction printList(models,toCheck,nElements)">printList</a>(models,compStruct.(field).comparison,compStruct.(field).nElements);
+0139         fprintf(<span class="string">'\n\n'</span>);
+0140     <span class="keyword">end</span>
+0141 <span class="keyword">end</span>
+0142 fprintf(<span class="string">'*** Done \n\n'</span>)
+0143 
+0144 <span class="comment">%% Compare models structure &amp; function based on high-dimensional methods</span>
+0145 <span class="comment">% Compare number of reactions in each subsystem in each model using a heatmap</span>
+0146 field = <span class="string">'subSystems'</span>;
+0147 fprintf(<span class="string">'\n Comparing subsystem utilization \n'</span>)
+0148 <span class="keyword">if</span> any(~cellfun(@(m) isfield(m,field),models))
+0149     fprintf(<span class="string">'\nWARNING: At least one model does not contain the field &quot;subSystems&quot;. \n'</span>)
+0150     fprintf(<span class="string">'         Skipping subsystem comparison. \n\n'</span>)
+0151 <span class="keyword">else</span>
+0152     <span class="comment">%% Flatten model subSystems field</span>
+0153     <span class="comment">% Convert from cell array of cells to cell array of strings</span>
+0154     <span class="comment">% NOTE: this function currently only recognizes one subSystem per reaction;</span>
+0155     <span class="comment">%       additional subSystems will be ignored!</span>
+0156     <span class="keyword">for</span> i = 1:numel(models)
+0157         <span class="keyword">if</span> any(cellfun(@(x) iscell(x), models{i}.subSystems));
+0158             cells = cellfun(@iscell,models{i}.subSystems);
+0159             models{i}.subSystems(cells) = cellfun(@(s) s{1}, models{i}.subSystems(cells), <span class="string">'UniformOutput'</span>, false);
+0160         <span class="keyword">end</span>
+0161     <span class="keyword">end</span>
+0162     [id,compMat] = <a href="#_sub1" class="code" title="subfunction [id,compMat] = compareModelField(models,field)">compareModelField</a>(models,field);
+0163     compStruct.subsystems.ID = id;
+0164     compStruct.subsystems.matrix = compMat;
+0165     fprintf(<span class="string">'*** Done \n\n'</span>)
+0166 
+0167     <span class="keyword">if</span> printResults
+0168         <span class="comment">% This could use some cleaning up</span>
+0169         fprintf(<span class="string">'*** Comparison of reaction subsystem populations:\n\n'</span>);
+0170 
+0171         nrow = min([15,numel(compStruct.subsystems.ID)]);
+0172         ncol = min([10,numel(compStruct.modelIDs)]);
+0173         summaryArray = [{field}, compStruct.modelIDs(1:ncol)'];
+0174         summaryArray = [summaryArray; [compStruct.subsystems.ID(1:nrow), <span class="keyword">...</span>
+0175             arrayfun(@num2str,compStruct.subsystems.matrix(1:nrow,1:ncol),<span class="string">'UniformOutput'</span>,false)]];
+0176 
+0177         charArray = [];
+0178         <span class="keyword">for</span> i = 1:size(summaryArray,2)
+0179             charArray = [charArray, char(strcat(summaryArray(:,i),{<span class="string">'   '</span>}))];
+0180         <span class="keyword">end</span>
+0181         disp(charArray);
+0182         <span class="keyword">if</span> numel(compStruct.subsystems.ID) &gt; 15
+0183             fprintf(<span class="string">'...\n'</span>);
+0184         <span class="keyword">end</span>
+0185         fprintf(<span class="string">'\n\n'</span>);
+0186     <span class="keyword">end</span>
+0187 
+0188     <span class="keyword">if</span> plotResults==true
+0189         <span class="comment">% Plot all subsystems</span>
+0190         figure;
+0191         plottingData = (compStruct.subsystems.matrix - mean(compStruct.subsystems.matrix,2))./mean(compStruct.subsystems.matrix,2);
+0192         color_map = <a href="#_sub8" class="code" title="subfunction c = redblue(m)">redblue</a>(length(0:.01:2));
+0193         h = <a href="#_sub7" class="code" title="subfunction h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color)">genHeatMap</a>(plottingData',compStruct.subsystems.ID,compStruct.modelIDs,<span class="string">'both'</span>,<span class="string">'euclidean'</span>,color_map,[-1,1]);
+0194         title(<span class="string">'Subsystem Coverage - all subsystems'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>)
+0195 
+0196         <span class="comment">% Plot only subsystems with deviation from mean</span>
+0197         keepSubs = (sum(plottingData~=0,2) ~= 0);
+0198         <span class="keyword">if</span> sum(keepSubs) &gt; 1
+0199             figure;
+0200             h_small = <a href="#_sub7" class="code" title="subfunction h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color)">genHeatMap</a>(plottingData(keepSubs,:)',compStruct.subsystems.ID(keepSubs),<span class="keyword">...</span>
+0201                 compStruct.modelIDs,<span class="string">'both'</span>,<span class="string">'euclidean'</span>,color_map,[-1,1]);
+0202             title(<span class="string">'Subsystem Coverage'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>)
+0203 
+0204             <span class="comment">% Plot enrichment in subsystems with deviation from mean</span>
+0205             figure;
+0206             color_map_bw = [1 1 1;0 0 0];
+0207             h_enriched = <a href="#_sub7" class="code" title="subfunction h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color)">genHeatMap</a>(plottingData(keepSubs,:)',compStruct.subsystems.ID(keepSubs),<span class="keyword">...</span>
+0208                 compStruct.modelIDs,<span class="string">'both'</span>,<span class="string">'euclidean'</span>,color_map_bw,[-10^-4,10^-4]);
+0209             title(<span class="string">'Subsystem Enrichment'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>)
+0210         <span class="keyword">end</span>
+0211     <span class="keyword">end</span>
+0212 
+0213 <span class="keyword">end</span>
+0214 
+0215 <span class="comment">% Compare overall reaction structure across all models using a heatmap</span>
+0216 field = <span class="string">'rxns'</span>;
+0217 fprintf(<span class="string">'\n Comparing model reaction correlations \n'</span>)
+0218 
+0219 <span class="comment">% Create binary matrix of reactions</span>
+0220 [id,binary_matrix] = <a href="#_sub1" class="code" title="subfunction [id,compMat] = compareModelField(models,field)">compareModelField</a>(models,field);
+0221 compStruct.reactions.IDs = id;
+0222 compStruct.reactions.matrix = binary_matrix;
+0223 
+0224 <span class="comment">% calculate hamming similarity (1 - Hamming distance) between models. This</span>
+0225 <span class="comment">% is done in base MATLAB so the Statistics Toolbox is not required: for</span>
+0226 <span class="comment">% binary columns the agreement fraction equals 1 minus the Hamming distance.</span>
+0227 B = double(binary_matrix);
+0228 compStruct.structComp = (B'*B + (1-B)'*(1-B)) / size(B,1);
+0229 fprintf(<span class="string">'*** Done \n\n'</span>)
+0230 <span class="keyword">if</span> plotResults == true
+0231     color_map = [ones(100,1) linspace(1,0,100)' linspace(1,0,100)'];
+0232     figure;
+0233     h = <a href="#_sub7" class="code" title="subfunction h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color)">genHeatMap</a>(compStruct.structComp,compStruct.modelIDs,compStruct.modelIDs,<span class="string">'both'</span>,<span class="string">'euclidean'</span>,color_map);
+0234     title(<span class="string">'Structural Similarity'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>)
+0235 <span class="keyword">end</span>
+0236 
+0237 <span class="comment">% Compare overall reaction structure across all models using a 3D tSNE (or</span>
+0238 <span class="comment">% MDS) projection. Both require the Statistics and Machine Learning Toolbox;</span>
+0239 <span class="comment">% if neither is available the projection is skipped and structCompMap is left</span>
+0240 <span class="comment">% empty.</span>
+0241 rng(42) <span class="comment">% For consistency</span>
+0242 fprintf(<span class="string">'\n Comparing model reaction structures \n'</span>)
+0243 proj_coords = [];
+0244 axis_labels = {};
+0245 <span class="keyword">if</span> exist(<span class="string">'tsne'</span>,<span class="string">'file'</span>) &gt; 0
+0246     proj_coords = tsne(double(binary_matrix'),<span class="string">'Distance'</span>,<span class="string">'hamming'</span>,<span class="string">'NumDimensions'</span>,3); <span class="comment">% 3D</span>
+0247     axis_labels = {<span class="string">'tSNE 1'</span>;<span class="string">'tSNE 2'</span>;<span class="string">'tSNE 3'</span>};
+0248 <span class="keyword">elseif</span> exist(<span class="string">'mdscale'</span>,<span class="string">'file'</span>) &gt; 0
+0249     proj_coords = mdscale(pdist(double(binary_matrix'),<span class="string">'hamming'</span>),3);
+0250     axis_labels = {<span class="string">'MDS 1'</span>;<span class="string">'MDS 2'</span>;<span class="string">'MDS 3'</span>};
+0251 <span class="keyword">else</span>
+0252     fprintf([<span class="string">'   Skipping low-dimensional projection: requires tsne or '</span> <span class="keyword">...</span>
+0253         <span class="string">'mdscale from the Statistics and Machine Learning Toolbox\n'</span>]);
+0254 <span class="keyword">end</span>
+0255 compStruct.structCompMap = proj_coords;
+0256 fprintf(<span class="string">'*** Done \n\n'</span>)
+0257 
+0258 <span class="comment">% plot structure comparison results</span>
+0259 <span class="keyword">if</span> plotResults == true &amp;&amp; ~isempty(proj_coords)
+0260     figure; hold on;
+0261     <span class="keyword">if</span> ~isempty(groupVector)
+0262         color_data = groupVector;
+0263         <span class="keyword">if</span> length(groupNames) &lt;= 7
+0264             <span class="comment">% &quot;lines&quot; colormap only has 7 unique colors</span>
+0265             color_palette = lines(length(groupNames));
+0266         <span class="keyword">else</span>
+0267             color_palette = parula(length(groupNames));
+0268         <span class="keyword">end</span>
+0269         colormap(color_palette);
+0270     <span class="keyword">else</span>
+0271         color_data = <span class="string">'k'</span>;
+0272     <span class="keyword">end</span>
+0273     scatter3(proj_coords(:,1),proj_coords(:,2),proj_coords(:,3),35,color_data,<span class="string">'filled'</span>);
+0274     view(135,25);  <span class="comment">% to make it obvious that it is a 3D plot</span>
+0275     xlabel(axis_labels{1}); ylabel(axis_labels{2}); zlabel(axis_labels{3});
+0276     set(gca,<span class="string">'FontSize'</span>,14,<span class="string">'LineWidth'</span>,1.25);
+0277     title(<span class="string">'Structural Comparison'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>)
+0278 
+0279     <span class="comment">% add legend</span>
+0280     <span class="keyword">if</span> ~isempty(groupVector)
+0281         <span class="keyword">for</span> i = 1:length(groupNames)
+0282             h(i) = scatter3([],[],[],35,color_palette(i,:),<span class="string">'filled'</span>);
+0283         <span class="keyword">end</span>
+0284         legend(h,groupNames);
+0285     <span class="keyword">end</span>
+0286 <span class="keyword">end</span>
+0287 
+0288 <span class="comment">% Compare model functions by assessing their capacity to perform tasks</span>
+0289 <span class="keyword">if</span> funcCompare == true &amp;&amp; ~isempty(taskFile)
+0290     fprintf(<span class="string">'\n Checking model performance on specified tasks. \n'</span>)
+0291     taskStructure=parseTaskList(taskFile);
+0292     <span class="keyword">for</span> i = 1:numel(models)
+0293         fprintf(<span class="string">'\n Checking model # %.0f \n'</span>,i)
+0294         taskReport{i} = checkTasks(models{i},[],false,false,false,taskStructure);
+0295     <span class="keyword">end</span>
+0296 
+0297     <span class="comment">% Save results</span>
+0298     taskMatrix = zeros(length(taskReport{1}.ok),numel(taskReport));
+0299         <span class="keyword">for</span> i = 1:numel(taskReport)
+0300             taskMatrix(:,i) = taskReport{i}.ok;
+0301         <span class="keyword">end</span>
+0302     compStruct.funcComp.matrix = taskMatrix;
+0303     compStruct.funcComp.tasks = taskReport{1}.description;
+0304     fprintf(<span class="string">'*** Done \n\n'</span>)
+0305 
+0306     <span class="comment">% Plot results</span>
+0307     <span class="keyword">if</span> plotResults == true
+0308         figure;
+0309         color_map_bw = [1 1 1;0 0 0];
+0310         h_enriched = <a href="#_sub7" class="code" title="subfunction h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color)">genHeatMap</a>(taskMatrix,compStruct.modelIDs,<span class="keyword">...</span>
+0311             taskReport{1}.description,<span class="string">'both'</span>,<span class="string">'euclidean'</span>,color_map_bw,[0,1]);
+0312         title(<span class="string">'Functional Comparison - All Tasks'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>)
+0313 
+0314         figure;
+0315         color_map_bw = [1 1 1;0 0 0];
+0316         h_enriched = <a href="#_sub7" class="code" title="subfunction h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color)">genHeatMap</a>(taskMatrix(intersect(find(sum(taskMatrix,2)~=numel(models)),find(sum(taskMatrix,2)~=0)),:),<span class="keyword">...</span>
+0317             compStruct.modelIDs,taskReport{1}.description(intersect(find(sum(taskMatrix,2)~=numel(models)),find(sum(taskMatrix,2)~=0))),<span class="keyword">...</span>
+0318             <span class="string">'both'</span>,<span class="string">'euclidean'</span>,color_map_bw,[0,1]);
+0319         title(<span class="string">'Functional Similarity'</span>,<span class="string">'FontSize'</span>,18,<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>)
+0320     <span class="keyword">end</span>
+0321 <span class="keyword">end</span>
+0322 
+0323 <span class="keyword">end</span>
+0324 
+0325 <span class="comment">%% Additional Functions</span>
+0326 
+0327 <a name="_sub1" href="#_subfunctions" class="code">function [id,compMat] = compareModelField(models,field)</a>
+0328     <span class="comment">% Generates a list of unique field entries and a matrix quantifying the</span>
+0329     <span class="comment">% number of appearances of each field entry in each model</span>
+0330 
+0331     <span class="comment">% get unique list of field entries</span>
+0332     hasfield = cellfun(@(m) isfield(m,field),models);
+0333     id = cellfun(@(m) m.(field),models(hasfield),<span class="string">'UniformOutput'</span>,false);
+0334     id = unique(vertcat(id{:}));
+0335 
+0336     <span class="comment">% assemble matrix comparing frequency of each entry in each model</span>
+0337     compMat = zeros(numel(id),numel(models));
+0338     <span class="keyword">for</span> i = 1:numel(models)
+0339         [~,entryIndex] = ismember(models{i}.(field),id);  <span class="comment">% get index of each field entry in the unique id list</span>
+0340         compMat(:,i) = histcounts(entryIndex, 0.5:1:(numel(id)+0.5));  <span class="comment">% determine the frequency at which each index appears</span>
+0341     <span class="keyword">end</span>
+0342 <span class="keyword">end</span>
+0343 
+0344 <a name="_sub2" href="#_subfunctions" class="code">function A=getElements(models,field)</a>
+0345 <span class="comment">%Gathers the raw field content (e.g. rxns, eccodes, equ) for each model that</span>
+0346 <span class="comment">%has that field, for use as the universe of elements in checkStuff.</span>
+0347 A={};
+0348 <span class="keyword">for</span> i=1:numel(models)
+0349     <span class="keyword">if</span> isfield(models{i},field)
+0350         A=[A;{models{i}.(field)}];
+0351     <span class="keyword">end</span>
+0352 <span class="keyword">end</span>
+0353 <span class="keyword">end</span>
+0354 
+0355 <a name="_sub3" href="#_subfunctions" class="code">function toCheck=getToCheck(models,field)</a>
+0356 <span class="comment">%Get all the combinations that should be checked for overlap (including the</span>
+0357 <span class="comment">%single ones)</span>
+0358 toCheckA=[];
+0359 I=find(cellfun(@<a href="#_sub4" class="code" title="subfunction I=checkField(A)">checkField</a>,models));
+0360 nI=numel(I);
+0361 <span class="keyword">for</span> i=nI:-1:1
+0362     combs=nchoosek(1:nI,i);
+0363     toAdd=false(size(combs,1),nI);
+0364     <span class="keyword">for</span> j=1:size(combs,1)
+0365         toAdd(j,combs(j,:))=true;
+0366     <span class="keyword">end</span>
+0367     toCheckA=[toCheckA;toAdd];
+0368 <span class="keyword">end</span>
+0369 
+0370 <span class="comment">%If not all of the models have the required field</span>
+0371 toCheck=false(size(toCheckA,1),numel(models));
+0372 toCheck(:,I)=toCheckA;
+0373 
+0374 <span class="comment">%Ugly thing to get around parameters</span>
+0375     <a name="_sub4" href="#_subfunctions" class="code">function I=checkField(A)</a>
+0376         I=isfield(A,field);
+0377     <span class="keyword">end</span>
+0378 <span class="keyword">end</span>
+0379 
+0380 <a name="_sub5" href="#_subfunctions" class="code">function printList(models,toCheck,nElements)</a>
+0381 <span class="comment">%To guess how many spaces that are needed to align</span>
+0382 firstLen=[];
+0383 <span class="keyword">for</span> i=1:size(toCheck,1)
+0384     label=[];
+0385     I=find(toCheck(i,:));
+0386     <span class="keyword">for</span> j=1:numel(I)
+0387         label=[label models{I(j)}.id <span class="string">'/'</span>];
+0388     <span class="keyword">end</span>
+0389     <span class="keyword">if</span> i==1
+0390         firstLen=numel(label);
+0391     <span class="keyword">end</span>
+0392     nSpaces=firstLen-numel(label);
+0393     fprintf([label(1:end-1) <span class="string">'  '</span> repmat(sprintf(<span class="string">' '</span>),1,nSpaces) num2str(nElements(i)) <span class="string">'\n'</span>]);
+0394 <span class="keyword">end</span>
+0395 <span class="keyword">end</span>
+0396 
+0397 <a name="_sub6" href="#_subfunctions" class="code">function nElements=checkStuff(A,toCheck)</a>
+0398 <span class="comment">%Now loop through the toCheck matrix, starting with the combination with</span>
+0399 <span class="comment">%the most models. Only elements that were not in iteration n are considered</span>
+0400 <span class="comment">%in iteration n+1.</span>
+0401 nElements=zeros(size(toCheck,1),1);
+0402 alreadyChecked=[];
+0403 <span class="keyword">for</span> i=1:size(toCheck,1)
+0404     I=find(toCheck(i,:));
+0405     inCommon=setdiff(A{I(1)},alreadyChecked);
+0406     <span class="keyword">for</span> j=2:numel(I)
+0407         inCommon=intersect(inCommon,A{I(j)});
+0408     <span class="keyword">end</span>
+0409     alreadyChecked=union(alreadyChecked,inCommon);
+0410     nElements(i)=numel(inCommon);
+0411 <span class="keyword">end</span>
+0412 <span class="keyword">end</span>
+0413 
+0414 <a name="_sub7" href="#_subfunctions" class="code">function h = genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color)</a>
+0415 <span class="comment">%genHeatMap  Generate a heatmap for a given matrix of data.</span>
+0416 <span class="comment">%</span>
+0417 <span class="comment">% Usage:</span>
+0418 <span class="comment">%</span>
+0419 <span class="comment">%   genHeatMap(data,colnames,rownames,clust_dim,clust_dist,col_map,col_bounds,grid_color);</span>
+0420 <span class="comment">%</span>
+0421 <span class="comment">% Inputs:</span>
+0422 <span class="comment">%</span>
+0423 <span class="comment">% data        Numerical matrix.</span>
+0424 <span class="comment">%</span>
+0425 <span class="comment">% colnames    Cell array of data column names.</span>
+0426 <span class="comment">%</span>
+0427 <span class="comment">% rownames    Cell array of data row names.</span>
+0428 <span class="comment">%</span>
+0429 <span class="comment">% clust_dim   &quot;none&quot; - the data will be plotted as provided (DEFAULT)</span>
+0430 <span class="comment">%             &quot;rows&quot; - cluster/rearrange the rows based on distance</span>
+0431 <span class="comment">%             &quot;cols&quot; - cluster/rearrange the columns based on distance</span>
+0432 <span class="comment">%             &quot;both&quot; - cluster/rearrange rows and columns based on distance</span>
+0433 <span class="comment">%</span>
+0434 <span class="comment">% clust_dist  Distance metric to be used for clustering, ignored if</span>
+0435 <span class="comment">%             clust_dim is &quot;none&quot;. Options are the same as those for</span>
+0436 <span class="comment">%             distance in pdist (for example &quot;euclidean&quot;, &quot;hamming&quot; and</span>
+0437 <span class="comment">%             other metrics).</span>
+0438 <span class="comment">%             (DEFAULT = &quot;euclidean&quot;)</span>
+0439 <span class="comment">%</span>
+0440 <span class="comment">% col_map     Colormap, provided as string (for example &quot;parula&quot; or &quot;hot&quot;)</span>
+0441 <span class="comment">%             or an Nx3 RGB matrix of N colors.</span>
+0442 <span class="comment">%             (DEFAULT = &quot;hot&quot;)</span>
+0443 <span class="comment">%</span>
+0444 <span class="comment">% col_bounds  A 2-element vector with min and max values, to manually set</span>
+0445 <span class="comment">%             the bounds of the colormap.</span>
+0446 <span class="comment">%             (DEFAULT = min/max of data).</span>
+0447 <span class="comment">%</span>
+0448 <span class="comment">% grid_color  Color of the grid surrounding the heatmap cells.</span>
+0449 <span class="comment">%             (DEFAULT = &quot;none&quot;)</span>
+0450 <span class="comment">%</span>
+0451 <span class="comment">%</span>
+0452 
+0453 <span class="comment">% handle input arguments</span>
+0454 <span class="keyword">if</span> nargin &lt; 4 || isempty(clust_dim)
+0455     clust_dim = <span class="string">'none'</span>;
+0456 <span class="keyword">elseif</span> ~ismember(clust_dim,{<span class="string">'none'</span>,<span class="string">'rows'</span>,<span class="string">'cols'</span>,<span class="string">'both'</span>})
+0457     error(<span class="string">'%s is not a valid CLUST_DIM option. Choose &quot;none&quot;, &quot;rows&quot;, &quot;cols&quot;, or &quot;both&quot;.'</span>,clust_dim);
+0458 <span class="keyword">end</span>
+0459 <span class="keyword">if</span> nargin &lt; 5 || isempty(clust_dist)
+0460     clust_dist = <span class="string">'euclidean'</span>;
+0461 <span class="keyword">end</span>
+0462 <span class="keyword">if</span> nargin &lt; 6 || isempty(col_map)
+0463     col_map = <span class="string">'hot'</span>;
+0464 <span class="keyword">end</span>
+0465 <span class="keyword">if</span> nargin &lt; 7 || isempty(col_bounds)
+0466     col_bounds = [min(data(:)),max(data(:))];
+0467 <span class="keyword">end</span>
+0468 <span class="keyword">if</span> nargin &lt; 8
+0469     grid_color = <span class="string">'none'</span>;
+0470 <span class="keyword">end</span>
+0471 
+0472 <span class="comment">% perform hierarchical clustering to sort rows/columns (if specified).</span>
+0473 <span class="comment">% Clustering needs the Statistics and Machine Learning Toolbox (linkage,</span>
+0474 <span class="comment">% optimalleaforder, pdist); without it the heatmap is drawn unordered.</span>
+0475 linkage_method = <span class="string">'average'</span>;
+0476 <span class="keyword">if</span> ~strcmp(clust_dim,<span class="string">'none'</span>) &amp;&amp; ~(exist(<span class="string">'linkage'</span>,<span class="string">'file'</span>) &amp;&amp; <span class="keyword">...</span>
+0477         exist(<span class="string">'optimalleaforder'</span>,<span class="string">'file'</span>) &amp;&amp; exist(<span class="string">'pdist'</span>,<span class="string">'file'</span>))
+0478     fprintf([<span class="string">'   Skipping heatmap clustering: requires the Statistics and '</span> <span class="keyword">...</span>
+0479         <span class="string">'Machine Learning Toolbox\n'</span>]);
+0480     clust_dim = <span class="string">'none'</span>;
+0481 <span class="keyword">end</span>
+0482 <span class="keyword">if</span> ismember(clust_dim,{<span class="string">'rows'</span>,<span class="string">'both'</span>})
+0483     L = linkage(data,linkage_method,clust_dist);
+0484     row_ind = optimalleaforder(L,pdist(data,clust_dist));
+0485 <span class="keyword">else</span>
+0486     row_ind = 1:size(data,1);
+0487 <span class="keyword">end</span>
+0488 <span class="comment">% perform hierarchical clustering to sort columns (if specified)</span>
+0489 <span class="keyword">if</span> ismember(clust_dim,{<span class="string">'cols'</span>,<span class="string">'both'</span>})
+0490     L = linkage(data',linkage_method,clust_dist);
+0491     col_ind = optimalleaforder(L,pdist(data',clust_dist));
+0492 <span class="keyword">else</span>
+0493     col_ind = 1:size(data,2);
+0494 <span class="keyword">end</span>
+0495 
+0496 <span class="comment">% reorder data matrix according to clustering results</span>
+0497 sortdata = data(row_ind,col_ind);
+0498 sortrows = rownames(row_ind);
+0499 sortcols = colnames(col_ind);
+0500 
+0501 <span class="comment">% check if data is square matrix with identical row and column names</span>
+0502 <span class="keyword">if</span> (length(colnames) == length(rownames)) &amp;&amp; all(strcmp(colnames,rownames))
+0503     <span class="comment">% flip data so the diagonal is from upper left to lower right</span>
+0504     sortdata = fliplr(sortdata);
+0505     sortcols = flipud(sortcols);
+0506 <span class="keyword">end</span>
+0507 
+0508 <span class="comment">% pad data matrix with zeros (pcolor cuts off last row and column)</span>
+0509 sortdata(end+1,end+1) = 0;
+0510 
+0511 <span class="comment">% generate pcolor plot</span>
+0512 a = axes;
+0513 set(a,<span class="string">'YAxisLocation'</span>,<span class="string">'Right'</span>,<span class="string">'XTick'</span>,[],<span class="string">'YTick'</span>, (1:size(sortdata,1))+0.5,<span class="string">'YTickLabels'</span>,sortrows);
+0514 set(a,<span class="string">'TickLength'</span>,[0 0],<span class="string">'XLim'</span>,[1 size(sortdata,2)],<span class="string">'YLim'</span>,[1 size(sortdata,1)]);
+0515 hold on
+0516 
+0517 h = pcolor(sortdata);
+0518 set(h,<span class="string">'EdgeColor'</span>,grid_color);
+0519 set(gca,<span class="string">'XTick'</span>, (1:size(sortdata,2))+0.5);
+0520 set(gca,<span class="string">'YTick'</span>, (1:size(sortdata,1))+0.5);
+0521 set(gca,<span class="string">'XTickLabels'</span>,sortcols,<span class="string">'YTickLabels'</span>,sortrows);
+0522 set(gca,<span class="string">'XTickLabelRotation'</span>,90);
+0523 colormap(col_map);
+0524 
+0525 <span class="keyword">if</span> ~isempty(col_bounds)
+0526     caxis(col_bounds);
+0527 <span class="keyword">end</span>
+0528 
+0529 <span class="keyword">end</span>
+0530 
+0531 
+0532 <a name="_sub8" href="#_subfunctions" class="code">function c = redblue(m)</a>
+0533 <span class="comment">%REDBLUE    Shades of red and blue color map</span>
+0534 <span class="comment">%   REDBLUE(M), is an M-by-3 matrix that defines a colormap.</span>
+0535 <span class="comment">%   The colors begin with bright blue, range through shades of</span>
+0536 <span class="comment">%   blue to white, and then through shades of red to bright red.</span>
+0537 <span class="comment">%   REDBLUE, by itself, is the same length as the current figure</span>
+0538 <span class="comment">%   colormap. If no figure exists, MATLAB creates one.</span>
+0539 <span class="comment">%</span>
+0540 <span class="comment">%   For example, to reset the colormap of the current figure:</span>
+0541 <span class="comment">%</span>
+0542 <span class="comment">%             colormap(redblue)</span>
+0543 <span class="comment">%</span>
+0544 <span class="comment">%   See also HSV, GRAY, HOT, BONE, COPPER, PINK, FLAG,</span>
+0545 <span class="comment">%   COLORMAP, RGBPLOT.</span>
+0546 <span class="keyword">if</span> nargin &lt; 1, m = size(get(gcf,<span class="string">'colormap'</span>),1); <span class="keyword">end</span>
+0547 
+0548 <span class="keyword">if</span> (mod(m,2) == 0)
+0549     <span class="comment">% From [0 0 1] to [1 1 1], then [1 1 1] to [1 0 0];</span>
+0550     m1 = m*0.5;
+0551     r = (0:m1-1)'/max(m1-1,1);
+0552     g = r;
+0553     r = [r; ones(m1,1)];
+0554     g = [g; flipud(g)];
+0555     b = flipud(r);
+0556 <span class="keyword">else</span>
+0557     <span class="comment">% From [0 0 1] to [1 1 1] to [1 0 0];</span>
+0558     m1 = floor(m*0.5);
+0559     r = (0:m1-1)'/max(m1,1);
+0560     g = r;
+0561     r = [r; ones(m1+1,1)];
+0562     g = [g; 1; flipud(g)];
+0563     b = flipud(r);
+0564 <span class="keyword">end</span>
+0565 
+0566 c = [r g b];
+0567 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

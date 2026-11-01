@@ -1,0 +1,271 @@
+function out=exportForGit(model,varargin)
+% exportForGit  Export a model for a Git-maintained model repository.
+%
+% Generates a directory structure and populates it with model files, ready
+% to be committed to a Git or GitHub repository of a model. Writes the
+% model as SBML L3V1 FBCv2 (XML) and YAML, COBRA text, MATLAB MAT-file and
+% Microsoft Excel formats.
+%
+% The flags mainBranchFlag, subDirs, COBRAtext and neverPrefixIDs accept a
+% scalar logical, the value 0 or 1, or an empty value for the default. Text
+% and other types raise RAVEN:badInput.
+%
+% Parameters
+% ----------
+% model : struct
+%     model structure in RAVEN format that should be exported.
+%
+% Name-Value Arguments
+% --------------------
+% prefix : char
+%     prefix for all filenames (default 'model').
+% path : char
+%     path where the directory structure should be generated and populated
+%     with all files (default current working directory). The folder, with
+%     any missing parent folders, is created if it does not exist.
+% formats : cell
+%     cell array of strings specifying in what file formats the model
+%     should be exported (default all formats as {'mat', 'txt', 'xlsx',
+%     'xml', 'yml'}).
+% mainBranchFlag : logical
+%     true to raise an error if RAVEN (and GECKO for enzyme-constrained
+%     models) is not on the main or master branch (default false).
+% subDirs : logical
+%     true to write the model files of each file format in their own
+%     subdirectory, with 'model' as parent directory, following the
+%     standard-GEM repository format. If false, all files are stored in the
+%     same folder (default true).
+% COBRAtext : logical
+%     true to write the txt file in COBRA Toolbox format, which uses
+%     metabolite IDs. If false, the file uses metabolite names and
+%     compartments (default false).
+% neverPrefixIDs : logical
+%     true if prefixes are never added to identifiers, even if they start
+%     with digits. This can result in invalid SBML files (default false).
+%
+% Examples
+% --------
+%     exportForGit(model, prefix, path, formats, mainBranchFlag, subDirs, ...
+%         COBRAtext, neverPrefixIDs);
+p=parseRAVENargs(varargin, {'prefix',[]; 'path',[]; 'formats',[]; 'mainBranchFlag',[]; 'subDirs',[]; 'COBRAtext',[]; 'neverPrefixIDs',false});
+prefix=p.prefix; path=p.path; formats=p.formats; mainBranchFlag=p.mainBranchFlag; subDirs=p.subDirs; COBRAtext=p.COBRAtext; neverPrefixIDs=p.neverPrefixIDs;
+COBRAtext=checkFlag(COBRAtext,'COBRAtext',false);
+subDirs=checkFlag(subDirs,'subDirs',true);
+mainBranchFlag=checkFlag(mainBranchFlag,'mainBranchFlag',false);
+neverPrefixIDs=checkFlag(neverPrefixIDs,'neverPrefixIDs',false);
+if isempty(formats)
+    formats={'mat', 'txt', 'xlsx', 'xml', 'yml'};
+else
+    formats=convertCharArray(formats);
+end
+if any(~ismember(formats, {'mat', 'txt', 'xlsx', 'xml', 'yml'}))
+    EM='Unknown file format defined. Only mat, txt, xlsx, xml and yml are allowed file formats.';
+    error(EM)
+end
+if isempty(path)
+    path='.';
+else
+    path=char(path);
+end
+if isempty(prefix)
+    prefix='model';
+else
+    prefix=char(prefix);
+end
+
+%Sort reactions, metabolites and genes alphabetically
+model=sortIdentifiers(model);
+
+%Get versions or commits of toolboxes. GECKO is only relevant for
+%enzyme-constrained models (those with an "ec" field).
+RAVENver = getToolboxVersion('RAVEN','ravenCobraWrapper.m',mainBranchFlag);
+if isfield(model,'ec')
+    GECKOver = getToolboxVersion('GECKO','GECKOInstaller.m',mainBranchFlag);
+else
+    GECKOver = [];
+end
+%Retrieve libSBML version:
+[ravenDir,prevDir]=findRAVENroot();
+try % 5.17.0 and newer
+    libSBMLver=OutputSBML_RAVEN;
+    libSBMLver=libSBMLver.libSBML_version_string;
+catch % before 5.17.0
+    fid = fopen('tempModelForLibSBMLversion.xml','w+');
+    fclose(fid);
+    evalc('[~,~,libSBMLver]=TranslateSBML_RAVEN(''tempModelForLibSBMLversion.xml'',0,0)');
+    libSBMLver=libSBMLver.libSBML_version_string;
+    delete('tempModelForLibSBMLversion.xml');
+end
+
+% Make the folders, no warnings if they already exist
+if subDirs
+    path=fullfile(path,'model');
+    filePath=strcat(path,filesep,{'txt','yml','mat','xlsx','xml'});
+    [~,~,~]=mkdir(path);
+    for i = 1:length(formats)
+        [~,~,~]=mkdir(fullfile(path,formats{i}));
+    end
+else
+    [~,~,~]=mkdir(path);
+    filePath=cell(1,5); filePath(:)={path};
+end
+
+
+% Write TXT format
+if ismember('txt', formats)
+    fid=fopen(fullfile(filePath{1},strcat(prefix,'.txt')),'w');
+    if COBRAtext==true
+        eqns=constructEquations(model,model.rxns,false,false,false);
+        eqns=strrep(eqns,' => ','  -> ');
+        eqns=strrep(eqns,' <=> ','  <=> ');
+        eqns=regexprep(eqns,'> $','>');
+        grRules=regexprep(model.grRules,'\((?!\()','( ');
+        grRules=regexprep(grRules,'(?<!\))\)',' )');
+    else
+        eqns=constructEquations(model,model.rxns);
+        grRules=model.grRules;
+    end
+    fprintf(fid, 'Rxn id\tFormula\tGene-reaction association\tLB\tUB\tObjective\n');
+    for i = 1:numel(model.rxns)
+        fprintf(fid, '%s\t', model.rxns{i});
+        fprintf(fid, '%s\t', strtrim(eqns{i}));
+        fprintf(fid, '%s\t', grRules{i});
+        fprintf(fid, '%s\t%s\t%s\n', shortestNumber(model.lb(i)), shortestNumber(model.ub(i)), shortestNumber(model.c(i)));
+    end
+    fclose(fid);
+end
+
+% Write YML format
+if ismember('yml', formats)
+    writeYAMLmodel(model,fullfile(filePath{2},strcat(prefix,'.yml')));
+end
+
+% Write MAT format
+if ismember('mat', formats)
+    save(fullfile(filePath{3},strcat(prefix,'.mat')),'model');
+end
+
+% Write XLSX format
+if ismember('xlsx', formats)
+    exportToExcelFormat(model,fullfile(filePath{4},strcat(prefix,'.xlsx')));
+end
+
+% Write XML format
+if ismember('xml', formats)
+        exportModel(model,fullfile(filePath{5},strcat(prefix,'.xml')),neverPrefixIDs);
+end
+
+%Save file with versions:
+fid = fopen(fullfile(path,'dependencies.txt'),'wt');
+fprintf(fid,['MATLAB\t' version '\n']);
+fprintf(fid,['libSBML\t' libSBMLver '\n']);
+fprintf(fid,['RAVEN_toolbox\t' RAVENver '\n']);
+if ~isempty(GECKOver)
+    fprintf(fid,['GECKO_toolbox\t' GECKOver '\n']);
+end
+if isfield(model,'modelVersion')
+    fields = fieldnames(model.modelVersion);
+    for i = 1:length(fields)
+        value = model.modelVersion.(fields{i});
+        fprintf(fid,[fields{i} '\t' num2str(value) '\n']);
+    end
+end
+fclose(fid);
+end
+
+function s = shortestNumber(x)
+% shortestNumber  The shortest text that reads back as exactly x, so a bound
+% is never rounded on the way out (1/3 is 0.3333333333333333, 1000 is 1000).
+if isinf(x)
+    if x > 0
+        s = 'Inf';
+    else
+        s = '-Inf';
+    end
+    return
+elseif isnan(x)
+    s = 'NaN';
+    return
+end
+if x == floor(x) && abs(x) < 1e15
+    s = sprintf('%d', x);
+    return
+end
+for digits = 1:17
+    s = sprintf(['%.' num2str(digits) 'g'], x);
+    if str2double(s) == x
+        break
+    end
+end
+end
+
+function version = getToolboxVersion(toolbox,fileID,mainBranchFlag)
+% getToolboxVersion  Return the version of RAVEN or GECKO.
+%
+% Returns the version of the toolbox as stated in its version.txt, or
+% 'unknown' if that file cannot be found.
+%
+% toolbox        name of the toolbox (e.g. 'RAVEN' or 'GECKO').
+% fileID         a file only found in that toolbox, used to locate its root
+%                (e.g. 'ravenCobraWrapper.m' or 'GECKOInstaller.m').
+% mainBranchFlag if true, error if the toolbox is not on the main branch.
+currentPath = pwd;
+version     = '';
+
+%Try to find root of toolbox:
+try
+    toolboxPath = which(fileID);                %full file path
+    slashPos    = getSlashPos(toolboxPath);
+    toolboxPath = toolboxPath(1:slashPos(end)); %folder path
+    %Go up until the root is found:
+    D = dir(toolboxPath);
+    while ~ismember({'.git'},{D.name})
+        slashPos    = getSlashPos(toolboxPath);
+        toolboxPath = toolboxPath(1:slashPos(end-1));
+        D           = dir(toolboxPath);
+    end
+    cd(toolboxPath);
+catch
+    disp([toolbox ' toolbox cannot be found'])
+    version = 'unknown';
+end
+%Check if in main:
+if mainBranchFlag
+    [~,currentBranch] = system('git rev-parse --abbrev-ref HEAD');
+    currentBranch = strtrim(currentBranch);
+    if ~any([strcmp(currentBranch, "main"), strcmp(currentBranch, "master")])
+        cd(currentPath);
+        error('RAVEN:notMainBranch',['ERROR: ' toolbox ' not in main (or master) branch. Check-out this branch of ' toolbox ' before submitting model for Git.'])
+    end
+end
+%Read the version from the toolbox version.txt; report 'unknown' otherwise
+if isempty(version)
+    fid = fopen([toolboxPath 'version.txt'],'r');
+    if fid ~= -1
+        version = fscanf(fid,'%s');
+        fclose(fid);
+    end
+    if isempty(version)
+        version = 'unknown';
+    end
+end
+cd(currentPath);
+end
+
+function slashPos = getSlashPos(path)
+slashPos = strfind(path,'\');       %Windows
+if isempty(slashPos)
+    slashPos = strfind(path,'/');   %MAC/Linux
+end
+end
+
+function flag = checkFlag(flag, name, default)
+%An empty value gives the default; otherwise a scalar logical or 0/1 is required
+if isempty(flag)
+    flag = default;
+elseif (islogical(flag) || isnumeric(flag)) && isscalar(flag) && isreal(flag) && (flag == 0 || flag == 1)
+    flag = logical(flag);
+else
+    error('RAVEN:badInput', '%s must be a scalar logical or 0/1.', name);
+end
+end

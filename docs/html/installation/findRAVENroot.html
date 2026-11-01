@@ -1,0 +1,114 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of findRAVENroot</title>
+  <meta name="keywords" content="findRAVENroot">
+  <meta name="description" content="findRAVENroot">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">installation</a> &gt; findRAVENroot.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for installation&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>findRAVENroot
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>findRAVENroot</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [ravenPath, prevDir] = findRAVENroot() </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> findRAVENroot
+   Finds the root of the RAVEN directory by searching for the path to
+   version.txt. Can also record the current directory, for functions that use
+   the ravenPath to navigate to a precise folder and return to the previous
+   directory afterwards. See, for example, optimizeProb calling glpk.
+
+   The RAVEN.ravenPath preference is used if it points to a directory with a
+   version.txt file. Otherwise the search starts at the location of this
+   function file and moves up the directory tree.
+
+   The resolved path is cached for the rest of the MATLAB session, so the
+   preference is read once although the function is called on every solver
+   invocation. `clear findRAVENroot` drops the cached path after a change of
+   the preference (checkRaven does this) without a restart of MATLAB.</pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="addRavenToUserPath.html" class="code" title="function addRavenToUserPath(varargin)">addRavenToUserPath</a>	This function writes a startup.m file in the userpath, adding RAVEN (and</li><li><a href="checkFunctionUniqueness.html" class="code" title="function status = checkFunctionUniqueness(varargin)">checkFunctionUniqueness</a>	checkFunctionUniqueness</li><li><a href="downloadRavenBinaries.html" class="code" title="function downloadRavenBinaries(tools)">downloadRavenBinaries</a>	downloadRavenBinaries</li><li><a href="updateDocumentation.html" class="code" title="function updateDocumentation()">updateDocumentation</a>	updateDocumentation</li></ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [ravenPath, prevDir] = findRAVENroot()</a>
+0002 <span class="comment">% findRAVENroot</span>
+0003 <span class="comment">%   Finds the root of the RAVEN directory by searching for the path to</span>
+0004 <span class="comment">%   version.txt. Can also record the current directory, for functions that use</span>
+0005 <span class="comment">%   the ravenPath to navigate to a precise folder and return to the previous</span>
+0006 <span class="comment">%   directory afterwards. See, for example, optimizeProb calling glpk.</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">%   The RAVEN.ravenPath preference is used if it points to a directory with a</span>
+0009 <span class="comment">%   version.txt file. Otherwise the search starts at the location of this</span>
+0010 <span class="comment">%   function file and moves up the directory tree.</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">%   The resolved path is cached for the rest of the MATLAB session, so the</span>
+0013 <span class="comment">%   preference is read once although the function is called on every solver</span>
+0014 <span class="comment">%   invocation. `clear findRAVENroot` drops the cached path after a change of</span>
+0015 <span class="comment">%   the preference (checkRaven does this) without a restart of MATLAB.</span>
+0016 
+0017 <span class="keyword">persistent</span> cachedPath
+0018 prevDir = pwd();
+0019 <span class="keyword">if</span> ~isempty(cachedPath)
+0020     ravenPath = cachedPath;
+0021     <span class="keyword">return</span>;
+0022 <span class="keyword">end</span>
+0023 
+0024 <span class="comment">% A stored preference is only trusted if it still points at a real RAVEN</span>
+0025 <span class="comment">% install; otherwise fall through to walking up from the currently</span>
+0026 <span class="comment">% executing copy of this file. Without this check, a stale preference</span>
+0027 <span class="comment">% left over from a different RAVEN checkout on the same machine silently</span>
+0028 <span class="comment">% resolves to that other copy's data, not the one actually running.</span>
+0029 ravenPath = <span class="string">''</span>;
+0030 <span class="keyword">if</span> ispref(<span class="string">'RAVEN'</span>,<span class="string">'ravenPath'</span>)
+0031     prefPath = getpref(<span class="string">'RAVEN'</span>,<span class="string">'ravenPath'</span>);
+0032     <span class="keyword">if</span> isfile(fullfile(prefPath,<span class="string">'version.txt'</span>))
+0033         ravenPath = prefPath;
+0034     <span class="keyword">end</span>
+0035 <span class="keyword">end</span>
+0036 <span class="keyword">if</span> isempty(ravenPath)
+0037     ST=dbstack(<span class="string">'-completenames'</span>);
+0038     ravenPath = ST(strcmp({ST.name},<span class="string">'findRAVENroot'</span>)).file;
+0039     rootFound = 0;
+0040     <span class="keyword">while</span> rootFound == 0
+0041         isRoot = isfile(fullfile(ravenPath,<span class="string">'version.txt'</span>));
+0042         <span class="keyword">if</span> isRoot
+0043             rootFound = 1;
+0044         <span class="keyword">else</span>
+0045             ravenPathOld = ravenPath;
+0046             ravenPath = fileparts(ravenPath);
+0047             <span class="keyword">if</span> strcmp(ravenPathOld,ravenPath)
+0048                 error(<span class="string">'Cannot find the RAVEN root directory. Make sure you have not removed the version.txt file from your RAVEN installation.'</span>)
+0049             <span class="keyword">end</span>
+0050         <span class="keyword">end</span>
+0051     <span class="keyword">end</span>
+0052 <span class="keyword">end</span>
+0053 cachedPath = ravenPath;
+0054 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>
