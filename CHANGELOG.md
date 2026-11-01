@@ -1,10 +1,24 @@
 # Changelog
 
-## Unreleased
+## 3.0.0b2 — 2026-11-01
+
+Second beta toward 3.0. Changes below are relative to 3.0.0b1.
+
+### Repository layout and downloads
+
+* The MATLAB code is in `src/` (was: folders in the repository root), the tests in `tests/` (was: `testing/`), the generated help pages in `docs/html/` (was: `doc/`), and the tutorials in `tutorials/` with data under `tutorials/data/{models,omics,sequences}` (was: `tutorial/`). The external software is in `src/external` (was: `src/software`). `checkRaven`, `downloadRavenBinaries`, `getBlast`, `getDiamond`, `getKEGGModelForOrganism`, `optimizeProb`, `setRavenSolver` and `updateDocumentation` use the new paths. This matters for code that adds RAVEN folders to the path or addresses binaries by path.
+* `parseHPA`, `parseHPArna` and `scoreModel` are in `INIT/` (was: `omics/`, which no longer exists). `tOmics.m` is merged into `tINIT.m`.
+* `fetchToolboxAsset` replaces `fetchRavenDataAsset`, and assets are downloaded from `CompMetEng/toolbox-assets` (was: raven-data). `downloadRavenBinaries`, the KEGG functions, `getPhylDist` and `checkRaven` use it.
+* `fetchToolboxAsset` downloads to a `.part` file and checks the SHA-256 sum listed in the `manifest-v3` of toolbox-assets. A mismatch deletes the file and raises an error; an asset that the manifest does not list, or a manifest that cannot be read, gives a warning.
+* The repository, documentation and version-check links point to `CompMetEng`.
 
 ### I/O
 
 * `writeYAMLmodel` writes an ec reaction without enzymes (a row of zeros in `model.ec.rxnEnzMat`) with no `enzymes` entry (was: `- enzymes: !!omap` with nothing under it, which is not valid YAML). `readYAMLmodel` reads a missing `enzymes` entry as a reaction without enzymes, and still reads `- enzymes: !!omap` with no entries and `- enzymes: !!omap []` from files written earlier.
+
+* `readYAMLmodel` reads notes maps (as written by cobrapy and raven-toolbox) into `metNotes` and `rxnNotes` (was: the error "Unknown entry"), reads folded scalars whose continuation starts with `-`, and keeps one `model.subSystems` entry per reaction (was: empty entries were dropped, so later subsystems sat on the wrong reaction).
+* `writeYAMLmodel` writes the enzymes of each `ec-rxns` entry indented under `- enzymes` (was: at the indentation of the key, which ruamel.yaml could not read), quotes the YAML 1.1 booleans (`y`, `n`, `yes`, `no`, `on`, `off` in any case), and writes non-integers with the shortest digits that read back exactly. `printOrange` prints `\n` as a line break.
+* `exportForGit`: the txt table is headed `Rxn id`, writes bounds and objective with the digits needed to read them back and pads no field. The output folder is created with its parents also when `subDirs` is false, and the logical flags are validated.
 
 ### Manipulation
 
@@ -85,6 +99,39 @@
 * `checkRaven`: when the binaries cannot be downloaded, the message names the
   `RAVEN-<tag>-full.zip` bundle attached to each release for an offline install (was:
   "the `*-binaries` RAVEN release").
+
+### Homology and curation
+
+* `getModelFromHomology` has the options `complexPolicy` (`flag`, `keep` or `drop`: how a reaction is treated when an `and`-linked subunit has no ortholog), `keepGeneFree` (reactions of the template without a grRule are transferred) and `preserveNotes` (`rxnNotes`, `rxnReferences` and `rxnConfidenceScores` are kept). A gene that several template genes reach appears once per grRule. The draft no longer carries the version, date and description of the templates. It no longer fails when a preferred order removes no gene.
+* `getModelFromHomology` raises an error that names the gene ids of the new organism that split in a grRule (whitespace, parentheses, `|` or `&`, for example the UniProt id `sp|P33284|HXK_KLULA`) (was: the ids were accepted).
+* New: `hitsFromSuppOrth` reads a `suppOrth.tsv` into a blast structure for `getModelFromHomology`, in both directions, with filters on support, predictors, identity and E-value. `runSuppOrth` runs the `suppOrth` command and reads its output.
+* `curateModelFromTables` reads the tables by header name in any order, with optional columns, and writes every supplied field to existing entities (`metNotes` and `rxnReferences` were never written). The MIRIAM columns follow the core columns, and grRules go to the right reaction when existing and new reactions are mixed. The option `overwriteWithEmpty` is new, an empty cell counts as not given, and the input is validated: a file, column, gene-rule or repeated-id error raises `RAVEN:badInput`.
+* `scaleBiomassFraction` raises an error when the required fraction is 0 or less, or when the balancing component has no current fraction (was: the fractions were silently inverted). The new argument `targetTotal` sets the balanced total of the biomass.
+* `setGAM` and `scaleBiomassPseudoreaction` raise an error before the model changes when the NGAM reaction or the proton metabolite is missing. `setGAM` refuses `ngamValue` without `ngamRxn`, and an empty `ngamRxn` counts as not given.
+* `sortModel` keeps the directions of the reactions unless `sortReversible` is requested. `generateNewIds` takes the numerically largest id and counts only finite integer suffixes.
+* `replaceMets`: the final `contractModel` call is restricted to the surviving metabolite (was: unrelated duplicate reactions were merged as well).
+* `addIdentifierPrefix` prefixes whole gene ids in grRules (was: an id with a dash, dot or colon, for example `5-HT1A`, got a prefix at every word start, so `exportModel` failed).
+* `getIndexes` with an ambiguous `name[comp]` raises an error that names the matching metabolites.
+* `gapFillMILP` keeps the lower bound of unreversed candidate reactions.
+* `gapReport` always reports the metabolites that are produced or consumed with the boundary closed. It closes the reactions of `getExchangeRxns` when the model has no `unconstrained` field, and stops when the closed model is infeasible.
+
+### Solvers
+
+* `optimizeProb` returns the logical `res.hitTimeLimit` for every solver. `getMinNrFluxes`, `ftINITFillGapsMILP`, `runINIT` and `ftINITInternalAlg` report a time limit as such, with a warning (was: every solver except Gurobi reported "The problem is infeasible"). The exit code -1 means that no usable solution came back, and -2 means a solution that is not proven optimal.
+* The MILPs of `gapFillMILP`, `fillGaps`, `getMinimalMedium` and `getMinNrFluxes` run on the bundled GLPK and on the GLPK of the COBRA Toolbox, with a `RAVEN:glpkMILP` warning (was: refused).
+
+### Sampling and reporting
+
+* `reporterMetabolites` uses the population standard deviation for the background, sorts the results by Z-score and reports one-sided P-values, which gives the numbers of raven-toolbox (was: scores differed). The score is 0 when the spread of the background is 0 or at rounding level, P-values outside [0, 1] are refused, and metabolites without a score are dropped from all result fields.
+* `sampleChebyshevCenter` and `randomSampling` pass a sparse matrix, so the method `'chrr'` works with Gurobi.
+* `sampleACHR` projects the directions onto the null space of S and keeps the steps within the bounds. It warns when the samples keep a residual (was: the residual of `S*v` grew exponentially, up to 9 after 100 steps).
+* `haveFlux` returns all reactions as blocked when the simplification removes every reaction (was: a GLPK error on an empty matrix).
+
+### Tasks
+
+* `parseTaskList` reads `false` and `0` as false, trims `;` lists, ignores the case of headers, keeps empty CHANGED bounds as `NaN`, and has separate spare columns, so that bounds default to 0 and 1000. Comment rows and orphan rows are skipped with a warning, a non-numeric bound raises `RAVEN:badInput`, and a binary `.xls` file is refused with `RAVEN:badInput` (save it as `.xlsx` or `.txt`).
+* `checkTasks` warns when a task metabolite matches several model metabolites. `removeLowScoreGenes` keeps the first gene of the rule on a tie.
+* `ftINIT` removes the genes of removed reactions from the output.
 
 ### Documentation
 
