@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Data
+
+* The KEGG assets are the `kegg120` release of `toolbox-assets` (was: `kegg118`), and `fetchToolboxAsset` reads the manifest `manifest-v4`.
+
 ## 3.0.0b2 — 2026-11-01
 
 Second beta toward 3.0. Changes below are relative to 3.0.0b1.

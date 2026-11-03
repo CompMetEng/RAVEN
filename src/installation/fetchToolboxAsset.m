@@ -9,7 +9,7 @@ function localPath=fetchToolboxAsset(destDir,releaseTag,assetName)
 % supplies the release tag and the asset name.
 %
 % A download is checked against the SHA-256 checksum that the
-% toolbox-assets manifest (release manifest-v3) lists for it. A file whose
+% toolbox-assets manifest (release manifest-v4) lists for it. A file whose
 % checksum differs is deleted and an error is raised. An asset that the
 % manifest does not list, or a manifest that cannot be read, gives a
 % warning and the file is kept unchecked.
@@ -19,9 +19,9 @@ function localPath=fetchToolboxAsset(destDir,releaseTag,assetName)
 % destDir : char
 %     directory to download into (created if it does not exist yet).
 % releaseTag : char
-%     the toolbox-assets release tag, for example 'kegg118'.
+%     the toolbox-assets release tag, for example 'kegg120'.
 % assetName : char
-%     the release asset file name, for example 'kegg118_core.tar.gz'.
+%     the release asset file name, for example 'kegg120_core.tar.gz'.
 %
 % Returns
 % -------
@@ -75,7 +75,7 @@ persistent manifest
 sha='';
 if isempty(manifest)
     try
-        manifest=webread('https://github.com/CompMetEng/toolbox-assets/releases/download/manifest-v3/manifest.json', ...
+        manifest=webread('https://github.com/CompMetEng/toolbox-assets/releases/download/manifest-v4/manifest.json', ...
             weboptions('ContentType','json','Timeout',30));
     catch ME
         warning('RAVEN:fetchToolboxAsset:manifest','Cannot read the toolbox-assets manifest: %s',ME.message);

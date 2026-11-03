@@ -26,8 +26,8 @@ function model=getKEGGModelForOrganism(organismID,varargin)
 %     case, cutOff, minScoreRatioKO, minScoreRatioG and dataDir are not
 %     used (default []).
 % dataDir : char
-%     directory of the HMM library, named kegg118_prokaryotes or
-%     kegg118_eukaryotes. The name gives the KEGG version and whether the
+%     directory of the HMM library, named kegg120_prokaryotes or
+%     kegg120_eukaryotes. The name gives the KEGG version and whether the
 %     HMMs were trained on pro- or eukaryotic sequences, and matches the
 %     published HMM library it is paired with. The prebuilt concatenated KO
 %     HMM library (dataDir.hmm) is downloaded from the corresponding
@@ -96,7 +96,7 @@ function model=getKEGGModelForOrganism(organismID,varargin)
 %   2. From protein homology (fastaFile supplied). The query proteome is
 %      searched, in a single hmmsearch, against a prebuilt KEGG-version- and
 %      domain-specific concatenated KO HMM library (for example
-%      kegg118_eukaryotes), downloaded from the corresponding toolbox-assets
+%      kegg120_eukaryotes), downloaded from the corresponding toolbox-assets
 %      release if not already present in dataDir. Hits are filtered by cutOff,
 %      minScoreRatioKO and minScoreRatioG into a KO-gene matrix, from which the
 %      model is built (spontaneous reactions without genes are kept if
