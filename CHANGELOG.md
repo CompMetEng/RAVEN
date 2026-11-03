@@ -4,7 +4,7 @@
 
 ### Data
 
-* The KEGG assets are the `kegg120` release of `toolbox-assets` (was: `kegg118`), and `fetchToolboxAsset` reads the manifest `manifest-v4`.
+* The KEGG assets are the `kegg120` release of `toolbox-assets` (was: `kegg118`), and `fetchToolboxAsset` reads the manifest `manifest-v5`.
 
 ## 3.0.0b2 — 2026-11-01
 
