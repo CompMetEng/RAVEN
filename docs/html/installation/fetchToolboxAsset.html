@@ -37,7 +37,7 @@
  supplies the release tag and the asset name.
 
  A download is checked against the SHA-256 checksum that the
- toolbox-assets manifest (release manifest-v4) lists for it. A file whose
+ toolbox-assets manifest (release manifest-v5) lists for it. A file whose
  checksum differs is deleted and an error is raised. An asset that the
  manifest does not list, or a manifest that cannot be read, gives a
  warning and the file is kept unchecked.
@@ -82,7 +82,7 @@ This function is called by:
 0009 <span class="comment">% supplies the release tag and the asset name.</span>
 0010 <span class="comment">%</span>
 0011 <span class="comment">% A download is checked against the SHA-256 checksum that the</span>
-0012 <span class="comment">% toolbox-assets manifest (release manifest-v4) lists for it. A file whose</span>
+0012 <span class="comment">% toolbox-assets manifest (release manifest-v5) lists for it. A file whose</span>
 0013 <span class="comment">% checksum differs is deleted and an error is raised. An asset that the</span>
 0014 <span class="comment">% manifest does not list, or a manifest that cannot be read, gives a</span>
 0015 <span class="comment">% warning and the file is kept unchecked.</span>
@@ -148,7 +148,7 @@ This function is called by:
 0075 sha=<span class="string">''</span>;
 0076 <span class="keyword">if</span> isempty(manifest)
 0077     <span class="keyword">try</span>
-0078         manifest=webread(<span class="string">'https://github.com/CompMetEng/toolbox-assets/releases/download/manifest-v4/manifest.json'</span>, <span class="keyword">...</span>
+0078         manifest=webread(<span class="string">'https://github.com/CompMetEng/toolbox-assets/releases/download/manifest-v5/manifest.json'</span>, <span class="keyword">...</span>
 0079             weboptions(<span class="string">'ContentType'</span>,<span class="string">'json'</span>,<span class="string">'Timeout'</span>,30));
 0080     <span class="keyword">catch</span> ME
 0081         warning(<span class="string">'RAVEN:fetchToolboxAsset:manifest'</span>,<span class="string">'Cannot read the toolbox-assets manifest: %s'</span>,ME.message);
