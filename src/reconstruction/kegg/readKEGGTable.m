@@ -7,7 +7,7 @@ function tbl=readKEGGTable(gzFile)
 % Parameters
 % ----------
 % gzFile : char
-%     path to the gzipped TSV file, for example '.../kegg118_ko_reaction.tsv.gz'.
+%     path to the gzipped TSV file, for example '.../kegg120_ko_reaction.tsv.gz'.
 %
 % Returns
 % -------
