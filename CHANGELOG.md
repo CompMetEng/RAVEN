@@ -6,7 +6,7 @@
 
 * The KEGG assets are the `kegg120` release of `toolbox-assets` (was: `kegg118`), and `fetchToolboxAsset` reads the manifest `manifest-v5`.
 
-## 3.0.0b2 — 2026-11-01
+## 3.0.0b2 (2026-11-01)
 
 Second beta toward 3.0. Changes below are relative to 3.0.0b1.
 
@@ -151,7 +151,7 @@ Second beta toward 3.0. Changes below are relative to 3.0.0b1.
 
 * Help blocks of 176 files are rewritten in impersonal, present-tense wording with British spelling; the code is unchanged. Statements that differed from the code are corrected, for example `simplifyModel` `deleteDuplicates` (first occurrence kept), `removeBadRxns` `refModel`, `replaceMets` outputs, `getMinNrFluxes` `params`, `checkRaven` `developMode` and the `downloadRavenBinaries` offline bundle. `reverseRxns` has the RAVEN 3 help structure.
 
-## 3.0.0b1 — 2026-09-07
+## 3.0.0b1 (2026-09-07)
 
 First beta toward 3.0. Changes below are relative to RAVEN 2.9.3. The last 2.x release is 2.11.4:
 a reorganized codebase, fewer toolbox dependencies, hardened I/O and MILP algorithms, plus
