@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Breaking changes
+
+* `getModelFromHomology` with `complexPolicy` `drop` removes each complex that has a subunit without an ortholog, and removes the reaction only when no complex remains (was: the reaction was removed as soon as one subunit had no ortholog). For the rule `(A and B) or (C and D)` without an ortholog of `B`, the draft has the orthologs of `C` and `D`.
+
+### Fixes
+
+* `getModelFromHomology` reads the rule as a tree, in which `and` binds tighter than `or`, when it removes the placeholder genes of isozymes without an ortholog (was: it removed a placeholder that stood beside an `or` token, also when the placeholder belongs to a complex). A placeholder in an `or` group is removed when the group has a member that is not a placeholder, in nested groups as well. For the rule `(A or B and C) and D` without an ortholog of `B`, where `nA`, `nC` and `nD` are the orthologs of `A`, `C` and `D`, the draft rule is `(nA or (OLD_T_B and nC)) and nD` under `flag`, `(nA or nC) and nD` under `keep` and `nA and nD` under `drop`; it was `nA and nC and nD` under all three. The result differs from before only for rules with unbracketed `and` and `or` or with nested `or` groups.
+
 ### Data
 
 * The KEGG assets are the `kegg120` release of `toolbox-assets` (was: `kegg118`), and `fetchToolboxAsset` reads the manifest `manifest-v5`.

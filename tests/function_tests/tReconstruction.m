@@ -87,13 +87,19 @@ classdef tReconstruction < RavenTestCase
 
         function getModelFromHomologyComplexPolicyOnNestedRules(testCase)
             % An isozyme group whose members all lack an ortholog leaves one flagged
-            % subunit; "drop" removes every reaction that keeps a flagged gene.
+            % subunit; "drop" removes each complex that keeps a flagged gene and the
+            % reaction when no complex remains.
             % Columns: rule, mapped template genes, policy, genes in the rule ({} = reaction removed).
             cases = {'(A or B) and C', {'C'}, 'flag', {'OLD_T_B', 'nC'}; ...
                      '(A or B) and C', {'C'}, 'keep', {'nC'}; ...
                      '(A or B) and C', {'C'}, 'drop', {}; ...
-                     'A or (B and C)', {'A', 'C'}, 'drop', {}; ...
-                     '(A and B) or C', {'C'}, 'drop', {}};
+                     'A or (B and C)', {'A', 'C'}, 'drop', {'nA'}; ...
+                     '(A and B) or C', {'C'}, 'drop', {'nC'}; ...
+                     'A and B', {'A'}, 'drop', {}; ...
+                     '(A and B) or (C and D)', {'A', 'C', 'D'}, 'drop', {'nC', 'nD'}; ...
+                     '(A or B and C) and D', {'A', 'C', 'D'}, 'drop', {'nA', 'nD'}; ...
+                     '(A and B or C) and D', {'A', 'C', 'D'}, 'drop', {'nC', 'nD'}; ...
+                     'D and (A or B and C)', {'A', 'C', 'D'}, 'drop', {'nA', 'nD'}};
             for k = 1:size(cases, 1)
                 t = tReconstruction.homologyTemplate('T', {'R1'}, cases(k, 1));
                 pairs = cell(numel(cases{k, 2}), 2);
@@ -108,6 +114,20 @@ classdef tReconstruction < RavenTestCase
                     testCase.verifyFalse(contains(draft.grRules{strcmp(draft.rxns, 'R1')}, ' or '), cases{k, 1});
                 end
             end
+            % "and" binds tighter than "or": B belongs to the complex B and C, not to the isozymes of A
+            t = tReconstruction.homologyTemplate('T', {'R1'}, {'(A or B and C) and D'});
+            draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'C', 'nC'; 'D', 'nD'}}, 'flag', {});
+            testCase.verifyEqual(draft.grRules{1}, '(nA or (OLD_T_B and nC)) and nD');
+            % complete complexes that share a subunit with an incomplete one stay, and a
+            % complex that contains another is not merged into it
+            t = tReconstruction.homologyTemplate('T', {'R1'}, {'(A and B) or (A and C) or (D and E) or (A and B and F)'});
+            draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'B', 'nB'; 'C', 'nC'; 'D', 'nD'; 'F', 'nF'}}, 'drop', {});
+            testCase.verifyEqual(draft.grRules{1}, '(nA and nB) or (nA and nC) or (nA and nB and nF)');
+            t = tReconstruction.homologyTemplate('T', {'R1'}, {'(A and B) or B'});
+            draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'B', 'nB'}}, 'drop', {});
+            testCase.verifyEqual(draft.grRules{1}, '(nA and nB) or nB');
+            draft = tReconstruction.homologyDraft({t}, {{'B', 'nB'}}, 'drop', {});
+            testCase.verifyEqual(draft.grRules{1}, 'nB');
             % the flagged subunit stays next to its isozyme in the other branch
             t = tReconstruction.homologyTemplate('T', {'R1'}, {'A or (B and C)'});
             draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'C', 'nC'}}, 'flag', {});

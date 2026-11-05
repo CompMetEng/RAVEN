@@ -61,8 +61,16 @@ function [draftModel, hitGenes]=getModelFromHomology(models,blastStructure,...
 % complexPolicy : char
 %     what happens to an "and"-linked subunit without an ortholog (case
 %     insensitive): "flag" keeps the reaction with the subunit renamed
-%     OLD_MODELID_geneName, for review; "keep" drops that subunit;
-%     "drop" drops the whole reaction (default "flag").
+%     OLD_MODELID_geneName, for review; "keep" drops that subunit; "drop"
+%     drops each complex that has such a subunit and drops the reaction when
+%     no complex remains (default "flag"). With every policy, a group of
+%     isozymes ("or") counts as a missing subunit only when none of its members
+%     has an ortholog, and "and" binds tighter than "or". Under "drop", a
+%     complex is one "and"-linked alternative of the rule, as in its
+%     disjunctive normal form. The rule is not rewritten to its normal form,
+%     and a complex that contains another complex is kept. For the rule
+%     (A and B) or (C and D) without an ortholog of B, the draft has the
+%     orthologs of C and D.
 % keepGeneFree : logical
 %     also transfer the template reactions that have no grRule (spontaneous,
 %     transport, exchange, artificial). By default they are dropped, because
@@ -611,30 +619,19 @@ end
 %complexes
 draftModel=mergeModels(models,'metNames');
 
-%Remove OLD_ genes that appear only in OR branches (they were added for
-%AND-complex genes with no orthologs; in OR branches they are redundant).
-%Uses token-level removal to avoid partial-match hazards.
+%Remove OLD_ genes that are a member of an isozyme group (an "or" group) with
+%a member that is not an OLD_ gene: an isozyme without an ortholog is redundant
+%when another member of its group is present. When every member of a group is an
+%OLD_ gene, the last one stays for the group. The rule is parsed so that "and"
+%binds tighter than "or".
 for oldI=1:numel(draftModel.grRules)
     if ~contains(draftModel.grRules{oldI},'OLD_')
         continue
     end
     tkns=gprTokenize(draftModel.grRules{oldI});
-    again=true;
-    while again
-        again=false;
-        for kk=1:numel(tkns)
-            if startsWith(tkns{kk},'OLD_')
-                if kk>1 && strcmp(tkns{kk-1},'or')
-                    tkns(kk-1:kk)=[];
-                    again=true; break
-                elseif kk<numel(tkns) && strcmp(tkns{kk+1},'or')
-                    tkns(kk:kk+1)=[];
-                    again=true; break
-                end
-            end
-        end
-    end
-    draftModel.grRules{oldI}=gprBuildRule(tkns);
+    [node,~]=gprParseOr(tkns,1);
+    node=gprDropOldIsozymes(node);
+    draftModel.grRules{oldI}=gprRender(node,'');
 end
 
 %Apply the complex policy to the OLD_ genes left in "and" relations, and
@@ -646,7 +643,8 @@ for j=1:numel(draftModel.grRules)
         continue
     end
     if contains(rule,'OLD_') && strcmp(complexPolicy,'drop')
-        toRemove(j)=true;
+        draftModel.grRules{j}=gprSimplify(rule,'OLD_',true);
+        toRemove(j)=isempty(draftModel.grRules{j});
     elseif contains(rule,'OLD_') && strcmp(complexPolicy,'keep')
         draftModel.grRules{j}=gprSimplify(rule,'OLD_');
         toRemove(j)=isempty(draftModel.grRules{j});
@@ -717,6 +715,32 @@ rule=strrep(rule,' )',')');
 end
 
 
+function node=gprDropOldIsozymes(node)
+% Remove the OLD_ genes that are direct members of an "or" group together with
+% a member that is not an OLD_ gene. A group of OLD_ genes alone keeps its last
+% member.
+if strcmp(node.op,'gene')
+    return
+end
+for k=1:numel(node.kids)
+    node.kids{k}=gprDropOldIsozymes(node.kids{k});
+end
+if strcmp(node.op,'or')
+    isOld=cellfun(@(kid) strcmp(kid.op,'gene') && startsWith(kid.gene,'OLD_'),node.kids);
+    if any(isOld)
+        if all(isOld)
+            node.kids=node.kids(end);
+        else
+            node.kids=node.kids(~isOld);
+        end
+    end
+    if numel(node.kids)==1
+        node=node.kids{1};
+    end
+end
+end
+
+
 function tokens=gprReplaceToken(tokens,oldGene,newGenes)
 % Replace each occurrence of token oldGene with the gene(s) in newGenes.
 % newGenes is a cell array; multiple genes are wrapped in parentheses and
@@ -746,18 +770,22 @@ end
 end
 
 
-function rule=gprSimplify(rule,removePrefix)
+function rule=gprSimplify(rule,removePrefix,dropComplex)
 % Rewrite a grRule as a tree: genes starting with removePrefix (if any) are
 % dropped from their group, groups of the same operator are flattened,
 % repeated genes or groups are removed, and brackets appear only around a
-% group of the other operator. A rule with no gene left becomes ''.
+% group of the other operator. With dropComplex, an "and" group that loses
+% a gene is removed as a whole. A rule with no gene left becomes ''.
+if nargin<3
+    dropComplex=false;
+end
 tokens=gprTokenize(rule);
 if isempty(tokens)
     rule='';
     return
 end
 [node,~]=gprParseOr(tokens,1);
-node=gprPrune(node,removePrefix);
+node=gprPrune(node,removePrefix,dropComplex);
 if isempty(node)
     rule='';
 else
@@ -809,7 +837,7 @@ end
 end
 
 
-function node=gprPrune(node,removePrefix)
+function node=gprPrune(node,removePrefix,dropComplex)
 if strcmp(node.op,'gene')
     if ~isempty(removePrefix) && startsWith(node.gene,removePrefix)
         node=[];
@@ -819,8 +847,12 @@ end
 kids={};
 seen={};
 for k=1:numel(node.kids)
-    kid=gprPrune(node.kids{k},removePrefix);
+    kid=gprPrune(node.kids{k},removePrefix,dropComplex);
     if isempty(kid)
+        if dropComplex && strcmp(node.op,'and')
+            node=[];
+            return
+        end
         continue
     end
     if strcmp(kid.op,node.op)
