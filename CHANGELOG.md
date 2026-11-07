@@ -4,6 +4,7 @@
 
 ### Breaking changes
 
+* `getModelFromHomology` with `preferredOrder` treats a gene of a later model that maps to a new gene an earlier model already maps as a subunit without an ortholog, and `complexPolicy` decides what happens to it (was: the gene and every part of the rule that needs it were removed). For the rule `(a and b) or x` with `a` taken by an earlier model, `flag` gives `(OLD_MODELID_a and nb) or nx`, `keep` gives `nb or nx` and `drop` gives `nx`. A reaction that has genes, none of which keeps a mapping, is not included.
 * `getModelFromHomology` with `complexPolicy` `drop` removes each complex that has a subunit without an ortholog, and removes the reaction only when no complex remains (was: the reaction was removed as soon as one subunit had no ortholog). For the rule `(A and B) or (C and D)` without an ortholog of `B`, the draft has the orthologs of `C` and `D`.
 
 ### Fixes
