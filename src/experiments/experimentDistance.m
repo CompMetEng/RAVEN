@@ -12,7 +12,8 @@ function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowth
 % growth rate and the measured exchange fluxes of the model are compared with the measurements. In
 % a maximum-growth condition the uptake of the carbon source is unlimited, and only the maximal
 % growth rate of the model is compared with the measured growth rate; this is the maximal growth
-% rate if the objective of the simulated model is the growth (see simulateConditions). See
+% rate if the objective of the simulated model is the growth; simulateConditions warns if it is
+% not. See
 % loadExperimentData for the files and the workflow.
 %
 % A data set that is not in experimentData does not contribute, and neither does a data set in

@@ -12,10 +12,16 @@ function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bio
 % solution. Set the objective with setParam(model, 'obj', bioRxnId, 1) before the simulation. With
 % another objective the biomass flux is the value in one of the optimal solutions of that
 % objective, not the maximal growth rate, and in a maximum-growth condition the distance then
-% compares a number that is not the maximal growth rate with the measurement. The same holds for
-% a function given as optimize, which decides what is optimised. A data set is either the flux conditions of
-% experimentData.fluxData (constrain true) or the maximum-growth conditions of
-% experimentData.maxGrowth (constrain false); see loadExperimentData.
+% compares a number that is not the maximal growth rate with the measurement. A warning
+% (simulateConditions:objectiveNotGrowth) is issued once per call if the objective of the model
+% is not bioRxnId alone with a positive coefficient (another reaction, several reactions or no
+% objective). The warning reads the model, so it is also issued when a function is given as
+% optimize, which decides what is optimised: it solves the objective of the model unless it sets
+% its own.
+%
+% A data set is either the flux conditions of experimentData.fluxData (constrain true) or the
+% maximum-growth conditions of experimentData.maxGrowth (constrain false); see
+% loadExperimentData.
 %
 % The carbon source of a condition is the exchange reaction whose metabolite name (exchMets) is the
 % name of the condition.
@@ -87,7 +93,8 @@ function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bio
 % -----
 % A condition with a weight other than 0 that cannot be matched by name to an exchange metabolite
 % of fluxData raises simulateConditions:unmatchedCondition. A reaction of fluxData, zeroFluxRxns
-% or bioRxnId that is not in the model raises simulateConditions:missingReaction.
+% or bioRxnId that is not in the model raises simulateConditions:missingReaction. An objective
+% that is not the maximisation of bioRxnId issues simulateConditions:objectiveNotGrowth.
 %
 % Examples
 % --------
@@ -121,6 +128,13 @@ if ~isempty(missing)
 end
 o2Col = find(strcmp(fluxData.exchMets, 'oxygen'), 1);
 bioIdx = find(strcmp(model.rxns, bioRxnId));
+if ~isfield(model, 'c') || nnz(model.c) ~= 1 || model.c(bioIdx) <= 0
+    warning('simulateConditions:objectiveNotGrowth', ...
+        ['The objective of the model is not the maximisation of the growth reaction %s. ' ...
+        'The growth rate of a condition is the flux of %s in a solution of the objective ' ...
+        'that the model has, and that is not the maximal growth rate. Set the objective with ' ...
+        'setParam(model, ''obj'', ''%s'', 1).'], bioRxnId, bioRxnId, bioRxnId);
+end
 conditionIdx = find(ismember(model.rxns, conditionRxns));
 
 nConds = numel(fluxData.conds);

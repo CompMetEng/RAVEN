@@ -27,7 +27,7 @@ function experimentData = loadExperimentData(dataDir)
 % solution. In a maximum-growth condition the number that is compared with the measurement is
 % therefore the maximum of the model objective, which is the maximal growth rate only if the
 % objective is the biomass reaction. Set the objective with setParam(model, 'obj', biomassRxn, 1)
-% first.
+% first; simulateConditions warns once per call if the objective is not the biomass reaction.
 %
 % Workflow:
 %

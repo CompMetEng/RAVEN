@@ -243,6 +243,46 @@ classdef tExperiments < RavenTestCase
             testCase.verifyFalse(any([sims.feasible]));
         end
 
+        function simulateConditionsNoWarningWhenGrowthIsTheObjective(testCase)
+            model = tExperiments.toyModel();
+            testCase.verifyWarningFree(@() simulateConditions(model, ...
+                tExperiments.fluxDataToy(20), true, {}, 'biomass'));
+        end
+
+        function simulateConditionsWarnsOnceWhenAnotherReactionIsTheObjective(testCase)
+            model = setParam(tExperiments.toyModel(), 'obj', 'EX_byp', 1);
+            tExperiments.verifyObjectiveWarningOnce(testCase, model);
+        end
+
+        function simulateConditionsWarnsOnceWhenTwoReactionsAreTheObjective(testCase)
+            model = tExperiments.toyModel();
+            model.c(strcmp(model.rxns, 'R')) = 1;
+            tExperiments.verifyObjectiveWarningOnce(testCase, model);
+        end
+
+        function simulateConditionsWarnsOnceWhenThereIsNoObjective(testCase)
+            model = tExperiments.toyModel();
+            model.c(:) = 0;
+            tExperiments.verifyObjectiveWarningOnce(testCase, model);
+        end
+
+        function simulateConditionsWarnsOnceWhenTheGrowthCoefficientIsNegative(testCase)
+            model = tExperiments.toyModel();
+            model.c(strcmp(model.rxns, 'biomass')) = -1;
+            tExperiments.verifyObjectiveWarningOnce(testCase, model);
+        end
+
+        function simulateConditionsWarnsWithAGivenOptimizeFunctionAndGoesOn(testCase)
+            model = setParam(tExperiments.toyModel(), 'obj', 'EX_byp', 1);
+            fd = tExperiments.fluxDataToy(20);
+            testCase.verifyWarning(@() simulateConditions(model, fd, true, {}, 'biomass', ...
+                'optimize', @(m) solveLP(m)), 'simulateConditions:objectiveNotGrowth');
+            warning('off', 'simulateConditions:objectiveNotGrowth');
+            restore = onCleanup(@() warning('on', 'simulateConditions:objectiveNotGrowth'));
+            sims = simulateConditions(model, fd, true, {}, 'biomass');
+            testCase.verifyTrue(all([sims.feasible]));
+        end
+
         function simulateConditionsUsesTheGivenOptimizeFunction(testCase)
             model = tExperiments.toyModel();
             calls = containers.Map({'n'}, {0});   % a handle, so the count survives the calls
@@ -706,6 +746,28 @@ classdef tExperiments < RavenTestCase
             m.genes = {}; m.grRules = repmat({''}, numel(rxns), 1);
             m.rxnGeneMat = sparse(numel(rxns), 0);
             m.metFormulas = {'C6H12O6';'C2H6O';'C1';'O2';'';'';'';''};
+        end
+
+        function sol = solveAndRecordWarning(m, seen)
+            % Records which warning was issued since the last solve, then forgets it.
+            [~, id] = lastwarn;
+            seen(double(seen.Count) + 1) = id;
+            lastwarn('');
+            sol = solveLP(m);
+        end
+
+        function verifyObjectiveWarningOnce(testCase, model)
+            % The warning is issued once for the call, before the first solve and not again
+            % before the second: the solves record the warning that came since the last one.
+            fd = tExperiments.fluxDataToy(20);
+            seen = containers.Map('KeyType', 'double', 'ValueType', 'any');
+            lastwarn('');
+            testCase.verifyWarning(@() simulateConditions(model, fd, true, {}, 'biomass', ...
+                'optimize', @(m) tExperiments.solveAndRecordWarning(m, seen)), ...
+                'simulateConditions:objectiveNotGrowth');
+            testCase.verifyEqual(double(seen.Count), 2);
+            testCase.verifyEqual(seen(1), 'simulateConditions:objectiveNotGrowth');
+            testCase.verifyEqual(seen(2), '');
         end
 
         function m = simpleModel()
