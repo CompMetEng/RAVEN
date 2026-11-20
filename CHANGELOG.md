@@ -9,7 +9,7 @@
 
 ### Experiments
 
-* New: the `experiments/` folder scores a model against measured growth rates and exchange fluxes. `loadFluxData` reads one flux file, with a `weight` column for the weight of each condition, and `loadExperimentData` reads `fluxData.tsv`, `maxGrowth.tsv` and `zeroFlux.tsv` from a folder. `simulateConditions` fixes the uptake of each condition and solves the model; the anaerobic switch, the change of the protein content and the solver call are given as function handles. `computeCarbonWeights` gives the carbon weight of each reaction, `datasetRmse` and `experimentDistance` combine the carbon-weighted errors of the flux and maximum growth conditions into one value, and `applyFluxDataConstraints` bounds the exchange fluxes of a model to one condition.
+* New: the `experiments/` folder scores a model against measured growth rates and exchange fluxes. `loadFluxData` reads one flux file, with a `weight` column for the weight of each condition, and `loadExperimentData` reads `fluxData.tsv`, `maxGrowth.tsv` and `zeroFlux.tsv` from a folder. `simulateConditions` fixes the uptake of each condition and solves the model; the anaerobic switch, the change of the protein content and the solver call are given as function handles. `computeCarbonWeights` gives the carbon weight of each reaction, `datasetRmse` and `experimentDistance` combine the carbon-weighted errors of the flux and maximum growth conditions into one value, and `applyFluxDataConstraints` bounds the exchange fluxes of a model to one condition. A condition with weight 0 is left out of the simulation and the distance.
 
 ### Fixes
 

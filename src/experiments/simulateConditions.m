@@ -7,10 +7,15 @@ function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bio
 % compared with the measurements are recorded. datasetRmse and
 % experimentDistance turn the result into a distance.
 %
+% A condition with weight 0 (the field weight of fluxData) is left out: it is
+% not matched to an exchange reaction and not simulated, and its element of
+% sims has skipped true and feasible false. Its name need not match an
+% exchange metabolite.
+%
 % The steps for each condition are:
 %
 % 1. The lower bound of every exchange reaction that is the carbon source of
-%    some condition is set to 0, so that the carbon source of one condition
+%    some condition with a weight other than 0 is set to 0, so that the carbon source of one condition
 %    cannot carry flux in another.
 % 2. The lower bound of the carbon source of this condition is set to the
 %    measured uptake rate if constrain is true, or to -1000 if it is false
@@ -59,6 +64,8 @@ function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bio
 %
 %     - feasible : false if the model is infeasible or the solution not
 %       optimal. The other fields have no meaning then.
+%     - skipped : true for a condition with weight 0, which is not
+%       simulated (feasible is false then).
 %     - growth : flux of the biomass reaction.
 %     - exchRxnIDs : ids of the measured exchange reactions (empty if
 %       constrain is false).
@@ -68,8 +75,8 @@ function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bio
 %
 % Notes
 % -----
-% A condition that cannot be matched by name to an exchange metabolite of
-% fluxData raises simulateConditions:unmatchedCondition, and a reaction that
+% A condition with a weight other than 0 that cannot be matched by name to an
+% exchange metabolite of fluxData raises simulateConditions:unmatchedCondition, and a reaction that
 % is not in the model raises simulateConditions:missingReaction.
 %
 % Examples
@@ -93,8 +100,9 @@ if isempty(optimize)
 end
 zeroFluxRxns = cellstr(zeroFluxRxns);
 
-[condToExch, ~] = matchConditions(fluxData);
-conditionRxns = unique(fluxData.exchRxnIDs(unique(condToExch)));
+active = activeConditions(fluxData);
+condToExch = matchConditions(fluxData, active);
+conditionRxns = unique(fluxData.exchRxnIDs(unique(condToExch(active))));
 allRxns = [conditionRxns(:); fluxData.exchRxnIDs(:); zeroFluxRxns(:); {bioRxnId}];
 missing = unique(allRxns(~ismember(allRxns, model.rxns)));
 if ~isempty(missing)
@@ -106,11 +114,16 @@ bioIdx = find(strcmp(model.rxns, bioRxnId));
 conditionIdx = find(ismember(model.rxns, conditionRxns));
 
 nConds = numel(fluxData.conds);
-template = struct('feasible', false, 'growth', NaN, 'exchRxnIDs', {{}}, ...
-    'exchFluxes', zeros(0, 1), 'blockRxnIDs', {{}}, 'blockFluxes', zeros(0, 1));
+template = struct('feasible', false, 'skipped', false, 'growth', NaN, ...
+    'exchRxnIDs', {{}}, 'exchFluxes', zeros(0, 1), 'blockRxnIDs', {{}}, ...
+    'blockFluxes', zeros(0, 1));
 sims = repmat(template, nConds, 1);
 
 for i = 1:nConds
+    if ~active(i)
+        sims(i).skipped = true;
+        continue
+    end
     carbonRxn = fluxData.exchRxnIDs{condToExch(i)};
     carbonIdx = find(strcmp(model.rxns, carbonRxn));
     m = model;
@@ -150,10 +163,20 @@ for i = 1:nConds
 end
 end
 
-function [condToExch, missing] = matchConditions(fluxData)
-% Column of exchMets for the name of each condition.
-[found, condToExch] = ismember(fluxData.conds, fluxData.exchMets);
-missing = unique(fluxData.conds(~found));
+function active = activeConditions(fluxData)
+% Conditions with a weight other than 0.
+n = numel(fluxData.conds);
+if isfield(fluxData, 'weight') && ~isempty(fluxData.weight)
+    active = fluxData.weight(:) ~= 0;
+else
+    active = true(n, 1);
+end
+end
+
+function condToExch = matchConditions(fluxData, active)
+% Column of exchMets for the name of each active condition (0 for the others).
+[found, condToExch] = ismember(fluxData.conds(:), fluxData.exchMets);
+missing = unique(fluxData.conds(~found & active));
 if ~isempty(missing)
     error('simulateConditions:unmatchedCondition', ...
         ['Carbon source(s) "%s" in the provided fluxData or maxGrowth cannot be ' ...

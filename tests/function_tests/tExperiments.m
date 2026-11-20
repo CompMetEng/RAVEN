@@ -317,19 +317,89 @@ classdef tExperiments < RavenTestCase
 
         function datasetRmseMultipliesByTheWeight(testCase)
             fd = tExperiments.maxGrowthToy();
-            fd.weight = [0; 2];
+            fd.weight = [1; 2];
             sims = repmat(struct('feasible', true, 'growth', 0, 'exchRxnIDs', {{}}, ...
                 'exchFluxes', zeros(0,1), 'blockRxnIDs', {{}}, 'blockFluxes', zeros(0,1)), 2, 1);
             sims(1).growth = 30;
             sims(2).growth = 30;
             [rmse, perCond] = datasetRmse(fd, sims, false, containers.Map(), 'biomass');
-            testCase.verifyEqual(rmse, mean(perCond .* [0; 2]), 'AbsTol', 1e-9);
+            testCase.verifyEqual(rmse, mean(perCond .* [1; 2]), 'AbsTol', 1e-9);
         end
 
         function datasetRmseWrongSimCount(testCase)
             fd = tExperiments.maxGrowthToy();
             testCase.verifyError(@() datasetRmse(fd, struct('feasible', {}), false, ...
                 containers.Map(), 'biomass'), 'datasetRmse:wrongSimCount');
+        end
+
+        %% conditions with weight 0 are left out
+
+        function simulateConditionsSkipsAConditionWithWeightZero(testCase)
+            model = tExperiments.toyModel();
+            fd = tExperiments.fluxDataToy(20);
+            sims = simulateConditions(model, tExperiments.withStdRow(fd), true, {'EX_byp'}, 'biomass');
+            reference = simulateConditions(model, fd, true, {'EX_byp'}, 'biomass');
+            testCase.verifySize(sims, [3 1]);
+            testCase.verifyTrue(sims(1).skipped);
+            testCase.verifyFalse(sims(1).feasible);
+            testCase.verifyFalse(any([sims(2:3).skipped]));
+            testCase.verifyEqual([sims(2:3).growth], [reference.growth]);
+        end
+
+        function simulateConditionsDoesNotBlockTheExchangeOfAConditionWithWeightZero(testCase)
+            model = tExperiments.toyModel();
+            fd = tExperiments.fluxDataToy(20);
+            fd.weight = [1; 0];
+            optimize = @(m) tExperiments.recordingSolve(m, 'EX_eth');
+            tExperiments.recorded();
+            simulateConditions(model, fd, true, {}, 'biomass', 'optimize', optimize);
+            testCase.verifyEqual(tExperiments.recorded(), -1000);
+            fd.weight = [1; 1];
+            simulateConditions(model, fd, true, {}, 'biomass', 'optimize', optimize);
+            testCase.verifyEqual(tExperiments.recorded(), [0 -20]);
+        end
+
+        function datasetRmseLeavesOutAConditionWithWeightZero(testCase)
+            model = tExperiments.toyModel();
+            for constrain = [true false]
+                if constrain
+                    fd = tExperiments.fluxDataToy(20);
+                    zf = {'EX_byp'};
+                else
+                    fd = tExperiments.maxGrowthToy();
+                    zf = {};
+                end
+                w = computeCarbonWeights(model, {'EX_glc','EX_eth','EX_byp','biomass'}, 'biomass');
+                withStd = tExperiments.withStdRow(fd);
+                [rmse, perCond] = datasetRmse(withStd, simulateConditions(model, withStd, constrain, zf, 'biomass'), ...
+                    constrain, w, 'biomass');
+                [expected, expectedPerCond] = datasetRmse(fd, simulateConditions(model, fd, constrain, zf, 'biomass'), ...
+                    constrain, w, 'biomass');
+                testCase.verifyEqual(rmse, expected, 'AbsTol', 1e-12);
+                testCase.verifyTrue(isnan(perCond(1)));
+                testCase.verifyEqual(perCond(2:end), expectedPerCond, 'AbsTol', 1e-12);
+            end
+        end
+
+        function experimentDistanceLeavesOutADatasetWithoutActiveConditions(testCase)
+            [ed, fluxSims, maxSims, w, ~, expMax] = tExperiments.distanceInputs();
+            ed.fluxData.weight = [0; 0];
+            [rmse, detail] = experimentDistance(ed, fluxSims, maxSims, w, 'biomass');
+            testCase.verifyEqual(rmse, expMax, 'AbsTol', 1e-12);
+            testCase.verifyTrue(all(isnan(detail.fluxData)));
+        end
+
+        function theDistanceIsNaNWhenEveryConditionHasWeightZero(testCase)
+            model = tExperiments.toyModel();
+            fd = tExperiments.fluxDataToy(20);
+            fd.weight = [0; 0];
+            w = computeCarbonWeights(model, {'EX_glc','EX_eth','biomass'}, 'biomass');
+            sims = simulateConditions(model, fd, true, {}, 'biomass');
+            testCase.verifyTrue(all([sims.skipped]));
+            [rmse, perCond] = datasetRmse(fd, sims, true, w, 'biomass');
+            testCase.verifyTrue(isnan(rmse) && all(isnan(perCond)));
+            ed = struct('fluxData', fd, 'maxGrowth', [], 'zeroFlux', {{}});
+            testCase.verifyTrue(isnan(experimentDistance(ed, sims, [], w, 'biomass')));
         end
 
         %% experimentDistance
@@ -484,6 +554,40 @@ classdef tExperiments < RavenTestCase
 
         function m = capReaction(m, rxn, value)
             m.ub(strcmp(m.rxns, rxn)) = value;
+        end
+
+        function fd = withStdRow(fd)
+            % A first condition named Std that matches no exchange, weight 0.
+            nRxns = numel(fd.exchRxnIDs);
+            fd.conds = [{'Std'}; fd.conds(:)];
+            fd.Ptot = [0.5; fd.Ptot(:)];
+            fd.grRate = [0.1; fd.grRate(:)];
+            fd.exchFluxes = [NaN(1, nRxns); fd.exchFluxes];
+            if isfield(fd, 'weight')
+                fd.weight = [0; fd.weight(:)];
+            else
+                fd.weight = [0; ones(numel(fd.conds) - 1, 1)];
+            end
+            if isfield(fd, 'source')
+                fd.source = [{'test'}; fd.source(:)];
+            end
+        end
+
+        function sol = recordingSolve(m, rxn)
+            % solveLP that records the lower bound of rxn at each call.
+            tExperiments.recorded(m.lb(strcmp(m.rxns, rxn)));
+            sol = solveLP(m);
+        end
+
+        function v = recorded(x)
+            persistent values
+            if nargin == 1
+                values(end+1) = x;
+                v = [];
+            else
+                v = values;
+                values = [];
+            end
         end
 
         function fd = fluxDataToy(ethanolGrRate)

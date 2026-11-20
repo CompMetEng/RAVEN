@@ -8,14 +8,16 @@ function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights
 % correct predictions do not dilute the error. An infeasible condition gets
 % a fixed penalty. The distance of the dataset is the mean of the errors of
 % its conditions, each multiplied by the weight of the condition if the data
-% has one.
+% has one. A condition with weight 0 is left out: its error is NaN and it is
+% not part of the mean.
 %
 % Parameters
 % ----------
 % fluxData : struct
 %     dataset that was simulated, as returned by loadFluxData.
 % sims : struct
-%     simulation result of the dataset, from simulateConditions.
+%     simulation result of the dataset, from simulateConditions. The elements
+%     of the conditions with weight 0 are not read.
 % constrain : logical
 %     must be the value that was given to simulateConditions: true includes
 %     the exchange flux terms (flux data), false scores the growth alone
@@ -36,9 +38,11 @@ function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights
 % Returns
 % -------
 % rmse : double
-%     weighted mean of the errors of the conditions.
+%     weighted mean of the errors of the conditions with a weight other than
+%     0, NaN if every condition has weight 0.
 % rmseList : double
-%     error of each condition, with the penalty but before weighting.
+%     error of each condition, with the penalty but before weighting; NaN for
+%     a condition with weight 0.
 %
 % Notes
 % -----
@@ -63,8 +67,18 @@ if numel(sims) ~= n
         'sims has %d elements; expected %d to match fluxData.conds.', numel(sims), n);
 end
 
+if isfield(fluxData, 'weight') && ~isempty(fluxData.weight)
+    active = fluxData.weight(:) ~= 0;
+else
+    active = true(n, 1);
+end
+
 rmseList = zeros(n, 1);
 for i = 1:n
+    if ~active(i)
+        rmseList(i) = NaN;
+        continue
+    end
     sim = sims(i);
     if ~sim.feasible
         rmseList(i) = penalty;
@@ -96,11 +110,15 @@ for i = 1:n
     rmseList(i) = sqrt(mean((measured - simulated).^2));
 end
 
+if ~any(active)
+    rmse = NaN;
+    return
+end
 weighted = rmseList;
 if isfield(fluxData, 'weight') && ~isempty(fluxData.weight)
     weighted = rmseList .* fluxData.weight(:);
 end
-rmse = mean(weighted);
+rmse = mean(weighted(active));
 end
 
 function w = weightOf(carbonWeights, rxnId)

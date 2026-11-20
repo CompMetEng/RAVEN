@@ -28,7 +28,7 @@ function fluxData = loadFluxData(fluxDataFile)
 %       exchFluxes.
 %     - weight : only if the file has the column weight. Weight of each
 %       condition in the distance to the measurements; 0 leaves the
-%       condition out.
+%       condition out of the simulation and of the distance.
 %     - source : only if the file has the column source. Where the data
 %       comes from.
 %
