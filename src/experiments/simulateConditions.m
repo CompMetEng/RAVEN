@@ -2,10 +2,18 @@ function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bio
 % simulateConditions  Simulate every condition of a data set in a model.
 %
 % This is the simulation half of the distance between a model and measurements. For each condition
-% the model is set to the uptake of the condition's carbon source, solved with its objective
-% (normally maximisation of the biomass reaction), and the growth rate and the fluxes that the
-% measurements cover are recorded. datasetRmse and experimentDistance turn the result into a
-% distance. The model is not changed. A data set is either the flux conditions of
+% the model is set to the uptake of the condition's carbon source, solved, and the growth rate and
+% the fluxes that the measurements cover are recorded. datasetRmse and experimentDistance turn the
+% result into a distance. The model is not changed.
+%
+% IMPORTANT: the model objective must be the maximisation of the growth. The function does not set
+% the objective: each condition is solved with the objective that the model has (model.c, which
+% solveLP maximises), and the growth rate is the flux of the biomass reaction bioRxnId in that
+% solution. Set the objective with setParam(model, 'obj', bioRxnId, 1) before the simulation. With
+% another objective the biomass flux is the value in one of the optimal solutions of that
+% objective, not the maximal growth rate, and in a maximum-growth condition the distance then
+% compares a number that is not the maximal growth rate with the measurement. The same holds for
+% a function given as optimize, which decides what is optimised. A data set is either the flux conditions of
 % experimentData.fluxData (constrain true) or the maximum-growth conditions of
 % experimentData.maxGrowth (constrain false); see loadExperimentData.
 %
@@ -44,7 +52,8 @@ function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bio
 %     ids of reactions that carry no flux in any condition (experimentData.zeroFlux). A flux
 %     through them is counted as an error in the distance.
 % bioRxnId : char
-%     id of the biomass reaction, whose flux is the growth rate.
+%     id of the biomass reaction, whose flux in the solution is the growth rate. It should be the
+%     objective of the model (see above).
 %
 % Name-Value Arguments
 % --------------------

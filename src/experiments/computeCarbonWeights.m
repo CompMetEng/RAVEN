@@ -22,9 +22,15 @@ function carbonWeights = computeCarbonWeights(model, rxnIds, bioRxnId)
 % carbonWeights : containers.Map
 %     weight per reaction id. The biomass reaction gets 41. Every other reaction gets the number
 %     of carbon atoms in the formula of its single exchanged metabolite. A reaction with more than
-%     one metabolite, a metabolite without a formula, a formula that is not a plain list of
-%     elements and counts, and a metabolite with no carbon atoms (O2, water) get the weight 1, so
-%     that their flux mismatches still count in the distance.
+%     one metabolite, a metabolite without a formula, a formula that cannot be read and a
+%     metabolite with no carbon atoms (O2, water) get the weight 1, so that their flux mismatches
+%     still count in the distance.
+%
+%     The formula is read by parseFormulas: element symbols with an optional integer or decimal
+%     count (C6H12O6, C2.5H5). A charge sign is ignored, and so is a * between parts of the
+%     formula (C6H12O6*H2O). A formula with parentheses (C6H12O6(H2O)2, the polymer (C5H8)n), an
+%     empty formula and a formula with an unknown element symbol cannot be read. The Python
+%     function compute_carbon_weights gives the same weights.
 %
 % Notes
 % -----
@@ -58,45 +64,48 @@ if ~all(found)
         'The reactions %s are not in the model.', strjoin(rxnIds(~found), ', '));
 end
 
+% The exchanged metabolite of every reaction that has exactly one, and the carbon atoms in the
+% formulas of these metabolites (NaN when a formula cannot be read), parsed in one call.
+metIdx = zeros(numel(rxnIds), 1);
+for i = 1:numel(rxnIds)
+    mets = find(model.S(:, rxnIdx(i)));
+    if ~strcmp(rxnIds{i}, bioRxnId) && numel(mets) == 1
+        metIdx(i) = mets;
+    end
+end
+carbon = carbonAtoms(formulas(metIdx(metIdx > 0)));
+carbonOfRxn = NaN(numel(rxnIds), 1);
+carbonOfRxn(metIdx > 0) = carbon;
+
 carbonWeights = containers.Map('KeyType', 'char', 'ValueType', 'double');
 for i = 1:numel(rxnIds)
     if strcmp(rxnIds{i}, bioRxnId)
         carbonWeights(rxnIds{i}) = biomassCarbon;
-        continue
+    elseif ~isnan(carbonOfRxn(i)) && carbonOfRxn(i) ~= 0
+        carbonWeights(rxnIds{i}) = carbonOfRxn(i);
+    else
+        carbonWeights(rxnIds{i}) = 1;
     end
-    mets = find(model.S(:, rxnIdx(i)));
-    value = 1;
-    if numel(mets) == 1
-        carbon = carbonAtoms(formulas{mets});
-        if ~isnan(carbon) && carbon ~= 0
-            value = carbon;
-        end
-    end
-    carbonWeights(rxnIds{i}) = value;
 end
 end
 
-function carbon = carbonAtoms(formula)
-% Number of carbon atoms in a formula, NaN when the formula has no carbon or
-% cannot be read as a plain list of elements and counts.
-carbon = NaN;
-if isempty(formula)
+function carbon = carbonAtoms(formulas)
+% Number of carbon atoms in each formula, NaN where the formula is empty or cannot be read.
+% A * between parts of a formula is dropped, as cobra does, before the formulas are parsed.
+carbon = NaN(numel(formulas), 1);
+formulas = strtrim(strrep(formulas(:), '*', ''));
+readable = ~cellfun(@isempty, formulas);
+if ~any(readable)
     return
 end
-tokens = regexp(formula, '([A-Z][a-z]?)(\d*\.?\d*)', 'tokens');
-if isempty(tokens) || ~strcmp(strjoin(cellfun(@(t) [t{1} t{2}], tokens, 'UniformOutput', false), ''), formula)
-    return
+[elements, useMat, exitFlag] = parseFormulas(formulas(readable));
+carbonCol = strcmp(elements.abbrevs, 'C');
+count = NaN(nnz(readable), 1);
+if any(carbonCol)
+    count = useMat(:, carbonCol);
+else
+    count(:) = 0;
 end
-for i = 1:numel(tokens)
-    if strcmp(tokens{i}{1}, 'C')
-        count = str2double(tokens{i}{2});
-        if isnan(count)
-            count = 1;
-        end
-        if isnan(carbon)
-            carbon = 0;
-        end
-        carbon = carbon + count;
-    end
-end
+count(exitFlag ~= 1) = NaN;
+carbon(readable) = count;
 end

@@ -1,4 +1,4 @@
-function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, bioRxnId, varargin)
+function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin)
 % datasetRmse  Distance between the simulation of one data set and its measurements.
 %
 % The error of a condition is the root mean square of the differences between the carbon-weighted
@@ -27,8 +27,6 @@ function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights
 %     fluxes (flux conditions), false compares growth only (maximum-growth conditions).
 % carbonWeights : containers.Map
 %     weights from computeCarbonWeights. A reaction that is not in the map gets the weight 1.
-% bioRxnId : char
-%     id of the biomass reaction. It is not read; the growth rate comes from sims.
 %
 % Name-Value Arguments
 % --------------------
@@ -58,7 +56,7 @@ function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights
 %
 %     fluxData.conds = {'glc'}; fluxData.grRate = 0.4;
 %     sims = struct('feasible', true, 'growth', 0.5);
-%     [rmse, rmseList] = datasetRmse(fluxData, sims, false, containers.Map(), 'growth')   % 4.1
+%     [rmse, rmseList] = datasetRmse(fluxData, sims, false, containers.Map())   % 4.1
 %
 % See also
 % --------

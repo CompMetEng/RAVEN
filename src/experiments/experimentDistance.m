@@ -1,4 +1,4 @@
-function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, bioRxnId, varargin)
+function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, varargin)
 % experimentDistance  Distance between a model and all measured conditions, as one number.
 %
 % Combines the distance of the flux conditions (experimentData.fluxData) and of the
@@ -11,8 +11,9 @@ function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowth
 % In a flux condition the uptake of the carbon source is limited to the measured rate, and the
 % growth rate and the measured exchange fluxes of the model are compared with the measurements. In
 % a maximum-growth condition the uptake of the carbon source is unlimited, and only the maximal
-% growth rate of the model is compared with the measured growth rate. See loadExperimentData for
-% the files and the workflow.
+% growth rate of the model is compared with the measured growth rate; this is the maximal growth
+% rate if the objective of the simulated model is the growth (see simulateConditions). See
+% loadExperimentData for the files and the workflow.
 %
 % A data set that is not in experimentData does not contribute, and neither does a data set in
 % which every condition has weight 0.
@@ -29,8 +30,6 @@ function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowth
 %     [] if experimentData has no maxGrowth.
 % carbonWeights : containers.Map
 %     weights from computeCarbonWeights.
-% bioRxnId : char
-%     id of the biomass reaction (not read, see datasetRmse).
 %
 % Name-Value Arguments
 % --------------------
@@ -66,7 +65,7 @@ function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowth
 %         'exchRxnIDs', {{'EX_glc'}}, 'exchFluxes', -10, 'blockRxnIDs', {{}}, ...
 %         'blockFluxes', zeros(0, 1));
 %     carbonWeights = containers.Map({'EX_glc', 'growth'}, [6 41]);
-%     rmse = experimentDistance(experimentData, sims, [], carbonWeights, 'growth')   % 2.899
+%     rmse = experimentDistance(experimentData, sims, [], carbonWeights)   % 2.899
 %
 % See also
 % --------
@@ -87,7 +86,7 @@ if ~isempty(experimentData.fluxData)
             'experimentData.fluxData is set but fluxSims is empty.');
     end
     [r, perCond] = datasetRmse(experimentData.fluxData, fluxSims, true, ...
-        carbonWeights, bioRxnId, 'penalty', penalty);
+        carbonWeights, 'penalty', penalty);
     if ~isnan(r)
         parts(end+1) = r;
         weights(end+1) = 1;
@@ -100,7 +99,7 @@ if ~isempty(experimentData.maxGrowth)
             'experimentData.maxGrowth is set but maxGrowthSims is empty.');
     end
     [r, perCond] = datasetRmse(experimentData.maxGrowth, maxGrowthSims, false, ...
-        carbonWeights, bioRxnId, 'penalty', penalty);
+        carbonWeights, 'penalty', penalty);
     if ~isnan(r)
         parts(end+1) = r;
         weights(end+1) = maxGrowthWeight;

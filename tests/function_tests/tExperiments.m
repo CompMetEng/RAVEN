@@ -46,11 +46,16 @@ classdef tExperiments < RavenTestCase
             testCase.verifyError(@() loadFluxData(f), 'loadFluxData:raggedRow');
         end
 
-        function loadFluxDataOldWeightColumnIsRejected(testCase)
+        function loadFluxDataUnknownColumnIsAnExchangeColumnWithAWarning(testCase)
             f = tExperiments.writeRows(testCase, {
-                {'Condition','Ptot','grRate','glucose (r_1714)','evotuneRMSEweight'}, ...
+                {'Condition','Ptot','grRate','glucose (r_1714)','other'}, ...
                 {'c1','0.5','0.4','-10','1'}});
-            testCase.verifyError(@() loadFluxData(f), 'loadFluxData:renamedColumn');
+            testCase.verifyWarning(@() loadFluxData(f), 'loadFluxData:headerForm');
+            warning('off', 'loadFluxData:headerForm');
+            restore = onCleanup(@() warning('on', 'loadFluxData:headerForm'));
+            fluxData = loadFluxData(f);
+            testCase.verifyEqual(fluxData.exchRxnIDs, {'r_1714', 'other'});
+            testCase.verifyFalse(isfield(fluxData, 'weight'));
         end
 
         function loadFluxDataMultipleConditions(testCase)
@@ -274,7 +279,7 @@ classdef tExperiments < RavenTestCase
             fd = tExperiments.fluxDataToy(20);
             sims = simulateConditions(model, fd, true, {'EX_byp'}, 'biomass');
             w = computeCarbonWeights(model, {'EX_glc','EX_eth','EX_byp','biomass'}, 'biomass');
-            [rmse, perCond] = datasetRmse(fd, sims, true, w, 'biomass');
+            [rmse, perCond] = datasetRmse(fd, sims, true, w);
             % Growth and the own exchange match; the byproduct term is
             % measured 0 against the simulated value (carbon weight 1).
             expGlc = sqrt(mean([0 0 tExperiments.enzymeCap * tExperiments.byproductYield].^2));
@@ -288,7 +293,7 @@ classdef tExperiments < RavenTestCase
             fd = tExperiments.fluxDataToy(18);
             sims = simulateConditions(model, fd, true, {'EX_byp'}, 'biomass');
             w = computeCarbonWeights(model, {'EX_glc','EX_eth','EX_byp','biomass'}, 'biomass');
-            [~, perCond] = datasetRmse(fd, sims, true, w, 'biomass');
+            [~, perCond] = datasetRmse(fd, sims, true, w);
             growthDiff = (18 - 20) * tExperiments.biomassCarbon;
             bypDiff = 0 - 20 * tExperiments.byproductYield;
             testCase.verifyEqual(perCond(2), sqrt(mean([growthDiff 0 bypDiff].^2)), 'AbsTol', 1e-6);
@@ -298,7 +303,7 @@ classdef tExperiments < RavenTestCase
             fd = tExperiments.fluxDataToy(20);
             sims = repmat(struct('feasible', false, 'growth', NaN, 'exchRxnIDs', {{}}, ...
                 'exchFluxes', zeros(0,1), 'blockRxnIDs', {{}}, 'blockFluxes', zeros(0,1)), 2, 1);
-            [rmse, perCond] = datasetRmse(fd, sims, true, containers.Map(), 'biomass', 'penalty', 99);
+            [rmse, perCond] = datasetRmse(fd, sims, true, containers.Map(), 'penalty', 99);
             testCase.verifyEqual(perCond, [99; 99]);
             testCase.verifyEqual(rmse, 99);
         end
@@ -309,7 +314,7 @@ classdef tExperiments < RavenTestCase
                 'exchFluxes', zeros(0,1), 'blockRxnIDs', {{}}, 'blockFluxes', zeros(0,1)), 2, 1);
             sims(1).growth = tExperiments.enzymeCap;
             sims(2).growth = 30;
-            [rmse, perCond] = datasetRmse(fd, sims, false, containers.Map(), 'biomass');
+            [rmse, perCond] = datasetRmse(fd, sims, false, containers.Map());
             second = abs((tExperiments.enzymeCap - 30) * tExperiments.biomassCarbon);
             testCase.verifyEqual(perCond, [0; second], 'AbsTol', 1e-9);
             testCase.verifyEqual(rmse, mean([0 second]), 'AbsTol', 1e-9);
@@ -322,14 +327,57 @@ classdef tExperiments < RavenTestCase
                 'exchFluxes', zeros(0,1), 'blockRxnIDs', {{}}, 'blockFluxes', zeros(0,1)), 2, 1);
             sims(1).growth = 30;
             sims(2).growth = 30;
-            [rmse, perCond] = datasetRmse(fd, sims, false, containers.Map(), 'biomass');
+            [rmse, perCond] = datasetRmse(fd, sims, false, containers.Map());
             testCase.verifyEqual(rmse, mean(perCond .* [1; 2]), 'AbsTol', 1e-9);
         end
 
         function datasetRmseWrongSimCount(testCase)
             fd = tExperiments.maxGrowthToy();
             testCase.verifyError(@() datasetRmse(fd, struct('feasible', {}), false, ...
-                containers.Map(), 'biomass'), 'datasetRmse:wrongSimCount');
+                containers.Map()), 'datasetRmse:wrongSimCount');
+        end
+
+        %% missing reactions
+
+        function simulateConditionsMissingReactionsRaiseBeforeSolving(testCase)
+            model = tExperiments.toyModel();
+            fd = tExperiments.fluxDataToy(20);
+            % An optimize function that fails shows that nothing is solved before the check.
+            failIfSolved = @(m) error('test:solved', 'the model was solved');
+            try
+                simulateConditions(model, fd, true, {'EX_nope'}, 'nobio', 'optimize', failIfSolved);
+                testCase.verifyFail('no error');
+            catch err
+                testCase.verifyEqual(err.identifier, 'simulateConditions:missingReaction');
+                testCase.verifyEqual(err.message, 'The reactions EX_nope, nobio are not in the model.');
+            end
+        end
+
+        function simulateConditionsMissingExchangeReactionRaises(testCase)
+            model = removeReactions(tExperiments.toyModel(), 'EX_eth');
+            try
+                simulateConditions(model, tExperiments.fluxDataToy(20), true, {}, 'biomass');
+                testCase.verifyFail('no error');
+            catch err
+                testCase.verifyEqual(err.identifier, 'simulateConditions:missingReaction');
+                testCase.verifyEqual(err.message, 'The reactions EX_eth are not in the model.');
+            end
+        end
+
+        %% carbon atoms of a formula (the same list is tested for compute_carbon_weights in raven-toolbox)
+
+        function computeCarbonWeightsOfAFormula(testCase)
+            formulas = {'C6H12O6', 'CO2', 'C', 'C2.5H5', 'C6H12O6(H2O)', 'C6H12O6(H2O)2', ...
+                'CuSO4.5H2O', 'C6H12O6*H2O', '(C5H8)n', 'C3H5O3-', 'C6H12O6R', 'H2O', 'O2', ...
+                'Co', 'Xx', 'c6h12o6', 'C0H2', 'C6H12O6 ', ''};
+            expected = [6 1 1 2.5 1 1 1 6 1 3 6 1 1 1 1 1 1 6 1];
+            for i = 1:numel(formulas)
+                model = tExperiments.simpleModel();
+                model.metFormulas = {formulas{i}; 'C6H12O6'; ''; ''};
+                w = computeCarbonWeights(model, {'EX_glc'}, 'biomass');
+                testCase.verifyEqual(w('EX_glc'), expected(i), 'AbsTol', 1e-12, ...
+                    sprintf('formula %s', formulas{i}));
+            end
         end
 
         %% conditions with weight 0 are left out
@@ -346,7 +394,7 @@ classdef tExperiments < RavenTestCase
             testCase.verifyEqual([sims(2:3).growth], [reference.growth]);
         end
 
-        function simulateConditionsDoesNotBlockTheExchangeOfAConditionWithWeightZero(testCase)
+        function simulateConditionsDoesNotBlockTheExchangeOfAWeight0Condition(testCase)
             model = tExperiments.toyModel();
             fd = tExperiments.fluxDataToy(20);
             fd.weight = [1; 0];
@@ -372,9 +420,9 @@ classdef tExperiments < RavenTestCase
                 w = computeCarbonWeights(model, {'EX_glc','EX_eth','EX_byp','biomass'}, 'biomass');
                 withStd = tExperiments.withStdRow(fd);
                 [rmse, perCond] = datasetRmse(withStd, simulateConditions(model, withStd, constrain, zf, 'biomass'), ...
-                    constrain, w, 'biomass');
+                    constrain, w);
                 [expected, expectedPerCond] = datasetRmse(fd, simulateConditions(model, fd, constrain, zf, 'biomass'), ...
-                    constrain, w, 'biomass');
+                    constrain, w);
                 testCase.verifyEqual(rmse, expected, 'AbsTol', 1e-12);
                 testCase.verifyTrue(isnan(perCond(1)));
                 testCase.verifyEqual(perCond(2:end), expectedPerCond, 'AbsTol', 1e-12);
@@ -384,7 +432,7 @@ classdef tExperiments < RavenTestCase
         function experimentDistanceLeavesOutADatasetWithoutActiveConditions(testCase)
             [ed, fluxSims, maxSims, w, ~, expMax] = tExperiments.distanceInputs();
             ed.fluxData.weight = [0; 0];
-            [rmse, detail] = experimentDistance(ed, fluxSims, maxSims, w, 'biomass');
+            [rmse, detail] = experimentDistance(ed, fluxSims, maxSims, w);
             testCase.verifyEqual(rmse, expMax, 'AbsTol', 1e-12);
             testCase.verifyTrue(all(isnan(detail.fluxData)));
         end
@@ -396,46 +444,46 @@ classdef tExperiments < RavenTestCase
             w = computeCarbonWeights(model, {'EX_glc','EX_eth','biomass'}, 'biomass');
             sims = simulateConditions(model, fd, true, {}, 'biomass');
             testCase.verifyTrue(all([sims.skipped]));
-            [rmse, perCond] = datasetRmse(fd, sims, true, w, 'biomass');
+            [rmse, perCond] = datasetRmse(fd, sims, true, w);
             testCase.verifyTrue(isnan(rmse) && all(isnan(perCond)));
             ed = struct('fluxData', fd, 'maxGrowth', [], 'zeroFlux', {{}});
-            testCase.verifyTrue(isnan(experimentDistance(ed, sims, [], w, 'biomass')));
+            testCase.verifyTrue(isnan(experimentDistance(ed, sims, [], w)));
         end
 
         %% experimentDistance
 
         function experimentDistanceCombinesBothDatasets(testCase)
             [ed, fluxSims, maxSims, w, expFlux, expMax] = tExperiments.distanceInputs();
-            [rmse, detail] = experimentDistance(ed, fluxSims, maxSims, w, 'biomass');
+            [rmse, detail] = experimentDistance(ed, fluxSims, maxSims, w);
             testCase.verifyEqual(rmse, mean([expFlux expMax]), 'AbsTol', 1e-9);
             testCase.verifyTrue(isfield(detail, 'fluxData') && isfield(detail, 'maxGrowth'));
         end
 
         function experimentDistanceMaxGrowthWeight(testCase)
             [ed, fluxSims, maxSims, w, expFlux, expMax] = tExperiments.distanceInputs();
-            rmse = experimentDistance(ed, fluxSims, maxSims, w, 'biomass', 'maxGrowthWeight', 2);
+            rmse = experimentDistance(ed, fluxSims, maxSims, w, 'maxGrowthWeight', 2);
             testCase.verifyEqual(rmse, (expFlux + 2*expMax) / 3, 'AbsTol', 1e-9);
-            rmse = experimentDistance(ed, fluxSims, maxSims, w, 'biomass', 'maxGrowthWeight', 0.5);
+            rmse = experimentDistance(ed, fluxSims, maxSims, w, 'maxGrowthWeight', 0.5);
             testCase.verifyEqual(rmse, (2*expFlux + expMax) / 3, 'AbsTol', 1e-9);
             % A lone dataset carries the whole score whatever the weight.
             solo = ed; solo.maxGrowth = [];
-            rmse = experimentDistance(solo, fluxSims, [], w, 'biomass', 'maxGrowthWeight', 2);
+            rmse = experimentDistance(solo, fluxSims, [], w, 'maxGrowthWeight', 2);
             testCase.verifyEqual(rmse, expFlux, 'AbsTol', 1e-9);
         end
 
         function experimentDistanceMissingDatasetsContributeNothing(testCase)
             [ed, fluxSims, ~, w, expFlux] = tExperiments.distanceInputs();
             ed.maxGrowth = [];
-            [rmse, detail] = experimentDistance(ed, fluxSims, [], w, 'biomass');
+            [rmse, detail] = experimentDistance(ed, fluxSims, [], w);
             testCase.verifyEqual(rmse, expFlux, 'AbsTol', 1e-9);
             testCase.verifyEqual(fieldnames(detail), {'fluxData'});
             none = struct('fluxData', [], 'maxGrowth', [], 'zeroFlux', {{}});
-            testCase.verifyTrue(isnan(experimentDistance(none, [], [], w, 'biomass')));
+            testCase.verifyTrue(isnan(experimentDistance(none, [], [], w)));
         end
 
         function experimentDistanceNeedsTheSimulations(testCase)
             [ed, ~, maxSims, w] = tExperiments.distanceInputs();
-            testCase.verifyError(@() experimentDistance(ed, [], maxSims, w, 'biomass'), ...
+            testCase.verifyError(@() experimentDistance(ed, [], maxSims, w), ...
                 'experimentDistance:missingSims');
         end
 
@@ -620,8 +668,8 @@ classdef tExperiments < RavenTestCase
             fluxSims = simulateConditions(model, fd, true, {'EX_byp'}, 'biomass');
             maxSims = simulateConditions(model, mg, false, {}, 'biomass');
             w = computeCarbonWeights(model, {'EX_glc','EX_eth','EX_byp','biomass'}, 'biomass');
-            expFlux = datasetRmse(fd, fluxSims, true, w, 'biomass');
-            expMax = datasetRmse(mg, maxSims, false, w, 'biomass');
+            expFlux = datasetRmse(fd, fluxSims, true, w);
+            expMax = datasetRmse(mg, maxSims, false, w);
         end
 
         function m = toyModel()

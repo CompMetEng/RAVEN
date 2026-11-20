@@ -21,6 +21,14 @@ function experimentData = loadExperimentData(dataDir)
 % carries flux in them is penalised in the flux conditions. Each file is optional; a missing file
 % gives [] (or an empty cell array for zeroFlux), not an error.
 %
+% IMPORTANT: the model objective must be the maximisation of the growth. The functions do not set
+% the objective: simulateConditions solves each condition with the objective that the model has
+% (model.c, which is maximised), and the growth rate is the flux of the biomass reaction in that
+% solution. In a maximum-growth condition the number that is compared with the measurement is
+% therefore the maximum of the model objective, which is the maximal growth rate only if the
+% objective is the biomass reaction. Set the objective with setParam(model, 'obj', biomassRxn, 1)
+% first.
+%
 % Workflow:
 %
 % 1. loadExperimentData reads the three files of a folder.

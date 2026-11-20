@@ -53,9 +53,9 @@ function fluxData = loadFluxData(fluxDataFile)
 % The function raises loadFluxData:fileNotFound when the file does not exist,
 % loadFluxData:emptyFile when it has no content, loadFluxData:noHeader when the header has
 % fewer than three columns, loadFluxData:raggedRow when a line has a different number of cells
-% than the header, loadFluxData:noExchangeColumns when the file has no exchange columns, and
-% loadFluxData:renamedColumn when the file has the column evotuneRMSEweight (the column is
-% called weight).
+% than the header, and loadFluxData:noExchangeColumns when the file has no exchange columns.
+% A column other than condition, Ptot, grRate, weight and source is an exchange column; its header
+% without the form '<metabolite> (<reaction id>)' gives the warning loadFluxData:headerForm.
 %
 % Examples
 % --------
@@ -99,11 +99,6 @@ for i = 1:numel(raw)
     cells(i, :) = raw{i};
 end
 header = strtrim(header);
-
-if any(strcmp(header, 'evotuneRMSEweight'))
-    error('loadFluxData:renamedColumn', ...
-        '%s: the column ''evotuneRMSEweight'' is now called ''weight''.', fluxDataFile);
-end
 
 fluxData = struct();
 extra = false(1, numel(header));
