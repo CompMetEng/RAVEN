@@ -1,10 +1,27 @@
 function fluxData = loadFluxData(fluxDataFile)
-% loadFluxData  Load measured growth rates and exchange fluxes of conditions.
+% loadFluxData  Read the measured growth rates and exchange fluxes of several conditions from a file.
 %
-% Reads a tab-delimited file with one row per condition: the columns
-% condition, Ptot and grRate, followed by one column per exchange reaction
-% with the header '<metabolite> (<reaction id>)'. The columns weight and
-% source are optional and may stand in any position.
+% The file is tab-delimited with one header row and one row per condition. The first three
+% columns are the name of the condition, the total protein content Ptot (g/gDCW) and the growth
+% rate grRate (1/h); every further column is an exchange flux (mmol/gDCW/h, negative for uptake)
+% with a header of the form '<metabolite name> (<reaction id>)':
+%
+%     Condition   Ptot   grRate   glucose (EX_glc)   ethanol (EX_etoh)   weight   source
+%     glucose     0.40   0.40     -10.0              2.5                 1        study A
+%     ethanol     0.35   0.12     NaN                -8.0                1        study B
+%
+% An empty or non-numeric cell is read as NaN, which means that the flux was not measured. A flux
+% of -1000 or 1000 means unconstrained uptake or excretion.
+%
+% The columns weight and source are optional and may stand in any position. weight is the weight
+% of the condition in the distance to the measurements, and 0 leaves the condition out of the
+% simulation and of the distance (see simulateConditions). source is free text. Both are taken
+% out of the flux matrix.
+%
+% The header of an exchange column is split at the parenthesis that matches the final closing
+% one, so a reaction id may contain parentheses ('X (EX_a(e))' gives the metabolite 'X' and the
+% reaction 'EX_a(e)'). A header without that form is used as both metabolite name and reaction
+% id, with a warning.
 %
 % Parameters
 % ----------
@@ -14,39 +31,31 @@ function fluxData = loadFluxData(fluxDataFile)
 % Returns
 % -------
 % fluxData : struct
-%     structure with the fields:
+%     structure with one row per condition and the fields:
 %
-%     - conds : cell column with the names of the conditions.
-%     - Ptot : total protein content per condition (g/gDCW).
-%     - grRate : growth rate per condition (1/h).
-%     - exchFluxes : exchange fluxes, conditions in rows (mmol/gDCWh). NaN
-%       means that the flux was not measured; -1000 and 1000 mean
+%     - conds : cell column with the names of the conditions. The carbon source of a condition
+%       is the exchange metabolite (exchMets) that has the name of the condition.
+%     - Ptot : total protein content per condition (g/gDCW). NaN if not measured.
+%     - grRate : measured growth rate per condition (1/h).
+%     - exchFluxes : measured exchange fluxes, conditions in rows and exchange reactions in
+%       columns (mmol/gDCW/h). NaN means that the flux was not measured; -1000 and 1000 mean
 %       unconstrained uptake and excretion.
-%     - exchMets : names of the exchanged metabolites, matching the columns
-%       of exchFluxes.
-%     - exchRxnIDs : exchange reaction ids, matching the columns of
-%       exchFluxes.
-%     - weight : only if the file has the column weight. Weight of each
-%       condition in the distance to the measurements; 0 leaves the
-%       condition out of the simulation and of the distance.
-%     - source : only if the file has the column source. Where the data
-%       comes from.
+%     - exchMets : names of the exchanged metabolites, matching the columns of exchFluxes.
+%     - exchRxnIDs : exchange reaction ids, matching the columns of exchFluxes.
+%     - weight : only if the file has the column weight. Weight of each condition in the
+%       distance to the measurements; 0 leaves the condition out of the simulation and of the
+%       distance.
+%     - source : only if the file has the column source. Where the measurements of each
+%       condition come from.
 %
 % Notes
 % -----
-% An exchange column header is split at the parenthesis that matches the
-% final closing one, so a reaction id may contain parentheses ('X (EX_a(e))'
-% gives the metabolite 'X' and the reaction 'EX_a(e)'). A header without
-% that form is used as both metabolite name and reaction id, with a warning.
-% Empty and non-numeric cells are read as NaN, and empty lines are skipped.
-%
 % The function raises loadFluxData:fileNotFound when the file does not exist,
-% loadFluxData:emptyFile when it has no content, loadFluxData:noHeader when
-% the header has fewer than three columns, loadFluxData:raggedRow when a line
-% has a different number of cells than the header,
-% loadFluxData:renamedColumn when the file has the column evotuneRMSEweight
-% (now called weight), and loadFluxData:noExchangeColumns when the file has
-% no exchange columns.
+% loadFluxData:emptyFile when it has no content, loadFluxData:noHeader when the header has
+% fewer than three columns, loadFluxData:raggedRow when a line has a different number of cells
+% than the header, loadFluxData:noExchangeColumns when the file has no exchange columns, and
+% loadFluxData:renamedColumn when the file has the column evotuneRMSEweight (the column is
+% called weight).
 %
 % Examples
 % --------
@@ -54,7 +63,9 @@ function fluxData = loadFluxData(fluxDataFile)
 %
 % See also
 % --------
-% loadExperimentData, applyFluxDataConstraints, simulateConditions
+% loadExperimentData : reads this file and the other files of a folder.
+% simulateConditions : simulates the conditions of the file in a model.
+% applyFluxDataConstraints : constrains a model to one condition of the file.
 
 if ~isfile(fluxDataFile)
     error('loadFluxData:fileNotFound', 'The flux data file %s does not exist.', fluxDataFile);

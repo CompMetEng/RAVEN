@@ -1,29 +1,27 @@
 function gam = getGAM(model, biomassRxn, varargin)
 % getGAM  Get the growth-associated maintenance (GAM) of a model.
 %
-% GAM is the size of the ATP coefficient of the biomass pseudoreaction: the
-% mmol ATP hydrolysed per gDW of biomass formed. The value that setGAM sets.
+% GAM is the size of the ATP coefficient of the biomass pseudoreaction: the mmol ATP hydrolysed
+% per gDCW of biomass formed. It is the value that setGAM sets.
 %
 % Parameters
 % ----------
 % model : struct
 %     RAVEN model struct.
 % biomassRxn : char
-%     Reaction id of the biomass pseudoreaction.
+%     id of the biomass pseudoreaction.
 %
 % Name-Value Arguments
 % --------------------
 % atpMetName : char
-%     Name of the ATP metabolite, matched against model.metNames. Default
-%     'ATP'.
+%     name of the ATP metabolite, matched against model.metNames (default 'ATP').
 %
 % Returns
 % -------
 % gam : double
-%     The size of the ATP coefficient (mmol/gDW). An error is raised if the
-%     biomass pseudoreaction is not in the model (getGAM:missingBiomassRxn)
-%     or does not have exactly one metabolite with that name
-%     (getGAM:badGamTerm).
+%     the size of the ATP coefficient (mmol/gDCW). An error is raised if the biomass
+%     pseudoreaction is not in the model (getGAM:missingBiomassRxn) or does not have exactly one
+%     metabolite with that name (getGAM:badGamTerm).
 %
 % Examples
 % --------

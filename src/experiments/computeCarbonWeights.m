@@ -1,42 +1,41 @@
 function carbonWeights = computeCarbonWeights(model, rxnIds, bioRxnId)
-% computeCarbonWeights  Carbon weight of each reaction for the distance to measurements.
+% computeCarbonWeights  Weight of each reaction that puts its flux on a common carbon scale.
 %
-% The distance between simulated and measured fluxes compares fluxes of
-% different metabolites, so each exchange flux is multiplied by the number of
-% carbon atoms of the metabolite it exchanges, which gives Cmmol/gDCWh. The
-% growth rate is put on the same scale with the assumed carbon content of
-% biomass, 41 Cmmol/gDCW.
+% Multiplying an exchange flux by the number of carbon atoms of the metabolite that it exchanges
+% gives the flux in Cmmol/gDCW/h, so that fluxes of different metabolites can be compared and
+% added in one distance. The biomass reaction gets 41, the assumed carbon content of biomass in
+% Cmmol/gDCW (a carbon mass fraction of about 49%), which converts the growth rate to the same
+% scale.
 %
 % Parameters
 % ----------
 % model : struct
 %     model that provides the metabolite formulas (metFormulas).
 % rxnIds : cell
-%     reaction ids to compute weights for, typically the exchange reactions
-%     of the datasets, the zero-flux reactions and the biomass reaction.
+%     ids of the reactions to compute a weight for: the exchange reactions of the data sets, the
+%     reactions of the zero-flux list and the biomass reaction.
 % bioRxnId : char
 %     id of the biomass reaction.
 %
 % Returns
 % -------
 % carbonWeights : containers.Map
-%     weight per reaction id. The biomass reaction gets 41. Every other
-%     reaction gets the number of carbon atoms in the formula of its single
-%     exchanged metabolite. A reaction with more than one metabolite, a
-%     metabolite without a formula and a metabolite with 0 carbon atoms (O2,
-%     water) get the weight 1, so their flux mismatches still count in the
-%     distance.
+%     weight per reaction id. The biomass reaction gets 41. Every other reaction gets the number
+%     of carbon atoms in the formula of its single exchanged metabolite. A reaction with more than
+%     one metabolite, a metabolite without a formula, a formula that is not a plain list of
+%     elements and counts, and a metabolite with no carbon atoms (O2, water) get the weight 1, so
+%     that their flux mismatches still count in the distance.
 %
 % Notes
 % -----
 % A model without formulas gives every exchange the weight 1 and a warning
-% (computeCarbonWeights:noFormulas). A reaction that is not in the model
-% raises computeCarbonWeights:missingReaction.
+% (computeCarbonWeights:noFormulas). A reaction that is not in the model raises
+% computeCarbonWeights:missingReaction.
 %
 % Examples
 % --------
-%     carbonWeights = computeCarbonWeights(model, {'EX_glc','EX_etoh','growth'}, 'growth');
-%     carbonWeights('EX_glc')
+%     carbonWeights = computeCarbonWeights(model, {'EX_glc','EX_o2','growth'}, 'growth');
+%     carbonWeights('EX_glc')   % 6 for glucose (C6H12O6)
 %
 % See also
 % --------
