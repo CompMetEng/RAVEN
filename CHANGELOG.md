@@ -11,6 +11,10 @@
 
 * New: the `experiments/` folder scores a model against measured growth rates and exchange fluxes. `loadFluxData` reads one flux file, with a `weight` column for the weight of each condition, and `loadExperimentData` reads `fluxData.tsv`, `maxGrowth.tsv` and `zeroFlux.tsv` from a folder. `simulateConditions` fixes the uptake of each condition and solves the model; the anaerobic switch, the change of the protein content and the solver call are given as function handles. `computeCarbonWeights` gives the carbon weight of each reaction, `datasetRmse` and `experimentDistance` combine the carbon-weighted errors of the flux and maximum growth conditions into one value, and `applyFluxDataConstraints` bounds the exchange fluxes of a model to one condition. A condition with weight 0 is left out of the simulation and the distance.
 
+### Biomass
+
+* New: `getGAM` returns the GAM of a model, the size of the ATP coefficient of the biomass pseudoreaction. `setGAM` takes `keepOffsetsOf`: the coefficient of the metabolite of that name becomes the value and the other GAM terms shift by the same amount, so a proton coefficient that balances the charge of the other biomass terms keeps its offset. Without it every GAM term is set to the value, as before.
+
 ### Fixes
 
 * `getModelFromHomology` reads the rule as a tree, in which `and` binds tighter than `or`, when it removes the placeholder genes of isozymes without an ortholog (was: it removed a placeholder that stood beside an `or` token, also when the placeholder belongs to a complex). A placeholder in an `or` group is removed when the group has a member that is not a placeholder, in nested groups as well. For the rule `(A or B and C) and D` without an ortholog of `B`, where `nA`, `nC` and `nD` are the orthologs of `A`, `C` and `D`, the draft rule is `(nA or (OLD_T_B and nC)) and nD` under `flag`, `(nA or nC) and nD` under `keep` and `nA and nD` under `drop`; it was `nA and nC and nD` under all three. The result differs from before only for rules with unbracketed `and` and `or` or with nested `or` groups.
