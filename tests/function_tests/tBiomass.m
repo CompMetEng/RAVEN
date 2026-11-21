@@ -121,6 +121,46 @@ classdef tBiomass < RavenTestCase
             testCase.verifyError(@() setGAM(testCase.model, 50, biomassRxn, cof, 'ngamRxn', {''}, 'ngamValue', 2), 'RAVEN:badInput');
         end
 
+        function getGAMIsTheAtpCoefficient(testCase)
+            m = tBiomass.gamToyModel(30);
+            testCase.verifyEqual(getGAM(m, 'BIO'), 30);
+        end
+
+        function getGAMNeedsOneAtpInTheReaction(testCase)
+            m = tBiomass.gamToyModel(30);
+            testCase.verifyError(@() getGAM(m, 'BIO', 'atpMetName', 'nothing'), 'getGAM:badGamTerm');
+            testCase.verifyError(@() getGAM(m, 'NOPE'), 'getGAM:missingBiomassRxn');
+        end
+
+        function setGAMKeepOffsetsShiftsEveryTermAndKeepsTheProtonOffset(testCase)
+            m = setGAM(tBiomass.gamToyModel(30), 45, 'BIO', tBiomass.gamCofactors(), ...
+                'keepOffsetsOf', 'ATP');
+            testCase.verifyEqual(full(m.S(:, 1)), [-5; -45; 45; -45; 45.3; 45; 1], 'AbsTol', 1e-12);
+            testCase.verifyEqual(getGAM(m, 'BIO'), 45);
+        end
+
+        function setGAMWithoutKeepOffsetsSetsEveryTermToTheValue(testCase)
+            m = setGAM(tBiomass.gamToyModel(30), 45, 'BIO', tBiomass.gamCofactors());
+            testCase.verifyEqual(full(m.S(:, 1)), [-5; -45; 45; -45; 45; 45; 1]);
+        end
+
+        function setGAMKeepOffsetsSetsNgamToo(testCase)
+            m = setGAM(tBiomass.gamToyModel(30), 45, 'BIO', tBiomass.gamCofactors(), ...
+                'keepOffsetsOf', 'ATP', 'ngamRxn', 'NGAM', 'ngamValue', 2);
+            testCase.verifyEqual([m.lb(2) m.ub(2)], [2 2]);
+        end
+
+        function setGAMKeepOffsetsOfMustBeACofactor(testCase)
+            testCase.verifyError(@() setGAM(tBiomass.gamToyModel(30), 45, 'BIO', {'ADP'}, ...
+                'keepOffsetsOf', 'ATP'), 'setGAM:badKeepOffsetsOf');
+        end
+
+        function setGAMKeepOffsetsOfNeedsOneMetaboliteOfThatName(testCase)
+            m = tBiomass.gamToyModel(30);
+            testCase.verifyError(@() setGAM(m, 45, 'BIO', {'nothing','ATP'}, ...
+                'keepOffsetsOf', 'nothing'), 'setGAM:badGamTerm');
+        end
+
         function scaleBiomassPseudoreactionRefusesUnknownCharge(testCase)
             % An unset charge on a participating metabolite leaves the charge
             % balance unknown. Treating it as neutral would silently write the
@@ -172,6 +212,29 @@ classdef tBiomass < RavenTestCase
     end
 
     methods (Static, Access = private)
+        function names = gamCofactors()
+            names = {'ATP','ADP','H2O','H+','phosphate'};
+        end
+
+        function m = gamToyModel(gam)
+            % Biomass pseudoreaction with GAM terms and a proton coefficient 0.3
+            % above the ATP coefficient (it balances the charge of the other
+            % terms), and an NGAM reaction.
+            m = struct();
+            m.id        = 'toy';
+            m.rxns      = {'BIO';'NGAM'};
+            m.rxnNames  = {'biomass';'NGAM'};
+            m.mets      = {'glc_c';'atp_c';'adp_c';'h2o_c';'h_c';'pi_c';'bio_c'};
+            m.metNames  = {'glucose';'ATP';'ADP';'H2O';'H+';'phosphate';'biomass'};
+            m.metComps  = ones(7,1);
+            m.metCharges= zeros(7,1);
+            m.comps     = {'c'};
+            m.compNames = {'cytosol'};
+            m.S         = sparse([-5 0; -gam -1; gam 1; -gam -1; gam+0.3 1; gam 1; 1 0]);
+            m.lb = [0;1]; m.ub = [1000;1]; m.rev = [0;0]; m.c = [1;0]; m.b = zeros(7,1);
+            m.grRules = {'';''}; m.genes = {}; m.rxnGeneMat = sparse(2,0);
+        end
+
         function [m, cfg] = twoComponentToyModel()
             % Protein and DNA pseudoreactions in grams, 0.5 g/gDW each.
             m = struct();
