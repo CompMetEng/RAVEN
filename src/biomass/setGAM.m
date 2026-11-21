@@ -1,48 +1,41 @@
 function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 % setGAM  Set the growth-associated maintenance (GAM), and optionally the non-growth maintenance (NGAM).
 %
-% A cell spends ATP on maintenance in two ways. GAM is the ATP hydrolysed per gram of biomass
-% formed (mmol/gDCW). It scales with growth and sits in the coefficients of the cofactors of the
-% ATP hydrolysis (ATP and water are consumed; ADP, phosphate and a proton are produced) in the
-% biomass pseudoreaction. NGAM is the ATP hydrolysed per hour and gram of biomass (mmol/gDCW/h) at
-% any growth rate, and is the fixed flux of a maintenance reaction.
+% GAM is set in the coefficients of the ATP-hydrolysis cofactors of the biomass reaction. For
+% every metabolite of the biomass reaction whose model.metNames entry is in cofactorMetNames, the
+% coefficient becomes value, keeping its sign. With keepOffsetsOf, the coefficient of the
+% metabolite with that name (for example ATP) becomes value and every other cofactor shifts by the
+% same amount in the direction of its sign, so that offsets such as a proton coefficient that
+% balances charge are kept. For ATP, water, ADP and phosphate at 60 and a proton at 57, setting
+% GAM to 45 gives 45 and a proton at 42, whereas without keepOffsetsOf the proton becomes 45.
 %
-% For every metabolite in the biomass pseudoreaction whose model.metNames entry is in
-% cofactorMetNames, the stoichiometric coefficient is set to value with the sign of the current
-% coefficient. With keepOffsetsOf the coefficients keep their differences instead: the coefficient
-% of the metabolite of that name (ATP) becomes value (with its sign) and every other cofactor
-% changes by the same amount in the direction of its sign. A proton coefficient that balances the
-% charge of the other biomass terms then keeps its offset from the ATP coefficient: for ATP, water,
-% ADP and phosphate at 60 and a proton at 57, setting GAM to 45 gives 45 and a proton at 42,
-% whereas without keepOffsetsOf the proton becomes 45.
-%
-% If ngamRxn and ngamValue are given, both bounds of the NGAM reaction are set to ngamValue. An
-% error is raised before the model is changed if ngamRxn is given and is not in the model, if
-% ngamValue is given without ngamRxn (RAVEN:badInput), and if keepOffsetsOf is not one of
-% cofactorMetNames or does not name exactly one metabolite of the biomass pseudoreaction.
+% If ngamRxn and ngamValue are given, both bounds of the NGAM reaction are set to ngamValue.
+% Errors are raised before the model is changed if ngamRxn is not in the model, if ngamValue is
+% given without ngamRxn (RAVEN:badInput), or if keepOffsetsOf is not in cofactorMetNames or does
+% not name exactly one metabolite of the biomass reaction.
 %
 % Parameters
 % ----------
 % model : struct
 %     RAVEN model struct.
 % value : double
-%     new GAM, mmol ATP per gDCW of biomass formed.
+%     new GAM (mmol ATP/gDCW).
 % biomassRxn : char
-%     id of the biomass pseudoreaction whose coefficients hold GAM.
+%     id of the biomass reaction.
 % cofactorMetNames : cell
-%     names (matched against model.metNames, not metabolite ids) of the metabolites of the GAM
-%     term, for example {'ATP','ADP','H2O','H+','phosphate'}.
+%     names (matched against model.metNames, not ids) of the GAM cofactors, for example
+%     {'ATP','ADP','H2O','H+','phosphate'}.
 %
 % Name-Value Arguments
 % --------------------
 % keepOffsetsOf : char
-%     name of the metabolite whose coefficient becomes value while the other cofactors shift by
-%     the same amount. Must be one of cofactorMetNames and in the biomass pseudoreaction. Empty
-%     (default) sets every cofactor to value.
+%     name of the metabolite that gets value while the other cofactors shift with it. Must be in
+%     cofactorMetNames and in the biomass reaction. Empty sets every cofactor to value (default
+%     []).
 % ngamRxn : char
-%     id of the NGAM reaction. Required when ngamValue is supplied.
+%     id of the NGAM reaction. Required with ngamValue.
 % ngamValue : double
-%     NGAM, mmol ATP per gDCW and hour: the flux at which the NGAM reaction is fixed.
+%     NGAM flux (mmol ATP/gDCW/h).
 %
 % Returns
 % -------
@@ -57,8 +50,7 @@ function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)
 %
 % See also
 % --------
-% getGAM : reads the value back.
-% fitParameters : derives such a value from measured fluxes; setGAM then applies it.
+% getGAM, fitParameters
 
 if nargin < 4
     error('setGAM:missingArgs', ...

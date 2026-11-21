@@ -1,48 +1,35 @@
 function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bioRxnId, varargin)
 % simulateConditions  Simulate every condition of a data set in a model.
 %
-% This is the simulation half of the distance between a model and measurements. For each condition
-% the model is set to the uptake of the condition's carbon source, solved, and the growth rate and
-% the fluxes that the measurements cover are recorded. datasetRmse and experimentDistance turn the
-% result into a distance. The model is not changed.
+% For each condition the carbon-source uptake is set, the model is solved, and the growth rate
+% and the fluxes covered by the measurements are recorded. datasetRmse and experimentDistance
+% turn the result into a distance. The model is not changed.
 %
-% IMPORTANT: the model objective must be the maximisation of the growth. The function does not set
-% the objective: each condition is solved with the objective that the model has (model.c, which
-% solveLP maximises), and the growth rate is the flux of the biomass reaction bioRxnId in that
-% solution. Set the objective with setParam(model, 'obj', bioRxnId, 1) before the simulation. With
-% another objective the biomass flux is the value in one of the optimal solutions of that
-% objective, not the maximal growth rate, and in a maximum-growth condition the distance then
-% compares a number that is not the maximal growth rate with the measurement. A warning
-% (simulateConditions:objectiveNotGrowth) is issued once per call if the objective of the model
-% is not bioRxnId alone with a positive coefficient (another reaction, several reactions or no
-% objective). The warning reads the model, so it is also issued when a function is given as
-% optimize, which decides what is optimised: it solves the objective of the model unless it sets
-% its own.
+% The model objective must be the maximisation of growth. The function does not set it: each
+% condition is solved with model.c, and the growth rate is the flux of bioRxnId in that solution.
+% Set it first with setParam(model, 'obj', bioRxnId, 1). Otherwise the growth in a
+% maximum-growth condition is not the maximal growth rate. A warning
+% (simulateConditions:objectiveNotGrowth) is issued once per call if the objective is not
+% bioRxnId alone with a positive coefficient, also when optimize is given, since the check reads
+% the model.
 %
-% A data set is either the flux conditions of experimentData.fluxData (constrain true) or the
-% maximum-growth conditions of experimentData.maxGrowth (constrain false); see
-% loadExperimentData.
+% fluxData is either the flux conditions of experimentData.fluxData (constrain true) or the
+% maximum-growth conditions of experimentData.maxGrowth (constrain false). The carbon source of a
+% condition is the exchange reaction whose metabolite name (exchMets) is the condition name. For
+% each condition:
 %
-% The carbon source of a condition is the exchange reaction whose metabolite name (exchMets) is the
-% name of the condition.
+% 1. The lower bound of every carbon-source exchange of a condition with weight other than 0 is
+%    set to 0.
+% 2. The lower bound of this condition's carbon source is set to the measured flux (constrain
+%    true) or to -1000 (constrain false).
+% 3. If the measured oxygen flux is exactly 0 and makeAnaerobic is given, the model is made
+%    anaerobic. If Ptot is given and not 0 and changeProteinBiomass is given, the protein content
+%    is changed.
+% 4. The model is solved. With constrain true, the fluxes of the measured exchanges and of
+%    zeroFluxRxns (except this carbon source) are recorded.
 %
-% For each condition:
-%
-% 1. The lower bound of every exchange reaction that is the carbon source of some condition with
-%    a weight other than 0 is set to 0, so that the carbon source of one condition cannot take up
-%    substrate in another.
-% 2. The lower bound of the carbon source of this condition is set to the measured flux if
-%    constrain is true, so that the model can take up at most the measured rate, and to -1000 if
-%    it is false (unlimited uptake, which gives the best possible growth on the carbon source).
-% 3. If the measured flux of the exchange metabolite named 'oxygen' is exactly 0 and makeAnaerobic
-%    is given, the model is made anaerobic. If Ptot of the condition is given and not 0 and
-%    changeProteinBiomass is given, the protein content of the model is changed.
-% 4. The model is solved. If constrain is true, the simulated flux of every measured exchange and
-%    of every reaction in zeroFluxRxns (except the carbon source of the condition) is recorded.
-%
-% A condition with weight 0 (the field weight of fluxData) is left out: it is not matched to an
-% exchange reaction and not simulated, and its element of sims has skipped true and feasible
-% false. Its name need not match an exchange metabolite.
+% A condition with weight 0 is skipped: it is not matched to an exchange reaction or simulated,
+% and its element of sims has skipped true and feasible false.
 %
 % Parameters
 % ----------
@@ -51,50 +38,44 @@ function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bio
 % fluxData : struct
 %     data set to simulate, as returned by loadFluxData.
 % constrain : logical
-%     true for flux conditions, which limit the uptake to the measured rate and record the
-%     fluxes; false for maximum-growth conditions, which leave the uptake unlimited and record
-%     only the growth rate.
+%     true for flux conditions (uptake limited to the measured rate, fluxes recorded), false for
+%     maximum-growth conditions (uptake unlimited, only growth recorded).
 % zeroFluxRxns : cell
-%     ids of reactions that carry no flux in any condition (experimentData.zeroFlux). A flux
-%     through them is counted as an error in the distance.
+%     ids of reactions that carry no flux in any condition (experimentData.zeroFlux).
 % bioRxnId : char
-%     id of the biomass reaction, whose flux in the solution is the growth rate. It should be the
-%     objective of the model (see above).
+%     id of the growth reaction, whose flux is the growth rate.
 %
 % Name-Value Arguments
 % --------------------
 % makeAnaerobic : function_handle
-%     function that takes a model and returns the anaerobic model. How a model is made anaerobic
-%     depends on the organism, so there is no default; without the function the oxygen flux of
-%     the data is ignored (default []).
+%     takes a model and returns the anaerobic model. No default, since this depends on the
+%     organism; without it the oxygen flux of the data is ignored (default []).
 % changeProteinBiomass : function_handle
-%     function that takes a model and Ptot (g/gDCW) and returns a model with that protein content.
-%     Without the function Ptot is ignored (default []).
+%     takes a model and Ptot (g/gDCW) and returns the model with that protein content. Without it
+%     Ptot is ignored (default []).
 % optimize : function_handle
-%     function that solves a model and returns a structure with the fields x, f and stat, as
-%     solveLP does (default @solveLP).
+%     solves a model and returns a structure with x, f and stat, as solveLP does (default
+%     @solveLP).
 %
 % Returns
 % -------
 % sims : struct
-%     structure array with one element per condition of fluxData and the fields:
+%     structure array with one element per condition and the fields:
 %
-%     - feasible : false if the model is infeasible or the solution not optimal, or if the
-%       condition was skipped. The other fields have no meaning then.
-%     - skipped : true for a condition with weight 0, which is not simulated.
-%     - growth : flux of the biomass reaction (1/h).
-%     - exchRxnIDs : ids of the exchange reactions that were measured in the condition (empty if
-%       constrain is false).
-%     - exchFluxes : simulated fluxes of exchRxnIDs (mmol/gDCW/h).
-%     - blockRxnIDs : ids of the zero-flux reactions that were recorded.
-%     - blockFluxes : simulated fluxes of blockRxnIDs.
+%     - feasible : false if the solution is infeasible or not optimal, or the condition was
+%       skipped. The other fields have no meaning then.
+%     - skipped : true for a condition with weight 0.
+%     - growth : flux of bioRxnId (1/h).
+%     - exchRxnIDs : measured exchange reactions (empty if constrain is false).
+%     - exchFluxes : their simulated fluxes (mmol/gDCW/h).
+%     - blockRxnIDs : recorded zero-flux reactions.
+%     - blockFluxes : their simulated fluxes.
 %
 % Notes
 % -----
-% A condition with a weight other than 0 that cannot be matched by name to an exchange metabolite
-% of fluxData raises simulateConditions:unmatchedCondition. A reaction of fluxData, zeroFluxRxns
-% or bioRxnId that is not in the model raises simulateConditions:missingReaction. An objective
-% that is not the maximisation of bioRxnId issues simulateConditions:objectiveNotGrowth.
+% Errors: simulateConditions:unmatchedCondition (a condition with weight other than 0 whose name
+% matches no exchange metabolite) and simulateConditions:missingReaction (a reaction of
+% fluxData, zeroFluxRxns or bioRxnId that is not in the model).
 %
 % Examples
 % --------

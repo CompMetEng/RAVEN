@@ -1,41 +1,36 @@
 function carbonWeights = computeCarbonWeights(model, rxnIds, bioRxnId)
 % computeCarbonWeights  Weight of each reaction that puts its flux on a common carbon scale.
 %
-% Multiplying an exchange flux by the number of carbon atoms of the metabolite that it exchanges
-% gives the flux in Cmmol/gDCW/h, so that fluxes of different metabolites can be compared and
-% added in one distance. The biomass reaction gets 41, the assumed carbon content of biomass in
-% Cmmol/gDCW (a carbon mass fraction of about 49%), which converts the growth rate to the same
-% scale.
+% Multiplying an exchange flux by the number of carbon atoms of the exchanged metabolite gives
+% Cmmol/gDCW/h, so that fluxes of different metabolites can be added in one distance. The growth
+% reaction gets 41 (assumed biomass carbon content in Cmmol/gDCW).
 %
 % Parameters
 % ----------
 % model : struct
-%     model that provides the metabolite formulas (metFormulas).
+%     model with metabolite formulas (metFormulas).
 % rxnIds : cell
-%     ids of the reactions to compute a weight for: the exchange reactions of the data sets, the
-%     reactions of the zero-flux list and the biomass reaction.
+%     reactions to weight: the exchange reactions of the data sets, the zero-flux reactions and
+%     the growth reaction.
 % bioRxnId : char
-%     id of the biomass reaction.
+%     id of the growth reaction.
 %
 % Returns
 % -------
 % carbonWeights : containers.Map
-%     weight per reaction id. The biomass reaction gets 41. Every other reaction gets the number
-%     of carbon atoms in the formula of its single exchanged metabolite. A reaction with more than
-%     one metabolite, a metabolite without a formula, a formula that cannot be read and a
-%     metabolite with no carbon atoms (O2, water) get the weight 1, so that their flux mismatches
-%     still count in the distance.
+%     weight per reaction id. The growth reaction gets 41. Every other reaction gets the number
+%     of carbon atoms in the formula of its single exchanged metabolite. A reaction with several
+%     metabolites, a metabolite without a readable formula and a metabolite without carbon get 1,
+%     so that mismatches in their fluxes still count.
 %
-%     The formula is read by parseFormulas: element symbols with an optional integer or decimal
-%     count (C6H12O6, C2.5H5). A charge sign is ignored, and so is a * between parts of the
-%     formula (C6H12O6*H2O). A formula with parentheses (C6H12O6(H2O)2, the polymer (C5H8)n), an
-%     empty formula and a formula with an unknown element symbol cannot be read. The Python
-%     function compute_carbon_weights gives the same weights.
+%     Formulas are read by parseFormulas: element symbols with an optional integer or decimal
+%     count (C6H12O6, C2.5H5); charge signs and * are ignored (C6H12O6*H2O). Parentheses
+%     (C6H12O6(H2O)2, (C5H8)n), empty formulas and unknown elements are not readable.
 %
 % Notes
 % -----
-% A model without formulas gives every exchange the weight 1 and a warning
-% (computeCarbonWeights:noFormulas). A reaction that is not in the model raises
+% A model without formulas gives weight 1 to every exchange and the warning
+% computeCarbonWeights:noFormulas. A reaction that is not in the model raises
 % computeCarbonWeights:missingReaction.
 %
 % Examples

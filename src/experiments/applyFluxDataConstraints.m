@@ -1,20 +1,20 @@
 function model = applyFluxDataConstraints(model, fluxData, bioRxnId, varargin)
 % applyFluxDataConstraints  Constrain the growth rate and exchange fluxes of a model to one measured condition.
 %
-% Sets the bounds of the biomass reaction to the measured growth rate and the bounds of each
-% exchange reaction of fluxData that was measured in the condition to the measured flux. An
-% exchange that was not measured (NaN) is left as it is. The constrained model can then be used
-% for flux variability analysis, sampling or other analyses of that condition.
+% Sets the bounds of the growth reaction to the measured growth rate and the bounds of each
+% exchange reaction measured in the condition to the measured flux; unmeasured exchanges (NaN) are
+% left unchanged. The result can be used for flux variability analysis, sampling or other
+% analyses of that condition.
 %
-% How tightly an exchange is constrained is set by looseStrictFlux. For a measured uptake of -10
-% and a measured excretion of 5, the lower and upper bounds are:
+% looseStrictFlux sets how tightly an exchange is constrained. For a measured uptake of -10 and
+% excretion of 5, the lower and upper bounds are:
 %
 %     looseStrictFlux     uptake -10       excretion 5
 %     'loose'             -10 and 0        0 and 5
 %     10 (percent)        -10.5 and -9.5   4.75 and 5.25
 %
-% A measured flux of -1000 or 1000 means unconstrained, whatever looseStrictFlux is: -1000 gives
-% the bounds -1000 and 0 (free uptake), and 1000 gives 0 and 1000 (free excretion).
+% A measured flux of -1000 or 1000 means unconstrained whatever looseStrictFlux is: bounds -1000
+% and 0 (free uptake) or 0 and 1000 (free excretion).
 %
 % Parameters
 % ----------
@@ -24,28 +24,23 @@ function model = applyFluxDataConstraints(model, fluxData, bioRxnId, varargin)
 % fluxData : struct
 %     flux data, as returned by loadFluxData.
 % bioRxnId : char
-%     id of the biomass reaction.
+%     id of the growth reaction.
 %
 % Name-Value Arguments
 % --------------------
 % condition : double or char
-%     index of the condition in fluxData.conds (counted from 1), or its name (default 1).
+%     index (from 1) or name of the condition in fluxData.conds (default 1).
 % maxMinGrowth : char
-%     'max' sets the bounds of the biomass reaction to 0 and the growth rate, so that the model
-%     grows at most as fast as measured. 'min' sets them to the growth rate and 1000, so that the
-%     model grows at least that fast, which suits the minimisation of a resource such as the
-%     protein pool (default 'max').
+%     'max' bounds the growth reaction to 0 and the growth rate; 'min' bounds it to the growth
+%     rate and 1000, which suits minimising a resource such as the protein pool (default 'max').
 % looseStrictFlux : char or double
-%     how tightly the exchange fluxes are constrained (default 'loose'):
-%
-%     - 'loose' : one bound is 0 and the other the measured flux, which allows a flux of zero.
-%     - 0-100 : the bounds are set to the measured flux times (1 -/+ p/200), a band of p percent
-%       in total, so 10 gives 0.95 and 1.05 times the flux. This forces a flux through the
-%       reaction.
+%     'loose' sets one bound to 0 and the other to the measured flux, which allows zero flux. A
+%     number p between 0 and 100 sets the bounds to the flux times (1 -/+ p/200), a band of p
+%     percent in total, which forces flux through the reaction (default 'loose').
 % cSource : char
-%     id of the preferred carbon source uptake reaction. Its bounds are set to 0 and 0 before the
-%     flux data is applied, so that the data alone determines the carbon source. [] or '' blocks
-%     no reaction, and a reaction that is not in the model is ignored (default []).
+%     id of a carbon-source uptake reaction to close (bounds 0 and 0) before the data is applied,
+%     so that the data alone determines the carbon source. [] or '' closes none; a reaction that
+%     is not in the model is ignored (default []).
 %
 % Returns
 % -------
@@ -54,11 +49,9 @@ function model = applyFluxDataConstraints(model, fluxData, bioRxnId, varargin)
 %
 % Notes
 % -----
-% The function raises applyFluxDataConstraints:invalidMaxMinGrowth,
-% applyFluxDataConstraints:invalidLooseStrictFlux, applyFluxDataConstraints:unknownCondition (a
-% name that is not in fluxData.conds), applyFluxDataConstraints:conditionOutOfRange and
-% applyFluxDataConstraints:missingReaction (an exchange reaction of fluxData that is not in the
-% model, or the biomass reaction).
+% Errors: applyFluxDataConstraints:invalidMaxMinGrowth, :invalidLooseStrictFlux,
+% :unknownCondition, :conditionOutOfRange and :missingReaction (an exchange reaction of fluxData
+% or the growth reaction that is not in the model).
 %
 % Examples
 % --------
@@ -68,8 +61,7 @@ function model = applyFluxDataConstraints(model, fluxData, bioRxnId, varargin)
 %
 % See also
 % --------
-% loadFluxData : reads the measurements.
-% simulateConditions : simulates all conditions of a data set, without changing the model.
+% loadFluxData, simulateConditions
 
 p = parseRAVENargs(varargin, { ...
     'condition', 1; ...

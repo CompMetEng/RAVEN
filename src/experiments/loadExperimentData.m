@@ -1,48 +1,22 @@
 function experimentData = loadExperimentData(dataDir)
 % loadExperimentData  Read the measured conditions of a model from a folder.
 %
-% Suppose you measured the growth rate and some exchange fluxes of an organism in one or more
-% growth conditions, and want to know how well a model reproduces them: to compare model versions,
-% or as the objective when parameters of a model are adjusted to the data. The functions of the
-% experiments folder simulate each condition in the model and condense the mismatch into a single
-% number, the distance.
+% The folder holds up to three tab-delimited files, each optional:
 %
-% Two kinds of conditions are scored:
+% - fluxData.tsv : flux conditions, in which the carbon-source uptake is limited to the measured
+%   rate and the model is compared with the measured growth rate and exchange fluxes.
+% - maxGrowth.tsv : maximum-growth conditions, in which the uptake is unlimited and only the
+%   maximal growth rate is compared. Same layout as fluxData.tsv (see loadFluxData).
+% - zeroFlux.tsv : the header Rxns and one reaction id per line, for reactions that carry no flux
+%   in any condition. Flux through them is penalised in the flux conditions.
 %
-% - A flux condition limits the uptake of the carbon source to its measured rate. The growth rate
-%   and the measured exchange fluxes of the model are compared with the measurements. The
-%   conditions are stored in fluxData.tsv.
-% - A maximum-growth condition leaves the uptake of the carbon source unlimited. Only the maximal
-%   growth rate of the model is compared with the measured growth rate. The conditions are stored
-%   in maxGrowth.tsv.
+% A missing file gives [] ({} for zeroFlux). The files feed simulateConditions and
+% experimentDistance, which condense the mismatch between model and measurements into one number:
+% computeCarbonWeights, simulateConditions (once per file), experimentDistance.
 %
-% Both files have the layout described in loadFluxData. A third file, zeroFlux.tsv, lists reactions
-% that carry no flux in any condition: the header Rxns and one reaction id per line. A model that
-% carries flux in them is penalised in the flux conditions. Each file is optional; a missing file
-% gives [] (or an empty cell array for zeroFlux), not an error.
-%
-% IMPORTANT: the model objective must be the maximisation of the growth. The functions do not set
-% the objective: simulateConditions solves each condition with the objective that the model has
-% (model.c, which is maximised), and the growth rate is the flux of the biomass reaction in that
-% solution. In a maximum-growth condition the number that is compared with the measurement is
-% therefore the maximum of the model objective, which is the maximal growth rate only if the
-% objective is the biomass reaction. Set the objective with setParam(model, 'obj', biomassRxn, 1)
-% first; simulateConditions warns once per call if the objective is not the biomass reaction.
-%
-% Workflow:
-%
-% 1. loadExperimentData reads the three files of a folder.
-% 2. computeCarbonWeights gives each reaction the weight that puts all fluxes on the same carbon
-%    scale.
-% 3. simulateConditions simulates the conditions of one file in the model.
-% 4. experimentDistance compares the simulations of both kinds of conditions with the
-%    measurements and returns the distance. datasetRmse does the same for one file.
-%
-% applyFluxDataConstraints is independent of the distance: it constrains a model to one measured
-% condition, for example before a flux variability analysis.
-%
-% Fluxes are in mmol/gDCW/h and growth rates in 1/h. A negative exchange flux is an uptake and a
-% positive one an excretion.
+% The model objective must be the maximisation of growth: the functions do not set it, and in a
+% maximum-growth condition the compared value is the maximum of the model objective.
+% simulateConditions warns if the objective is not the growth reaction.
 %
 % Parameters
 % ----------
@@ -56,7 +30,7 @@ function experimentData = loadExperimentData(dataDir)
 %
 %     - fluxData : the structure of loadFluxData for fluxData.tsv, or [].
 %     - maxGrowth : the structure of loadFluxData for maxGrowth.tsv, or [].
-%     - zeroFlux : cell column with the reaction ids that carry no flux in any condition, or {}.
+%     - zeroFlux : cell column with the reaction ids of zeroFlux.tsv, or {}.
 %
 % Examples
 % --------
@@ -64,7 +38,7 @@ function experimentData = loadExperimentData(dataDir)
 %
 % See also
 % --------
-% loadFluxData, computeCarbonWeights, simulateConditions, experimentDistance
+% loadFluxData, computeCarbonWeights, simulateConditions, experimentDistance, applyFluxDataConstraints
 
 experimentData.fluxData   = loadOptionalFluxData(fullfile(dataDir, 'fluxData.tsv'));
 experimentData.maxGrowth  = loadOptionalFluxData(fullfile(dataDir, 'maxGrowth.tsv'));
