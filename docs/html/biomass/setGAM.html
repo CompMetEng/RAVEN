@@ -4,7 +4,7 @@
 <head>
   <title>Description of setGAM</title>
   <meta name="keywords" content="setGAM">
-  <meta name="description" content="setGAM  Set the growth-associated maintenance (GAM) coefficient.">
+  <meta name="description" content="setGAM  Set the growth-associated maintenance (GAM), and optionally the non-growth maintenance (NGAM).">
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
   <meta name="robots" content="index, follow">
@@ -21,61 +21,64 @@
 </h1>
 
 <h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="box"><strong>setGAM  Set the growth-associated maintenance (GAM) coefficient.</strong></div>
+<div class="box"><strong>setGAM  Set the growth-associated maintenance (GAM), and optionally the non-growth maintenance (NGAM).</strong></div>
 
 <h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="box"><strong>function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin) </strong></div>
 
 <h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
-<div class="fragment"><pre class="comment"> setGAM  Set the growth-associated maintenance (GAM) coefficient.
+<div class="fragment"><pre class="comment"> setGAM  Set the growth-associated maintenance (GAM), and optionally the non-growth maintenance (NGAM).
 
- Set the growth-associated maintenance (GAM) coefficient in the biomass
- pseudoreaction, and optionally fix the non-growth maintenance (NGAM)
- reaction's bounds. The MATLAB counterpart of yeast-GEM's legacy
- changeGAM.
+ GAM is set in the coefficients of the ATP-hydrolysis cofactors of the biomass reaction. For
+ every metabolite of the biomass reaction whose model.metNames entry is in cofactorMetNames, the
+ coefficient becomes value, keeping its sign. With keepOffsetsOf, the coefficient of the
+ metabolite with that name (for example ATP) becomes value and every other cofactor shifts by the
+ same amount in the direction of its sign, so that offsets such as a proton coefficient that
+ balances charge are kept. For ATP, water, ADP and phosphate at 60 and a proton at 57, setting
+ GAM to 45 gives 45 and a proton at 42, whereas without keepOffsetsOf the proton becomes 45.
 
- For every metabolite in the biomass pseudoreaction whose model.metNames
- entry is in cofactorMetNames, the stoichiometric coefficient is set to
- value with the sign of the current coefficient. An error is raised
- before the model is changed if ngamRxn is given and is not in the model,
- and if ngamValue is given without ngamRxn (RAVEN:badInput).
- For yeast-GEM, the cofactors are ATP, ADP, H2O, H+ and phosphate (ATP and
- H2O are substrates; ADP, H+ and phosphate are products).
+ If ngamRxn and ngamValue are given, both bounds of the NGAM reaction are set to ngamValue.
+ Errors are raised before the model is changed if ngamRxn is not in the model, if ngamValue is
+ given without ngamRxn (RAVEN:badInput), or if keepOffsetsOf is not in cofactorMetNames or does
+ not name exactly one metabolite of the biomass reaction.
 
  Parameters
  ----------
  model : struct
      RAVEN model struct.
  value : double
-     New GAM value (mmol ATP / gDW per growth unit).
+     new GAM (mmol ATP/gDCW).
  biomassRxn : char
-     Reaction id of the biomass pseudoreaction.
+     id of the biomass reaction.
  cofactorMetNames : cell
-     Cell array of metabolite names (matched against model.metNames, not
-     metabolite ids) to rescale, for example
+     names (matched against model.metNames, not ids) of the GAM cofactors, for example
      {'ATP','ADP','H2O','H+','phosphate'}.
 
  Name-Value Arguments
  --------------------
+ keepOffsetsOf : char
+     name of the metabolite that gets value while the other cofactors shift with it. Must be in
+     cofactorMetNames and in the biomass reaction. Empty sets every cofactor to value (default
+     []).
  ngamRxn : char
-     NGAM reaction id. Required when ngamValue is supplied.
+     id of the NGAM reaction. Required with ngamValue.
  ngamValue : double
-     NGAM flux to fix. Both bounds of the NGAM reaction are set to
-     ngamValue.
+     NGAM flux (mmol ATP/gDCW/h).
 
  Returns
  -------
  model : struct
-     Modified model.
+     modified model.
 
  Examples
  --------
-     model = setGAM(model, 80, 'r_4041', {'ATP','ADP','H2O','H+','phosphate'});
+     cofactors = {'ATP','ADP','H2O','H+','phosphate'};
+     model = setGAM(model, 45, 'r_4041', cofactors, 'keepOffsetsOf', 'ATP');
+     model = setGAM(model, 45, 'r_4041', cofactors, 'ngamRxn', 'r_4046', 'ngamValue', 0.75);
 
  See also
  --------
- <a href="fitParameters.html" class="code" title="function [parameters, fitnessScore, exitFlag, newModel]=fitParameters(model,xRxns,xValues,rxnsToFit,valuesToFit,parameterPositions,varargin)">fitParameters</a> : derives such a value from measured fluxes; <a href="setGAM.html" class="code" title="function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)">setGAM</a> then
-     applies it.</pre></div>
+ <a href="getGAM.html" class="code" title="function gam = getGAM(model, biomassRxn, varargin)">getGAM</a>, <a href="fitParameters.html" class="code" title="function [parameters, fitnessScore, exitFlag, newModel]=fitParameters(model,xRxns,xValues,rxnsToFit,valuesToFit,parameterPositions,varargin)">fitParameters</a></pre></div>
 
 <!-- crossreference -->
 <h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
@@ -87,102 +90,133 @@ This function is called by:
 </ul>
 <!-- crossreference -->
 
-
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function coef = gamCoefficient(model, bioPos, biomassRxn, metName)</a></li></ul>
 
 <h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
 <div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function model = setGAM(model, value, biomassRxn, cofactorMetNames, varargin)</a>
-0002 <span class="comment">% setGAM  Set the growth-associated maintenance (GAM) coefficient.</span>
+0002 <span class="comment">% setGAM  Set the growth-associated maintenance (GAM), and optionally the non-growth maintenance (NGAM).</span>
 0003 <span class="comment">%</span>
-0004 <span class="comment">% Set the growth-associated maintenance (GAM) coefficient in the biomass</span>
-0005 <span class="comment">% pseudoreaction, and optionally fix the non-growth maintenance (NGAM)</span>
-0006 <span class="comment">% reaction's bounds. The MATLAB counterpart of yeast-GEM's legacy</span>
-0007 <span class="comment">% changeGAM.</span>
-0008 <span class="comment">%</span>
-0009 <span class="comment">% For every metabolite in the biomass pseudoreaction whose model.metNames</span>
-0010 <span class="comment">% entry is in cofactorMetNames, the stoichiometric coefficient is set to</span>
-0011 <span class="comment">% value with the sign of the current coefficient. An error is raised</span>
-0012 <span class="comment">% before the model is changed if ngamRxn is given and is not in the model,</span>
-0013 <span class="comment">% and if ngamValue is given without ngamRxn (RAVEN:badInput).</span>
-0014 <span class="comment">% For yeast-GEM, the cofactors are ATP, ADP, H2O, H+ and phosphate (ATP and</span>
-0015 <span class="comment">% H2O are substrates; ADP, H+ and phosphate are products).</span>
+0004 <span class="comment">% GAM is set in the coefficients of the ATP-hydrolysis cofactors of the biomass reaction. For</span>
+0005 <span class="comment">% every metabolite of the biomass reaction whose model.metNames entry is in cofactorMetNames, the</span>
+0006 <span class="comment">% coefficient becomes value, keeping its sign. With keepOffsetsOf, the coefficient of the</span>
+0007 <span class="comment">% metabolite with that name (for example ATP) becomes value and every other cofactor shifts by the</span>
+0008 <span class="comment">% same amount in the direction of its sign, so that offsets such as a proton coefficient that</span>
+0009 <span class="comment">% balances charge are kept. For ATP, water, ADP and phosphate at 60 and a proton at 57, setting</span>
+0010 <span class="comment">% GAM to 45 gives 45 and a proton at 42, whereas without keepOffsetsOf the proton becomes 45.</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">% If ngamRxn and ngamValue are given, both bounds of the NGAM reaction are set to ngamValue.</span>
+0013 <span class="comment">% Errors are raised before the model is changed if ngamRxn is not in the model, if ngamValue is</span>
+0014 <span class="comment">% given without ngamRxn (RAVEN:badInput), or if keepOffsetsOf is not in cofactorMetNames or does</span>
+0015 <span class="comment">% not name exactly one metabolite of the biomass reaction.</span>
 0016 <span class="comment">%</span>
 0017 <span class="comment">% Parameters</span>
 0018 <span class="comment">% ----------</span>
 0019 <span class="comment">% model : struct</span>
 0020 <span class="comment">%     RAVEN model struct.</span>
 0021 <span class="comment">% value : double</span>
-0022 <span class="comment">%     New GAM value (mmol ATP / gDW per growth unit).</span>
+0022 <span class="comment">%     new GAM (mmol ATP/gDCW).</span>
 0023 <span class="comment">% biomassRxn : char</span>
-0024 <span class="comment">%     Reaction id of the biomass pseudoreaction.</span>
+0024 <span class="comment">%     id of the biomass reaction.</span>
 0025 <span class="comment">% cofactorMetNames : cell</span>
-0026 <span class="comment">%     Cell array of metabolite names (matched against model.metNames, not</span>
-0027 <span class="comment">%     metabolite ids) to rescale, for example</span>
-0028 <span class="comment">%     {'ATP','ADP','H2O','H+','phosphate'}.</span>
-0029 <span class="comment">%</span>
-0030 <span class="comment">% Name-Value Arguments</span>
-0031 <span class="comment">% --------------------</span>
-0032 <span class="comment">% ngamRxn : char</span>
-0033 <span class="comment">%     NGAM reaction id. Required when ngamValue is supplied.</span>
-0034 <span class="comment">% ngamValue : double</span>
-0035 <span class="comment">%     NGAM flux to fix. Both bounds of the NGAM reaction are set to</span>
-0036 <span class="comment">%     ngamValue.</span>
-0037 <span class="comment">%</span>
-0038 <span class="comment">% Returns</span>
-0039 <span class="comment">% -------</span>
-0040 <span class="comment">% model : struct</span>
-0041 <span class="comment">%     Modified model.</span>
-0042 <span class="comment">%</span>
-0043 <span class="comment">% Examples</span>
-0044 <span class="comment">% --------</span>
-0045 <span class="comment">%     model = setGAM(model, 80, 'r_4041', {'ATP','ADP','H2O','H+','phosphate'});</span>
-0046 <span class="comment">%</span>
-0047 <span class="comment">% See also</span>
-0048 <span class="comment">% --------</span>
-0049 <span class="comment">% fitParameters : derives such a value from measured fluxes; setGAM then</span>
-0050 <span class="comment">%     applies it.</span>
-0051 
-0052 <span class="keyword">if</span> nargin &lt; 4
-0053     error(<span class="string">'setGAM:missingArgs'</span>, <span class="keyword">...</span>
-0054         <span class="string">'biomassRxn and cofactorMetNames are required.'</span>);
-0055 <span class="keyword">end</span>
-0056 
-0057 p=parseRAVENargs(varargin, {<span class="string">'ngamRxn'</span>,[]; <span class="string">'ngamValue'</span>,[]});
-0058 ngamRxn=p.ngamRxn;
-0059 ngamValue=p.ngamValue;
-0060 <span class="comment">%An empty id counts as not given</span>
-0061 <span class="keyword">if</span> ~isempty(ngamRxn)
-0062     ngamRxn=cellstr(ngamRxn);
-0063     ngamRxn=ngamRxn(~cellfun(@isempty,ngamRxn));
-0064 <span class="keyword">end</span>
-0065 <span class="keyword">if</span> ~isempty(ngamValue) &amp;&amp; isempty(ngamRxn)
-0066     error(<span class="string">'RAVEN:badInput'</span>, <span class="keyword">...</span>
-0067         <span class="string">'ngamValue is given without ngamRxn. Give the NGAM reaction id as ''ngamRxn''.'</span>);
+0026 <span class="comment">%     names (matched against model.metNames, not ids) of the GAM cofactors, for example</span>
+0027 <span class="comment">%     {'ATP','ADP','H2O','H+','phosphate'}.</span>
+0028 <span class="comment">%</span>
+0029 <span class="comment">% Name-Value Arguments</span>
+0030 <span class="comment">% --------------------</span>
+0031 <span class="comment">% keepOffsetsOf : char</span>
+0032 <span class="comment">%     name of the metabolite that gets value while the other cofactors shift with it. Must be in</span>
+0033 <span class="comment">%     cofactorMetNames and in the biomass reaction. Empty sets every cofactor to value (default</span>
+0034 <span class="comment">%     []).</span>
+0035 <span class="comment">% ngamRxn : char</span>
+0036 <span class="comment">%     id of the NGAM reaction. Required with ngamValue.</span>
+0037 <span class="comment">% ngamValue : double</span>
+0038 <span class="comment">%     NGAM flux (mmol ATP/gDCW/h).</span>
+0039 <span class="comment">%</span>
+0040 <span class="comment">% Returns</span>
+0041 <span class="comment">% -------</span>
+0042 <span class="comment">% model : struct</span>
+0043 <span class="comment">%     modified model.</span>
+0044 <span class="comment">%</span>
+0045 <span class="comment">% Examples</span>
+0046 <span class="comment">% --------</span>
+0047 <span class="comment">%     cofactors = {'ATP','ADP','H2O','H+','phosphate'};</span>
+0048 <span class="comment">%     model = setGAM(model, 45, 'r_4041', cofactors, 'keepOffsetsOf', 'ATP');</span>
+0049 <span class="comment">%     model = setGAM(model, 45, 'r_4041', cofactors, 'ngamRxn', 'r_4046', 'ngamValue', 0.75);</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">% See also</span>
+0052 <span class="comment">% --------</span>
+0053 <span class="comment">% getGAM, fitParameters</span>
+0054 
+0055 <span class="keyword">if</span> nargin &lt; 4
+0056     error(<span class="string">'setGAM:missingArgs'</span>, <span class="keyword">...</span>
+0057         <span class="string">'biomassRxn and cofactorMetNames are required.'</span>);
+0058 <span class="keyword">end</span>
+0059 
+0060 p=parseRAVENargs(varargin, {<span class="string">'keepOffsetsOf'</span>,<span class="string">''</span>; <span class="string">'ngamRxn'</span>,[]; <span class="string">'ngamValue'</span>,[]});
+0061 ngamRxn=p.ngamRxn;
+0062 ngamValue=p.ngamValue;
+0063 keepOffsetsOf=char(p.keepOffsetsOf);
+0064 <span class="comment">%An empty id counts as not given</span>
+0065 <span class="keyword">if</span> ~isempty(ngamRxn)
+0066     ngamRxn=cellstr(ngamRxn);
+0067     ngamRxn=ngamRxn(~cellfun(@isempty,ngamRxn));
 0068 <span class="keyword">end</span>
-0069 
-0070 bioPos = strcmp(model.rxns, biomassRxn);
-0071 <span class="keyword">if</span> ~any(bioPos)
-0072     error(<span class="string">'setGAM:missingBiomassRxn'</span>, <span class="keyword">...</span>
-0073         <span class="string">'Reaction %s not found in model.'</span>, biomassRxn);
-0074 <span class="keyword">end</span>
-0075 
-0076 setNgam = ~isempty(ngamRxn) &amp;&amp; ~isempty(ngamValue);
-0077 <span class="keyword">if</span> ~isempty(ngamRxn) &amp;&amp; ~all(ismember(ngamRxn, model.rxns))
-0078     error(<span class="string">'setGAM:missingNgamRxn'</span>, <span class="keyword">...</span>
-0079         <span class="string">'NGAM reaction %s not found in model.'</span>, strjoin(ngamRxn, <span class="string">', '</span>));
-0080 <span class="keyword">end</span>
-0081 
-0082 <span class="keyword">for</span> i = 1:length(model.mets)
-0083     S_ix = model.S(i, bioPos);
-0084     isCofactor = any(strcmp(cofactorMetNames, model.metNames{i}));
-0085     <span class="keyword">if</span> S_ix ~= 0 &amp;&amp; isCofactor
-0086         model.S(i, bioPos) = sign(S_ix) * value;
-0087     <span class="keyword">end</span>
-0088 <span class="keyword">end</span>
-0089 
-0090 <span class="keyword">if</span> setNgam
-0091     model = setParam(model, <span class="string">'eq'</span>, ngamRxn, ngamValue);
-0092 <span class="keyword">end</span>
-0093 <span class="keyword">end</span></pre></div>
+0069 <span class="keyword">if</span> ~isempty(ngamValue) &amp;&amp; isempty(ngamRxn)
+0070     error(<span class="string">'RAVEN:badInput'</span>, <span class="keyword">...</span>
+0071         <span class="string">'ngamValue is given without ngamRxn. Give the NGAM reaction id as ''ngamRxn''.'</span>);
+0072 <span class="keyword">end</span>
+0073 
+0074 bioPos = strcmp(model.rxns, biomassRxn);
+0075 <span class="keyword">if</span> ~any(bioPos)
+0076     error(<span class="string">'setGAM:missingBiomassRxn'</span>, <span class="keyword">...</span>
+0077         <span class="string">'Reaction %s not found in model.'</span>, biomassRxn);
+0078 <span class="keyword">end</span>
+0079 
+0080 setNgam = ~isempty(ngamRxn) &amp;&amp; ~isempty(ngamValue);
+0081 <span class="keyword">if</span> ~isempty(ngamRxn) &amp;&amp; ~all(ismember(ngamRxn, model.rxns))
+0082     error(<span class="string">'setGAM:missingNgamRxn'</span>, <span class="keyword">...</span>
+0083         <span class="string">'NGAM reaction %s not found in model.'</span>, strjoin(ngamRxn, <span class="string">', '</span>));
+0084 <span class="keyword">end</span>
+0085 
+0086 shift = 0;
+0087 <span class="keyword">if</span> ~isempty(keepOffsetsOf)
+0088     <span class="keyword">if</span> ~any(strcmp(cofactorMetNames, keepOffsetsOf))
+0089         error(<span class="string">'setGAM:badKeepOffsetsOf'</span>, <span class="keyword">...</span>
+0090             <span class="string">'keepOffsetsOf ''%s'' is not one of the cofactor names.'</span>, keepOffsetsOf);
+0091     <span class="keyword">end</span>
+0092     shift = value - <a href="#_sub1" class="code" title="subfunction coef = gamCoefficient(model, bioPos, biomassRxn, metName)">gamCoefficient</a>(model, bioPos, biomassRxn, keepOffsetsOf);
+0093 <span class="keyword">end</span>
+0094 
+0095 <span class="keyword">for</span> i = 1:length(model.mets)
+0096     S_ix = model.S(i, bioPos);
+0097     isCofactor = any(strcmp(cofactorMetNames, model.metNames{i}));
+0098     <span class="keyword">if</span> S_ix ~= 0 &amp;&amp; isCofactor
+0099         <span class="keyword">if</span> isempty(keepOffsetsOf)
+0100             model.S(i, bioPos) = sign(S_ix) * value;
+0101         <span class="keyword">else</span>
+0102             model.S(i, bioPos) = S_ix + sign(S_ix) * shift;
+0103         <span class="keyword">end</span>
+0104     <span class="keyword">end</span>
+0105 <span class="keyword">end</span>
+0106 
+0107 <span class="keyword">if</span> setNgam
+0108     model = setParam(model, <span class="string">'eq'</span>, ngamRxn, ngamValue);
+0109 <span class="keyword">end</span>
+0110 <span class="keyword">end</span>
+0111 
+0112 <a name="_sub1" href="#_subfunctions" class="code">function coef = gamCoefficient(model, bioPos, biomassRxn, metName)</a>
+0113 <span class="comment">% Size of the coefficient of the one metabolite named metName in the biomass</span>
+0114 <span class="comment">% pseudoreaction.</span>
+0115 hit = find(model.S(:, bioPos) ~= 0 &amp; strcmp(model.metNames, metName));
+0116 <span class="keyword">if</span> numel(hit) ~= 1
+0117     error(<span class="string">'setGAM:badGamTerm'</span>, <span class="keyword">...</span>
+0118         <span class="string">'%s has %d metabolites named ''%s''; the GAM term needs exactly one.'</span>, <span class="keyword">...</span>
+0119         biomassRxn, numel(hit), metName);
+0120 <span class="keyword">end</span>
+0121 coef = abs(full(model.S(hit, bioPos)));
+0122 <span class="keyword">end</span></pre></div>
 <hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
 </body>
 </html>

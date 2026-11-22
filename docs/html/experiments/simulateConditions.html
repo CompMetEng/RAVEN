@@ -1,0 +1,324 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of simulateConditions</title>
+  <meta name="keywords" content="simulateConditions">
+  <meta name="description" content="simulateConditions  Simulate every condition of a data set in a model.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">experiments</a> &gt; simulateConditions.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for experiments&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>simulateConditions
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>simulateConditions  Simulate every condition of a data set in a model.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bioRxnId, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> simulateConditions  Simulate every condition of a data set in a model.
+
+ For each condition the carbon-source uptake is set, the model is solved, and the growth rate
+ and the fluxes covered by the measurements are recorded. datasetRmse and experimentDistance
+ turn the result into a distance. The model is not changed.
+
+ The model objective must be the maximisation of growth. The function does not set it: each
+ condition is solved with model.c, and the growth rate is the flux of bioRxnId in that solution.
+ Set it first with setParam(model, 'obj', bioRxnId, 1). Otherwise the growth in a
+ maximum-growth condition is not the maximal growth rate. A warning
+ (simulateConditions:objectiveNotGrowth) is issued once per call if the objective is not
+ bioRxnId alone with a positive coefficient, also when optimize is given, since the check reads
+ the model.
+
+ fluxData is either the flux conditions of experimentData.fluxData (constrain true) or the
+ maximum-growth conditions of experimentData.maxGrowth (constrain false). The carbon source of a
+ condition is the exchange reaction whose metabolite name (exchMets) is the condition name. For
+ each condition:
+
+ 1. The lower bound of every carbon-source exchange of a condition with weight other than 0 is
+    set to 0.
+ 2. The lower bound of this condition's carbon source is set to the measured flux (constrain
+    true) or to -1000 (constrain false).
+ 3. If the measured oxygen flux is exactly 0 and makeAnaerobic is given, the model is made
+    anaerobic. If Ptot is given and not 0 and changeProteinBiomass is given, the protein content
+    is changed.
+ 4. The model is solved. With constrain true, the fluxes of the measured exchanges and of
+    zeroFluxRxns (except this carbon source) are recorded.
+
+ A condition with weight 0 is skipped: it is not matched to an exchange reaction or simulated,
+ and its element of sims has skipped true and feasible false.
+
+ Parameters
+ ----------
+ model : struct
+     model with all other constraints already applied.
+ fluxData : struct
+     data set to simulate, as returned by loadFluxData.
+ constrain : logical
+     true for flux conditions (uptake limited to the measured rate, fluxes recorded), false for
+     maximum-growth conditions (uptake unlimited, only growth recorded).
+ zeroFluxRxns : cell
+     ids of reactions that carry no flux in any condition (experimentData.zeroFlux).
+ bioRxnId : char
+     id of the growth reaction, whose flux is the growth rate.
+
+ Name-Value Arguments
+ --------------------
+ makeAnaerobic : function_handle
+     takes a model and returns the anaerobic model. No default, since this depends on the
+     organism; without it the oxygen flux of the data is ignored (default []).
+ changeProteinBiomass : function_handle
+     takes a model and Ptot (g/gDCW) and returns the model with that protein content. Without it
+     Ptot is ignored (default []).
+ optimize : function_handle
+     solves a model and returns a structure with x, f and stat, as solveLP does (default
+     @solveLP).
+
+ Returns
+ -------
+ sims : struct
+     structure array with one element per condition and the fields:
+
+     - feasible : false if the solution is infeasible or not optimal, or the condition was
+       skipped. The other fields have no meaning then.
+     - skipped : true for a condition with weight 0.
+     - growth : flux of bioRxnId (1/h).
+     - exchRxnIDs : measured exchange reactions (empty if constrain is false).
+     - exchFluxes : their simulated fluxes (mmol/gDCW/h).
+     - blockRxnIDs : recorded zero-flux reactions.
+     - blockFluxes : their simulated fluxes.
+
+ Notes
+ -----
+ Errors: simulateConditions:unmatchedCondition (a condition with weight other than 0 whose name
+ matches no exchange metabolite) and simulateConditions:missingReaction (a reaction of
+ fluxData, zeroFluxRxns or bioRxnId that is not in the model).
+
+ Examples
+ --------
+     sims = simulateConditions(model, experimentData.fluxData, true, ...
+         experimentData.zeroFlux, 'growth');
+
+ See also
+ --------
+ <a href="loadExperimentData.html" class="code" title="function experimentData = loadExperimentData(dataDir)">loadExperimentData</a>, <a href="datasetRmse.html" class="code" title="function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin)">datasetRmse</a>, <a href="experimentDistance.html" class="code" title="function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, varargin)">experimentDistance</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function active = activeConditions(fluxData)</a></li><li><a href="#_sub2" class="code">function condToExch = matchConditions(fluxData, active)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bioRxnId, varargin)</a>
+0002 <span class="comment">% simulateConditions  Simulate every condition of a data set in a model.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% For each condition the carbon-source uptake is set, the model is solved, and the growth rate</span>
+0005 <span class="comment">% and the fluxes covered by the measurements are recorded. datasetRmse and experimentDistance</span>
+0006 <span class="comment">% turn the result into a distance. The model is not changed.</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">% The model objective must be the maximisation of growth. The function does not set it: each</span>
+0009 <span class="comment">% condition is solved with model.c, and the growth rate is the flux of bioRxnId in that solution.</span>
+0010 <span class="comment">% Set it first with setParam(model, 'obj', bioRxnId, 1). Otherwise the growth in a</span>
+0011 <span class="comment">% maximum-growth condition is not the maximal growth rate. A warning</span>
+0012 <span class="comment">% (simulateConditions:objectiveNotGrowth) is issued once per call if the objective is not</span>
+0013 <span class="comment">% bioRxnId alone with a positive coefficient, also when optimize is given, since the check reads</span>
+0014 <span class="comment">% the model.</span>
+0015 <span class="comment">%</span>
+0016 <span class="comment">% fluxData is either the flux conditions of experimentData.fluxData (constrain true) or the</span>
+0017 <span class="comment">% maximum-growth conditions of experimentData.maxGrowth (constrain false). The carbon source of a</span>
+0018 <span class="comment">% condition is the exchange reaction whose metabolite name (exchMets) is the condition name. For</span>
+0019 <span class="comment">% each condition:</span>
+0020 <span class="comment">%</span>
+0021 <span class="comment">% 1. The lower bound of every carbon-source exchange of a condition with weight other than 0 is</span>
+0022 <span class="comment">%    set to 0.</span>
+0023 <span class="comment">% 2. The lower bound of this condition's carbon source is set to the measured flux (constrain</span>
+0024 <span class="comment">%    true) or to -1000 (constrain false).</span>
+0025 <span class="comment">% 3. If the measured oxygen flux is exactly 0 and makeAnaerobic is given, the model is made</span>
+0026 <span class="comment">%    anaerobic. If Ptot is given and not 0 and changeProteinBiomass is given, the protein content</span>
+0027 <span class="comment">%    is changed.</span>
+0028 <span class="comment">% 4. The model is solved. With constrain true, the fluxes of the measured exchanges and of</span>
+0029 <span class="comment">%    zeroFluxRxns (except this carbon source) are recorded.</span>
+0030 <span class="comment">%</span>
+0031 <span class="comment">% A condition with weight 0 is skipped: it is not matched to an exchange reaction or simulated,</span>
+0032 <span class="comment">% and its element of sims has skipped true and feasible false.</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">% Parameters</span>
+0035 <span class="comment">% ----------</span>
+0036 <span class="comment">% model : struct</span>
+0037 <span class="comment">%     model with all other constraints already applied.</span>
+0038 <span class="comment">% fluxData : struct</span>
+0039 <span class="comment">%     data set to simulate, as returned by loadFluxData.</span>
+0040 <span class="comment">% constrain : logical</span>
+0041 <span class="comment">%     true for flux conditions (uptake limited to the measured rate, fluxes recorded), false for</span>
+0042 <span class="comment">%     maximum-growth conditions (uptake unlimited, only growth recorded).</span>
+0043 <span class="comment">% zeroFluxRxns : cell</span>
+0044 <span class="comment">%     ids of reactions that carry no flux in any condition (experimentData.zeroFlux).</span>
+0045 <span class="comment">% bioRxnId : char</span>
+0046 <span class="comment">%     id of the growth reaction, whose flux is the growth rate.</span>
+0047 <span class="comment">%</span>
+0048 <span class="comment">% Name-Value Arguments</span>
+0049 <span class="comment">% --------------------</span>
+0050 <span class="comment">% makeAnaerobic : function_handle</span>
+0051 <span class="comment">%     takes a model and returns the anaerobic model. No default, since this depends on the</span>
+0052 <span class="comment">%     organism; without it the oxygen flux of the data is ignored (default []).</span>
+0053 <span class="comment">% changeProteinBiomass : function_handle</span>
+0054 <span class="comment">%     takes a model and Ptot (g/gDCW) and returns the model with that protein content. Without it</span>
+0055 <span class="comment">%     Ptot is ignored (default []).</span>
+0056 <span class="comment">% optimize : function_handle</span>
+0057 <span class="comment">%     solves a model and returns a structure with x, f and stat, as solveLP does (default</span>
+0058 <span class="comment">%     @solveLP).</span>
+0059 <span class="comment">%</span>
+0060 <span class="comment">% Returns</span>
+0061 <span class="comment">% -------</span>
+0062 <span class="comment">% sims : struct</span>
+0063 <span class="comment">%     structure array with one element per condition and the fields:</span>
+0064 <span class="comment">%</span>
+0065 <span class="comment">%     - feasible : false if the solution is infeasible or not optimal, or the condition was</span>
+0066 <span class="comment">%       skipped. The other fields have no meaning then.</span>
+0067 <span class="comment">%     - skipped : true for a condition with weight 0.</span>
+0068 <span class="comment">%     - growth : flux of bioRxnId (1/h).</span>
+0069 <span class="comment">%     - exchRxnIDs : measured exchange reactions (empty if constrain is false).</span>
+0070 <span class="comment">%     - exchFluxes : their simulated fluxes (mmol/gDCW/h).</span>
+0071 <span class="comment">%     - blockRxnIDs : recorded zero-flux reactions.</span>
+0072 <span class="comment">%     - blockFluxes : their simulated fluxes.</span>
+0073 <span class="comment">%</span>
+0074 <span class="comment">% Notes</span>
+0075 <span class="comment">% -----</span>
+0076 <span class="comment">% Errors: simulateConditions:unmatchedCondition (a condition with weight other than 0 whose name</span>
+0077 <span class="comment">% matches no exchange metabolite) and simulateConditions:missingReaction (a reaction of</span>
+0078 <span class="comment">% fluxData, zeroFluxRxns or bioRxnId that is not in the model).</span>
+0079 <span class="comment">%</span>
+0080 <span class="comment">% Examples</span>
+0081 <span class="comment">% --------</span>
+0082 <span class="comment">%     sims = simulateConditions(model, experimentData.fluxData, true, ...</span>
+0083 <span class="comment">%         experimentData.zeroFlux, 'growth');</span>
+0084 <span class="comment">%</span>
+0085 <span class="comment">% See also</span>
+0086 <span class="comment">% --------</span>
+0087 <span class="comment">% loadExperimentData, datasetRmse, experimentDistance</span>
+0088 
+0089 p = parseRAVENargs(varargin, { <span class="keyword">...</span>
+0090     <span class="string">'makeAnaerobic'</span>, []; <span class="keyword">...</span>
+0091     <span class="string">'changeProteinBiomass'</span>, []; <span class="keyword">...</span>
+0092     <span class="string">'optimize'</span>, []});
+0093 makeAnaerobic = p.makeAnaerobic;
+0094 changeProteinBiomass = p.changeProteinBiomass;
+0095 optimize = p.optimize;
+0096 <span class="keyword">if</span> isempty(optimize)
+0097     optimize = @(m) solveLP(m);
+0098 <span class="keyword">end</span>
+0099 zeroFluxRxns = cellstr(zeroFluxRxns);
+0100 
+0101 active = <a href="#_sub1" class="code" title="subfunction active = activeConditions(fluxData)">activeConditions</a>(fluxData);
+0102 condToExch = <a href="#_sub2" class="code" title="subfunction condToExch = matchConditions(fluxData, active)">matchConditions</a>(fluxData, active);
+0103 conditionRxns = unique(fluxData.exchRxnIDs(unique(condToExch(active))));
+0104 allRxns = [conditionRxns(:); fluxData.exchRxnIDs(:); zeroFluxRxns(:); {bioRxnId}];
+0105 missing = unique(allRxns(~ismember(allRxns, model.rxns)));
+0106 <span class="keyword">if</span> ~isempty(missing)
+0107     error(<span class="string">'simulateConditions:missingReaction'</span>, <span class="keyword">...</span>
+0108         <span class="string">'The reactions %s are not in the model.'</span>, strjoin(missing(:)', <span class="string">', '</span>));
+0109 <span class="keyword">end</span>
+0110 o2Col = find(strcmp(fluxData.exchMets, <span class="string">'oxygen'</span>), 1);
+0111 bioIdx = find(strcmp(model.rxns, bioRxnId));
+0112 <span class="keyword">if</span> ~isfield(model, <span class="string">'c'</span>) || nnz(model.c) ~= 1 || model.c(bioIdx) &lt;= 0
+0113     warning(<span class="string">'simulateConditions:objectiveNotGrowth'</span>, <span class="keyword">...</span>
+0114         [<span class="string">'The objective of the model is not the maximisation of the growth reaction %s. '</span> <span class="keyword">...</span>
+0115         <span class="string">'The growth rate of a condition is the flux of %s in a solution of the objective '</span> <span class="keyword">...</span>
+0116         <span class="string">'that the model has, and that is not the maximal growth rate. Set the objective with '</span> <span class="keyword">...</span>
+0117         <span class="string">'setParam(model, ''obj'', ''%s'', 1).'</span>], bioRxnId, bioRxnId, bioRxnId);
+0118 <span class="keyword">end</span>
+0119 conditionIdx = find(ismember(model.rxns, conditionRxns));
+0120 
+0121 nConds = numel(fluxData.conds);
+0122 template = struct(<span class="string">'feasible'</span>, false, <span class="string">'skipped'</span>, false, <span class="string">'growth'</span>, NaN, <span class="keyword">...</span>
+0123     <span class="string">'exchRxnIDs'</span>, {{}}, <span class="string">'exchFluxes'</span>, zeros(0, 1), <span class="string">'blockRxnIDs'</span>, {{}}, <span class="keyword">...</span>
+0124     <span class="string">'blockFluxes'</span>, zeros(0, 1));
+0125 sims = repmat(template, nConds, 1);
+0126 
+0127 <span class="keyword">for</span> i = 1:nConds
+0128     <span class="keyword">if</span> ~active(i)
+0129         sims(i).skipped = true;
+0130         <span class="keyword">continue</span>
+0131     <span class="keyword">end</span>
+0132     carbonRxn = fluxData.exchRxnIDs{condToExch(i)};
+0133     carbonIdx = find(strcmp(model.rxns, carbonRxn));
+0134     m = model;
+0135     m.lb(conditionIdx) = 0;
+0136     <span class="keyword">if</span> constrain
+0137         m.lb(carbonIdx) = fluxData.exchFluxes(i, condToExch(i));
+0138     <span class="keyword">else</span>
+0139         m.lb(carbonIdx) = -1000;
+0140     <span class="keyword">end</span>
+0141 
+0142     <span class="keyword">if</span> ~isempty(o2Col) &amp;&amp; fluxData.exchFluxes(i, o2Col) == 0 &amp;&amp; ~isempty(makeAnaerobic)
+0143         m = makeAnaerobic(m);
+0144     <span class="keyword">end</span>
+0145     ptot = fluxData.Ptot(i);
+0146     <span class="keyword">if</span> ~(isnan(ptot) || ptot == 0) &amp;&amp; ~isempty(changeProteinBiomass)
+0147         m = changeProteinBiomass(m, ptot);
+0148     <span class="keyword">end</span>
+0149 
+0150     sol = optimize(m);
+0151     [~, isOptimal] = checkSolution(sol);
+0152     <span class="keyword">if</span> ~isOptimal || isempty(sol.f) || isnan(sol.f)
+0153         <span class="keyword">continue</span>
+0154     <span class="keyword">end</span>
+0155 
+0156     sims(i).feasible = true;
+0157     sims(i).growth = sol.x(bioIdx);
+0158     <span class="keyword">if</span> constrain
+0159         measured = find(~isnan(fluxData.exchFluxes(i, :)));
+0160         sims(i).exchRxnIDs = fluxData.exchRxnIDs(measured);
+0161         [~, exchIdx] = ismember(sims(i).exchRxnIDs, m.rxns);
+0162         sims(i).exchFluxes = sol.x(exchIdx);
+0163         blockRxns = zeroFluxRxns(~strcmp(zeroFluxRxns, carbonRxn));
+0164         [~, blockIdx] = ismember(blockRxns, m.rxns);
+0165         sims(i).blockRxnIDs = blockRxns;
+0166         sims(i).blockFluxes = sol.x(blockIdx);
+0167     <span class="keyword">end</span>
+0168 <span class="keyword">end</span>
+0169 <span class="keyword">end</span>
+0170 
+0171 <a name="_sub1" href="#_subfunctions" class="code">function active = activeConditions(fluxData)</a>
+0172 <span class="comment">% Conditions with a weight other than 0.</span>
+0173 n = numel(fluxData.conds);
+0174 <span class="keyword">if</span> isfield(fluxData, <span class="string">'weight'</span>) &amp;&amp; ~isempty(fluxData.weight)
+0175     active = fluxData.weight(:) ~= 0;
+0176 <span class="keyword">else</span>
+0177     active = true(n, 1);
+0178 <span class="keyword">end</span>
+0179 <span class="keyword">end</span>
+0180 
+0181 <a name="_sub2" href="#_subfunctions" class="code">function condToExch = matchConditions(fluxData, active)</a>
+0182 <span class="comment">% Column of exchMets for the name of each active condition (0 for the others).</span>
+0183 [found, condToExch] = ismember(fluxData.conds(:), fluxData.exchMets);
+0184 missing = unique(fluxData.conds(~found &amp; active));
+0185 <span class="keyword">if</span> ~isempty(missing)
+0186     error(<span class="string">'simulateConditions:unmatchedCondition'</span>, <span class="keyword">...</span>
+0187         [<span class="string">'Carbon source(s) &quot;%s&quot; in the provided fluxData or maxGrowth cannot be '</span> <span class="keyword">...</span>
+0188         <span class="string">'matched by name with an exchange reaction.'</span>], strjoin(missing(:)', <span class="string">'; '</span>));
+0189 <span class="keyword">end</span>
+0190 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>
