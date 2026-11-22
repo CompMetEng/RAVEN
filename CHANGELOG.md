@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 3.0.0b3 (2026-11-22)
+
+Third beta toward 3.0. The main changes are the `experiments/` folder, `getGAM` and the `keepOffsetsOf` option of `setGAM`, and a closer match of `getModelFromHomology` to raven-toolbox. Changes below are relative to 3.0.0b2.
 
 ### Breaking changes
 
