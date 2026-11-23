@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of experimentDistance</title>
+  <meta name="keywords" content="experimentDistance">
+  <meta name="description" content="experimentDistance  Distance between a model and all measured conditions, as one number.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">experiments</a> &gt; experimentDistance.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for experiments&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>experimentDistance
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>experimentDistance  Distance between a model and all measured conditions, as one number.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> experimentDistance  Distance between a model and all measured conditions, as one number.
+
+ Combines the distance of the flux conditions (experimentData.fluxData) and of the
+ maximum-growth conditions (experimentData.maxGrowth), each from datasetRmse, as
+ (dFlux + w * dMaxGrowth) / (1 + w) with w = maxGrowthWeight. A smaller distance is a better fit.
+ Use it to compare model versions on the same data or as the objective when fitting parameters.
+ Fluxes are compared in Cmmol/gDCW/h (computeCarbonWeights). A data set that is absent from
+ experimentData, or in which every condition has weight 0, does not contribute.
+
+ The maximum-growth comparison is the maximal growth rate only if the simulated model has growth
+ as objective; simulateConditions warns if it does not.
+
+ Parameters
+ ----------
+ experimentData : struct
+     measured conditions, as returned by loadExperimentData.
+ fluxSims : struct
+     simulateConditions result for experimentData.fluxData (constrain true); [] if there is no
+     fluxData.
+ maxGrowthSims : struct
+     simulateConditions result for experimentData.maxGrowth (constrain false); [] if there is no
+     maxGrowth.
+ carbonWeights : containers.Map
+     weights from computeCarbonWeights.
+
+ Name-Value Arguments
+ --------------------
+ penalty : double
+     error of a condition that could not be solved (default 99).
+ maxGrowthWeight : double
+     weight of the maximum-growth distance against the flux distance (default 1, the average).
+
+ Returns
+ -------
+ rmse : double
+     combined distance (Cmmol/gDCW/h). NaN if no condition has a weight other than 0.
+ detail : struct
+     per-condition errors (rmseList of datasetRmse) in the fields fluxData and maxGrowth, for
+     the data sets that were scored.
+
+ Notes
+ -----
+ experimentDistance:missingSims is raised if a data set has no simulation result.
+
+ Examples
+ --------
+ One flux condition with measured growth 0.9 1/h and glucose uptake 10 mmol/gDCW/h, and a model
+ that grows at 1.0 1/h at the same uptake:
+
+     fluxData.conds = {'glc'}; fluxData.Ptot = NaN; fluxData.grRate = 0.9;
+     fluxData.exchFluxes = -10; fluxData.exchMets = {'glc'}; fluxData.exchRxnIDs = {'EX_glc'};
+     experimentData = struct('fluxData', fluxData, 'maxGrowth', [], 'zeroFlux', {{}});
+     sims = struct('feasible', true, 'skipped', false, 'growth', 1.0, ...
+         'exchRxnIDs', {{'EX_glc'}}, 'exchFluxes', -10, 'blockRxnIDs', {{}}, ...
+         'blockFluxes', zeros(0, 1));
+     carbonWeights = containers.Map({'EX_glc', 'growth'}, [6 41]);
+     rmse = experimentDistance(experimentData, sims, [], carbonWeights)   % 2.899
+
+ See also
+ --------
+ <a href="datasetRmse.html" class="code" title="function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin)">datasetRmse</a>, <a href="simulateConditions.html" class="code" title="function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bioRxnId, varargin)">simulateConditions</a>, <a href="loadExperimentData.html" class="code" title="function experimentData = loadExperimentData(dataDir)">loadExperimentData</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="datasetRmse.html" class="code" title="function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin)">datasetRmse</a>	datasetRmse  Distance between the simulation of one data set and its measurements.</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, varargin)</a>
+0002 <span class="comment">% experimentDistance  Distance between a model and all measured conditions, as one number.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Combines the distance of the flux conditions (experimentData.fluxData) and of the</span>
+0005 <span class="comment">% maximum-growth conditions (experimentData.maxGrowth), each from datasetRmse, as</span>
+0006 <span class="comment">% (dFlux + w * dMaxGrowth) / (1 + w) with w = maxGrowthWeight. A smaller distance is a better fit.</span>
+0007 <span class="comment">% Use it to compare model versions on the same data or as the objective when fitting parameters.</span>
+0008 <span class="comment">% Fluxes are compared in Cmmol/gDCW/h (computeCarbonWeights). A data set that is absent from</span>
+0009 <span class="comment">% experimentData, or in which every condition has weight 0, does not contribute.</span>
+0010 <span class="comment">%</span>
+0011 <span class="comment">% The maximum-growth comparison is the maximal growth rate only if the simulated model has growth</span>
+0012 <span class="comment">% as objective; simulateConditions warns if it does not.</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Parameters</span>
+0015 <span class="comment">% ----------</span>
+0016 <span class="comment">% experimentData : struct</span>
+0017 <span class="comment">%     measured conditions, as returned by loadExperimentData.</span>
+0018 <span class="comment">% fluxSims : struct</span>
+0019 <span class="comment">%     simulateConditions result for experimentData.fluxData (constrain true); [] if there is no</span>
+0020 <span class="comment">%     fluxData.</span>
+0021 <span class="comment">% maxGrowthSims : struct</span>
+0022 <span class="comment">%     simulateConditions result for experimentData.maxGrowth (constrain false); [] if there is no</span>
+0023 <span class="comment">%     maxGrowth.</span>
+0024 <span class="comment">% carbonWeights : containers.Map</span>
+0025 <span class="comment">%     weights from computeCarbonWeights.</span>
+0026 <span class="comment">%</span>
+0027 <span class="comment">% Name-Value Arguments</span>
+0028 <span class="comment">% --------------------</span>
+0029 <span class="comment">% penalty : double</span>
+0030 <span class="comment">%     error of a condition that could not be solved (default 99).</span>
+0031 <span class="comment">% maxGrowthWeight : double</span>
+0032 <span class="comment">%     weight of the maximum-growth distance against the flux distance (default 1, the average).</span>
+0033 <span class="comment">%</span>
+0034 <span class="comment">% Returns</span>
+0035 <span class="comment">% -------</span>
+0036 <span class="comment">% rmse : double</span>
+0037 <span class="comment">%     combined distance (Cmmol/gDCW/h). NaN if no condition has a weight other than 0.</span>
+0038 <span class="comment">% detail : struct</span>
+0039 <span class="comment">%     per-condition errors (rmseList of datasetRmse) in the fields fluxData and maxGrowth, for</span>
+0040 <span class="comment">%     the data sets that were scored.</span>
+0041 <span class="comment">%</span>
+0042 <span class="comment">% Notes</span>
+0043 <span class="comment">% -----</span>
+0044 <span class="comment">% experimentDistance:missingSims is raised if a data set has no simulation result.</span>
+0045 <span class="comment">%</span>
+0046 <span class="comment">% Examples</span>
+0047 <span class="comment">% --------</span>
+0048 <span class="comment">% One flux condition with measured growth 0.9 1/h and glucose uptake 10 mmol/gDCW/h, and a model</span>
+0049 <span class="comment">% that grows at 1.0 1/h at the same uptake:</span>
+0050 <span class="comment">%</span>
+0051 <span class="comment">%     fluxData.conds = {'glc'}; fluxData.Ptot = NaN; fluxData.grRate = 0.9;</span>
+0052 <span class="comment">%     fluxData.exchFluxes = -10; fluxData.exchMets = {'glc'}; fluxData.exchRxnIDs = {'EX_glc'};</span>
+0053 <span class="comment">%     experimentData = struct('fluxData', fluxData, 'maxGrowth', [], 'zeroFlux', {{}});</span>
+0054 <span class="comment">%     sims = struct('feasible', true, 'skipped', false, 'growth', 1.0, ...</span>
+0055 <span class="comment">%         'exchRxnIDs', {{'EX_glc'}}, 'exchFluxes', -10, 'blockRxnIDs', {{}}, ...</span>
+0056 <span class="comment">%         'blockFluxes', zeros(0, 1));</span>
+0057 <span class="comment">%     carbonWeights = containers.Map({'EX_glc', 'growth'}, [6 41]);</span>
+0058 <span class="comment">%     rmse = experimentDistance(experimentData, sims, [], carbonWeights)   % 2.899</span>
+0059 <span class="comment">%</span>
+0060 <span class="comment">% See also</span>
+0061 <span class="comment">% --------</span>
+0062 <span class="comment">% datasetRmse, simulateConditions, loadExperimentData</span>
+0063 
+0064 p = parseRAVENargs(varargin, {<span class="string">'penalty'</span>, 99; <span class="string">'maxGrowthWeight'</span>, 1});
+0065 penalty = p.penalty;
+0066 maxGrowthWeight = p.maxGrowthWeight;
+0067 
+0068 parts = [];
+0069 weights = [];
+0070 detail = struct();
+0071 <span class="keyword">if</span> ~isempty(experimentData.fluxData)
+0072     <span class="keyword">if</span> isempty(fluxSims)
+0073         error(<span class="string">'experimentDistance:missingSims'</span>, <span class="keyword">...</span>
+0074             <span class="string">'experimentData.fluxData is set but fluxSims is empty.'</span>);
+0075     <span class="keyword">end</span>
+0076     [r, perCond] = <a href="datasetRmse.html" class="code" title="function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin)">datasetRmse</a>(experimentData.fluxData, fluxSims, true, <span class="keyword">...</span>
+0077         carbonWeights, <span class="string">'penalty'</span>, penalty);
+0078     <span class="keyword">if</span> ~isnan(r)
+0079         parts(end+1) = r;
+0080         weights(end+1) = 1;
+0081     <span class="keyword">end</span>
+0082     detail.fluxData = perCond;
+0083 <span class="keyword">end</span>
+0084 <span class="keyword">if</span> ~isempty(experimentData.maxGrowth)
+0085     <span class="keyword">if</span> isempty(maxGrowthSims)
+0086         error(<span class="string">'experimentDistance:missingSims'</span>, <span class="keyword">...</span>
+0087             <span class="string">'experimentData.maxGrowth is set but maxGrowthSims is empty.'</span>);
+0088     <span class="keyword">end</span>
+0089     [r, perCond] = <a href="datasetRmse.html" class="code" title="function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin)">datasetRmse</a>(experimentData.maxGrowth, maxGrowthSims, false, <span class="keyword">...</span>
+0090         carbonWeights, <span class="string">'penalty'</span>, penalty);
+0091     <span class="keyword">if</span> ~isnan(r)
+0092         parts(end+1) = r;
+0093         weights(end+1) = maxGrowthWeight;
+0094     <span class="keyword">end</span>
+0095     detail.maxGrowth = perCond;
+0096 <span class="keyword">end</span>
+0097 <span class="keyword">if</span> isempty(parts)
+0098     rmse = NaN;
+0099 <span class="keyword">else</span>
+0100     rmse = sum(parts .* weights) / sum(weights);
+0101 <span class="keyword">end</span>
+0102 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

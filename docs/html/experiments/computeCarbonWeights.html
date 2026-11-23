@@ -1,0 +1,196 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of computeCarbonWeights</title>
+  <meta name="keywords" content="computeCarbonWeights">
+  <meta name="description" content="computeCarbonWeights  Weight of each reaction that puts its flux on a common carbon scale.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">experiments</a> &gt; computeCarbonWeights.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for experiments&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>computeCarbonWeights
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>computeCarbonWeights  Weight of each reaction that puts its flux on a common carbon scale.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function carbonWeights = computeCarbonWeights(model, rxnIds, bioRxnId) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> computeCarbonWeights  Weight of each reaction that puts its flux on a common carbon scale.
+
+ Multiplying an exchange flux by the number of carbon atoms of the exchanged metabolite gives
+ Cmmol/gDCW/h, so that fluxes of different metabolites can be added in one distance. The growth
+ reaction gets 41 (assumed biomass carbon content in Cmmol/gDCW).
+
+ Parameters
+ ----------
+ model : struct
+     model with metabolite formulas (metFormulas).
+ rxnIds : cell
+     reactions to weight: the exchange reactions of the data sets, the zero-flux reactions and
+     the growth reaction.
+ bioRxnId : char
+     id of the growth reaction.
+
+ Returns
+ -------
+ carbonWeights : containers.Map
+     weight per reaction id. The growth reaction gets 41. Every other reaction gets the number
+     of carbon atoms in the formula of its single exchanged metabolite. A reaction with several
+     metabolites, a metabolite without a readable formula and a metabolite without carbon get 1,
+     so that mismatches in their fluxes still count.
+
+     Formulas are read by parseFormulas: element symbols with an optional integer or decimal
+     count (C6H12O6, C2.5H5); charge signs and * are ignored (C6H12O6*H2O). Parentheses
+     (C6H12O6(H2O)2, (C5H8)n), empty formulas and unknown elements are not readable.
+
+ Notes
+ -----
+ A model without formulas gives weight 1 to every exchange and the warning
+ computeCarbonWeights:noFormulas. A reaction that is not in the model raises
+ computeCarbonWeights:missingReaction.
+
+ Examples
+ --------
+     carbonWeights = computeCarbonWeights(model, {'EX_glc','EX_o2','growth'}, 'growth');
+     carbonWeights('EX_glc')   % 6 for glucose (C6H12O6)
+
+ See also
+ --------
+ <a href="datasetRmse.html" class="code" title="function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin)">datasetRmse</a>, <a href="experimentDistance.html" class="code" title="function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, varargin)">experimentDistance</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function carbon = carbonAtoms(formulas)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function carbonWeights = computeCarbonWeights(model, rxnIds, bioRxnId)</a>
+0002 <span class="comment">% computeCarbonWeights  Weight of each reaction that puts its flux on a common carbon scale.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% Multiplying an exchange flux by the number of carbon atoms of the exchanged metabolite gives</span>
+0005 <span class="comment">% Cmmol/gDCW/h, so that fluxes of different metabolites can be added in one distance. The growth</span>
+0006 <span class="comment">% reaction gets 41 (assumed biomass carbon content in Cmmol/gDCW).</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">% Parameters</span>
+0009 <span class="comment">% ----------</span>
+0010 <span class="comment">% model : struct</span>
+0011 <span class="comment">%     model with metabolite formulas (metFormulas).</span>
+0012 <span class="comment">% rxnIds : cell</span>
+0013 <span class="comment">%     reactions to weight: the exchange reactions of the data sets, the zero-flux reactions and</span>
+0014 <span class="comment">%     the growth reaction.</span>
+0015 <span class="comment">% bioRxnId : char</span>
+0016 <span class="comment">%     id of the growth reaction.</span>
+0017 <span class="comment">%</span>
+0018 <span class="comment">% Returns</span>
+0019 <span class="comment">% -------</span>
+0020 <span class="comment">% carbonWeights : containers.Map</span>
+0021 <span class="comment">%     weight per reaction id. The growth reaction gets 41. Every other reaction gets the number</span>
+0022 <span class="comment">%     of carbon atoms in the formula of its single exchanged metabolite. A reaction with several</span>
+0023 <span class="comment">%     metabolites, a metabolite without a readable formula and a metabolite without carbon get 1,</span>
+0024 <span class="comment">%     so that mismatches in their fluxes still count.</span>
+0025 <span class="comment">%</span>
+0026 <span class="comment">%     Formulas are read by parseFormulas: element symbols with an optional integer or decimal</span>
+0027 <span class="comment">%     count (C6H12O6, C2.5H5); charge signs and * are ignored (C6H12O6*H2O). Parentheses</span>
+0028 <span class="comment">%     (C6H12O6(H2O)2, (C5H8)n), empty formulas and unknown elements are not readable.</span>
+0029 <span class="comment">%</span>
+0030 <span class="comment">% Notes</span>
+0031 <span class="comment">% -----</span>
+0032 <span class="comment">% A model without formulas gives weight 1 to every exchange and the warning</span>
+0033 <span class="comment">% computeCarbonWeights:noFormulas. A reaction that is not in the model raises</span>
+0034 <span class="comment">% computeCarbonWeights:missingReaction.</span>
+0035 <span class="comment">%</span>
+0036 <span class="comment">% Examples</span>
+0037 <span class="comment">% --------</span>
+0038 <span class="comment">%     carbonWeights = computeCarbonWeights(model, {'EX_glc','EX_o2','growth'}, 'growth');</span>
+0039 <span class="comment">%     carbonWeights('EX_glc')   % 6 for glucose (C6H12O6)</span>
+0040 <span class="comment">%</span>
+0041 <span class="comment">% See also</span>
+0042 <span class="comment">% --------</span>
+0043 <span class="comment">% datasetRmse, experimentDistance</span>
+0044 
+0045 rxnIds = cellstr(rxnIds);
+0046 biomassCarbon = 41;  <span class="comment">% Cmmol/gDCW, assumed carbon content of biomass</span>
+0047 
+0048 <span class="keyword">if</span> ~isfield(model, <span class="string">'metFormulas'</span>) || all(cellfun(@isempty, model.metFormulas))
+0049     warning(<span class="string">'computeCarbonWeights:noFormulas'</span>, <span class="keyword">...</span>
+0050         <span class="string">'The model has no metabolite formulas; every exchange reaction gets the weight 1.'</span>);
+0051     formulas = repmat({<span class="string">''</span>}, numel(model.mets), 1);
+0052 <span class="keyword">else</span>
+0053     formulas = model.metFormulas;
+0054 <span class="keyword">end</span>
+0055 
+0056 [found, rxnIdx] = ismember(rxnIds, model.rxns);
+0057 <span class="keyword">if</span> ~all(found)
+0058     error(<span class="string">'computeCarbonWeights:missingReaction'</span>, <span class="keyword">...</span>
+0059         <span class="string">'The reactions %s are not in the model.'</span>, strjoin(rxnIds(~found), <span class="string">', '</span>));
+0060 <span class="keyword">end</span>
+0061 
+0062 <span class="comment">% The exchanged metabolite of every reaction that has exactly one, and the carbon atoms in the</span>
+0063 <span class="comment">% formulas of these metabolites (NaN when a formula cannot be read), parsed in one call.</span>
+0064 metIdx = zeros(numel(rxnIds), 1);
+0065 <span class="keyword">for</span> i = 1:numel(rxnIds)
+0066     mets = find(model.S(:, rxnIdx(i)));
+0067     <span class="keyword">if</span> ~strcmp(rxnIds{i}, bioRxnId) &amp;&amp; numel(mets) == 1
+0068         metIdx(i) = mets;
+0069     <span class="keyword">end</span>
+0070 <span class="keyword">end</span>
+0071 carbon = <a href="#_sub1" class="code" title="subfunction carbon = carbonAtoms(formulas)">carbonAtoms</a>(formulas(metIdx(metIdx &gt; 0)));
+0072 carbonOfRxn = NaN(numel(rxnIds), 1);
+0073 carbonOfRxn(metIdx &gt; 0) = carbon;
+0074 
+0075 carbonWeights = containers.Map(<span class="string">'KeyType'</span>, <span class="string">'char'</span>, <span class="string">'ValueType'</span>, <span class="string">'double'</span>);
+0076 <span class="keyword">for</span> i = 1:numel(rxnIds)
+0077     <span class="keyword">if</span> strcmp(rxnIds{i}, bioRxnId)
+0078         carbonWeights(rxnIds{i}) = biomassCarbon;
+0079     <span class="keyword">elseif</span> ~isnan(carbonOfRxn(i)) &amp;&amp; carbonOfRxn(i) ~= 0
+0080         carbonWeights(rxnIds{i}) = carbonOfRxn(i);
+0081     <span class="keyword">else</span>
+0082         carbonWeights(rxnIds{i}) = 1;
+0083     <span class="keyword">end</span>
+0084 <span class="keyword">end</span>
+0085 <span class="keyword">end</span>
+0086 
+0087 <a name="_sub1" href="#_subfunctions" class="code">function carbon = carbonAtoms(formulas)</a>
+0088 <span class="comment">% Number of carbon atoms in each formula, NaN where the formula is empty or cannot be read.</span>
+0089 <span class="comment">% A * between parts of a formula is dropped, as cobra does, before the formulas are parsed.</span>
+0090 carbon = NaN(numel(formulas), 1);
+0091 formulas = strtrim(strrep(formulas(:), <span class="string">'*'</span>, <span class="string">''</span>));
+0092 readable = ~cellfun(@isempty, formulas);
+0093 <span class="keyword">if</span> ~any(readable)
+0094     <span class="keyword">return</span>
+0095 <span class="keyword">end</span>
+0096 [elements, useMat, exitFlag] = parseFormulas(formulas(readable));
+0097 carbonCol = strcmp(elements.abbrevs, <span class="string">'C'</span>);
+0098 count = NaN(nnz(readable), 1);
+0099 <span class="keyword">if</span> any(carbonCol)
+0100     count = useMat(:, carbonCol);
+0101 <span class="keyword">else</span>
+0102     count(:) = 0;
+0103 <span class="keyword">end</span>
+0104 count(exitFlag ~= 1) = NaN;
+0105 carbon(readable) = count;
+0106 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

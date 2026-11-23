@@ -1,0 +1,153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of loadExperimentData</title>
+  <meta name="keywords" content="loadExperimentData">
+  <meta name="description" content="loadExperimentData  Read the measured conditions of a model from a folder.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">experiments</a> &gt; loadExperimentData.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for experiments&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>loadExperimentData
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>loadExperimentData  Read the measured conditions of a model from a folder.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function experimentData = loadExperimentData(dataDir) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> loadExperimentData  Read the measured conditions of a model from a folder.
+
+ The folder holds up to three tab-delimited files, each optional:
+
+ - fluxData.tsv : flux conditions, in which the carbon-source uptake is limited to the measured
+   rate and the model is compared with the measured growth rate and exchange fluxes.
+ - maxGrowth.tsv : maximum-growth conditions, in which the uptake is unlimited and only the
+   maximal growth rate is compared. Same layout as fluxData.tsv (see loadFluxData).
+ - zeroFlux.tsv : the header Rxns and one reaction id per line, for reactions that carry no flux
+   in any condition. Flux through them is penalised in the flux conditions.
+
+ A missing file gives [] ({} for zeroFlux). The files feed simulateConditions and
+ experimentDistance, which condense the mismatch between model and measurements into one number:
+ computeCarbonWeights, simulateConditions (once per file), experimentDistance.
+
+ The model objective must be the maximisation of growth: the functions do not set it, and in a
+ maximum-growth condition the compared value is the maximum of the model objective.
+ simulateConditions warns if the objective is not the growth reaction.
+
+ Parameters
+ ----------
+ dataDir : char
+     folder that holds the files.
+
+ Returns
+ -------
+ experimentData : struct
+     structure with the fields:
+
+     - fluxData : the structure of loadFluxData for fluxData.tsv, or [].
+     - maxGrowth : the structure of loadFluxData for maxGrowth.tsv, or [].
+     - zeroFlux : cell column with the reaction ids of zeroFlux.tsv, or {}.
+
+ Examples
+ --------
+     experimentData = loadExperimentData('data');
+
+ See also
+ --------
+ <a href="loadFluxData.html" class="code" title="function fluxData = loadFluxData(fluxDataFile)">loadFluxData</a>, <a href="computeCarbonWeights.html" class="code" title="function carbonWeights = computeCarbonWeights(model, rxnIds, bioRxnId)">computeCarbonWeights</a>, <a href="simulateConditions.html" class="code" title="function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bioRxnId, varargin)">simulateConditions</a>, <a href="experimentDistance.html" class="code" title="function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, varargin)">experimentDistance</a>, <a href="applyFluxDataConstraints.html" class="code" title="function model = applyFluxDataConstraints(model, fluxData, bioRxnId, varargin)">applyFluxDataConstraints</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="loadFluxData.html" class="code" title="function fluxData = loadFluxData(fluxDataFile)">loadFluxData</a>	loadFluxData  Read measured growth rates and exchange fluxes of several conditions from a file.</li></ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function fluxData = loadOptionalFluxData(file)</a></li><li><a href="#_sub2" class="code">function zeroFlux = loadZeroFlux(file)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function experimentData = loadExperimentData(dataDir)</a>
+0002 <span class="comment">% loadExperimentData  Read the measured conditions of a model from a folder.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% The folder holds up to three tab-delimited files, each optional:</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">% - fluxData.tsv : flux conditions, in which the carbon-source uptake is limited to the measured</span>
+0007 <span class="comment">%   rate and the model is compared with the measured growth rate and exchange fluxes.</span>
+0008 <span class="comment">% - maxGrowth.tsv : maximum-growth conditions, in which the uptake is unlimited and only the</span>
+0009 <span class="comment">%   maximal growth rate is compared. Same layout as fluxData.tsv (see loadFluxData).</span>
+0010 <span class="comment">% - zeroFlux.tsv : the header Rxns and one reaction id per line, for reactions that carry no flux</span>
+0011 <span class="comment">%   in any condition. Flux through them is penalised in the flux conditions.</span>
+0012 <span class="comment">%</span>
+0013 <span class="comment">% A missing file gives [] ({} for zeroFlux). The files feed simulateConditions and</span>
+0014 <span class="comment">% experimentDistance, which condense the mismatch between model and measurements into one number:</span>
+0015 <span class="comment">% computeCarbonWeights, simulateConditions (once per file), experimentDistance.</span>
+0016 <span class="comment">%</span>
+0017 <span class="comment">% The model objective must be the maximisation of growth: the functions do not set it, and in a</span>
+0018 <span class="comment">% maximum-growth condition the compared value is the maximum of the model objective.</span>
+0019 <span class="comment">% simulateConditions warns if the objective is not the growth reaction.</span>
+0020 <span class="comment">%</span>
+0021 <span class="comment">% Parameters</span>
+0022 <span class="comment">% ----------</span>
+0023 <span class="comment">% dataDir : char</span>
+0024 <span class="comment">%     folder that holds the files.</span>
+0025 <span class="comment">%</span>
+0026 <span class="comment">% Returns</span>
+0027 <span class="comment">% -------</span>
+0028 <span class="comment">% experimentData : struct</span>
+0029 <span class="comment">%     structure with the fields:</span>
+0030 <span class="comment">%</span>
+0031 <span class="comment">%     - fluxData : the structure of loadFluxData for fluxData.tsv, or [].</span>
+0032 <span class="comment">%     - maxGrowth : the structure of loadFluxData for maxGrowth.tsv, or [].</span>
+0033 <span class="comment">%     - zeroFlux : cell column with the reaction ids of zeroFlux.tsv, or {}.</span>
+0034 <span class="comment">%</span>
+0035 <span class="comment">% Examples</span>
+0036 <span class="comment">% --------</span>
+0037 <span class="comment">%     experimentData = loadExperimentData('data');</span>
+0038 <span class="comment">%</span>
+0039 <span class="comment">% See also</span>
+0040 <span class="comment">% --------</span>
+0041 <span class="comment">% loadFluxData, computeCarbonWeights, simulateConditions, experimentDistance, applyFluxDataConstraints</span>
+0042 
+0043 experimentData.fluxData   = <a href="#_sub1" class="code" title="subfunction fluxData = loadOptionalFluxData(file)">loadOptionalFluxData</a>(fullfile(dataDir, <span class="string">'fluxData.tsv'</span>));
+0044 experimentData.maxGrowth  = <a href="#_sub1" class="code" title="subfunction fluxData = loadOptionalFluxData(file)">loadOptionalFluxData</a>(fullfile(dataDir, <span class="string">'maxGrowth.tsv'</span>));
+0045 experimentData.zeroFlux   = <a href="#_sub2" class="code" title="subfunction zeroFlux = loadZeroFlux(file)">loadZeroFlux</a>(fullfile(dataDir, <span class="string">'zeroFlux.tsv'</span>));
+0046 <span class="keyword">end</span>
+0047 
+0048 <a name="_sub1" href="#_subfunctions" class="code">function fluxData = loadOptionalFluxData(file)</a>
+0049 fluxData = [];
+0050 <span class="keyword">if</span> isfile(file)
+0051     fluxData = <a href="loadFluxData.html" class="code" title="function fluxData = loadFluxData(fluxDataFile)">loadFluxData</a>(file);
+0052 <span class="keyword">end</span>
+0053 <span class="keyword">end</span>
+0054 
+0055 <a name="_sub2" href="#_subfunctions" class="code">function zeroFlux = loadZeroFlux(file)</a>
+0056 zeroFlux = {};
+0057 <span class="keyword">if</span> ~isfile(file)
+0058     <span class="keyword">return</span>
+0059 <span class="keyword">end</span>
+0060 lines = splitlines(string(fileread(file)));
+0061 lines = strtrim(erase(lines, char(13)));
+0062 lines = lines(2:end);
+0063 lines = lines(strlength(lines) &gt; 0);
+0064 zeroFlux = cellstr(lines);
+0065 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>
