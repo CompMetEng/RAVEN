@@ -1,0 +1,231 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of datasetRmse</title>
+  <meta name="keywords" content="datasetRmse">
+  <meta name="description" content="datasetRmse  Distance between the simulation of one data set and its measurements.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="../m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="../index.html">Home</a> &gt;  <a href="index.html">experiments</a> &gt; datasetRmse.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="../index.html"><img alt="<" border="0" src="../left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for experiments&nbsp;<img alt=">" border="0" src="../right.png"></a></td></tr></table>-->
+
+<h1>datasetRmse
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>datasetRmse  Distance between the simulation of one data set and its measurements.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="box"><strong>function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre class="comment"> datasetRmse  Distance between the simulation of one data set and its measurements.
+
+ The error of a flux condition (constrain true) is the root mean square of the differences
+ between carbon-weighted simulated and measured values: the growth rate, every measured exchange
+ flux and every zero-flux reaction (measured as 0). Zero-flux reactions simulated at exactly 0
+ are left out, so that correct predictions do not dilute the error. The error of a maximum-growth
+ condition (constrain false) is the absolute difference of the carbon-weighted growth rates. A
+ condition that could not be solved gets the penalty. The distance is the mean of the condition
+ errors, each multiplied by the condition weight if the data has weights (the mean is over the
+ conditions, not divided by the sum of the weights). A condition with weight 0 has error NaN and
+ is not part of the mean. Values are in Cmmol/gDCW/h (see computeCarbonWeights).
+
+ Parameters
+ ----------
+ fluxData : struct
+     the data set that was simulated, as returned by loadFluxData.
+ sims : struct
+     result of simulateConditions for that data set.
+ constrain : logical
+     the value given to simulateConditions: true compares growth and exchange fluxes, false
+     growth only.
+ carbonWeights : containers.Map
+     weights from computeCarbonWeights. A reaction that is not in the map gets weight 1.
+
+ Name-Value Arguments
+ --------------------
+ penalty : double
+     error of a condition that could not be solved (default 99), large enough that a model that
+     cannot grow scores worse than one that grows with a large error.
+
+ Returns
+ -------
+ rmse : double
+     weighted mean of the errors of the conditions with weight other than 0 (Cmmol/gDCW/h). NaN
+     if every condition has weight 0.
+ rmseList : double
+     error of each condition before weighting, with the penalty for unsolved conditions; NaN for
+     weight 0.
+
+ Notes
+ -----
+ datasetRmse:wrongSimCount is raised if sims and fluxData have different numbers of conditions.
+
+ Examples
+ --------
+ One maximum-growth condition with measured growth 0.4 1/h and simulated growth 0.5 1/h; the
+ error is 0.1 * 41:
+
+     fluxData.conds = {'glc'}; fluxData.grRate = 0.4;
+     sims = struct('feasible', true, 'growth', 0.5);
+     [rmse, rmseList] = datasetRmse(fluxData, sims, false, containers.Map())   % 4.1
+
+ See also
+ --------
+ <a href="simulateConditions.html" class="code" title="function sims = simulateConditions(model, fluxData, constrain, zeroFluxRxns, bioRxnId, varargin)">simulateConditions</a>, <a href="computeCarbonWeights.html" class="code" title="function carbonWeights = computeCarbonWeights(model, rxnIds, bioRxnId)">computeCarbonWeights</a>, <a href="experimentDistance.html" class="code" title="function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, varargin)">experimentDistance</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(../matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="experimentDistance.html" class="code" title="function [rmse, detail] = experimentDistance(experimentData, fluxSims, maxGrowthSims, carbonWeights, varargin)">experimentDistance</a>	experimentDistance  Distance between a model and all measured conditions, as one number.</li></ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<ul style="list-style-image:url(../matlabicon.gif)">
+<li><a href="#_sub1" class="code">function w = weightOf(carbonWeights, rxnId)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="../up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function [rmse, rmseList] = datasetRmse(fluxData, sims, constrain, carbonWeights, varargin)</a>
+0002 <span class="comment">% datasetRmse  Distance between the simulation of one data set and its measurements.</span>
+0003 <span class="comment">%</span>
+0004 <span class="comment">% The error of a flux condition (constrain true) is the root mean square of the differences</span>
+0005 <span class="comment">% between carbon-weighted simulated and measured values: the growth rate, every measured exchange</span>
+0006 <span class="comment">% flux and every zero-flux reaction (measured as 0). Zero-flux reactions simulated at exactly 0</span>
+0007 <span class="comment">% are left out, so that correct predictions do not dilute the error. The error of a maximum-growth</span>
+0008 <span class="comment">% condition (constrain false) is the absolute difference of the carbon-weighted growth rates. A</span>
+0009 <span class="comment">% condition that could not be solved gets the penalty. The distance is the mean of the condition</span>
+0010 <span class="comment">% errors, each multiplied by the condition weight if the data has weights (the mean is over the</span>
+0011 <span class="comment">% conditions, not divided by the sum of the weights). A condition with weight 0 has error NaN and</span>
+0012 <span class="comment">% is not part of the mean. Values are in Cmmol/gDCW/h (see computeCarbonWeights).</span>
+0013 <span class="comment">%</span>
+0014 <span class="comment">% Parameters</span>
+0015 <span class="comment">% ----------</span>
+0016 <span class="comment">% fluxData : struct</span>
+0017 <span class="comment">%     the data set that was simulated, as returned by loadFluxData.</span>
+0018 <span class="comment">% sims : struct</span>
+0019 <span class="comment">%     result of simulateConditions for that data set.</span>
+0020 <span class="comment">% constrain : logical</span>
+0021 <span class="comment">%     the value given to simulateConditions: true compares growth and exchange fluxes, false</span>
+0022 <span class="comment">%     growth only.</span>
+0023 <span class="comment">% carbonWeights : containers.Map</span>
+0024 <span class="comment">%     weights from computeCarbonWeights. A reaction that is not in the map gets weight 1.</span>
+0025 <span class="comment">%</span>
+0026 <span class="comment">% Name-Value Arguments</span>
+0027 <span class="comment">% --------------------</span>
+0028 <span class="comment">% penalty : double</span>
+0029 <span class="comment">%     error of a condition that could not be solved (default 99), large enough that a model that</span>
+0030 <span class="comment">%     cannot grow scores worse than one that grows with a large error.</span>
+0031 <span class="comment">%</span>
+0032 <span class="comment">% Returns</span>
+0033 <span class="comment">% -------</span>
+0034 <span class="comment">% rmse : double</span>
+0035 <span class="comment">%     weighted mean of the errors of the conditions with weight other than 0 (Cmmol/gDCW/h). NaN</span>
+0036 <span class="comment">%     if every condition has weight 0.</span>
+0037 <span class="comment">% rmseList : double</span>
+0038 <span class="comment">%     error of each condition before weighting, with the penalty for unsolved conditions; NaN for</span>
+0039 <span class="comment">%     weight 0.</span>
+0040 <span class="comment">%</span>
+0041 <span class="comment">% Notes</span>
+0042 <span class="comment">% -----</span>
+0043 <span class="comment">% datasetRmse:wrongSimCount is raised if sims and fluxData have different numbers of conditions.</span>
+0044 <span class="comment">%</span>
+0045 <span class="comment">% Examples</span>
+0046 <span class="comment">% --------</span>
+0047 <span class="comment">% One maximum-growth condition with measured growth 0.4 1/h and simulated growth 0.5 1/h; the</span>
+0048 <span class="comment">% error is 0.1 * 41:</span>
+0049 <span class="comment">%</span>
+0050 <span class="comment">%     fluxData.conds = {'glc'}; fluxData.grRate = 0.4;</span>
+0051 <span class="comment">%     sims = struct('feasible', true, 'growth', 0.5);</span>
+0052 <span class="comment">%     [rmse, rmseList] = datasetRmse(fluxData, sims, false, containers.Map())   % 4.1</span>
+0053 <span class="comment">%</span>
+0054 <span class="comment">% See also</span>
+0055 <span class="comment">% --------</span>
+0056 <span class="comment">% simulateConditions, computeCarbonWeights, experimentDistance</span>
+0057 
+0058 p = parseRAVENargs(varargin, {<span class="string">'penalty'</span>, 99});
+0059 penalty = p.penalty;
+0060 biomassCarbon = 41;  <span class="comment">% Cmmol/gDCW, assumed carbon content of biomass</span>
+0061 
+0062 n = numel(fluxData.conds);
+0063 <span class="keyword">if</span> numel(sims) ~= n
+0064     error(<span class="string">'datasetRmse:wrongSimCount'</span>, <span class="keyword">...</span>
+0065         <span class="string">'sims has %d elements; expected %d to match fluxData.conds.'</span>, numel(sims), n);
+0066 <span class="keyword">end</span>
+0067 
+0068 <span class="keyword">if</span> isfield(fluxData, <span class="string">'weight'</span>) &amp;&amp; ~isempty(fluxData.weight)
+0069     active = fluxData.weight(:) ~= 0;
+0070 <span class="keyword">else</span>
+0071     active = true(n, 1);
+0072 <span class="keyword">end</span>
+0073 
+0074 rmseList = zeros(n, 1);
+0075 <span class="keyword">for</span> i = 1:n
+0076     <span class="keyword">if</span> ~active(i)
+0077         rmseList(i) = NaN;
+0078         <span class="keyword">continue</span>
+0079     <span class="keyword">end</span>
+0080     sim = sims(i);
+0081     <span class="keyword">if</span> ~sim.feasible
+0082         rmseList(i) = penalty;
+0083         <span class="keyword">continue</span>
+0084     <span class="keyword">end</span>
+0085     bioMeas = fluxData.grRate(i) * biomassCarbon;
+0086     bioSim = sim.growth * biomassCarbon;
+0087     <span class="keyword">if</span> ~constrain
+0088         rmseList(i) = abs(bioMeas - bioSim);
+0089         <span class="keyword">continue</span>
+0090     <span class="keyword">end</span>
+0091 
+0092     measured = bioMeas;
+0093     simulated = bioSim;
+0094     <span class="keyword">for</span> k = 1:numel(sim.exchRxnIDs)
+0095         w = <a href="#_sub1" class="code" title="subfunction w = weightOf(carbonWeights, rxnId)">weightOf</a>(carbonWeights, sim.exchRxnIDs{k});
+0096         col = find(strcmp(fluxData.exchRxnIDs, sim.exchRxnIDs{k}), 1);
+0097         measured(end+1) = w * fluxData.exchFluxes(i, col); <span class="comment">%#ok&lt;AGROW&gt;</span>
+0098         simulated(end+1) = w * sim.exchFluxes(k); <span class="comment">%#ok&lt;AGROW&gt;</span>
+0099     <span class="keyword">end</span>
+0100     <span class="keyword">for</span> k = 1:numel(sim.blockRxnIDs)
+0101         weightedSim = <a href="#_sub1" class="code" title="subfunction w = weightOf(carbonWeights, rxnId)">weightOf</a>(carbonWeights, sim.blockRxnIDs{k}) * sim.blockFluxes(k);
+0102         <span class="keyword">if</span> weightedSim == 0
+0103             <span class="keyword">continue</span>
+0104         <span class="keyword">end</span>
+0105         measured(end+1) = 0; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0106         simulated(end+1) = weightedSim; <span class="comment">%#ok&lt;AGROW&gt;</span>
+0107     <span class="keyword">end</span>
+0108     rmseList(i) = sqrt(mean((measured - simulated).^2));
+0109 <span class="keyword">end</span>
+0110 
+0111 <span class="keyword">if</span> ~any(active)
+0112     rmse = NaN;
+0113     <span class="keyword">return</span>
+0114 <span class="keyword">end</span>
+0115 weighted = rmseList;
+0116 <span class="keyword">if</span> isfield(fluxData, <span class="string">'weight'</span>) &amp;&amp; ~isempty(fluxData.weight)
+0117     weighted = rmseList .* fluxData.weight(:);
+0118 <span class="keyword">end</span>
+0119 rmse = mean(weighted(active));
+0120 <span class="keyword">end</span>
+0121 
+0122 <a name="_sub1" href="#_subfunctions" class="code">function w = weightOf(carbonWeights, rxnId)</a>
+0123 <span class="keyword">if</span> isKey(carbonWeights, rxnId)
+0124     w = carbonWeights(rxnId);
+0125 <span class="keyword">else</span>
+0126     w = 1;
+0127 <span class="keyword">end</span>
+0128 <span class="keyword">end</span></pre></div>
+<hr><address>Generated by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

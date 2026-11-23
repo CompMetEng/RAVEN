@@ -54,8 +54,8 @@
      case, cutOff, minScoreRatioKO, minScoreRatioG and dataDir are not
      used (default []).
  dataDir : char
-     directory of the HMM library, named kegg118_prokaryotes or
-     kegg118_eukaryotes. The name gives the KEGG version and whether the
+     directory of the HMM library, named kegg120_prokaryotes or
+     kegg120_eukaryotes. The name gives the KEGG version and whether the
      HMMs were trained on pro- or eukaryotic sequences, and matches the
      published HMM library it is paired with. The prebuilt concatenated KO
      HMM library (dataDir.hmm) is downloaded from the corresponding
@@ -124,7 +124,7 @@
    2. From protein homology (fastaFile supplied). The query proteome is
       searched, in a single hmmsearch, against a prebuilt KEGG-version- and
       domain-specific concatenated KO HMM library (for example
-      kegg118_eukaryotes), downloaded from the corresponding toolbox-assets
+      kegg120_eukaryotes), downloaded from the corresponding toolbox-assets
       release if not already present in dataDir. Hits are filtered by cutOff,
       minScoreRatioKO and minScoreRatioG into a KO-gene matrix, from which the
       model is built (spontaneous reactions without genes are kept if
@@ -180,8 +180,8 @@ This function is called by:
 0026 <span class="comment">%     case, cutOff, minScoreRatioKO, minScoreRatioG and dataDir are not</span>
 0027 <span class="comment">%     used (default []).</span>
 0028 <span class="comment">% dataDir : char</span>
-0029 <span class="comment">%     directory of the HMM library, named kegg118_prokaryotes or</span>
-0030 <span class="comment">%     kegg118_eukaryotes. The name gives the KEGG version and whether the</span>
+0029 <span class="comment">%     directory of the HMM library, named kegg120_prokaryotes or</span>
+0030 <span class="comment">%     kegg120_eukaryotes. The name gives the KEGG version and whether the</span>
 0031 <span class="comment">%     HMMs were trained on pro- or eukaryotic sequences, and matches the</span>
 0032 <span class="comment">%     published HMM library it is paired with. The prebuilt concatenated KO</span>
 0033 <span class="comment">%     HMM library (dataDir.hmm) is downloaded from the corresponding</span>
@@ -250,7 +250,7 @@ This function is called by:
 0096 <span class="comment">%   2. From protein homology (fastaFile supplied). The query proteome is</span>
 0097 <span class="comment">%      searched, in a single hmmsearch, against a prebuilt KEGG-version- and</span>
 0098 <span class="comment">%      domain-specific concatenated KO HMM library (for example</span>
-0099 <span class="comment">%      kegg118_eukaryotes), downloaded from the corresponding toolbox-assets</span>
+0099 <span class="comment">%      kegg120_eukaryotes), downloaded from the corresponding toolbox-assets</span>
 0100 <span class="comment">%      release if not already present in dataDir. Hits are filtered by cutOff,</span>
 0101 <span class="comment">%      minScoreRatioKO and minScoreRatioG into a KO-gene matrix, from which the</span>
 0102 <span class="comment">%      model is built (spontaneous reactions without genes are kept if</span>

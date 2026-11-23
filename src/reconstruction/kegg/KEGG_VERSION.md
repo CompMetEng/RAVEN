@@ -1,4 +1,4 @@
-kegg118
+kegg120
 
 This is the toolbox-assets release tag that every KEGG-artefact download in
 this folder reads from --- getModelFromKEGG's core reference-model/table

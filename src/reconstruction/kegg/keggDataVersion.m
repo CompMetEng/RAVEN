@@ -9,7 +9,7 @@ function version=keggDataVersion()
 % Returns
 % -------
 % version : char
-%     the toolbox-assets release tag, for example 'kegg118'.
+%     the toolbox-assets release tag, for example 'kegg120'.
 
 ravenPath=findRAVENroot();
 versionFile=fullfile(ravenPath,'src','reconstruction','kegg','KEGG_VERSION.md');

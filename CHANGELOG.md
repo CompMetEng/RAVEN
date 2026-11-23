@@ -1,6 +1,39 @@
 # Changelog
 
-## 3.0.0b2 — 2026-11-01
+## 3.0.0b3 (2026-11-22)
+
+Third beta toward 3.0. The main changes are the `experiments/` folder, `getGAM` and the `keepOffsetsOf` option of `setGAM`, and a closer match of `getModelFromHomology` to raven-toolbox. Changes below are relative to 3.0.0b2.
+
+### Breaking changes
+
+* `getModelFromHomology` with `preferredOrder` treats a gene of a later model that maps to a new gene an earlier model already maps as a subunit without an ortholog, and `complexPolicy` decides what happens to it (was: the gene and every part of the rule that needs it were removed). For the rule `(a and b) or x` with `a` taken by an earlier model, `flag` gives `(OLD_MODELID_a and nb) or nx`, `keep` gives `nb or nx` and `drop` gives `nx`. A reaction that has genes, none of which keeps a mapping, is not included.
+* `getModelFromHomology` with `complexPolicy` `drop` removes each complex that has a subunit without an ortholog, and removes the reaction only when no complex remains (was: the reaction was removed as soon as one subunit had no ortholog). For the rule `(A and B) or (C and D)` without an ortholog of `B`, the draft has the orthologs of `C` and `D`.
+
+### Experiments
+
+* New: the `experiments/` folder scores a model against measured growth rates and exchange fluxes.
+* `loadFluxData` reads one flux file, with a `weight` column for the weight of each condition. A condition with weight 0 is left out of the simulation and the distance.
+* `loadExperimentData` reads `fluxData.tsv`, `maxGrowth.tsv` and `zeroFlux.tsv` from a folder.
+* `simulateConditions` fixes the uptake of each condition and solves the model. The anaerobic switch, the change of the protein content and the solver call are given as function handles. It solves each condition with the objective of the model and reads the growth rate from the flux of the biomass reaction, so the objective must be the maximisation of the growth. It warns once per call (`simulateConditions:objectiveNotGrowth`) if it is not, and raises `simulateConditions:missingReaction` when a reaction of the data, the zero-flux list or the biomass reaction is not in the model.
+* `computeCarbonWeights` gives the carbon weight of each reaction. It reads the formulas with `parseFormulas` and gives the weight 1 to a formula with parentheses, an empty formula and a formula without carbon.
+* `datasetRmse` combines the carbon-weighted errors of the conditions of one dataset into one value. It does not take the biomass reaction.
+* `experimentDistance` combines the carbon-weighted errors of the flux and maximum growth conditions into one value. It does not take the biomass reaction.
+* `applyFluxDataConstraints` bounds the exchange fluxes of a model to one condition.
+
+### Biomass
+
+* New: `getGAM` returns the GAM of a model, the size of the ATP coefficient of the biomass pseudoreaction.
+* `setGAM` takes `keepOffsetsOf`: the coefficient of the metabolite of that name becomes the value and the other GAM terms shift by the same amount, so a proton coefficient that balances the charge of the other biomass terms keeps its offset. Without it every GAM term is set to the value, as before.
+
+### Fixes
+
+* `getModelFromHomology` reads the rule as a tree, in which `and` binds tighter than `or`, when it removes the placeholder genes of isozymes without an ortholog (was: it removed a placeholder that stood beside an `or` token, also when the placeholder belongs to a complex). A placeholder in an `or` group is removed when the group has a member that is not a placeholder, in nested groups as well. For the rule `(A or B and C) and D` without an ortholog of `B`, where `nA`, `nC` and `nD` are the orthologs of `A`, `C` and `D`, the draft rule is `(nA or (OLD_T_B and nC)) and nD` under `flag`, `(nA or nC) and nD` under `keep` and `nA and nD` under `drop`; it was `nA and nC and nD` under all three. The result differs from before only for rules with unbracketed `and` and `or` or with nested `or` groups.
+
+### Data
+
+* The KEGG assets are the `kegg120` release of `toolbox-assets` (was: `kegg118`), and `fetchToolboxAsset` reads the manifest `manifest-v5`.
+
+## 3.0.0b2 (2026-11-01)
 
 Second beta toward 3.0. Changes below are relative to 3.0.0b1.
 
@@ -145,7 +178,7 @@ Second beta toward 3.0. Changes below are relative to 3.0.0b1.
 
 * Help blocks of 176 files are rewritten in impersonal, present-tense wording with British spelling; the code is unchanged. Statements that differed from the code are corrected, for example `simplifyModel` `deleteDuplicates` (first occurrence kept), `removeBadRxns` `refModel`, `replaceMets` outputs, `getMinNrFluxes` `params`, `checkRaven` `developMode` and the `downloadRavenBinaries` offline bundle. `reverseRxns` has the RAVEN 3 help structure.
 
-## 3.0.0b1 — 2026-09-07
+## 3.0.0b1 (2026-09-07)
 
 First beta toward 3.0. Changes below are relative to RAVEN 2.9.3. The last 2.x release is 2.11.4:
 a reorganized codebase, fewer toolbox dependencies, hardened I/O and MILP algorithms, plus

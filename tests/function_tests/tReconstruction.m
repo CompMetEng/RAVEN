@@ -87,13 +87,19 @@ classdef tReconstruction < RavenTestCase
 
         function getModelFromHomologyComplexPolicyOnNestedRules(testCase)
             % An isozyme group whose members all lack an ortholog leaves one flagged
-            % subunit; "drop" removes every reaction that keeps a flagged gene.
+            % subunit; "drop" removes each complex that keeps a flagged gene and the
+            % reaction when no complex remains.
             % Columns: rule, mapped template genes, policy, genes in the rule ({} = reaction removed).
             cases = {'(A or B) and C', {'C'}, 'flag', {'OLD_T_B', 'nC'}; ...
                      '(A or B) and C', {'C'}, 'keep', {'nC'}; ...
                      '(A or B) and C', {'C'}, 'drop', {}; ...
-                     'A or (B and C)', {'A', 'C'}, 'drop', {}; ...
-                     '(A and B) or C', {'C'}, 'drop', {}};
+                     'A or (B and C)', {'A', 'C'}, 'drop', {'nA'}; ...
+                     '(A and B) or C', {'C'}, 'drop', {'nC'}; ...
+                     'A and B', {'A'}, 'drop', {}; ...
+                     '(A and B) or (C and D)', {'A', 'C', 'D'}, 'drop', {'nC', 'nD'}; ...
+                     '(A or B and C) and D', {'A', 'C', 'D'}, 'drop', {'nA', 'nD'}; ...
+                     '(A and B or C) and D', {'A', 'C', 'D'}, 'drop', {'nC', 'nD'}; ...
+                     'D and (A or B and C)', {'A', 'C', 'D'}, 'drop', {'nA', 'nD'}};
             for k = 1:size(cases, 1)
                 t = tReconstruction.homologyTemplate('T', {'R1'}, cases(k, 1));
                 pairs = cell(numel(cases{k, 2}), 2);
@@ -108,6 +114,20 @@ classdef tReconstruction < RavenTestCase
                     testCase.verifyFalse(contains(draft.grRules{strcmp(draft.rxns, 'R1')}, ' or '), cases{k, 1});
                 end
             end
+            % "and" binds tighter than "or": B belongs to the complex B and C, not to the isozymes of A
+            t = tReconstruction.homologyTemplate('T', {'R1'}, {'(A or B and C) and D'});
+            draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'C', 'nC'; 'D', 'nD'}}, 'flag', {});
+            testCase.verifyEqual(draft.grRules{1}, '(nA or (OLD_T_B and nC)) and nD');
+            % complete complexes that share a subunit with an incomplete one stay, and a
+            % complex that contains another is not merged into it
+            t = tReconstruction.homologyTemplate('T', {'R1'}, {'(A and B) or (A and C) or (D and E) or (A and B and F)'});
+            draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'B', 'nB'; 'C', 'nC'; 'D', 'nD'; 'F', 'nF'}}, 'drop', {});
+            testCase.verifyEqual(draft.grRules{1}, '(nA and nB) or (nA and nC) or (nA and nB and nF)');
+            t = tReconstruction.homologyTemplate('T', {'R1'}, {'(A and B) or B'});
+            draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'B', 'nB'}}, 'drop', {});
+            testCase.verifyEqual(draft.grRules{1}, '(nA and nB) or nB');
+            draft = tReconstruction.homologyDraft({t}, {{'B', 'nB'}}, 'drop', {});
+            testCase.verifyEqual(draft.grRules{1}, 'nB');
             % the flagged subunit stays next to its isozyme in the other branch
             t = tReconstruction.homologyTemplate('T', {'R1'}, {'A or (B and C)'});
             draft = tReconstruction.homologyDraft({t}, {{'A', 'nA'; 'C', 'nC'}}, 'flag', {});
@@ -130,6 +150,59 @@ classdef tReconstruction < RavenTestCase
             draft = tReconstruction.homologyDraft({t1, t2}, pairs, 'flag', {'T2', 'T1'});
             testCase.verifyEqual(draft.rxns, {'R_T2'});
             testCase.verifyEqual(sort(draft.genes), {'N1'; 'N2'});
+        end
+
+        function getModelFromHomologyPreferredOrderRetainsTheOrphanSubunit(testCase)
+            % A gene taken by an earlier template is a subunit without an ortholog:
+            % complexPolicy decides what happens to the rest of its complex.
+            t1 = tReconstruction.homologyTemplate('T1', {'R_T1'}, {'Y'});
+            t2 = tReconstruction.homologyTemplate('T2', {'R_T2', 'R_T3'}, {'X or Z', 'X and Z'});
+            pairs = {{'Y', 'N1'}, {'X', 'N1'; 'Z', 'N3'}};
+            draft = tReconstruction.homologyDraft({t1, t2}, pairs, 'flag', {'T1', 'T2'});
+            testCase.verifyEqual(draft.grRules(strcmp(draft.rxns, 'R_T3')), {'OLD_T2_X and N3'});
+            testCase.verifyEqual(draft.grRules(strcmp(draft.rxns, 'R_T2')), {'N3'});
+            draft = tReconstruction.homologyDraft({t1, t2}, pairs, 'keep', {'T1', 'T2'});
+            testCase.verifyEqual(draft.grRules(strcmp(draft.rxns, 'R_T3')), {'N3'});
+            draft = tReconstruction.homologyDraft({t1, t2}, pairs, 'drop', {'T1', 'T2'});
+            testCase.verifyFalse(ismember('R_T3', draft.rxns));
+            testCase.verifyTrue(ismember('R_T2', draft.rxns));
+            % a taken gene in a complex beside an isozyme
+            t3 = tReconstruction.homologyTemplate('T2', {'R_T2'}, {'(a and b) or x'});
+            pairs = {{'Y', 'N1'}, {'a', 'N1'; 'b', 'Nb'; 'x', 'Nx'}};
+            rules = cell(1, 3);
+            policies = {'flag', 'keep', 'drop'};
+            for k = 1:3
+                draft = tReconstruction.homologyDraft({t1, t3}, pairs, policies{k}, {'T1', 'T2'});
+                rules{k} = draft.grRules{strcmp(draft.rxns, 'R_T2')};
+            end
+            testCase.verifyEqual(rules, {'(OLD_T2_a and Nb) or Nx', 'Nb or Nx', 'Nx'});
+            % a reaction whose genes were all taken is not included
+            t4 = tReconstruction.homologyTemplate('T2', {'R_T2'}, {'a and b'});
+            draft = tReconstruction.homologyDraft({t1, t4}, {{'Y', 'N1'}, {'a', 'N1'}}, 'flag', {'T1', 'T2'});
+            testCase.verifyEqual(draft.rxns, {'R_T1'});
+        end
+
+        function getModelFromHomologyPreferredOrderEmptiesATemplateWithGeneComps(testCase)
+            % A template with a geneComps field that loses all its genes in the preferred-order step
+            t1 = tReconstruction.homologyTemplate('T1', {'R_T1'}, {'Y'});
+            t2 = tReconstruction.homologyTemplate('T2', {'R_T2'}, {'X'});
+            t2.geneComps = ones(numel(t2.genes), 1);
+            draft = tReconstruction.homologyDraft({t1, t2}, {{'Y', 'N1'}, {'X', 'N1'}}, 'flag', {'T1', 'T2'});
+            testCase.verifyEqual(draft.rxns, {'R_T1'});
+        end
+
+        function getModelFromHomologyPreferredOrderChainsTheConflicts(testCase)
+            % Three templates: a gene of the third that maps to a gene taken by the first, and a
+            % gene that maps to a gene taken by the second, follow complexPolicy.
+            t1 = tReconstruction.homologyTemplate('T1', {'R_T1'}, {'Y'});
+            t2 = tReconstruction.homologyTemplate('T2', {'R_T2'}, {'X'});
+            t3 = tReconstruction.homologyTemplate('T3', {'R_T3'}, {'(p and q) or r'});
+            pairs = {{'Y', 'N1'}, {'X', 'N2'}, {'p', 'N1'; 'q', 'N2'; 'r', 'N3'}};
+            draft = tReconstruction.homologyDraft({t1, t2, t3}, pairs, 'flag', {'T1', 'T2', 'T3'});
+            testCase.verifyEqual(draft.grRules(strcmp(draft.rxns, 'R_T3')), {'(OLD_T3_p and OLD_T3_q) or N3'});
+            draft = tReconstruction.homologyDraft({t1, t2, t3}, pairs, 'keep', {'T1', 'T2', 'T3'});
+            testCase.verifyEqual(draft.grRules(strcmp(draft.rxns, 'R_T3')), {'N3'});
+            testCase.verifyEqual(draft.name, 'Generated by getModelFromHomology using T1, T2, T3');
         end
 
         function getModelFromHomologyPreferredOrderWithoutSharedGenes(testCase)
